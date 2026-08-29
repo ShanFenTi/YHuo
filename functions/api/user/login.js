@@ -30,7 +30,10 @@ export async function onRequestPost({ request, env }) {
     // 不存在的用户名也跑一次哈希在这里做不了，放到下面统一兜底；这里只处理存在的情况
     if (row.banned) return json({ ok: false, error: '该账号已被禁用，请联系管理员' }, 403);
     if (await verifyPassword(password, row.salt, row.password_hash)) {
-      await env.DB.prepare('DELETE FROM user_sessions WHERE expires_at < ?').bind(new Date().toISOString()).run();
+      await env.DB.batch([
+        env.DB.prepare('DELETE FROM user_sessions WHERE expires_at < ?').bind(new Date().toISOString()),
+        env.DB.prepare("UPDATE users SET last_seen_at = datetime('now') WHERE id = ?").bind(row.id),
+      ]);
       const token = await createUserSession(env, row.id);
       return json({ ok: true, username }, 200, { 'Set-Cookie': userCookie(token) });
     }

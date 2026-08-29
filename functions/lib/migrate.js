@@ -44,6 +44,11 @@ const DDL = [
     key   TEXT PRIMARY KEY,
     value TEXT NOT NULL
   )`,
+  // 访问统计按天计数（day = 北京时间日期 YYYY-MM-DD），后台趋势图用
+  `CREATE TABLE IF NOT EXISTS visit_daily (
+    day   TEXT PRIMARY KEY,
+    count INTEGER NOT NULL DEFAULT 0
+  )`,
 ];
 
 // 同一个隔离实例里只跑一次
@@ -54,9 +59,12 @@ export async function ensureSchema(env) {
   for (const sql of DDL) {
     await env.DB.prepare(sql).run();
   }
-  // 老库补列：早期版本的 users 表没有 banned 列（列已存在时报错，忽略即可）
+  // 老库补列：列已存在时报错，忽略即可
   try {
     await env.DB.prepare("ALTER TABLE users ADD COLUMN banned INTEGER NOT NULL DEFAULT 0").run();
+  } catch {}
+  try {
+    await env.DB.prepare("ALTER TABLE users ADD COLUMN last_seen_at TEXT").run();
   } catch {}
   migrated = true;
 }

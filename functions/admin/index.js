@@ -152,6 +152,17 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
   .modal-body audio { width: 100%; margin-top: 4px; }
   .modal-body video { width: 100%; max-height: 68vh; border-radius: 10px; background: #000; }
   .modal-body img { max-width: 100%; max-height: 68vh; border-radius: 10px; display: block; margin: 0 auto; }
+  /* 访问趋势 */
+  .visit-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 12px; }
+  .visit-head strong { font-size: 15px; }
+  .visit-head .spacer { flex: 1; }
+  .range-btn { padding: 5px 12px; font-size: 12px; border-radius: 8px; }
+  .range-btn.active { background: var(--fg); color: var(--bg); }
+  #visitChart svg { width: 100%; height: 170px; display: block; }
+  #visitChart .gl { stroke: var(--border); stroke-width: 1; }
+  #visitChart .gt { fill: var(--muted); font-size: 10px; font-family: inherit; }
+  #visitChart .bar { fill: var(--fg); opacity: .82; }
+  #visitChart .bar:hover { opacity: 1; }
   .avatar {
     width: 34px; height: 34px; border-radius: 50%; flex: none;
     background: var(--fg); color: var(--bg);
@@ -215,6 +226,19 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
   <div class="stat"><div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m21 15-5-5L5 21"/></svg></div><div><div class="num" id="statImage">0</div><div class="lbl">图片</div></div></div>
   <div class="stat"><div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></div><div><div class="num" id="statUsers">0</div><div class="lbl">注册用户</div></div></div>
   <div class="stat"><div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg></div><div><div class="num" id="statVisits">0</div><div class="lbl">访问量</div></div></div>
+  <div class="stat"><div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg></div><div><div class="num" id="statToday">0</div><div class="lbl">今日访问</div></div></div>
+</div>
+
+<div class="card" id="visitCard" hidden>
+  <div class="visit-head">
+    <strong>访问趋势</strong>
+    <span class="meta2" id="visitSumm"></span>
+    <span class="spacer"></span>
+    <button class="ghost range-btn active" data-range="14">近 14 天</button>
+    <button class="ghost range-btn" data-range="30">近 30 天</button>
+  </div>
+  <div id="visitChart"></div>
+  <p class="hint" id="visitHint" style="margin:10px 0 0" hidden>按天明细从上线开始积累，之前累积的总访问量没有逐日记录。</p>
 </div>
 
 <div class="card" id="mainCard" hidden>
@@ -251,6 +275,10 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
   </div>
 
   <div id="userPanel" hidden>
+    <div class="list-tools">
+      <input type="text" id="userSearch" placeholder="搜索用户名…">
+      <button class="ghost" id="userSortBtn" title="切换排序">注册时间：新→旧</button>
+    </div>
     <div class="msg" id="userMsg"></div>
     <ul class="list" id="userList"></ul>
     <div class="empty" id="userEmpty" hidden>还没有用户注册。</div>
@@ -355,6 +383,7 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
     $('neterrCard').hidden = name !== 'neterr';
     $('mainCard').hidden = name !== 'main';
     $('stats').hidden = name !== 'main';
+    $('visitCard').hidden = name !== 'main';
     $('logoutBtn').hidden = name !== 'main';
   }
 
@@ -450,10 +479,61 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
     }).catch(function () {});
   }
 
+  // ---------- 访问统计：今日卡 + 近 N 天柱状趋势图（纯 SVG，无依赖） ----------
+  var visitData = { visits: 0, today: 0, yesterday: 0, daily: [] };
+  var visitRange = 14;
+
   function loadVisits() {
     api('/api/admin/visits').then(function (d) {
-      if (d.ok) $('statVisits').textContent = d.visits;
+      if (!d.ok) return;
+      visitData = d;
+      $('statVisits').textContent = d.visits;
+      $('statToday').textContent = d.today;
+      renderVisitChart();
     }).catch(function () {});
+  }
+
+  function renderVisitChart() {
+    var n = visitRange;
+    var byDay = {};
+    (visitData.daily || []).forEach(function (r) { byDay[r.day] = r.count; });
+
+    // 近 n 天序列（北京时间，与后端口径一致），没有数据的天补 0
+    var days = [];
+    for (var i = n - 1; i >= 0; i--) {
+      var s = new Date(Date.now() + 8 * 3600e3 - i * 86400e3).toISOString().slice(0, 10);
+      days.push({ day: s, count: byDay[s] || 0 });
+    }
+    var totalInRange = days.reduce(function (a, d) { return a + d.count; }, 0);
+    var activeDays = days.filter(function (d) { return d.count > 0; }).length;
+    $('visitSumm').textContent = '今日 ' + visitData.today + ' · 昨日 ' + visitData.yesterday +
+      ' · 近 ' + n + ' 天共 ' + totalInRange + ' 次' +
+      (activeDays ? '，日均 ' + Math.round(totalInRange / n * 10) / 10 + ' 次' : '');
+    $('visitHint').hidden = activeDays > 0;
+
+    var W = 700, H = 170, padL = 34, padB = 22, padT = 14, padR = 10;
+    var max = 1;
+    days.forEach(function (d) { if (d.count > max) max = d.count; });
+    var innerW = W - padL - padR, innerH = H - padT - padB;
+    var bw = innerW / n;
+    var parts = [];
+    parts.push('<line x1="' + padL + '" y1="' + padT + '" x2="' + (W - padR) + '" y2="' + padT + '" class="gl"/>');
+    parts.push('<line x1="' + padL + '" y1="' + (H - padB) + '" x2="' + (W - padR) + '" y2="' + (H - padB) + '" class="gl"/>');
+    parts.push('<text x="' + (padL - 6) + '" y="' + (padT + 4) + '" class="gt" text-anchor="end">' + max + '</text>');
+    parts.push('<text x="' + (padL - 6) + '" y="' + (H - padB + 4) + '" class="gt" text-anchor="end">0</text>');
+    var labelEvery = Math.max(1, Math.ceil(n / 6));
+    days.forEach(function (d, i) {
+      var h = Math.max(d.count > 0 ? 2 : 0, Math.round(d.count / max * innerH));
+      var x = padL + i * bw + bw * 0.15;
+      var y = H - padB - h;
+      parts.push('<rect x="' + x.toFixed(1) + '" y="' + y + '" width="' + (bw * 0.7).toFixed(1) +
+        '" height="' + h + '" rx="2" class="bar"><title>' + d.day + '：' + d.count + ' 次</title></rect>');
+      if (i % labelEvery === 0 || i === n - 1) {
+        parts.push('<text x="' + (padL + i * bw + bw / 2).toFixed(1) + '" y="' + (H - 6) +
+          '" class="gt" text-anchor="middle">' + d.day.slice(5) + '</text>');
+      }
+    });
+    $('visitChart').innerHTML = '<svg viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="近 ' + n + ' 天访问趋势">' + parts.join('') + '</svg>';
   }
 
   // ---------- 批量选择 / 搜索 ----------
@@ -707,11 +787,34 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
   }
 
   // ---------- 用户管理 ----------
+  var userSortDesc = true; // 注册时间 新→旧
+
+  // 相对时间：最后活跃显示用（last_seen_at 是 UTC 的 "YYYY-MM-DD HH:MM:SS"）
+  function fmtRel(s) {
+    if (!s) return '从未活跃';
+    var t = Date.parse(String(s).replace(' ', 'T') + 'Z');
+    if (isNaN(t)) return '从未活跃';
+    var m = Math.round((Date.now() - t) / 60000);
+    if (m < 1) return '刚刚活跃';
+    if (m < 60) return m + ' 分钟前活跃';
+    var h = Math.round(m / 60);
+    if (h < 24) return h + ' 小时前活跃';
+    return Math.round(h / 24) + ' 天前活跃';
+  }
+
   function renderUsers() {
     var list = $('userList');
+    var q = ($('userSearch').value || '').trim().toLowerCase();
+    var arr = users.filter(function (u) {
+      return !q || (u.username || '').toLowerCase().indexOf(q) > -1;
+    });
+    arr = arr.slice().sort(function (a, b) {
+      return userSortDesc ? b.id - a.id : a.id - b.id; // id 顺序即注册顺序
+    });
     list.innerHTML = '';
-    $('userEmpty').hidden = users.length > 0;
-    users.forEach(function (u) {
+    $('userEmpty').hidden = arr.length > 0;
+    $('userEmpty').textContent = users.length ? '没有匹配「' + q + '」的用户。' : '还没有用户注册。';
+    arr.forEach(function (u) {
       var li = document.createElement('li');
 
       var avatar = document.createElement('div');
@@ -728,7 +831,7 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
 
       var meta = document.createElement('span');
       meta.className = 'meta';
-      meta.textContent = '注册于 ' + fmtDate(u.created_at);
+      meta.textContent = '注册于 ' + fmtDate(u.created_at) + ' · ' + fmtRel(u.last_seen_at);
 
       var ban = document.createElement('button');
       ban.className = 'ghost';
@@ -862,6 +965,10 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
       if (isAppear) {
         loadAppearance();
       }
+      if (isUsers) {
+        $('userSearch').value = ''; // 换进来重置搜索
+        loadUsers();
+      }
       if (!isUsers && !isAppear) {
         $('fileInput').accept = TYPE_EXT[currentType];
         $('titleInput').value = '';
@@ -885,6 +992,24 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
     renderList();
   });
   $('batchDelBtn').addEventListener('click', deleteSelected);
+
+  // 访问趋势：14/30 天切换
+  document.querySelectorAll('.range-btn').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      document.querySelectorAll('.range-btn').forEach(function (b) { b.classList.remove('active'); });
+      btn.classList.add('active');
+      visitRange = Number(btn.getAttribute('data-range')) || 14;
+      renderVisitChart();
+    });
+  });
+
+  // 用户列表：搜索 + 排序切换
+  $('userSearch').addEventListener('input', renderUsers);
+  $('userSortBtn').addEventListener('click', function () {
+    userSortDesc = !userSortDesc;
+    this.textContent = userSortDesc ? '注册时间：新→旧' : '注册时间：旧→新';
+    renderUsers();
+  });
 
   // ---------- 静态媒体自动同步 ----------
   // 打开后台即自动对比三个清单（images/manifest.json、music/playlist.json、video/playlist.json），

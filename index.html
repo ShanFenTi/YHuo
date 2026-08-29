@@ -3649,13 +3649,51 @@
     function gatePassed() {
       try { return !!sessionStorage.getItem(LOGIN_KEY); } catch (e) { return false; }
     }
+    // 输入草稿：误触关闭或刷新后不丢已输入内容
+    var LOGIN_DRAFT = 'demoLoginDraft';
+    function saveLoginDraft() {
+      try {
+        sessionStorage.setItem(LOGIN_DRAFT, JSON.stringify({
+          u: loginUser ? loginUser.value : '',
+          p: loginPass ? loginPass.value : ''
+        }));
+      } catch (e) {}
+    }
+    function restoreLoginDraft() {
+      try {
+        var d = JSON.parse(sessionStorage.getItem(LOGIN_DRAFT) || 'null');
+        if (d && loginUser && !loginUser.value) loginUser.value = d.u || '';
+        if (d && loginPass && !loginPass.value) loginPass.value = d.p || '';
+      } catch (e) {}
+    }
+    function clearLoginDraft() {
+      try { sessionStorage.removeItem(LOGIN_DRAFT); } catch (e) {}
+    }
+    function openGate() {
+      document.body.classList.add('login-lock');
+      loginGate.classList.remove('hide');
+      loginGate.hidden = false;
+      restoreLoginDraft();
+      void loginGate.offsetWidth;
+      loginGate.classList.add('show');
+    }
     function passGate(role) {
       try { sessionStorage.setItem(LOGIN_KEY, role); } catch (e) {}
       if (loginError) loginError.hidden = true;
+      clearLoginDraft();
+      if (loginUser) loginUser.value = '';
+      if (loginPass) loginPass.value = '';
       loginGate.classList.remove('show');
       loginGate.classList.add('hide');
       document.body.classList.remove('login-lock');
       refreshLoginBadge();
+      setTimeout(function () { loginGate.hidden = true; }, 450);
+    }
+    function dismissGate() {
+      // 误触/点空白关闭：不记身份、不清输入，重开时内容还在
+      loginGate.classList.remove('show');
+      loginGate.classList.add('hide');
+      document.body.classList.remove('login-lock');
       setTimeout(function () { loginGate.hidden = true; }, 450);
     }
     // 顶栏登录按钮：悬停提示当前身份；真实登录显示主题色描边
@@ -3678,12 +3716,8 @@
     if (loginToggle) {
       refreshLoginBadge();
       loginToggle.addEventListener('click', function () {
-        // 重新打开登录界面，可切换身份（登录 / 游客）
         document.body.classList.add('login-lock');
-        loginGate.classList.remove('hide');
-        loginGate.hidden = false;
-        void loginGate.offsetWidth;
-        loginGate.classList.add('show');
+        openGate();
       });
     }
     if (loginGate) {
@@ -3693,10 +3727,17 @@
       } else {
         // 首次到访：页面先呈现，登录卡片随后轻轻浮起
         document.body.classList.add('login-lock');
+        restoreLoginDraft();
         setTimeout(function () {
           loginGate.classList.add('show');
         }, 300);
       }
+      // 点空白遮罩关闭：内容保留，可随时从右上角按钮重开
+      loginGate.addEventListener('click', function (e) {
+        if (e.target === loginGate) dismissGate();
+      });
+      if (loginUser) loginUser.addEventListener('input', saveLoginDraft);
+      if (loginPass) loginPass.addEventListener('input', saveLoginDraft);
       if (loginForm) {
         loginForm.addEventListener('submit', function (e) {
           e.preventDefault();

@@ -518,44 +518,6 @@
       object-fit: cover;
     }
 
-    /* 视频播放/暂停控件：居中蓝色圆钮，暂停时常显，播放时悬停浮现 */
-    .video-play-btn {
-      position: absolute;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      width: 52px;
-      height: 52px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      border: none;
-      border-radius: 999px;
-      background: linear-gradient(135deg, var(--apple-primary) 0%, color-mix(in srgb, var(--apple-primary) 85%, #ffffff) 100%);
-      color: var(--apple-primary-foreground);
-      cursor: pointer;
-      opacity: 1;
-      transition: opacity 200ms var(--ease-out), transform 180ms var(--ease-out);
-    }
-
-    .video-play-btn:hover {
-      transform: translate(-50%, -50%) scale(1.08);
-    }
-
-    .video-box.is-playing .video-play-btn {
-      opacity: 0;
-      pointer-events: none;
-    }
-
-    .video-box.is-playing:hover .video-play-btn {
-      opacity: 1;
-      pointer-events: auto;
-    }
-
-    .video-play-btn svg {
-      filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.3));
-    }
-
     /* 窄屏：视频换到时钟下方占满宽度 */
     @media (max-width: 900px) {
       .hero-row {
@@ -2152,10 +2114,6 @@
           <!-- 视频轮播卡片：video 文件夹里的视频依次循环播放 -->
           <div class="video-box">
             <video id="homeVideo" muted playsinline controls preload="metadata"></video>
-            <button class="video-play-btn" id="videoPlayBtn" type="button" aria-label="播放或暂停视频">
-              <svg id="videoIconPlay" width="22" height="22" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5.14v13.72a1 1 0 0 0 1.5.86l11-6.86a1 1 0 0 0 0-1.72l-11-6.86a1 1 0 0 0-1.5.86z"/></svg>
-              <svg id="videoIconPause" width="22" height="22" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" hidden><line x1="8" x2="8" y1="5" y2="19"/><line x1="16" x2="16" y1="5" y2="19"/></svg>
-            </button>
           </div>
         </div>
         <p class="clock-date" id="clockDate">--</p>
@@ -2970,33 +2928,9 @@
         });
     }
     if (homeVideo) {
-      var videoBox = homeVideo.closest('.video-box');
-      var videoPlayBtn = document.getElementById('videoPlayBtn');
-      var videoIconPlay = document.getElementById('videoIconPlay');
-      var videoIconPause = document.getElementById('videoIconPause');
-
-      function updateVideoPlayUI() {
-        var playing = !homeVideo.paused && !homeVideo.ended;
-        if (videoBox) videoBox.classList.toggle('is-playing', playing);
-        if (videoIconPlay) videoIconPlay.hidden = playing;
-        if (videoIconPause) videoIconPause.hidden = !playing;
-      }
-      homeVideo.addEventListener('play', updateVideoPlayUI);
-      homeVideo.addEventListener('pause', updateVideoPlayUI);
       homeVideo.addEventListener('ended', function () {
         playVideoAt(videoIndex + 1); // 播完自动切下一个，到末尾回到第一个
       });
-      if (videoPlayBtn) {
-        videoPlayBtn.addEventListener('click', function () {
-          if (homeVideo.paused || homeVideo.ended) {
-            var p = homeVideo.play();
-            if (p && p.catch) p.catch(function () {});
-          } else {
-            homeVideo.pause();
-          }
-        });
-      }
-      updateVideoPlayUI();
       autoLoadVideoFolder();
     }
 

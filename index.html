@@ -1868,22 +1868,23 @@
       }
     }
 
-    /* ===== 登录界面（演示版门） ===== */
+    /* ===== 登录界面（演示版门）：页面不上锁盖白幕，只弹出登录卡片 ===== */
     .login-gate {
       position: fixed;
-      /* 显式四边定位，兼容不支持 inset 简写的浏览器，确保铺满全屏 */
+      /* 显式四边定位，兼容不支持 inset 简写的浏览器 */
       top: 0;
       right: 0;
       bottom: 0;
       left: 0;
-      width: 100vw;
-      height: 100vh;
       z-index: 400; /* 盖住所有浮层，登录后才放行 */
       display: flex;
       align-items: center;
       justify-content: center;
       padding: 24px;
-      background: var(--apple-background);
+      /* 轻微暗色遮罩：页面在背后可见，只突出登录卡片 */
+      background: rgba(0, 0, 0, 0.4);
+      backdrop-filter: blur(4px);
+      -webkit-backdrop-filter: blur(4px);
       opacity: 1;
       visibility: visible;
       transition: opacity 400ms var(--ease-out), visibility 400ms var(--ease-out);
@@ -1904,7 +1905,21 @@
       width: min(340px, 90vw);
       display: flex;
       flex-direction: column;
+      background: var(--apple-card);
+      color: var(--apple-card-foreground);
+      border: 1px solid var(--apple-border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow-md);
       padding: calc(var(--spacing) * 7) calc(var(--spacing) * 6);
+      /* 卡片入场：从下方轻轻浮起 */
+      opacity: 0;
+      transform: translateY(18px) scale(0.97);
+      transition: opacity 300ms var(--ease-out), transform 350ms var(--ease-out);
+    }
+
+    .login-gate.show .login-card {
+      opacity: 1;
+      transform: none;
     }
 
     .login-logo {
@@ -3634,12 +3649,51 @@
     function gatePassed() {
       try { return !!sessionStorage.getItem(LOGIN_KEY); } catch (e) { return false; }
     }
+    // 输入草稿：误触关闭或刷新后不丢已输入内容
+    var LOGIN_DRAFT = 'demoLoginDraft';
+    function saveLoginDraft() {
+      try {
+        sessionStorage.setItem(LOGIN_DRAFT, JSON.stringify({
+          u: loginUser ? loginUser.value : '',
+          p: loginPass ? loginPass.value : ''
+        }));
+      } catch (e) {}
+    }
+    function restoreLoginDraft() {
+      try {
+        var d = JSON.parse(sessionStorage.getItem(LOGIN_DRAFT) || 'null');
+        if (d && loginUser && !loginUser.value) loginUser.value = d.u || '';
+        if (d && loginPass && !loginPass.value) loginPass.value = d.p || '';
+      } catch (e) {}
+    }
+    function clearLoginDraft() {
+      try { sessionStorage.removeItem(LOGIN_DRAFT); } catch (e) {}
+    }
+    function openGate() {
+      document.body.classList.add('login-lock');
+      loginGate.classList.remove('hide');
+      loginGate.hidden = false;
+      restoreLoginDraft();
+      void loginGate.offsetWidth;
+      loginGate.classList.add('show');
+    }
     function passGate(role) {
       try { sessionStorage.setItem(LOGIN_KEY, role); } catch (e) {}
       if (loginError) loginError.hidden = true;
-      document.body.classList.remove('login-lock');
+      clearLoginDraft();
+      if (loginUser) loginUser.value = '';
+      if (loginPass) loginPass.value = '';
+      loginGate.classList.remove('show');
       loginGate.classList.add('hide');
+      document.body.classList.remove('login-lock');
       refreshLoginBadge();
+      setTimeout(function () { loginGate.hidden = true; }, 450);
+    }
+    function dismissGate() {
+      // 误触/点空白关闭：不记身份、不清输入，重开时内容还在
+      loginGate.classList.remove('show');
+      loginGate.classList.add('hide');
+      document.body.classList.remove('login-lock');
       setTimeout(function () { loginGate.hidden = true; }, 450);
     }
     // 顶栏登录按钮：悬停提示当前身份；真实登录显示主题色描边
@@ -3662,11 +3716,8 @@
     if (loginToggle) {
       refreshLoginBadge();
       loginToggle.addEventListener('click', function () {
-        // 重新打开登录界面，可切换身份（登录 / 游客）
         document.body.classList.add('login-lock');
-        loginGate.hidden = false;
-        void loginGate.offsetWidth;
-        loginGate.classList.remove('hide');
+        openGate();
       });
     }
     if (loginGate) {
@@ -3674,9 +3725,19 @@
         loginGate.classList.add('hide');
         loginGate.hidden = true;
       } else {
-        // 首次到访：门盖住全屏时锁定背后的页面
+        // 首次到访：页面先呈现，登录卡片随后轻轻浮起
         document.body.classList.add('login-lock');
+        restoreLoginDraft();
+        setTimeout(function () {
+          loginGate.classList.add('show');
+        }, 300);
       }
+      // 点空白遮罩关闭：内容保留，可随时从右上角按钮重开
+      loginGate.addEventListener('click', function (e) {
+        if (e.target === loginGate) dismissGate();
+      });
+      if (loginUser) loginUser.addEventListener('input', saveLoginDraft);
+      if (loginPass) loginPass.addEventListener('input', saveLoginDraft);
       if (loginForm) {
         loginForm.addEventListener('submit', function (e) {
           e.preventDefault();

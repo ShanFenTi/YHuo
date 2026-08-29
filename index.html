@@ -185,6 +185,7 @@
 
       /* Motion */
       --ease-out: cubic-bezier(0.32, 0.72, 0, 1);
+      --spring: cubic-bezier(0.34, 1.56, 0.64, 1); /* 近似 spring 的回弹，照片回正用 */
     }
 
     /* 主题色（外观卡片可切换，覆盖 brand-400/500 即可全局生效） */
@@ -1213,32 +1214,121 @@
       min-width: 0;
     }
 
-    /* 相册网格：图片平铺（覆盖主页折叠牌堆的绝对定位/透明度） */
-    .album-view .gallery:not(:empty) {
+    /* ===== 相册三层结构：牌堆封面 → 点击展开 → 照片墙 → 灯箱 ===== */
+    .album-list {
       display: grid;
-      grid-template-columns: repeat(var(--cols, 4), 1fr);
-      gap: 24px;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 28px;
+      user-select: none;
+    }
+    @media (max-width: 1024px) { .album-list { grid-template-columns: repeat(2, 1fr); } }
+    @media (max-width: 640px)  { .album-list { grid-template-columns: 1fr; } }
+
+    .album-entry {
+      border-radius: calc(var(--radius) - 2px);
+      cursor: pointer;
+      transition: opacity .35s var(--ease-out), transform .35s var(--ease-out);
+    }
+    .album-entry.expanded { grid-column: 1 / -1; cursor: default; }
+    /* 展开某个相册时，其它相册缩小退场 */
+    .album-list.has-expanded .album-entry:not(.expanded) { opacity: 0; transform: scale(.92); pointer-events: none; }
+    .album-list.has-expanded .album-entry:not(.expanded).gone { display: none; }
+
+    /* 牌堆封面：三张微旋转叠放，悬停/展开时扇形张开 */
+    .album-cover { padding: 22px 16px 8px; text-align: center; }
+    .album-stack { position: relative; height: 176px; max-width: 240px; margin: 0 auto; }
+    .stack-photo {
+      position: absolute; inset: 0;
+      transform-origin: center;
+      transition: transform .5s var(--spring), opacity .35s ease;
+      will-change: transform;
+    }
+    .stack-photo .img-wrap {
+      position: relative;
+      width: 100%; height: 100%;
+      border-radius: 10px; overflow: hidden;
+      border: 6px solid var(--apple-card);
+      box-shadow: var(--shadow-md);
+      background: var(--apple-card);
+    }
+    /* 两张图叠在一起做交叉淡入淡出（幻灯片式换图，不做位移避免割裂感） */
+    .stack-photo .img-wrap img {
+      position: absolute; inset: 0;
+      width: 100%; height: 100%; object-fit: cover; display: block;
+      transition: opacity .7s ease;
+    }
+    .stack-photo .img-wrap img.under { opacity: 0; }
+    .stack-photo:nth-child(1) { transform: rotate(-4deg) translateY(0)    scale(1);    z-index: 1; }
+    .stack-photo:nth-child(2) { transform: rotate(0deg)  translateY(12px) scale(.96); z-index: 2; }
+    .stack-photo:nth-child(3) { transform: rotate(3deg)  translateY(24px) scale(.92); z-index: 3; }
+    .album-entry:hover .stack-photo:nth-child(1),
+    .album-entry.expanded .stack-photo:nth-child(1) { transform: rotate(-12deg) translateY(-4px)  scale(.95); }
+    .album-entry:hover .stack-photo:nth-child(2),
+    .album-entry.expanded .stack-photo:nth-child(2) { transform: rotate(0deg)   translateY(-10px) scale(1); }
+    .album-entry:hover .stack-photo:nth-child(3),
+    .album-entry.expanded .stack-photo:nth-child(3) { transform: rotate(12deg)  translateY(-4px)  scale(.95); }
+
+    .album-count-badge {
+      position: absolute; bottom: -6px; right: 0; z-index: 4;
+      padding: 3px 12px; border-radius: 999px;
+      background: var(--apple-primary); color: var(--apple-primary-foreground);
+      font-size: 11px; font-weight: 700;
+      box-shadow: var(--shadow-md);
     }
 
-    .album-view .gallery img {
-      position: static;
-      width: 100%;
+    .album-info { margin-top: 20px; padding-bottom: 6px; }
+    .album-info h3 { font-size: 17px; font-weight: 700; }
+    .album-info p { font-size: 12px; color: var(--apple-muted-foreground); margin-top: 4px; letter-spacing: .05em; }
+
+    /* 照片墙：max-height 0 → 撑开 */
+    .album-photos {
+      overflow: hidden;
+      max-height: 0; opacity: 0;
+      transition: max-height .45s var(--ease-out), opacity .4s ease;
+    }
+    .album-entry.expanded .album-photos { max-height: 4000px; opacity: 1; }
+    .album-photos-inner { padding: 4px 22px 24px; }
+    .wall {
+      display: grid;
+      grid-template-columns: repeat(var(--cols, 3), 1fr);
+      gap: 26px 24px;
+      padding-top: 14px;
+    }
+
+    /* 拍立得照片卡：白框 + 随机倾斜 + 错落入场 + spring 回正 */
+    .wall-item {
+      position: relative;
+      cursor: zoom-in;
+      opacity: 0;
+      /* 入场前：下移 30px、双倍倾斜；入场后由 .in 归位 */
+      transform: translateY(var(--ey, 30px)) rotate(var(--er, calc(var(--tilt, 0deg) * 2))) scale(var(--es, 1))
+        perspective(700px) rotateX(var(--ix, 0deg)) rotateY(var(--iy, 0deg));
+      transform-origin: center;
+      transition: transform .6s var(--ease-out), opacity .6s ease;
+      transition-delay: var(--d, 0s);
+    }
+    .wall-item.in {
+      --ey: 0px; --er: var(--tilt, 0deg); --es: 1;
       opacity: 1;
-      pointer-events: auto;
-      /* 平铺布局下保留动效：随机倾斜(--tilt) + 视差位移(--px/--py) + 悬停3D倾斜(--ix/--iy) */
-      transform: translate3d(var(--px, 0px), var(--py, 0px), 0)
-        rotate(var(--tilt, 0deg))
-        perspective(700px) rotateX(var(--ix, 0deg)) rotateY(var(--iy, 0deg));
-      /* 倾斜跟随鼠标，过渡要比牌堆的 450ms 短才有跟手的感觉 */
-      transition: transform 160ms var(--ease-out), box-shadow 250ms var(--ease-out);
     }
-
-    /* 悬停摆正：随机倾斜归零，只留鼠标 3D 倾斜 */
-    .album-view .gallery img:hover {
-      transform: translate3d(var(--px, 0px), var(--py, 0px), 0)
-        rotate(0deg)
-        perspective(700px) rotateX(var(--ix, 0deg)) rotateY(var(--iy, 0deg));
+    /* 悬停 spring 回正 + 微放大（transition-delay 归零才跟手） */
+    .wall-item.in:hover {
+      --er: 0deg; --es: 1.03;
+      transition: transform .45s var(--spring);
+      transition-delay: 0s;
+      z-index: 10;
     }
+    .wall-item .frame {
+      background: var(--apple-card);
+      padding: 8px 8px 26px;
+      border-radius: 3px;
+      box-shadow: var(--shadow-md);
+      transition: box-shadow .3s ease;
+    }
+    .wall-item:hover .frame { box-shadow: var(--shadow-xl); }
+    .wall-item .img-wrap { overflow: hidden; border-radius: 2px; aspect-ratio: 4 / 3; }
+    .wall-item .img-wrap.portrait { aspect-ratio: 4 / 5; }
+    .wall-item img { width: 100%; height: 100%; object-fit: cover; display: block; }
 
     /* 顶栏"相册"入口：复用导航链接外观，按钮需要显式继承字体 */
     .album-entry {
@@ -2387,7 +2477,7 @@
       <div class="apple-card gallery-card">
         <div class="card-padding">
           <p class="card-eyebrow">图片 · IMAGES</p>
-          <div class="gallery" id="albumGrid"></div>
+          <div class="album-list" id="albumList"></div>
           <p class="empty-hint" id="albumEmpty" hidden>images 文件夹里还没有图片，放入后刷新即可显示。</p>
         </div>
       </div>
@@ -2940,43 +3030,197 @@
       // 相册独立界面：顶栏"相册"按钮进入；复用上面已加载的图片（克隆节点，外观与主页画廊一致）
       // =========================
       var albumView = document.getElementById('albumView');
-      var albumGrid = document.getElementById('albumGrid');
+      var albumList = document.getElementById('albumList');
       var albumBtn = document.getElementById('albumBtn');
       var albumCloseBtn = document.getElementById('albumCloseBtn');
       var albumEmpty = document.getElementById('albumEmpty');
-      var albumImgs = [];
 
-      function layoutAlbum() {
-        var total = albumImgs.length;
-        if (!total) return;
-        var w = albumGrid.clientWidth || 800;
-        var cols = Math.max(1, Math.min(total, Math.round(w / 340)));
-        albumGrid.style.setProperty('--cols', cols);
+      // =========================
+      // 相册三层结构：牌堆封面 → 点击展开照片墙 → 灯箱
+      // 分组目前只有一个"全部照片"；以后 images/ 子文件夹可在 albumGroups() 里拆分成多个
+      // =========================
+      function albumGroups() {
+        return [{ title: '全部照片', imgs: loadedImgs }];
       }
-      window.addEventListener('resize', layoutAlbum);
 
-      function syncAlbumImages() {
-        if (albumImgs.length === loadedImgs.length) return;
-        albumGrid.innerHTML = '';
-        albumImgs = loadedImgs.map(function (img, i) {
-          var clone = img.cloneNode(false); // img 无子节点，内联样式（倾斜/抖动/层级）随属性一并复制
-          clone.addEventListener('click', function () {
-            openLightbox(i);
-          });
-          albumGrid.appendChild(clone);
-          return clone;
+      function wallCols(w) {
+        return Math.max(1, Math.min(4, Math.round(w / 320)));
+      }
+
+      function layoutAlbums() {
+        albumList.querySelectorAll('.wall').forEach(function (wall) {
+          wall.style.setProperty('--cols', wallCols(wall.clientWidth || 800));
         });
-        layoutAlbum();
+      }
+      window.addEventListener('resize', layoutAlbums);
+
+      // 随机角度沿用主页写入的 --tilt；克隆会丢内联样式，这里显式带过去
+      function tiltOf(img, i) {
+        return img.style.getPropertyValue('--tilt') || (((i * 47) % 17) - 8) + 'deg';
+      }
+
+      // 封面幻灯片轮播的定时器，重渲染/关闭相册时统一清掉
+      var albumTimers = [];
+      function stopAlbumCycles() {
+        albumTimers.forEach(function (t) { clearInterval(t); });
+        albumTimers = [];
+      }
+
+      function renderAlbums() {
+        stopAlbumCycles();
+        albumList.innerHTML = '';
+        albumGroups().forEach(function (group) {
+          var entry = document.createElement('div');
+          entry.className = 'album-entry';
+
+          // 牌堆封面：前 3 张微旋转叠放 + 数量徽章，悬停扇形张开
+          var cover = document.createElement('div');
+          cover.className = 'album-cover';
+          var stack = document.createElement('div');
+          stack.className = 'album-stack';
+          group.imgs.slice(0, 3).forEach(function (img) {
+            var photo = document.createElement('div');
+            photo.className = 'stack-photo';
+            var wrap = document.createElement('div');
+            wrap.className = 'img-wrap';
+            var clone = img.cloneNode(false);
+            clone.className = '';
+            clone.removeAttribute('style'); // 主页的倾斜/牌堆类不带入封面
+            wrap.appendChild(clone);
+            photo.appendChild(wrap);
+            stack.appendChild(photo);
+          });
+          var badge = document.createElement('div');
+          badge.className = 'album-count-badge';
+          badge.textContent = group.imgs.length + ' 张';
+          stack.appendChild(badge);
+          var info = document.createElement('div');
+          info.className = 'album-info';
+          var h3 = document.createElement('h3');
+          h3.textContent = group.title;
+          var p = document.createElement('p');
+          p.textContent = '点击展开照片墙';
+          info.appendChild(h3);
+          info.appendChild(p);
+          cover.appendChild(stack);
+          cover.appendChild(info);
+
+          // 照片墙：白框拍立得卡
+          var photos = document.createElement('div');
+          photos.className = 'album-photos';
+          var inner = document.createElement('div');
+          inner.className = 'album-photos-inner';
+          var wall = document.createElement('div');
+          wall.className = 'wall';
+          group.imgs.forEach(function (img) {
+            var item = document.createElement('div');
+            item.className = 'wall-item';
+            item.style.setProperty('--tilt', tiltOf(img, loadedImgs.indexOf(img)));
+            var frame = document.createElement('div');
+            frame.className = 'frame';
+            var wrap = document.createElement('div');
+            wrap.className = 'img-wrap';
+            if (img.naturalHeight > img.naturalWidth) wrap.classList.add('portrait');
+            var clone = img.cloneNode(false);
+            clone.className = '';
+            clone.removeAttribute('style');
+            wrap.appendChild(clone);
+            frame.appendChild(wrap);
+            item.appendChild(frame);
+            item.addEventListener('click', function (e) {
+              e.stopPropagation(); // 点照片开灯箱，别冒泡成收起相册
+              openLightbox(loadedImgs.indexOf(img));
+            });
+            wall.appendChild(item);
+          });
+          inner.appendChild(wall);
+          photos.appendChild(inner);
+
+          entry.appendChild(cover);
+          entry.appendChild(photos);
+          entry.addEventListener('click', function () { toggleAlbum(entry, wall); });
+          albumList.appendChild(entry);
+
+          // 封面幻灯片：每 4 秒最前面一张交叉淡入淡出换下一张（悬停/展开时跳过）
+          if (!reduceMotion && group.imgs.length > 3) {
+            var frontWrap = stack.children[2] && stack.children[2].querySelector('.img-wrap');
+            if (frontWrap) {
+              var imgA = frontWrap.querySelector('img');
+              var imgB = document.createElement('img');
+              imgB.className = 'under';
+              imgB.alt = '';
+              frontWrap.appendChild(imgB);
+              var aOnTop = true;
+              var nextIdx = 3; // 前 3 张已摆在牌堆里，从第 4 张开始轮
+              var timer = setInterval(function () {
+                if (document.hidden || entry.classList.contains('expanded') || entry.matches(':hover')) return;
+                var next = group.imgs[nextIdx % group.imgs.length];
+                nextIdx++;
+                var showing = aOnTop ? imgA : imgB;  // 当前可见的
+                var standby = aOnTop ? imgB : imgA;  // 准备淡入的
+                standby.src = next.src;
+                standby.alt = next.alt || '';
+                standby.classList.remove('under');   // 新图淡入
+                showing.classList.add('under');      // 旧图淡出
+                aOnTop = !aOnTop;
+              }, 4000);
+              albumTimers.push(timer);
+            }
+          }
+        });
+        layoutAlbums();
+      }
+
+      function toggleAlbum(entry, wall) {
+        var wasExpanded = entry.classList.contains('expanded');
+        albumList.querySelectorAll('.album-entry.expanded').forEach(function (el) {
+          el.classList.remove('expanded');
+        });
+        albumList.classList.remove('has-expanded');
+        if (!wasExpanded) {
+          entry.classList.add('expanded');
+          albumList.classList.add('has-expanded');
+          enterWall(wall);
+          setTimeout(function () {
+            albumList.querySelectorAll('.album-entry:not(.expanded)').forEach(function (el) {
+              el.classList.add('gone');
+            });
+          }, 360);
+          entry.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        } else {
+          albumList.querySelectorAll('.album-entry.gone').forEach(function (el) {
+            el.classList.remove('gone');
+          });
+        }
+      }
+
+      // 照片错落入场：先整体回到入场前状态，再带 stagger 依次进场
+      function enterWall(wall) {
+        var items = wall.querySelectorAll('.wall-item');
+        if (!items.length) return;
+        items.forEach(function (el) { el.classList.remove('in'); });
+        if (reduceMotion) {
+          items.forEach(function (el) { el.style.setProperty('--d', '0s'); el.classList.add('in'); });
+          return;
+        }
+        void wall.offsetWidth; // 重排让初始态生效，否则不会重放过渡
+        items.forEach(function (el, i) {
+          el.style.setProperty('--d', (i * 70) + 'ms');
+          el.classList.add('in');
+        });
+        // 入场结束后清掉延迟，悬停回正才跟手
+        setTimeout(function () {
+          items.forEach(function (el) { el.style.setProperty('--d', '0s'); });
+        }, items.length * 70 + 700);
       }
 
       function openAlbum() {
         if (albumEmpty) albumEmpty.hidden = loadedImgs.length > 0;
-        syncAlbumImages();
+        renderAlbums();
         albumView.hidden = false;
         void albumView.offsetWidth; // 触发重排以启用过渡动画
         albumView.classList.add('show');
         document.body.style.overflow = 'hidden';
-        layoutAlbum(); // 打开后容器才有真实宽度，再排一次
         // 顶栏高亮切到"相册"
         navLinks.forEach(function (a) { a.classList.remove('active'); });
         if (albumBtn) albumBtn.classList.add('active');
@@ -2985,6 +3229,7 @@
       function closeAlbum() {
         albumView.classList.remove('show');
         document.body.style.overflow = '';
+        stopAlbumCycles();
         if (albumBtn) albumBtn.classList.remove('active');
         setTimeout(function () {
           albumView.hidden = true;
@@ -3006,9 +3251,9 @@
       });
 
       // =========================
-      // 相册卡片动效：与首页画廊一致（卡片3D倾斜+聚光灯+照片视差+悬停倾斜）
+      // 相册卡片动效：卡片3D倾斜 + 聚光灯 + 照片卡悬停倾斜（受外观开关控制）
       // =========================
-      var albumCard = albumGrid.closest('.apple-card');
+      var albumCard = albumList.closest('.apple-card');
       var albumRaf = null;
       var albumLast = null;
       var albumHover = null;
@@ -3024,13 +3269,8 @@
             albumCard.style.setProperty('--cy', (nx * 2.5).toFixed(2) + 'deg');
             albumCard.style.setProperty('--mx', ((nx + 1) / 2 * 100).toFixed(1) + '%');
             albumCard.style.setProperty('--my', ((ny + 1) / 2 * 100).toFixed(1) + '%');
-            albumImgs.forEach(function (el, i) {
-              var depth = 6 + (i % 3) * 5;
-              el.style.setProperty('--px', (nx * depth).toFixed(1) + 'px');
-              el.style.setProperty('--py', (ny * depth).toFixed(1) + 'px');
-            });
           }
-          var t = albumLast.target && albumLast.target.tagName === 'IMG' ? albumLast.target : null;
+          var t = albumLast.target && albumLast.target.closest ? albumLast.target.closest('.wall-item') : null;
           if (t !== albumHover) {
             if (albumHover) {
               albumHover.style.setProperty('--ix', '0deg');
@@ -3061,12 +3301,6 @@
         albumCard.addEventListener('mouseleave', function () {
           albumCard.style.setProperty('--cx', '0deg');
           albumCard.style.setProperty('--cy', '0deg');
-          albumImgs.forEach(function (el) {
-            el.style.setProperty('--px', '0px');
-            el.style.setProperty('--py', '0px');
-            el.style.setProperty('--ix', '0deg');
-            el.style.setProperty('--iy', '0deg');
-          });
           if (albumHover) {
             albumHover.style.setProperty('--ix', '0deg');
             albumHover.style.setProperty('--iy', '0deg');

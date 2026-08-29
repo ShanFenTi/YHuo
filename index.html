@@ -970,7 +970,7 @@
 
     .gallery img {
       position: absolute;
-      /* 折叠相册：所有照片叠成一副牌，幻灯片式逐张展示 */
+      /* 折叠相册：所有照片叠成一副牌，幻灯片式逐张展示；点击展开全部（相册视图） */
       left: 50%;
       top: 50%;
       width: min(82%, 560px);
@@ -984,8 +984,10 @@
       opacity: 0;
       pointer-events: none;
       z-index: 1;
-      transform: translate(-50%, -50%) rotate(var(--deck-rot, var(--tilt, 0deg)))
-        scale(var(--deck-scale, 1)) translate(var(--deck-x, 0px), 0);
+      transform: translate(calc(-50% + var(--px, 0px)), calc(-50% + var(--py, 0px)))
+        rotate(var(--deck-rot, var(--tilt, 0deg)))
+        scale(var(--deck-scale, 1)) translate(var(--deck-x, 0px), 0)
+        rotateX(var(--ix, 0deg)) rotateY(var(--iy, 0deg));
       transition: transform 450ms var(--ease-out), opacity 450ms var(--ease-out), box-shadow 250ms var(--ease-out);
     }
 
@@ -1207,6 +1209,39 @@
     .album-view.show .album-scroll {
       transform: none;
       opacity: 1;
+    }
+
+    /* 相册卡片占满整行（主页半宽卡片的样式不带入相册） */
+    .album-view .gallery-card {
+      width: 100%;
+      min-width: 0;
+    }
+
+    /* 相册网格：图片平铺（覆盖主页折叠牌堆的绝对定位/透明度） */
+    .album-view .gallery:not(:empty) {
+      display: grid;
+      grid-template-columns: repeat(var(--cols, 4), 1fr);
+      gap: 24px;
+    }
+
+    .album-view .gallery img {
+      position: static;
+      width: 100%;
+      opacity: 1;
+      pointer-events: auto;
+      /* 平铺布局下保留动效：随机倾斜(--tilt) + 视差位移(--px/--py) + 悬停3D倾斜(--ix/--iy) */
+      transform: translate3d(var(--px, 0px), var(--py, 0px), 0)
+        rotate(var(--tilt, 0deg))
+        perspective(700px) rotateX(var(--ix, 0deg)) rotateY(var(--iy, 0deg));
+      /* 倾斜跟随鼠标，过渡要比牌堆的 450ms 短才有跟手的感觉 */
+      transition: transform 160ms var(--ease-out), box-shadow 250ms var(--ease-out);
+    }
+
+    /* 悬停摆正：随机倾斜归零，只留鼠标 3D 倾斜 */
+    .album-view .gallery img:hover {
+      transform: translate3d(var(--px, 0px), var(--py, 0px), 0)
+        rotate(0deg)
+        perspective(700px) rotateX(var(--ix, 0deg)) rotateY(var(--iy, 0deg));
     }
 
     /* 顶栏"相册"入口：复用导航链接外观，按钮需要显式继承字体 */
@@ -1638,11 +1673,6 @@
       background: color-mix(in srgb, var(--apple-card) 85%, transparent);
       -webkit-backdrop-filter: blur(14px);
       backdrop-filter: blur(14px);
-    }
-
-    /* 相册界面同样露出背景图：与主页大卡片一致的半透明毛玻璃效果 */
-    body.has-custom-bg .album-view {
-      background: color-mix(in srgb, var(--apple-background) 45%, transparent);
     }
 
     /* ===== 外观设置卡片 ===== */
@@ -2299,7 +2329,7 @@
 
   <!-- 页脚 -->
   <footer class="site-footer">
-    <p>&copy; 2026 YHuo<span class="uptime" id="siteUptime" title="自 2026-08-29 起运行"> · 已运行 0 天 0 时 0 分 0 秒</span></p>
+    <p>&copy; 2026 YHuo<span class="uptime" id="siteUptime" title="自 2026-08-29 起运行"> · 已运行 0 天 0 时 0 分 0 秒</span><span class="uptime" id="visitCount" hidden></span></p>
     <a href="#home" id="footerTop">回到顶部 <svg class="svg-icon inline-arrow" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 7-7 7 7"/><path d="M12 19V5"/></svg></a>
   </footer>
 
@@ -2662,7 +2692,8 @@
       var imgPending = 0; // 等加载路径确定（后台接口或本地扫描）后再计数
       var loadedImgs = [];
 
-      // 折叠相册：所有照片叠成一副牌，幻灯片式逐张展示（4 秒自动切换，悬停暂停）
+      // 折叠相册：所有照片叠成一副牌，幻灯片式逐张展示（4 秒自动切换，悬停暂停）；
+      // 点击当前照片 → 像点"相册"一样展开全部图片平铺浏览
       var deckIndex = 0;
       var deckTimer = null;
       var deckCount = document.getElementById('deckCount');
@@ -2704,7 +2735,7 @@
         }, 4000);
       }
 
-      // 布局：舞台固定高度（卡片已缩至半宽），照片全部叠在同一位置
+      // 布局：舞台固定高度（卡片半宽），照片全部叠在同一位置
       function layoutGallery() {
         gallery.style.height = loadedImgs.length ? 'min(300px, 42vw)' : '0px';
         applyDeck();
@@ -2815,9 +2846,8 @@
         img.style.setProperty('--tilt', (((n * 47) % 17) - 8) + 'deg');
         img.style.setProperty('--jx', (((n * 29) % 21) - 10) + 'px');
         img.style.setProperty('--jy', (((n * 13) % 15) - 7) + 'px');
-        img.style.zIndex = n;
         img.addEventListener('click', function () {
-          openLightbox(loadedImgs.indexOf(img));
+          openAlbum(); // 点击当前照片：展开所有图片平铺浏览（与"相册"按钮一致）
         });
         loadedImgs.push(img);
         gallery.appendChild(img);
@@ -2924,16 +2954,7 @@
         if (!total) return;
         var w = albumGrid.clientWidth || 800;
         var cols = Math.max(1, Math.min(total, Math.round(w / 340)));
-        var rows = Math.ceil(total / cols);
-        var cellW = w / cols;
-        var imgH = Math.min(300, Math.max(120, cellW - 44)) * 0.75;
         albumGrid.style.setProperty('--cols', cols);
-        albumGrid.style.setProperty('--rows', rows);
-        albumGrid.style.height = (rows * (imgH + 56) + 20) + 'px';
-        albumImgs.forEach(function (el, i) {
-          el.style.setProperty('--col', i % cols);
-          el.style.setProperty('--row', Math.floor(i / cols));
-        });
       }
       window.addEventListener('resize', layoutAlbum);
 
@@ -4046,6 +4067,21 @@
     }
     renderUptime();
     setInterval(renderUptime, 1000);
+
+    // 访问计数：每个浏览器会话只计一次（Cloudflare 部署时可用，失败静默）
+    if (!sessionStorage.getItem('visitCounted')) {
+      sessionStorage.setItem('visitCounted', '1');
+      fetch('/api/visit', { method: 'POST', credentials: 'same-origin' })
+        .then(function (r) { return r.ok ? r.json() : null; })
+        .then(function (d) {
+          var el = document.getElementById('visitCount');
+          if (d && d.ok && el) {
+            el.textContent = ' · 被访问 ' + d.visits + ' 次';
+            el.hidden = false;
+          }
+        })
+        .catch(function () {});
+    }
 
     // =========================
     // 登录界面：真实账号体系（注册/登录走服务端验证），游客可进入；本次会话内记住，刷新不重弹

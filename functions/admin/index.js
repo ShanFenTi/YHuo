@@ -13,8 +13,8 @@ const PAGE = `<!DOCTYPE html>
   * { box-sizing: border-box; margin: 0; }
   body {
     min-height: 100vh;
-    display: flex; flex-direction: column; align-items: center;
-    padding: 36px 16px 60px;
+    display: flex; flex-direction: column; align-items: flex-start;
+    padding: 36px 24px 60px 4vw;
     background: linear-gradient(180deg, #eef1f6 0%, #f5f5f7 240px);
     color: #1d1d1f;
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
@@ -86,6 +86,10 @@ const PAGE = `<!DOCTYPE html>
   }
   ul.list li.dragging { opacity: .45; }
   ul.list li.dragover { box-shadow: inset 0 2px 0 #0a84ff; }
+  .thumb {
+    width: 54px; height: 38px; object-fit: cover; flex: none;
+    border-radius: 7px; border: 1px solid #e5e5ea; background: #f2f2f7;
+  }
   ul.list li .handle { color: #c7c7cc; cursor: grab; font-size: 15px; letter-spacing: -2px; user-select: none; padding: 0 2px; }
   ul.list li .title { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; cursor: pointer; }
   ul.list li .title:hover { color: #0071e3; }
@@ -159,6 +163,7 @@ const PAGE = `<!DOCTYPE html>
       <input type="file" id="fileInput">
       <input type="text" id="titleInput" placeholder="显示名称（可选，默认用文件名）">
       <button id="uploadBtn">上传</button>
+      <button id="importBtn" class="ghost" title="把仓库 images/1.jpg… 约定命名的静态图片导入后台统一管理">导入静态图片</button>
     </div>
     <div class="progress" id="progress"><i id="progressBar"></i></div>
     <div class="msg" id="mainMsg"></div>
@@ -359,7 +364,18 @@ const PAGE = `<!DOCTYPE html>
       del.className = 'danger'; del.textContent = '删除';
       del.addEventListener('click', function () { removeItem(it); });
 
-      li.appendChild(handle); li.appendChild(title); li.appendChild(meta);
+      li.appendChild(handle);
+
+      // 图片类显示缩略图
+      if (currentType === 'image' && it.r2_key) {
+        var thumb = document.createElement('img');
+        thumb.className = 'thumb';
+        thumb.loading = 'lazy';
+        thumb.src = '/media/' + it.r2_key;
+        li.appendChild(thumb);
+      }
+
+      li.appendChild(title); li.appendChild(meta);
       li.appendChild(up); li.appendChild(down); li.appendChild(del);
       addDragHandlers(li, currentType, i);
       list.appendChild(li);
@@ -498,6 +514,74 @@ const PAGE = `<!DOCTYPE html>
       else showMsg($('userMsg'), data.error || '删除失败', 'err');
     });
   }
+
+  // ---------- 导入静态图片（images/1.jpg… 约定命名） ----------
+  $('importBtn').addEventListener('click', function () {
+    var btn = this; btn.disabled = true;
+    if (currentType !== 'image') { showMsg($('mainMsg'), '请先切到"图片"标签页再导入', 'err'); btn.disabled = false; return; }
+    showMsg($('mainMsg'), '正在扫描静态图片…');
+
+    var exts = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'bmp', 'avif'];
+    function probeNumber(n) {
+      return new Promise(function (resolve) {
+        var i = 0;
+        function tryNext() {
+          if (i >= exts.length) { resolve(null); return; }
+          var ext = exts[i++];
+          var img = new Image();
+          img.onload = function () { resolve({ title: String(n), url: 'images/' + n + '.' + ext }); };
+          img.onerror = tryNext;
+          img.src = 'images/' + n + '.' + ext;
+        }
+        tryNext();
+      });
+    }
+    // 逐个编号探测，连续 5 个编号都不存在就停（最多扫到 40）
+    function scanAll() {
+      var found = [];
+      var n = 1, misses = 0;
+      function step() {
+        if (n > 40 || misses >= 5) return Promise.resolve(found);
+        return probeNumber(n).then(function (r) {
+          if (r) { found.push(r); misses = 0; } else { misses++; }
+          n++;
+          showMsg($('mainMsg'), '正在扫描静态图片… 已找到 ' + found.length + ' 张');
+          return step();
+        });
+      }
+      return step();
+    }
+
+    scanAll().then(function (found) {
+      if (!found.length) {
+        btn.disabled = false;
+        showMsg($('mainMsg'), '没有发现静态图片（需按 images/1.jpg、2.webp… 约定命名）', 'err');
+        return;
+      }
+      // 分批提交，单次最多 12 个（服务端子请求限制）
+      var chunks = [];
+      for (var i = 0; i < found.length; i += 12) chunks.push(found.slice(i, i + 12));
+      var imported = 0, skipped = 0;
+      function nextChunk() {
+        if (!chunks.length) {
+          btn.disabled = false;
+          showMsg($('mainMsg'), '导入完成：新增 ' + imported + ' 张' + (skipped ? '，跳过 ' + skipped + ' 张（已存在或不可读）' : ''), imported ? 'ok' : 'err');
+          loadList();
+          return;
+        }
+        api('/api/admin/import', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ type: 'image', files: chunks.shift() })
+        }).then(function (d) {
+          if (d.ok) { imported += d.imported; skipped += (d.skipped || []).length; }
+          else showMsg($('mainMsg'), d.error || '导入失败', 'err');
+          nextChunk();
+        }).catch(function () { showMsg($('mainMsg'), '网络错误，导入中断', 'err'); nextChunk(); });
+      }
+      nextChunk();
+    });
+  });
 
   // ---------- 标签页 ----------
   var tabs = document.querySelectorAll('.tabs button');

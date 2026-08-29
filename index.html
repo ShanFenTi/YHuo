@@ -2039,6 +2039,28 @@
       transform: scale(0.98);
     }
 
+    .login-btn:disabled {
+      opacity: 0.5;
+      cursor: default;
+    }
+
+    /* 登录 / 注册并排 */
+    .login-actions {
+      display: flex;
+      gap: 10px;
+    }
+
+    .login-actions .login-btn {
+      flex: 1;
+      letter-spacing: 0.2em;
+    }
+
+    .login-register {
+      background: var(--apple-secondary);
+      color: var(--apple-foreground);
+      border: 1px solid var(--apple-border);
+    }
+
     .login-hint {
       font-size: 11px;
       text-align: center;
@@ -2264,23 +2286,26 @@
     </div>
   </div>
 
-  <!-- 登录界面（演示版）：输入任意账号密码进入；接真实验证前的占位门 -->
+  <!-- 登录界面：真实账号体系（开放注册），也可游客进入 -->
   <div class="login-gate" id="loginGate" role="dialog" aria-modal="true" aria-label="登录">
     <form class="login-card" id="loginForm" autocomplete="off">
       <p class="login-logo">YHUO</p>
       <p class="login-sub">欢迎回来，请登录</p>
       <label class="login-field">
         <span>账号</span>
-        <input type="text" id="loginUser" placeholder="用户名或邮箱">
+        <input type="text" id="loginUser" placeholder="用户名（2-30 字符）">
       </label>
       <label class="login-field">
         <span>密码</span>
-        <input type="password" id="loginPass" placeholder="请输入密码">
+        <input type="password" id="loginPass" placeholder="密码（至少 6 位）">
       </label>
       <p class="login-error" id="loginError" hidden>请填写账号和密码</p>
-      <button class="login-btn" type="submit">登 录</button>
+      <div class="login-actions">
+        <button class="login-btn" type="submit">登 录</button>
+        <button class="login-btn login-register" id="loginRegister" type="button">注 册</button>
+      </div>
       <button class="login-guest" id="loginGuest" type="button">游客进入</button>
-      <p class="login-hint">演示登录：输入任意账号密码即可进入</p>
+      <p class="login-hint">账号免费注册，登录身份保存在本站；也可以游客进入</p>
     </form>
   </div>
 
@@ -3853,17 +3878,19 @@
       }
     }
     // =========================
-    // 登录界面（演示版）：任意非空账号密码进入；本次会话内记住，刷新不重弹
+    // 登录界面：真实账号体系（注册/登录走服务端验证），游客可进入；本次会话内记住，刷新不重弹
     // =========================
     var loginGate = document.getElementById('loginGate');
     var loginForm = document.getElementById('loginForm');
     var loginUser = document.getElementById('loginUser');
     var loginPass = document.getElementById('loginPass');
     var loginError = document.getElementById('loginError');
+    var loginRegister = document.getElementById('loginRegister');
     var loginGuest = document.getElementById('loginGuest');
     var LOGIN_KEY = 'demoLogin';
+    var LOGIN_NAME_KEY = 'demoLoginName';
 
-    // 有记录即放行：'1' 为演示登录，'guest' 为游客身份（将来接真验证时可区分）
+    // 有记录即放行：'1' 为已登录，'guest' 为游客身份
     function gatePassed() {
       try { return !!sessionStorage.getItem(LOGIN_KEY); } catch (e) { return false; }
     }
@@ -3887,6 +3914,40 @@
     function clearLoginDraft() {
       try { sessionStorage.removeItem(LOGIN_DRAFT); } catch (e) {}
     }
+    function showLoginMsg(text) {
+      if (!loginError) return;
+      if (text) {
+        loginError.textContent = text;
+        loginError.hidden = false;
+      } else {
+        loginError.hidden = true;
+      }
+    }
+    // 认证请求：20 秒超时，网络挂起时也能给用户反馈
+    function authPost(path, u, p, done, busyBtns) {
+      busyBtns = busyBtns || [];
+      busyBtns.forEach(function (b) { if (b) b.disabled = true; });
+      var opts = {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: u, password: p })
+      };
+      if (typeof AbortController === 'function') {
+        var ctl = new AbortController();
+        opts.signal = ctl.signal;
+        setTimeout(function () { ctl.abort(); }, 20000);
+      }
+      fetch(path, opts)
+        .then(function (res) {
+          return res.json().catch(function () { return { ok: false, error: '响应异常' }; });
+        })
+        .then(function (d) {
+          done(!!(d && d.ok), (d && d.error) || '服务暂时不可用，请稍后重试');
+        })
+        .catch(function () { done(false, '网络错误，请稍后重试'); })
+        .then(function () { busyBtns.forEach(function (b) { if (b) b.disabled = false; }); });
+    }
     function openGate() {
       document.body.classList.add('login-lock');
       loginGate.classList.remove('hide');
@@ -3896,7 +3957,12 @@
       loginGate.classList.add('show');
     }
     function passGate(role) {
-      try { sessionStorage.setItem(LOGIN_KEY, role); } catch (e) {}
+      // role: 用户名（真实登录/注册）| 'guest' | '1'（历史遗留）
+      try {
+        sessionStorage.setItem(LOGIN_KEY, role === 'guest' ? 'guest' : '1');
+        if (role === 'guest') sessionStorage.removeItem(LOGIN_NAME_KEY);
+        else sessionStorage.setItem(LOGIN_NAME_KEY, role);
+      } catch (e) {}
       if (loginError) loginError.hidden = true;
       clearLoginDraft();
       if (loginUser) loginUser.value = '';
@@ -3919,10 +3985,14 @@
     function refreshLoginBadge() {
       if (!loginToggle) return;
       var role = null;
-      try { role = sessionStorage.getItem(LOGIN_KEY); } catch (e) {}
+      var name = null;
+      try {
+        role = sessionStorage.getItem(LOGIN_KEY);
+        name = sessionStorage.getItem(LOGIN_NAME_KEY);
+      } catch (e) {}
       if (role === '1') {
         loginToggle.classList.add('logged-in');
-        loginToggle.title = '登录选项（当前：已登录）';
+        loginToggle.title = '登录选项（当前：' + (name || '已登录') + '）';
       } else if (role === 'guest') {
         loginToggle.classList.remove('logged-in');
         loginToggle.title = '登录选项（当前：游客）';
@@ -3943,12 +4013,20 @@
         loginGate.classList.add('hide');
         loginGate.hidden = true;
       } else {
-        // 首次到访：页面先呈现，登录卡片随后轻轻浮起
+        // 首次到访：先问服务器有没有仍然有效的会话（Cookie 30 天），
+        // 有就静默放行，没有再浮出登录卡片
         document.body.classList.add('login-lock');
         restoreLoginDraft();
-        setTimeout(function () {
-          loginGate.classList.add('show');
-        }, 300);
+        var showGateLater = function () {
+          setTimeout(function () { loginGate.classList.add('show'); }, 300);
+        };
+        fetch('/api/user/me', { credentials: 'same-origin' })
+          .then(function (r) { return r.ok ? r.json() : null; })
+          .then(function (d) {
+            if (d && d.ok && d.authenticated && d.username) passGate(d.username);
+            else showGateLater();
+          })
+          .catch(showGateLater);
       }
       // 点空白遮罩关闭：内容保留，可随时从右上角按钮重开
       loginGate.addEventListener('click', function (e) {
@@ -3957,15 +4035,30 @@
       if (loginUser) loginUser.addEventListener('input', saveLoginDraft);
       if (loginPass) loginPass.addEventListener('input', saveLoginDraft);
       if (loginForm) {
+        var loginButtons = [loginForm.querySelector('.login-btn'), loginRegister];
         loginForm.addEventListener('submit', function (e) {
           e.preventDefault();
           var u = loginUser ? loginUser.value.trim() : '';
           var p = loginPass ? loginPass.value : '';
-          if (!u || !p) {
-            if (loginError) loginError.hidden = false;
-            return;
-          }
-          passGate('1');
+          if (!u || !p) { showLoginMsg('请填写账号和密码'); return; }
+          showLoginMsg('登录中…');
+          authPost('/api/user/login', u, p, function (ok, msg) {
+            if (ok) { showLoginMsg(''); passGate(u); }
+            else showLoginMsg(msg);
+          }, loginButtons);
+        });
+      }
+      if (loginRegister) {
+        loginRegister.addEventListener('click', function () {
+          var u = loginUser ? loginUser.value.trim() : '';
+          var p = loginPass ? loginPass.value : '';
+          if (!u || !p) { showLoginMsg('请填写账号和密码'); return; }
+          if (p.length < 6) { showLoginMsg('密码至少 6 位'); return; }
+          showLoginMsg('注册中…');
+          authPost('/api/user/register', u, p, function (ok, msg) {
+            if (ok) { showLoginMsg(''); passGate(u); }
+            else showLoginMsg(msg);
+          }, loginButtons);
         });
       }
       if (loginGuest) {

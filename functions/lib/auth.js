@@ -78,3 +78,44 @@ export function sessionCookie(token) {
 export function clearSessionCookie() {
   return `${SESSION_COOKIE}=; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age=0`;
 }
+
+// ==================== 前台用户会话（与管理员会话分开，Cookie 也分开） ====================
+export const USER_COOKIE = 'yhuo_user';
+const USER_SESSION_DAYS = 30;
+
+export async function createUserSession(env, userId) {
+  const token = randomHex(32);
+  const expires = new Date(Date.now() + USER_SESSION_DAYS * 86400000).toISOString();
+  await env.DB
+    .prepare('INSERT INTO user_sessions (token, user_id, expires_at) VALUES (?, ?, ?)')
+    .bind(token, userId, expires)
+    .run();
+  return token;
+}
+
+// 返回 { username } 或 null
+export async function getUserSession(env, token) {
+  if (!token) return null;
+  const row = await env.DB
+    .prepare('SELECT s.user_id, s.expires_at, u.username FROM user_sessions s JOIN users u ON u.id = s.user_id WHERE s.token = ?')
+    .bind(token)
+    .first();
+  if (!row) return null;
+  if (row.expires_at < new Date().toISOString()) {
+    await env.DB.prepare('DELETE FROM user_sessions WHERE token = ?').bind(token).run();
+    return null;
+  }
+  return { userId: row.user_id, username: row.username };
+}
+
+export async function deleteUserSession(env, token) {
+  if (token) await env.DB.prepare('DELETE FROM user_sessions WHERE token = ?').bind(token).run();
+}
+
+export function userCookie(token) {
+  return `${USER_COOKIE}=${token}; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age=${USER_SESSION_DAYS * 86400}`;
+}
+
+export function clearUserCookie() {
+  return `${USER_COOKIE}=; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age=0`;
+}

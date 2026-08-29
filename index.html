@@ -970,10 +970,10 @@
 
     .gallery img {
       position: absolute;
-      /* 散落网格：--cols/--rows/--col/--row 由 JS 按已加载图片数量统一计算 */
-      left: calc((100% / var(--cols, 1)) * (var(--col, 0) + 0.5));
-      top: calc((100% / var(--rows, 1)) * (var(--row, 0) + 0.5));
-      width: min(calc(100% / var(--cols, 1) - 44px), 260px);
+      /* 折叠相册：所有照片叠成一副牌，幻灯片式逐张展示 */
+      left: 50%;
+      top: 50%;
+      width: min(82%, 560px);
       aspect-ratio: 4/3;
       object-fit: cover;
       border-radius: calc(var(--radius) - 4px);
@@ -981,24 +981,100 @@
       box-shadow: var(--shadow-md);
       cursor: zoom-in;
       display: block;
-      transform: translate(-50%, -50%) perspective(900px) rotateX(var(--ix, 0deg)) rotateY(var(--iy, 0deg))
-        rotate(var(--tilt, 0deg))
-        translate(calc(var(--jx, 0px) + var(--px, 0px)), calc(var(--jy, 0px) + var(--py, 0px)));
-      transition: transform 320ms var(--ease-out), box-shadow 250ms var(--ease-out);
+      opacity: 0;
+      pointer-events: none;
+      z-index: 1;
+      transform: translate(-50%, -50%) rotate(var(--deck-rot, var(--tilt, 0deg)))
+        scale(var(--deck-scale, 1)) translate(var(--deck-x, 0px), 0);
+      transition: transform 450ms var(--ease-out), opacity 450ms var(--ease-out), box-shadow 250ms var(--ease-out);
     }
 
-    /* 悬停：从照片堆里抽出——摆正、放大、浮到最上层（保留单张 3D 倾斜） */
-    .gallery img:hover {
-      z-index: 20;
-      transform: translate(-50%, -50%) perspective(900px) rotateX(var(--ix, 0deg)) rotateY(var(--iy, 0deg))
-        rotate(0deg)
-        translate(calc(var(--jx, 0px) + var(--px, 0px)), calc(var(--jy, 0px) + var(--py, 0px))) scale(1.15);
+    /* 当前展示的一张 */
+    .gallery img.deck-front {
+      opacity: 1;
+      pointer-events: auto;
+      z-index: 10;
+      --deck-scale: 1;
+      --deck-x: 0px;
+    }
+
+    .gallery img.deck-front:hover {
+      z-index: 10;
       box-shadow: var(--shadow-xl);
+    }
+
+    /* 牌堆里露边的后面两张 */
+    .gallery img.deck-1 {
+      opacity: .85;
+      z-index: 9;
+      --deck-scale: .9;
+      --deck-x: 30px;
+      --deck-rot: 3deg;
+      filter: brightness(.93);
+    }
+
+    .gallery img.deck-2 {
+      opacity: .6;
+      z-index: 8;
+      --deck-scale: .82;
+      --deck-x: -26px;
+      --deck-rot: -3.5deg;
+      filter: brightness(.86);
+    }
+
+    /* 轮播控制：左右箭头 + 计数 */
+    .deck-nav {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 16px;
+      margin-top: 14px;
+    }
+
+    .deck-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 36px;
+      height: 36px;
+      border: 1px solid var(--apple-border);
+      border-radius: 999px;
+      background: var(--apple-card);
+      color: var(--apple-foreground);
+      cursor: pointer;
+      transition: transform 180ms var(--ease-out), background-color 180ms var(--ease-out);
+    }
+
+    .deck-btn:hover {
+      transform: scale(1.08);
+      background: var(--apple-secondary);
+    }
+
+    .deck-btn svg {
+      width: 16px;
+      height: 16px;
+    }
+
+    .deck-count {
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: .1em;
+      color: var(--apple-muted-foreground);
+      min-width: 52px;
+      text-align: center;
+    }
+
+    /* 窄屏：半宽放不下，图片卡片占满整行 */
+    @media (max-width: 760px) {
+      .gallery-card { width: 100%; min-width: 0; }
     }
 
     /* 卡片 3D 倾斜 + 鼠标聚光灯（跟随 JS 写入的 --cx/--cy/--mx/--my） */
     .gallery-card {
       transform: perspective(1200px) rotateX(var(--cx, 0deg)) rotateY(var(--cy, 0deg));
+      /* 白色背景板只占左半边，右侧留白 */
+      width: 50%;
+      min-width: 360px;
     }
 
     .gallery-card:hover {
@@ -2155,6 +2231,15 @@
           <div class="card-padding">
             <p class="card-eyebrow">图片 · IMAGES</p>
             <div class="gallery" id="galleryGrid"></div>
+            <div class="deck-nav" id="deckNav" hidden>
+              <button class="deck-btn" id="deckPrev" type="button" aria-label="上一张">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+              </button>
+              <span class="deck-count" id="deckCount">1 / 1</span>
+              <button class="deck-btn" id="deckNext" type="button" aria-label="下一张">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
+              </button>
+            </div>
             <p class="empty-hint" id="galleryEmpty" hidden>images 文件夹里还没有图片，放入后刷新即可显示。</p>
           </div>
         </div>
@@ -2572,24 +2657,63 @@
       var imgPending = 0; // 等加载路径确定（后台接口或本地扫描）后再计数
       var loadedImgs = [];
 
-      // 散落网格布局：按已加载图片数量计算行列，数量变化/窗口缩放时自动重排
-      function layoutGallery() {
-        var total = loadedImgs.length;
-        if (!total) return;
-        var w = gallery.clientWidth || 800;
-        var cols = Math.max(1, Math.min(total, Math.round(w / 340)));
-        var rows = Math.ceil(total / cols);
-        var cellW = w / cols;
-        var imgH = Math.min(300, Math.max(120, cellW - 44)) * 0.75;
-        gallery.style.setProperty('--cols', cols);
-        gallery.style.setProperty('--rows', rows);
-        gallery.style.height = (rows * (imgH + 56) + 20) + 'px';
+      // 折叠相册：所有照片叠成一副牌，幻灯片式逐张展示（4 秒自动切换，悬停暂停）
+      var deckIndex = 0;
+      var deckTimer = null;
+      var deckCount = document.getElementById('deckCount');
+      var deckNav = document.getElementById('deckNav');
+      var deckPrev = document.getElementById('deckPrev');
+      var deckNext = document.getElementById('deckNext');
+
+      function applyDeck() {
+        var n = loadedImgs.length;
+        if (!n) return;
+        if (deckIndex >= n) deckIndex = 0;
         loadedImgs.forEach(function (el, i) {
-          el.style.setProperty('--col', i % cols);
-          el.style.setProperty('--row', Math.floor(i / cols));
+          el.classList.remove('deck-front', 'deck-1', 'deck-2');
+          var rel = (i - deckIndex + n) % n;
+          if (rel === 0) el.classList.add('deck-front');
+          else if (rel === 1) el.classList.add('deck-1');
+          else if (rel === 2) el.classList.add('deck-2');
+          el.style.zIndex = String(n - rel);
         });
+        if (deckCount) deckCount.textContent = (deckIndex + 1) + ' / ' + n;
+        if (deckNav) deckNav.hidden = n < 2;
+      }
+
+      function deckStep(delta) {
+        var n = loadedImgs.length;
+        if (n < 2) return;
+        deckIndex = (deckIndex + delta + n) % n;
+        applyDeck();
+        restartDeckTimer();
+      }
+
+      function restartDeckTimer() {
+        if (deckTimer) { clearInterval(deckTimer); deckTimer = null; }
+        if (loadedImgs.length < 2) return;
+        deckTimer = setInterval(function () {
+          if (document.hidden || !loadedImgs.length) return;
+          deckIndex = (deckIndex + 1) % loadedImgs.length;
+          applyDeck();
+        }, 4000);
+      }
+
+      // 布局：舞台固定高度（卡片已缩至半宽），照片全部叠在同一位置
+      function layoutGallery() {
+        gallery.style.height = loadedImgs.length ? 'min(300px, 42vw)' : '0px';
+        applyDeck();
+        if (loadedImgs.length > 1 && !deckTimer) restartDeckTimer();
       }
       window.addEventListener('resize', layoutGallery);
+
+      if (deckPrev) deckPrev.addEventListener('click', function () { deckStep(-1); });
+      if (deckNext) deckNext.addEventListener('click', function () { deckStep(1); });
+      // 悬停在照片上时暂停自动轮播，移开继续
+      gallery.addEventListener('mouseenter', function () {
+        if (deckTimer) { clearInterval(deckTimer); deckTimer = null; }
+      });
+      gallery.addEventListener('mouseleave', function () { restartDeckTimer(); });
 
       // 鼠标动效：卡片 3D 倾斜 + 照片视差 + 聚光灯（rAF 节流，纯 CSS 变量驱动）
       var cardMouseOn = true; // 大卡片跟随鼠标（外观卡片开关）

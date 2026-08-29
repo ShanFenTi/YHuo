@@ -1559,6 +1559,11 @@
       backdrop-filter: blur(14px);
     }
 
+    /* 相册界面同样露出背景图：与主页大卡片一致的半透明毛玻璃效果 */
+    body.has-custom-bg .album-view {
+      background: color-mix(in srgb, var(--apple-background) 45%, transparent);
+    }
+
     /* ===== 外观设置卡片 ===== */
     .appear-label {
       font-size: 11px;

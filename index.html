@@ -1944,6 +1944,24 @@
       color: var(--apple-muted-foreground);
       margin-top: 14px;
     }
+
+    .login-guest {
+      margin: 14px auto 0;
+      padding: 2px 0;
+      background: none;
+      border: none;
+      font-size: 13px;
+      font-family: inherit;
+      color: var(--apple-muted-foreground);
+      cursor: pointer;
+      border-bottom: 1px solid transparent;
+      transition: color 180ms var(--ease-out), border-color 180ms var(--ease-out);
+    }
+
+    .login-guest:hover {
+      color: var(--apple-primary);
+      border-bottom-color: currentColor;
+    }
   </style>
 </head>
 <body>
@@ -2149,6 +2167,7 @@
       </label>
       <p class="login-error" id="loginError" hidden>请填写账号和密码</p>
       <button class="login-btn" type="submit">登 录</button>
+      <button class="login-guest" id="loginGuest" type="button">游客进入</button>
       <p class="login-hint">演示登录：输入任意账号密码即可进入</p>
     </form>
   </div>
@@ -3560,10 +3579,18 @@
     var loginUser = document.getElementById('loginUser');
     var loginPass = document.getElementById('loginPass');
     var loginError = document.getElementById('loginError');
+    var loginGuest = document.getElementById('loginGuest');
     var LOGIN_KEY = 'demoLogin';
 
+    // 有记录即放行：'1' 为演示登录，'guest' 为游客身份（将来接真验证时可区分）
     function gatePassed() {
-      try { return sessionStorage.getItem(LOGIN_KEY) === '1'; } catch (e) { return false; }
+      try { return !!sessionStorage.getItem(LOGIN_KEY); } catch (e) { return false; }
+    }
+    function passGate(role) {
+      try { sessionStorage.setItem(LOGIN_KEY, role); } catch (e) {}
+      if (loginError) loginError.hidden = true;
+      loginGate.classList.add('hide');
+      setTimeout(function () { loginGate.hidden = true; }, 450);
     }
     if (loginGate) {
       if (gatePassed()) {
@@ -3579,10 +3606,12 @@
             if (loginError) loginError.hidden = false;
             return;
           }
-          if (loginError) loginError.hidden = true;
-          try { sessionStorage.setItem(LOGIN_KEY, '1'); } catch (err) {}
-          loginGate.classList.add('hide');
-          setTimeout(function () { loginGate.hidden = true; }, 450);
+          passGate('1');
+        });
+      }
+      if (loginGuest) {
+        loginGuest.addEventListener('click', function () {
+          passGate('guest');
         });
       }
     }

@@ -676,10 +676,6 @@
       .content-section {
         padding: 100px 0;
       }
-
-      .gallery img {
-        width: min(calc(100% / var(--cols, 1) - 44px), 300px);
-      }
     }
 
     /* ===== Section Styles ===== */
@@ -2735,9 +2731,10 @@
         }, 4000);
       }
 
-      // 布局：舞台固定高度（卡片半宽），照片全部叠在同一位置
+      // 布局：舞台高度要容得下最大的照片（照片最宽 560px，4:3 + 上下白边 ≈ 432px），
+      // 否则最大化窗口时照片会戳出白色卡片、盖住下方的切换按钮
       function layoutGallery() {
-        gallery.style.height = loadedImgs.length ? 'min(300px, 42vw)' : '0px';
+        gallery.style.height = loadedImgs.length ? 'min(42vw, 432px)' : '0px';
         applyDeck();
         if (loadedImgs.length > 1 && !deckTimer) restartDeckTimer();
       }

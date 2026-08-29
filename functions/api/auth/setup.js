@@ -1,8 +1,10 @@
 // POST /api/auth/setup —— 仅在管理员表为空时可用，用于首次创建超级管理员
 import { json } from '../../lib/util.js';
 import { hashPassword, randomHex, createSession, sessionCookie } from '../../lib/auth.js';
+import { ensureSchema } from '../../lib/migrate.js';
 
 export async function onRequestPost({ request, env }) {
+  await ensureSchema(env);
   const row = await env.DB.prepare('SELECT COUNT(*) AS n FROM admin_users').first();
   if (row.n > 0) return json({ ok: false, error: '管理员已存在，不能重复初始化' }, 403);
 

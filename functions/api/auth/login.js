@@ -1,8 +1,10 @@
 // POST /api/auth/login { username, password }
 import { json, getCookie, SESSION_COOKIE } from '../../lib/util.js';
 import { verifyPassword, hashPassword, randomHex, createSession, sessionCookie } from '../../lib/auth.js';
+import { ensureSchema } from '../../lib/migrate.js';
 
 export async function onRequestPost({ request, env }) {
+  await ensureSchema(env);
   let body;
   try {
     body = await request.json();

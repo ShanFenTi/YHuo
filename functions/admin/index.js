@@ -1,111 +1,136 @@
 // GET /admin → 管理后台单页（首次使用显示初始化表单，未登录显示登录表单）
-// 页面只是壳，所有数据操作都要过 /api/admin/* 的会话校验
+// 黑白主题（浅色/深色可切换，本地记住）；页面只是壳，所有数据操作都要过 /api/admin/* 的会话校验
 import { html } from '../lib/util.js';
 
 const PAGE = `<!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="zh-CN" data-theme="light">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="robots" content="noindex">
 <title>YHuo 管理后台</title>
+<script>
+try { document.documentElement.setAttribute('data-theme', localStorage.getItem('adminTheme') || 'light'); } catch (e) {}
+</script>
 <style>
+  :root, [data-theme="light"] {
+    --bg: #f5f5f7; --card: #ffffff; --fg: #1d1d1f; --bg-fg: #ffffff;
+    --muted: #86868b; --border: #d2d2d7; --chip: #ececf0; --chip-hover: #e0e0e5;
+    --input-bg: #ffffff; --hover: #f0f0f2; --row-line: #ececee;
+    --shadow: 0 1px 3px rgba(0,0,0,.07), 0 12px 32px rgba(0,0,0,.05);
+  }
+  [data-theme="dark"] {
+    --bg: #111113; --card: #1c1c1e; --fg: #f5f5f7; --bg-fg: #111113;
+    --muted: #98989d; --border: #3a3a3c; --chip: #2c2c2e; --chip-hover: #3a3a3c;
+    --input-bg: #2a2a2c; --hover: #2c2c2e; --row-line: #2c2c2e;
+    --shadow: 0 1px 3px rgba(0,0,0,.5);
+  }
   * { box-sizing: border-box; margin: 0; }
   body {
     min-height: 100vh;
     display: flex; flex-direction: column; align-items: flex-start;
     padding: 36px 24px 60px 4vw;
-    background: linear-gradient(180deg, #eef1f6 0%, #f5f5f7 240px);
-    color: #1d1d1f;
+    background: var(--bg); color: var(--fg);
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+    transition: background .25s, color .25s;
   }
   header { width: 100%; max-width: 860px; display: flex; align-items: center; justify-content: space-between; margin-bottom: 22px; }
   .brand { display: flex; align-items: center; gap: 12px; }
   .brand .mark {
     width: 42px; height: 42px; border-radius: 12px;
-    background: linear-gradient(135deg, #0a84ff, #5e5ce6);
-    color: #fff; font-weight: 700; font-size: 15px; letter-spacing: .05em;
+    background: var(--fg); color: var(--bg);
+    font-weight: 700; font-size: 15px; letter-spacing: .05em;
     display: flex; align-items: center; justify-content: center;
-    box-shadow: 0 6px 16px rgba(10, 132, 255, .35);
   }
   .brand h1 { font-size: 19px; font-weight: 700; }
-  .brand p { font-size: 12px; color: #86868b; margin-top: 2px; }
+  .brand p { font-size: 12px; color: var(--muted); margin-top: 2px; }
+  .header-btns { display: flex; gap: 8px; }
+  .icon-btn {
+    display: flex; align-items: center; gap: 6px;
+    padding: 8px 14px; border-radius: 10px; font-size: 13px;
+  }
+  .icon-btn svg { width: 15px; height: 15px; }
   .card {
     width: 100%; max-width: 860px;
-    background: #fff; border-radius: 18px; padding: 24px;
-    box-shadow: 0 1px 3px rgba(0,0,0,.06), 0 12px 32px rgba(0,0,0,.05);
+    background: var(--card); border-radius: 18px; padding: 24px;
+    border: 1px solid var(--border);
+    box-shadow: var(--shadow);
   }
-  .hint { color: #86868b; font-size: 13px; line-height: 1.6; margin-bottom: 16px; }
+  .hint { color: var(--muted); font-size: 13px; line-height: 1.6; margin-bottom: 16px; }
   input[type=text], input[type=password] {
     width: 100%; padding: 10px 12px; margin: 6px 0 14px;
-    border: 1px solid #d2d2d7; border-radius: 10px; font-size: 15px; background: #fff; color: inherit;
+    border: 1px solid var(--border); border-radius: 10px; font-size: 15px;
+    background: var(--input-bg); color: var(--fg);
   }
-  input:focus { outline: 2px solid #0071e3; outline-offset: -1px; border-color: transparent; }
+  input:focus { outline: 2px solid var(--fg); outline-offset: -1px; border-color: transparent; }
   button {
     padding: 9px 18px; border: none; border-radius: 10px; font-size: 14px;
-    background: #0071e3; color: #fff; cursor: pointer;
-    transition: background .15s, transform .1s, opacity .15s;
+    background: var(--fg); color: var(--bg); cursor: pointer;
+    transition: opacity .15s, transform .1s, background .15s;
   }
-  button:hover { background: #0077ed; }
+  button:hover { opacity: .82; }
   button:active { transform: scale(.97); }
-  button.ghost { background: #ececf0; color: #1d1d1f; }
-  button.ghost:hover { background: #e0e0e5; }
-  button.danger { background: #ececf0; color: #d70015; }
-  button.danger:hover { background: #fbe9eb; }
+  button.ghost { background: var(--chip); color: var(--fg); }
+  button.ghost:hover { background: var(--chip-hover); opacity: 1; }
+  button.danger { background: var(--chip); color: var(--fg); font-weight: 700; border: 1px solid var(--border); }
+  button.danger:hover { background: var(--chip-hover); opacity: 1; }
   button:disabled { opacity: .5; cursor: default; }
   .msg { min-height: 18px; font-size: 13px; margin-top: 10px; }
-  .msg.err { color: #d70015; }
-  .msg.ok { color: #008a00; }
-  .tabs { display: flex; gap: 6px; margin-bottom: 20px; background: #ececf0; padding: 4px; border-radius: 12px; width: fit-content; }
-  .tabs button { background: transparent; color: #1d1d1f; padding: 8px 18px; border-radius: 9px; }
-  .tabs button.active { background: #fff; color: #1d1d1f; font-weight: 600; box-shadow: 0 1px 4px rgba(0,0,0,.12); }
+  .msg.err { color: var(--fg); font-weight: 700; }
+  .msg.err::before { content: "✕ "; }
+  .msg.ok { color: var(--muted); }
+  .msg.ok::before { content: "✓ "; }
+  .tabs { display: flex; gap: 6px; margin-bottom: 20px; background: var(--chip); padding: 4px; border-radius: 12px; width: fit-content; }
+  .tabs button { background: transparent; color: var(--fg); padding: 8px 18px; border-radius: 9px; }
+  .tabs button.active { background: var(--card); color: var(--fg); font-weight: 600; box-shadow: 0 1px 4px rgba(0,0,0,.18); }
   .stats { width: 100%; max-width: 860px; display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-bottom: 22px; }
   .stat {
-    background: #fff; border-radius: 16px; padding: 16px 18px;
-    box-shadow: 0 1px 3px rgba(0,0,0,.05);
+    background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 16px 18px;
+    box-shadow: var(--shadow);
     display: flex; align-items: center; gap: 14px;
   }
-  .stat .ico { width: 40px; height: 40px; border-radius: 11px; display: flex; align-items: center; justify-content: center; font-size: 19px; }
+  .stat .ico { width: 40px; height: 40px; border-radius: 11px; display: flex; align-items: center; justify-content: center; background: var(--chip); color: var(--fg); }
+  .stat .ico svg { width: 20px; height: 20px; }
   .stat .num { font-size: 22px; font-weight: 700; line-height: 1.1; }
-  .stat .lbl { font-size: 12px; color: #86868b; }
+  .stat .lbl { font-size: 12px; color: var(--muted); }
   .upload-row {
     display: flex; gap: 10px; flex-wrap: wrap; align-items: center;
-    padding: 14px; background: #f5f5f7; border-radius: 14px;
-    border: 1.5px dashed #d2d2d7;
+    padding: 14px; background: var(--hover); border-radius: 14px;
+    border: 1.5px dashed var(--border);
   }
   .upload-row input[type=text] { flex: 1 1 160px; margin: 0; }
-  .upload-row input[type=file] { font-size: 13px; max-width: 260px; }
-  .progress { height: 4px; background: #e8e8ed; border-radius: 2px; margin-top: 12px; overflow: hidden; display: none; }
-  .progress i { display: block; height: 100%; width: 0; background: linear-gradient(90deg, #0a84ff, #5e5ce6); transition: width .2s; }
+  .upload-row input[type=file] { font-size: 13px; max-width: 260px; color: var(--fg); }
+  .progress { height: 4px; background: var(--chip); border-radius: 2px; margin-top: 12px; overflow: hidden; display: none; }
+  .progress i { display: block; height: 100%; width: 0; background: var(--fg); transition: width .2s; }
   ul.list { list-style: none; padding: 0; margin-top: 14px; }
   ul.list li {
     display: flex; align-items: center; gap: 10px;
-    padding: 11px 8px; border-bottom: 1px solid #f0f0f2; font-size: 14px;
+    padding: 11px 8px; border-bottom: 1px solid var(--row-line); font-size: 14px;
     border-radius: 8px;
-    transition: background .15s, box-shadow .15s;
   }
   ul.list li.dragging { opacity: .45; }
-  ul.list li.dragover { box-shadow: inset 0 2px 0 #0a84ff; }
+  ul.list li.dragover { box-shadow: inset 0 2px 0 var(--fg); }
   .thumb {
     width: 54px; height: 38px; object-fit: cover; flex: none;
-    border-radius: 7px; border: 1px solid #e5e5ea; background: #f2f2f7;
+    border-radius: 7px; border: 1px solid var(--border); background: var(--chip);
   }
-  ul.list li .handle { color: #c7c7cc; cursor: grab; font-size: 15px; letter-spacing: -2px; user-select: none; padding: 0 2px; }
+  ul.list li .handle { color: var(--muted); cursor: grab; font-size: 15px; letter-spacing: -2px; user-select: none; padding: 0 2px; }
   ul.list li .title { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; cursor: pointer; }
-  ul.list li .title:hover { color: #0071e3; }
-  ul.list li .meta { color: #86868b; font-size: 12px; white-space: nowrap; }
+  ul.list li .title:hover { text-decoration: underline; }
+  ul.list li .meta { color: var(--muted); font-size: 12px; white-space: nowrap; }
   ul.list li button { padding: 5px 10px; font-size: 12px; border-radius: 8px; }
-  .empty { color: #86868b; font-size: 14px; text-align: center; padding: 34px 0; }
+  .empty { color: var(--muted); font-size: 14px; text-align: center; padding: 34px 0; }
   .avatar {
     width: 34px; height: 34px; border-radius: 50%; flex: none;
-    color: #fff; font-size: 15px; font-weight: 600;
+    background: var(--fg); color: var(--bg);
+    font-size: 15px; font-weight: 600;
     display: flex; align-items: center; justify-content: center;
   }
-  .badge { font-size: 11px; padding: 2px 8px; border-radius: 99px; white-space: nowrap; }
-  .badge.ok { background: #e8f6e8; color: #008a00; }
-  .badge.banned { background: #fbe9eb; color: #d70015; }
+  .badge { font-size: 11px; padding: 2px 9px; border-radius: 99px; white-space: nowrap; border: 1px solid var(--border); }
+  .badge.ok { color: var(--muted); }
+  .badge.banned { background: var(--fg); color: var(--bg); border-color: var(--fg); font-weight: 700; }
   [hidden] { display: none !important; }
-  footer { margin-top: 24px; font-size: 12px; color: #86868b; }
+  footer { margin-top: 24px; font-size: 12px; color: var(--muted); }
 </style>
 </head>
 <body>
@@ -117,7 +142,16 @@ const PAGE = `<!DOCTYPE html>
       <p>内容与用户一站式管理</p>
     </div>
   </div>
-  <button id="logoutBtn" class="ghost" hidden>退出登录</button>
+  <div class="header-btns">
+    <button id="themeBtn" class="ghost icon-btn" title="切换浅色/深色">
+      <svg id="themeIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></svg>
+      <span id="themeLabel">深色</span>
+    </button>
+    <button id="logoutBtn" class="ghost icon-btn" hidden>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="m16 17 5-5-5-5"/><path d="M21 12H9"/></svg>
+      <span>退出</span>
+    </button>
+  </div>
 </header>
 
 <div class="card" id="setupCard" hidden>
@@ -144,10 +178,10 @@ const PAGE = `<!DOCTYPE html>
 </div>
 
 <div class="stats" id="stats" hidden>
-  <div class="stat"><div class="ico" style="background:#e8f1ff">🎵</div><div><div class="num" id="statMusic">0</div><div class="lbl">音乐</div></div></div>
-  <div class="stat"><div class="ico" style="background:#f0ebff">🎬</div><div><div class="num" id="statVideo">0</div><div class="lbl">视频</div></div></div>
-  <div class="stat"><div class="ico" style="background:#ffeef2">🖼️</div><div><div class="num" id="statImage">0</div><div class="lbl">图片</div></div></div>
-  <div class="stat"><div class="ico" style="background:#e8f6e8">👥</div><div><div class="num" id="statUsers">0</div><div class="lbl">注册用户</div></div></div>
+  <div class="stat"><div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg></div><div><div class="num" id="statMusic">0</div><div class="lbl">音乐</div></div></div>
+  <div class="stat"><div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M2 8h20M2 16h20M8 4v16M16 4v16"/></svg></div><div><div class="num" id="statVideo">0</div><div class="lbl">视频</div></div></div>
+  <div class="stat"><div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m21 15-5-5L5 21"/></svg></div><div><div class="num" id="statImage">0</div><div class="lbl">图片</div></div></div>
+  <div class="stat"><div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></div><div><div class="num" id="statUsers">0</div><div class="lbl">注册用户</div></div></div>
 </div>
 
 <div class="card" id="mainCard" hidden>
@@ -190,10 +224,26 @@ const PAGE = `<!DOCTYPE html>
     video: '.mp4,.webm,.mov,.m4v,.ogv',
     image: '.jpg,.jpeg,.png,.gif,.webp,.svg,.avif,.bmp'
   };
-  var AVATAR_COLORS = ['#0a84ff', '#5e5ce6', '#bf5af2', '#ff375f', '#ff9f0a', '#30d158', '#64d2ff'];
   var currentType = 'music';
   var items = { music: [], video: [], image: [] };
   var users = [];
+
+  // ---------- 黑白主题切换（浅色 / 深色，本地记住） ----------
+  var SUN_SVG = '<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/>';
+  var MOON_SVG = '<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>';
+  function applyTheme(t) {
+    document.documentElement.setAttribute('data-theme', t);
+    var icon = $('themeIcon');
+    if (icon) icon.innerHTML = t === 'dark' ? SUN_SVG : MOON_SVG;
+    var label = $('themeLabel');
+    if (label) label.textContent = t === 'dark' ? '浅色' : '深色';
+  }
+  applyTheme(document.documentElement.getAttribute('data-theme') || 'light');
+  $('themeBtn').addEventListener('click', function () {
+    var next = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+    applyTheme(next);
+    try { localStorage.setItem('adminTheme', next); } catch (e) {}
+  });
 
   function escapeHtml(s) {
     return String(s).replace(/[&<>"']/g, function (c) {
@@ -342,6 +392,17 @@ const PAGE = `<!DOCTYPE html>
       handle.textContent = '⠿';
       handle.title = '拖动排序';
 
+      li.appendChild(handle);
+
+      // 图片类显示缩略图
+      if (currentType === 'image' && it.r2_key) {
+        var thumb = document.createElement('img');
+        thumb.className = 'thumb';
+        thumb.loading = 'lazy';
+        thumb.src = '/media/' + it.r2_key;
+        li.appendChild(thumb);
+      }
+
       var title = document.createElement('span');
       title.className = 'title';
       title.textContent = it.title;
@@ -363,17 +424,6 @@ const PAGE = `<!DOCTYPE html>
       var del = document.createElement('button');
       del.className = 'danger'; del.textContent = '删除';
       del.addEventListener('click', function () { removeItem(it); });
-
-      li.appendChild(handle);
-
-      // 图片类显示缩略图
-      if (currentType === 'image' && it.r2_key) {
-        var thumb = document.createElement('img');
-        thumb.className = 'thumb';
-        thumb.loading = 'lazy';
-        thumb.src = '/media/' + it.r2_key;
-        li.appendChild(thumb);
-      }
 
       li.appendChild(title); li.appendChild(meta);
       li.appendChild(up); li.appendChild(down); li.appendChild(del);
@@ -464,7 +514,6 @@ const PAGE = `<!DOCTYPE html>
 
       var avatar = document.createElement('div');
       avatar.className = 'avatar';
-      avatar.style.background = AVATAR_COLORS[(u.username || '?').charCodeAt(0) % AVATAR_COLORS.length];
       avatar.textContent = (u.username || '?').slice(0, 1).toUpperCase();
 
       var title = document.createElement('span');
@@ -514,6 +563,25 @@ const PAGE = `<!DOCTYPE html>
       else showMsg($('userMsg'), data.error || '删除失败', 'err');
     });
   }
+
+  // ---------- 标签页 ----------
+  var tabs = document.querySelectorAll('.tabs button');
+  tabs.forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      tabs.forEach(function (b) { b.classList.remove('active'); });
+      btn.classList.add('active');
+      currentType = btn.getAttribute('data-type');
+      var isUsers = currentType === 'users';
+      $('mediaPanel').hidden = isUsers;
+      $('userPanel').hidden = !isUsers;
+      if (!isUsers) {
+        $('fileInput').accept = TYPE_EXT[currentType];
+        $('titleInput').value = '';
+        renderList();
+      }
+    });
+  });
+  $('fileInput').accept = TYPE_EXT.music;
 
   // ---------- 导入静态图片（images/1.jpg… 约定命名） ----------
   $('importBtn').addEventListener('click', function () {
@@ -582,25 +650,6 @@ const PAGE = `<!DOCTYPE html>
       nextChunk();
     });
   });
-
-  // ---------- 标签页 ----------
-  var tabs = document.querySelectorAll('.tabs button');
-  tabs.forEach(function (btn) {
-    btn.addEventListener('click', function () {
-      tabs.forEach(function (b) { b.classList.remove('active'); });
-      btn.classList.add('active');
-      currentType = btn.getAttribute('data-type');
-      var isUsers = currentType === 'users';
-      $('mediaPanel').hidden = isUsers;
-      $('userPanel').hidden = !isUsers;
-      if (!isUsers) {
-        $('fileInput').accept = TYPE_EXT[currentType];
-        $('titleInput').value = '';
-        renderList();
-      }
-    });
-  });
-  $('fileInput').accept = TYPE_EXT.music;
 
   // ---------- 上传（XHR 以显示进度） ----------
   $('uploadBtn').addEventListener('click', function () {

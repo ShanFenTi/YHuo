@@ -3,7 +3,9 @@
 export async function onRequest({ request, env, params }) {
   if (!env.MEDIA) return new Response('KV 未绑定', { status: 404 });
 
-  const key = String(params.key || '').replace(/\/+$/, '');
+  // catch-all 路由的 params.key 是按路径段拆分的数组，要拼回完整键名
+  const raw = Array.isArray(params.key) ? params.key.join('/') : String(params.key || '');
+  const key = raw.replace(/\/+$/, '');
   if (!key) return new Response('Not Found', { status: 404 });
 
   // getWithMetadata 返回 { value, metadata }；KV 有边缘缓存，同地区第二次读取走缓存

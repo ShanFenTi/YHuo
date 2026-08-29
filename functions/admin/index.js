@@ -147,6 +147,12 @@ const PAGE = `<!DOCTYPE html>
   function api(path, opts) {
     opts = opts || {};
     opts.credentials = 'same-origin';
+    // 网络挂起时 20 秒自动中断，避免"点了没反应"
+    if (typeof AbortController === 'function') {
+      var ctl = new AbortController();
+      opts.signal = ctl.signal;
+      setTimeout(function () { ctl.abort(); }, 20000);
+    }
     return fetch(path, opts).then(function (res) {
       return res.json().catch(function () { return { ok: false, error: '响应异常' }; })
         .then(function (data) { data._status = res.status; return data; });

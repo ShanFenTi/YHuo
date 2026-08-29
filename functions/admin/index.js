@@ -83,6 +83,13 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
   .tabs { display: flex; gap: 6px; margin-bottom: 20px; background: var(--chip); padding: 4px; border-radius: 12px; width: fit-content; }
   .tabs button { background: transparent; color: var(--fg); padding: 8px 18px; border-radius: 9px; }
   .tabs button.active { background: var(--card); color: var(--fg); font-weight: 600; box-shadow: 0 1px 4px rgba(0,0,0,.18); }
+  .appear-label2 { font-size: 13px; font-weight: 600; margin: 18px 0 10px; }
+  .accent-row { display: flex; gap: 10px; }
+  .accent-dot { width: 34px; height: 34px; border-radius: 50%; border: 3px solid transparent; padding: 0; }
+  .accent-dot.active { border-color: var(--fg); }
+  .bgset-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+  .bg-preview { width: 160px; height: 90px; object-fit: cover; border-radius: 10px; border: 1px solid var(--border); }
+  .meta2 { color: var(--muted); font-size: 13px; }
   .stats { width: 100%; max-width: 860px; display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-bottom: 22px; }
   .stat {
     background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 16px 18px;
@@ -190,6 +197,7 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
     <button data-type="video">视频</button>
     <button data-type="image">图片</button>
     <button data-type="users">用户</button>
+    <button data-type="appearance">外观</button>
   </div>
 
   <div id="mediaPanel">
@@ -209,6 +217,21 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
     <div class="msg" id="userMsg"></div>
     <ul class="list" id="userList"></ul>
     <div class="empty" id="userEmpty" hidden>还没有用户注册。</div>
+  </div>
+
+  <div id="appearancePanel" hidden>
+    <p class="hint">这里设置的是全站默认外观：访客自己在主页没改过时才会采用；改过的以访客本地选择为准。</p>
+    <p class="appear-label2">默认主题色</p>
+    <div class="accent-row" id="accentRow"></div>
+    <p class="appear-label2">默认背景图</p>
+    <div class="bgset-row">
+      <img id="bgPreview" class="bg-preview" hidden alt="当前默认背景">
+      <span id="bgNone" class="meta2">未设置（使用网站自带背景）</span>
+      <input type="file" id="bgFileInput" accept=".jpg,.jpeg,.png,.gif,.webp,.avif,.bmp" hidden>
+      <button id="bgUploadBtn2" class="ghost">上传背景图</button>
+      <button id="bgClearBtn2" class="danger">清除</button>
+    </div>
+    <div class="msg" id="appearMsg"></div>
   </div>
 </div>
 
@@ -564,6 +587,87 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
     });
   }
 
+  // ---------- 外观设置（站点默认主题色 / 默认背景图） ----------
+  var ACCENTS = [
+    { name: 'blue', label: '蓝色', color: '#0a84ff' },
+    { name: 'purple', label: '紫色', color: '#8b5cf6' },
+    { name: 'pink', label: '粉色', color: '#ec4899' },
+    { name: 'green', label: '绿色', color: '#10b981' },
+    { name: 'orange', label: '橙色', color: '#f59e0b' }
+  ];
+  var currentAccent = null;
+
+  function renderAccents() {
+    var row = $('accentRow');
+    row.innerHTML = '';
+    ACCENTS.forEach(function (a) {
+      var b = document.createElement('button');
+      b.className = 'accent-dot' + (currentAccent === a.name ? ' active' : '');
+      b.style.background = a.color;
+      b.title = a.label + (currentAccent === a.name ? '（当前）' : '');
+      b.addEventListener('click', function () {
+        api('/api/admin/appearance', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ accent: a.name })
+        }).then(function (d) {
+          if (d.ok) { currentAccent = d.accent; renderAccents(); showMsg($('appearMsg'), '默认主题色已保存，前台即刻生效', 'ok'); }
+          else showMsg($('appearMsg'), d.error || '保存失败', 'err');
+        }).catch(function () { showMsg($('appearMsg'), '网络错误', 'err'); });
+      });
+      row.appendChild(b);
+    });
+  }
+
+  function renderBgPreview(bgKey) {
+    var img = $('bgPreview');
+    var none = $('bgNone');
+    if (bgKey) { img.src = '/media/' + bgKey; img.hidden = false; none.hidden = true; }
+    else { img.hidden = true; none.hidden = false; }
+  }
+
+  function loadAppearance() {
+    api('/api/admin/appearance').then(function (d) {
+      if (d.ok) {
+        currentAccent = d.accent;
+        renderAccents();
+        renderBgPreview(d.bg);
+      } else if (d._status === 401) {
+        show('login');
+      }
+    }).catch(function () {});
+  }
+
+  $('bgUploadBtn2').addEventListener('click', function () { $('bgFileInput').click(); });
+  $('bgFileInput').addEventListener('change', function () {
+    var f = this.files[0];
+    this.value = '';
+    if (!f) return;
+    showMsg($('appearMsg'), '正在上传背景图…');
+    var form = new FormData();
+    form.append('file', f);
+    var opts = { method: 'POST', credentials: 'same-origin', body: form };
+    if (typeof AbortController === 'function') {
+      var ctl = new AbortController();
+      opts.signal = ctl.signal;
+      setTimeout(function () { ctl.abort(); }, 60000);
+    }
+    fetch('/api/admin/appearance/background', opts)
+      .then(function (res) { return res.json().catch(function () { return { ok: false, error: '响应异常' }; }); })
+      .then(function (d) {
+        if (d.ok) { renderBgPreview(d.bg); showMsg($('appearMsg'), '默认背景图已更新', 'ok'); }
+        else showMsg($('appearMsg'), d.error || '上传失败', 'err');
+      })
+      .catch(function () { showMsg($('appearMsg'), '网络错误，上传失败', 'err'); });
+  });
+  $('bgClearBtn2').addEventListener('click', function () {
+    if (!confirm('清除默认背景图？访客将回到网站自带背景。')) return;
+    api('/api/admin/appearance/background', { method: 'DELETE' }).then(function (d) {
+      if (d.ok) { renderBgPreview(null); showMsg($('appearMsg'), '已清除', 'ok'); }
+      else showMsg($('userMsg'), d.error || '操作失败', 'err');
+    });
+  });
+
   // ---------- 标签页 ----------
   var tabs = document.querySelectorAll('.tabs button');
   tabs.forEach(function (btn) {
@@ -572,9 +676,14 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
       btn.classList.add('active');
       currentType = btn.getAttribute('data-type');
       var isUsers = currentType === 'users';
-      $('mediaPanel').hidden = isUsers;
+      var isAppear = currentType === 'appearance';
+      $('mediaPanel').hidden = isUsers || isAppear;
       $('userPanel').hidden = !isUsers;
-      if (!isUsers) {
+      $('appearancePanel').hidden = !isAppear;
+      if (isAppear) {
+        loadAppearance();
+      }
+      if (!isUsers && !isAppear) {
         $('fileInput').accept = TYPE_EXT[currentType];
         $('titleInput').value = '';
         renderList();

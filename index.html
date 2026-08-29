@@ -3813,6 +3813,24 @@
       if (_savedBgSrc) applyBgFromSrc(_savedBgSrc);
     }
 
+    // 站点默认外观（管理员后台设置）：访客本地没自己选过主题色/背景时才采用
+    fetch('/api/settings', { credentials: 'same-origin' })
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (d) {
+        if (!d || !d.ok) return;
+        if (d.accent && !savedAccent) applyAccent(d.accent);
+        if (d.background) {
+          idbGetAll(['customBg']).then(function (blobs) {
+            var hasLocalBg = blobs && blobs[0] && blobs[0].size;
+            if (hasLocalBg) return;
+            var hasSrc = false;
+            try { hasSrc = !!localStorage.getItem(BG_SRC_KEY); } catch (e) {}
+            if (!hasSrc) applyBgFromSrc(d.background);
+          }).catch(function () {});
+        }
+      })
+      .catch(function () {});
+
     if (bgUploadBtn) {
       bgUploadBtn.addEventListener('click', openBgPicker);
     }

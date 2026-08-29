@@ -1,8 +1,9 @@
-// POST /api/admin/upload —— multipart 表单上传媒体文件到 R2
+// POST /api/admin/upload —— multipart 表单上传媒体文件到 KV
 // 字段：type = music|video|image；file = 文件；title = 可选显示名
 import { json } from '../../lib/util.js';
 
-const MAX_SIZE = 95 * 1024 * 1024; // Cloudflare 免费版单请求上限 100MB，留点余量
+// KV 单值上限 25MiB（免费版无需绑卡），留点余量
+const MAX_SIZE = 24 * 1024 * 1024;
 
 const TYPES = {
   music: ['mp3', 'wav', 'm4a', 'flac', 'ogg', 'aac', 'opus'],
@@ -20,7 +21,7 @@ const MIME = {
 
 export async function onRequestPost({ request, env }) {
   const len = Number(request.headers.get('content-length') || 0);
-  if (len > MAX_SIZE) return json({ ok: false, error: '文件超过 95MB 上限' }, 413);
+  if (len > MAX_SIZE) return json({ ok: false, error: '文件超过 24MB 上限（免费版存储单文件限制）' }, 413);
 
   let form;
   try {
@@ -40,14 +41,15 @@ export async function onRequestPost({ request, env }) {
   if (!ext || !TYPES[type].includes(ext)) {
     return json({ ok: false, error: '不支持的文件格式：' + ext }, 400);
   }
-  if (file.size > MAX_SIZE) return json({ ok: false, error: '文件超过 95MB 上限' }, 413);
+  if (file.size > MAX_SIZE) return json({ ok: false, error: '文件超过 24MB 上限（免费版存储单文件限制）' }, 413);
 
   const title = String(form.get('title') || '').trim().slice(0, 200) ||
     (dot > -1 ? name.slice(0, dot) : name);
   const key = `${type}/${crypto.randomUUID()}.${ext}`;
   const mime = MIME[ext] || file.type || 'application/octet-stream';
 
-  await env.MEDIA.put(key, file.stream(), { httpMetadata: { contentType: mime } });
+  // KV 存二进制，mime 放进 metadata 供播放接口使用
+  await env.MEDIA.put(key, await file.arrayBuffer(), { metadata: { mime } });
 
   const next = await env.DB
     .prepare('SELECT COALESCE(MAX(sort_order), 0) + 1 AS v FROM media WHERE type = ?')

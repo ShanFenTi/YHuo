@@ -1,32 +1,52 @@
-// GET/HEAD /media/<key> → 从 R2 读出媒体文件（支持 Range，音乐/视频拖动进度条可用）
+// GET/HEAD /media/<key> → 从 KV 读出媒体文件
+// KV 不支持服务端 Range，这里手动按浏览器的 Range 头切片返回（206），播放拖进度条可用
 export async function onRequest({ request, env, params }) {
-  if (!env.MEDIA) return new Response('R2 未绑定', { status: 404 });
+  if (!env.MEDIA) return new Response('KV 未绑定', { status: 404 });
 
   const key = String(params.key || '').replace(/\/+$/, '');
   if (!key) return new Response('Not Found', { status: 404 });
 
-  // range/onlyIf 直接透传浏览器原始请求头，R2 会处理 Range 与 If-None-Match
-  const obj = await env.MEDIA.get(key, { range: request.headers, onlyIf: request.headers });
-  if (!obj) return new Response('Not Found', { status: 404 });
+  // KV 有边缘缓存，同一地区的第二次读取走缓存，速度很快
+  const obj = await env.MEDIA.get(key, { type: 'arrayBuffer', cacheTtl: 300 });
+  if (!obj || !obj.value) return new Response('Not Found', { status: 404 });
+
+  const buf = obj.value;
+  const size = buf.byteLength;
 
   const headers = new Headers();
-  headers.set('Content-Type', obj.httpMetadata?.contentType || 'application/octet-stream');
-  headers.set('ETag', obj.httpEtag);
+  headers.set('Content-Type', obj.metadata?.mime || 'application/octet-stream');
   headers.set('Accept-Ranges', 'bytes');
-  // 键名含唯一 UUID，内容永不变化，可以放心长缓存
-  headers.set('Cache-Control', 'public, max-age=31536000');
+  headers.set('Cache-Control', 'public, max-age=31536000'); // 键名含唯一 UUID，内容永不变化
 
-  // onlyIf 命中缓存（If-None-Match 未变化）时返回的是不带 body 的对象
-  if (!obj.body) return new Response(null, { status: 304, headers });
+  const range = request.headers.get('Range');
+  const m = range && range.match(/^bytes=(\d*)-(\d*)$/);
+  if (m && (m[1] !== '' || m[2] !== '')) {
+    let start;
+    let end;
+    if (m[1] === '') {
+      // bytes=-N：取末尾 N 字节
+      const n = Number(m[2]);
+      if (n <= 0) return rangeNotSatisfiable(headers, size);
+      start = Math.max(0, size - n);
+      end = size - 1;
+    } else {
+      start = Number(m[1]);
+      end = m[2] === '' ? size - 1 : Math.min(Number(m[2]), size - 1);
+    }
+    if (start > end || start >= size) return rangeNotSatisfiable(headers, size);
 
-  if (request.headers.has('range') && typeof obj.range?.offset === 'number') {
-    const start = obj.range.offset;
-    const end = (typeof obj.range.length === 'number' ? start + obj.range.length : obj.size) - 1;
-    headers.set('Content-Range', `bytes ${start}-${end}/${obj.size}`);
-    headers.set('Content-Length', String(end - start + 1));
-    return new Response(obj.body, { status: 206, headers });
+    const slice = buf.slice(start, end + 1);
+    headers.set('Content-Range', `bytes ${start}-${end}/${size}`);
+    headers.set('Content-Length', String(slice.byteLength));
+    return new Response(slice, { status: 206, headers });
   }
 
-  headers.set('Content-Length', String(obj.size));
-  return new Response(obj.body, { status: 200, headers });
+  headers.set('Content-Length', String(size));
+  return new Response(buf, { status: 200, headers });
+}
+
+function rangeNotSatisfiable(headers, size) {
+  const h = new Headers(headers);
+  h.set('Content-Range', `bytes */${size}`);
+  return new Response(null, { status: 416, headers: h });
 }

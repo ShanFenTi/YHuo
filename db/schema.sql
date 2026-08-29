@@ -18,7 +18,7 @@ CREATE TABLE IF NOT EXISTS sessions (
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
--- 媒体清单：音乐 / 视频 / 图片的元数据，文件本体存在 R2 里
+-- 媒体清单：音乐 / 视频 / 图片的元数据，文件本体存在 KV 里（单文件上限 24MB）
 CREATE TABLE IF NOT EXISTS media (
   id         INTEGER PRIMARY KEY AUTOINCREMENT,
   type       TEXT NOT NULL CHECK (type IN ('music', 'video', 'image')),

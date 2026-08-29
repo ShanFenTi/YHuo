@@ -108,7 +108,7 @@ const PAGE = `<!DOCTYPE html>
   <div class="empty" id="empty" hidden>还没有内容，先上传一个文件吧。</div>
 </div>
 
-<footer>文件存放在 Cloudflare R2，删除即彻底删除，操作前请确认。</footer>
+<footer>文件存放在 Cloudflare KV（单文件上限 24MB），删除即彻底删除，操作前请确认。</footer>
 
 <script>
 (function () {

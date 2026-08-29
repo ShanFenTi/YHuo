@@ -127,6 +127,31 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
   ul.list li .meta { color: var(--muted); font-size: 12px; white-space: nowrap; }
   ul.list li button { padding: 5px 10px; font-size: 12px; border-radius: 8px; }
   .empty { color: var(--muted); font-size: 14px; text-align: center; padding: 34px 0; }
+  .upload-row.dragover { border-color: var(--fg); background: var(--chip); }
+  .upload-hint { color: var(--muted); font-size: 12px; margin-top: 8px; line-height: 1.5; }
+  .queue-info { font-size: 13px; color: var(--muted); margin-top: 8px; min-height: 0; }
+  .storage-line { margin-top: 16px; }
+  .storage-line > span { font-size: 12px; color: var(--muted); }
+  .storage-bar { height: 6px; background: var(--chip); border-radius: 3px; overflow: hidden; margin-top: 6px; }
+  .storage-bar i { display: block; height: 100%; width: 0; background: var(--fg); transition: width .3s; }
+  .list-tools { display: flex; gap: 10px; align-items: center; margin-top: 18px; flex-wrap: wrap; }
+  .list-tools input[type=text] { flex: 1 1 180px; margin: 0; }
+  .list-tools label { font-size: 13px; color: var(--muted); cursor: pointer; }
+  input[type="checkbox"] { width: 16px; height: 16px; accent-color: var(--fg); cursor: pointer; flex: none; }
+  ul.list li .sel { flex: none; }
+  .modal { position: fixed; inset: 0; z-index: 999; display: flex; align-items: center; justify-content: center; }
+  .modal-backdrop { position: absolute; inset: 0; background: rgba(0,0,0,.62); }
+  .modal-body {
+    position: relative; z-index: 1;
+    background: var(--card); color: var(--fg);
+    border-radius: 16px; padding: 16px;
+    width: min(760px, 92vw); max-height: 88vh; overflow: auto;
+  }
+  .modal-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
+  .modal-head strong { font-size: 15px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .modal-body audio { width: 100%; margin-top: 4px; }
+  .modal-body video { width: 100%; max-height: 68vh; border-radius: 10px; background: #000; }
+  .modal-body img { max-width: 100%; max-height: 68vh; border-radius: 10px; display: block; margin: 0 auto; }
   .avatar {
     width: 34px; height: 34px; border-radius: 50%; flex: none;
     background: var(--fg); color: var(--bg);
@@ -189,6 +214,7 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
   <div class="stat"><div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M2 8h20M2 16h20M8 4v16M16 4v16"/></svg></div><div><div class="num" id="statVideo">0</div><div class="lbl">视频</div></div></div>
   <div class="stat"><div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m21 15-5-5L5 21"/></svg></div><div><div class="num" id="statImage">0</div><div class="lbl">图片</div></div></div>
   <div class="stat"><div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></div><div><div class="num" id="statUsers">0</div><div class="lbl">注册用户</div></div></div>
+  <div class="stat"><div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg></div><div><div class="num" id="statVisits">0</div><div class="lbl">访问量</div></div></div>
 </div>
 
 <div class="card" id="mainCard" hidden>
@@ -201,13 +227,25 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
   </div>
 
   <div id="mediaPanel">
-    <div class="upload-row">
-      <input type="file" id="fileInput">
-      <input type="text" id="titleInput" placeholder="显示名称（可选，默认用文件名）">
+    <div class="upload-row" id="uploadRow">
+      <input type="file" id="fileInput" multiple>
+      <input type="text" id="titleInput" placeholder="显示名称（可选，仅单个文件时生效）">
       <button id="uploadBtn">上传</button>
     </div>
+    <p class="upload-hint">支持一次选多个文件，也可以把文件或整个文件夹拖进来；与已有内容同名的自动跳过；单文件上限 24MB。</p>
     <div class="progress" id="progress"><i id="progressBar"></i></div>
+    <div class="queue-info" id="queueInfo"></div>
     <div class="msg" id="mainMsg"></div>
+    <div class="storage-line">
+      <span id="storageText">存储用量统计中…</span>
+      <div class="storage-bar" id="storageBar"><i></i></div>
+    </div>
+    <div class="list-tools">
+      <input type="checkbox" id="selAll">
+      <label for="selAll">全选</label>
+      <input type="text" id="searchInput" placeholder="搜索文件名…">
+      <button id="batchDelBtn" class="danger" hidden>删除所选</button>
+    </div>
     <ul class="list" id="list"></ul>
     <div class="empty" id="empty" hidden>还没有内容，先上传一个文件吧。也可以拖动条目调整顺序。</div>
   </div>
@@ -231,6 +269,17 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
       <button id="bgClearBtn2" class="danger">清除</button>
     </div>
     <div class="msg" id="appearMsg"></div>
+  </div>
+</div>
+
+<div class="modal" id="previewModal" hidden>
+  <div class="modal-backdrop" id="previewBackdrop"></div>
+  <div class="modal-body">
+    <div class="modal-head">
+      <strong id="previewTitle"></strong>
+      <button id="previewClose" class="ghost">关闭</button>
+    </div>
+    <div id="previewContent"></div>
   </div>
 </div>
 
@@ -369,6 +418,7 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
     show('main');
     loadList().then(function () { syncStaticMedia(); });
     loadUsers();
+    loadVisits();
   }
 
   function refreshStats() {
@@ -400,58 +450,138 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
     }).catch(function () {});
   }
 
+  function loadVisits() {
+    api('/api/admin/visits').then(function (d) {
+      if (d.ok) $('statVisits').textContent = d.visits;
+    }).catch(function () {});
+  }
+
+  // ---------- 批量选择 / 搜索 ----------
+  var selected = {}; // id → true，切标签页时清空
+
+  function selectedCount() {
+    var n = 0;
+    (items[currentType] || []).forEach(function (it) { if (selected[it.id]) n++; });
+    return n;
+  }
+
+  function updateBatchBtn() {
+    var n = selectedCount();
+    $('batchDelBtn').hidden = n === 0;
+    $('batchDelBtn').textContent = '删除所选 (' + n + ')';
+  }
+
   function renderList() {
     var list = $('list');
     var arr = items[currentType] || [];
+    var q = ($('searchInput').value || '').trim().toLowerCase();
+    var showArr = arr.filter(function (it) {
+      return !q || (it.title || '').toLowerCase().indexOf(q) > -1;
+    });
+    var filtering = !!q; // 搜索时是只读视图，隐藏排序控件避免顺序错乱
     list.innerHTML = '';
-    $('empty').hidden = arr.length > 0;
-    arr.forEach(function (it, i) {
+    $('empty').hidden = showArr.length > 0;
+    $('empty').textContent = arr.length ? '没有匹配「' + q + '」的文件。' : '还没有内容，先上传一个文件吧。也可以拖动条目调整顺序。';
+    showArr.forEach(function (it) {
+      var i = arr.indexOf(it);
       var li = document.createElement('li');
-      li.draggable = true;
+      li.draggable = !filtering;
+
+      var chk = document.createElement('input');
+      chk.type = 'checkbox';
+      chk.className = 'sel';
+      chk.checked = !!selected[it.id];
+      chk.addEventListener('change', function () {
+        if (chk.checked) selected[it.id] = true; else delete selected[it.id];
+        updateBatchBtn();
+        syncSelAll(showArr);
+      });
+      li.appendChild(chk);
 
       var handle = document.createElement('span');
       handle.className = 'handle';
       handle.textContent = '⠿';
       handle.title = '拖动排序';
 
-      li.appendChild(handle);
+      if (!filtering) li.appendChild(handle);
 
-      // 图片类显示缩略图
+      // 图片类显示缩略图（点击可直接预览大图）
       if (currentType === 'image' && it.r2_key) {
         var thumb = document.createElement('img');
         thumb.className = 'thumb';
         thumb.loading = 'lazy';
         thumb.src = '/media/' + it.r2_key;
+        thumb.style.cursor = 'zoom-in';
+        thumb.addEventListener('click', function () { openPreview(it); });
         li.appendChild(thumb);
       }
 
       var title = document.createElement('span');
       title.className = 'title';
       title.textContent = it.title;
-      title.title = '点击修改显示名称';
-      title.addEventListener('click', function () { rename(it); });
+      title.title = it.title;
 
       var meta = document.createElement('span');
       meta.className = 'meta';
-      meta.textContent = fmtSize(it.size);
+      meta.textContent = fmtSize(it.size) + ' · ' + fmtDate(it.created_at);
 
-      var up = document.createElement('button');
-      up.className = 'ghost'; up.textContent = '↑'; up.disabled = i === 0;
-      up.addEventListener('click', function () { move(currentType, i, -1); });
+      li.appendChild(title);
+      li.appendChild(meta);
 
-      var down = document.createElement('button');
-      down.className = 'ghost'; down.textContent = '↓'; down.disabled = i === arr.length - 1;
-      down.addEventListener('click', function () { move(currentType, i, 1); });
+      var renameBtn = document.createElement('button');
+      renameBtn.className = 'ghost';
+      renameBtn.textContent = '✏️';
+      renameBtn.title = '修改显示名称';
+      renameBtn.addEventListener('click', function () { rename(it); });
+      li.appendChild(renameBtn);
+
+      var playBtn = document.createElement('button');
+      playBtn.className = 'ghost';
+      playBtn.textContent = currentType === 'music' ? '▶ 试听' : (currentType === 'video' ? '▶ 预览' : '👁 查看');
+      playBtn.addEventListener('click', function () { openPreview(it); });
+      li.appendChild(playBtn);
+
+      if (!filtering) {
+        var up = document.createElement('button');
+        up.className = 'ghost'; up.textContent = '↑'; up.disabled = i === 0;
+        up.addEventListener('click', function () { move(currentType, i, -1); });
+
+        var down = document.createElement('button');
+        down.className = 'ghost'; down.textContent = '↓'; down.disabled = i === arr.length - 1;
+        down.addEventListener('click', function () { move(currentType, i, 1); });
+
+        li.appendChild(up); li.appendChild(down);
+        addDragHandlers(li, currentType, i);
+      }
 
       var del = document.createElement('button');
       del.className = 'danger'; del.textContent = '删除';
       del.addEventListener('click', function () { removeItem(it); });
+      li.appendChild(del);
 
-      li.appendChild(title); li.appendChild(meta);
-      li.appendChild(up); li.appendChild(down); li.appendChild(del);
-      addDragHandlers(li, currentType, i);
       list.appendChild(li);
     });
+    syncSelAll(showArr);
+    updateBatchBtn();
+    renderStorage();
+  }
+
+  function syncSelAll(showArr) {
+    var all = showArr.length > 0 && showArr.every(function (it) { return selected[it.id]; });
+    $('selAll').checked = all;
+  }
+
+  // ---------- 存储用量（KV 总量 1GB，媒体大小从清单求和） ----------
+  function renderStorage() {
+    var total = 0;
+    ['music', 'video', 'image'].forEach(function (t) {
+      (items[t] || []).forEach(function (it) { total += it.size || 0; });
+    });
+    var CAP = 1024 * 1024 * 1024;
+    var pct = total / CAP * 100;
+    $('storageText').textContent = '存储已用 ' + fmtSize(total) + ' / 1 GB' +
+      (pct >= 80 ? '（快满了，建议清理大文件）' : '');
+    $('storageBar').firstElementChild.style.width = Math.min(100, pct).toFixed(2) + '%';
   }
 
   // ---------- 拖拽排序 ----------
@@ -516,6 +646,56 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
       else showMsg($('mainMsg'), data.error || '删除失败', 'err');
     });
   }
+
+  function deleteSelected() {
+    var ids = (items[currentType] || []).filter(function (it) { return selected[it.id]; });
+    if (!ids.length) return;
+    if (!confirm('确定删除所选 ' + ids.length + ' 项吗？文件会一并从存储里删除，不可恢复。')) return;
+    var left = ids.length;
+    ids.forEach(function (it) {
+      api('/api/admin/media/' + it.id, { method: 'DELETE' }).then(function (data) {
+        if (data.ok) delete selected[it.id];
+        if (--left === 0) {
+          loadList();
+          showMsg($('mainMsg'), '批量删除完成', 'ok');
+        }
+      }).catch(function () {
+        if (--left === 0) { loadList(); showMsg($('mainMsg'), '部分删除失败，请重试', 'err'); }
+      });
+    });
+  }
+
+  // ---------- 媒体预览弹窗（音乐试听 / 视频预览 / 图片查看） ----------
+  function openPreview(it) {
+    var c = $('previewContent');
+    c.innerHTML = '';
+    var url = '/media/' + it.r2_key;
+    var el;
+    if (currentType === 'music') {
+      el = document.createElement('audio');
+      el.controls = true; el.autoplay = true; el.src = url;
+    } else if (currentType === 'video') {
+      el = document.createElement('video');
+      el.controls = true; el.autoplay = true; el.src = url;
+    } else {
+      el = document.createElement('img');
+      el.src = url; el.alt = it.title;
+    }
+    c.appendChild(el);
+    $('previewTitle').textContent = it.title + '（' + fmtSize(it.size) + '）';
+    $('previewModal').hidden = false;
+  }
+
+  function closePreview() {
+    $('previewContent').innerHTML = ''; // 移除节点即停止播放
+    $('previewModal').hidden = true;
+  }
+
+  $('previewClose').addEventListener('click', closePreview);
+  $('previewBackdrop').addEventListener('click', closePreview);
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape' && !$('previewModal').hidden) closePreview();
+  });
 
   function move(type, index, delta) {
     var arr = items[type];
@@ -685,11 +865,26 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
       if (!isUsers && !isAppear) {
         $('fileInput').accept = TYPE_EXT[currentType];
         $('titleInput').value = '';
+        selected = {}; // 换标签页清空勾选和搜索
+        $('searchInput').value = '';
+        $('selAll').checked = false;
+        $('batchDelBtn').hidden = true;
         renderList();
       }
     });
   });
   $('fileInput').accept = TYPE_EXT.music;
+  $('searchInput').addEventListener('input', renderList);
+  $('selAll').addEventListener('change', function () {
+    var checked = this.checked;
+    var q = ($('searchInput').value || '').trim().toLowerCase();
+    (items[currentType] || []).forEach(function (it) {
+      if (q && (it.title || '').toLowerCase().indexOf(q) === -1) return; // 只影响搜索结果里的
+      if (checked) selected[it.id] = true; else delete selected[it.id];
+    });
+    renderList();
+  });
+  $('batchDelBtn').addEventListener('click', deleteSelected);
 
   // ---------- 静态媒体自动同步 ----------
   // 打开后台即自动对比三个清单（images/manifest.json、music/playlist.json、video/playlist.json），
@@ -742,51 +937,160 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
 
   // ---------- 外观设置（站点默认主题色 / 默认背景图） ----------
 
-  // ---------- 上传（XHR 以显示进度） ----------
+  // ---------- 上传：多选 + 拖拽（含文件夹），队列逐个传，同名/超大/格式不符自动过滤 ----------
+  function extAllowed(f) {
+    var name = (f.name || '').toLowerCase();
+    var ok = false;
+    TYPE_EXT[currentType].split(',').forEach(function (ext) {
+      if (name.slice(-ext.length) === ext) ok = true;
+    });
+    return ok;
+  }
+
+  function uploadFiles(files) {
+    var all = Array.prototype.slice.call(files || []);
+    if (!all.length) return;
+    var MAX_SIZE = 24 * 1024 * 1024;
+    var existing = {};
+    (items[currentType] || []).forEach(function (it) {
+      var t = (it.title || '').toLowerCase();
+      existing[t] = true;
+      existing[t.replace(/\.[^.]+$/, '')] = true; // 同步进来的标题可能带扩展名，两种都算同名
+    });
+
+    var queue = [], skipped = [], oversize = [], wrongType = 0;
+    all.forEach(function (f) {
+      if (!extAllowed(f)) { wrongType++; return; }
+      if (f.size > MAX_SIZE) { oversize.push(f.name); return; }
+      var base = (f.name || '').replace(/\.[^.]+$/, '').toLowerCase();
+      if (existing[base] || existing[(f.name || '').toLowerCase()]) { skipped.push(f.name); return; }
+      queue.push(f);
+    });
+
+    if (!queue.length) {
+      var m = '没有需要上传的文件';
+      if (skipped.length) m += '（跳过同名 ' + skipped.length + ' 个）';
+      if (oversize.length) m += '（' + oversize.length + ' 个超过 24MB）';
+      if (wrongType) m += '（' + wrongType + ' 个格式不符）';
+      showMsg($('mainMsg'), m, 'err');
+      return;
+    }
+
+    var btn = $('uploadBtn');
+    var i = 0, okCount = 0, failCount = 0;
+    btn.disabled = true;
+    $('progress').style.display = 'block';
+
+    function next() {
+      if (i >= queue.length) {
+        btn.disabled = false;
+        $('progress').style.display = 'none';
+        $('progressBar').style.width = '0';
+        $('queueInfo').textContent = '';
+        $('fileInput').value = '';
+        $('titleInput').value = '';
+        var msg = '上传完成 ' + okCount + ' 个';
+        if (failCount) msg += '，失败 ' + failCount + ' 个';
+        if (skipped.length) msg += '，跳过同名 ' + skipped.length + ' 个';
+        if (oversize.length) msg += '，' + oversize.length + ' 个超过 24MB';
+        if (wrongType) msg += '，' + wrongType + ' 个格式不符';
+        showMsg($('mainMsg'), msg, failCount ? 'err' : 'ok');
+        loadList();
+        return;
+      }
+      var f = queue[i++];
+      $('queueInfo').textContent = '正在上传 ' + i + '/' + queue.length + '：' + f.name + '（' + fmtSize(f.size) + '）';
+      var form = new FormData();
+      form.append('type', currentType);
+      if (queue.length === 1 && $('titleInput').value.trim()) form.append('title', $('titleInput').value.trim());
+      form.append('file', f);
+
+      var xhr = new XMLHttpRequest();
+      xhr.open('POST', '/api/admin/upload');
+      xhr.withCredentials = true;
+      xhr.upload.onprogress = function (e) {
+        if (e.lengthComputable) {
+          var filePct = e.loaded / e.total;
+          var totalPct = ((i - 1) + filePct) / queue.length * 100;
+          $('progressBar').style.width = totalPct.toFixed(1) + '%';
+        }
+      };
+      xhr.onload = function () {
+        if (xhr.status === 200) {
+          try {
+            var data = JSON.parse(xhr.responseText);
+            if (data.ok) okCount++; else failCount++;
+          } catch (e) { failCount++; }
+        } else if (xhr.status === 401) {
+          show('login');
+          return; // 会话失效，终止队列
+        } else {
+          failCount++;
+        }
+        next();
+      };
+      xhr.onerror = function () { failCount++; next(); };
+      xhr.send(form);
+    }
+    next();
+  }
+
+  // 把拖拽进来的东西展开成文件列表（支持整个文件夹，递归读取）
+  function filesFromDataTransfer(dt, cb) {
+    var plain = [];
+    var entries = [];
+    if (dt.items && dt.items.length && dt.items[0].webkitGetAsEntry) {
+      for (var i = 0; i < dt.items.length; i++) {
+        if (dt.items[i].kind !== 'file') continue;
+        var entry = dt.items[i].webkitGetAsEntry();
+        if (entry) entries.push(entry);
+        else { var f = dt.items[i].getAsFile(); if (f) plain.push(f); }
+      }
+    }
+    if (!entries.length) { cb(Array.prototype.slice.call(dt.files || plain)); return; }
+
+    var out = [], left = entries.length;
+    function walk(entry) {
+      if (entry.isFile) {
+        entry.file(function (f) { out.push(f); settle(); }, settle);
+      } else if (entry.isDirectory) {
+        var reader = entry.createReader();
+        (function readBatch() {
+          reader.readEntries(function (batch) {
+            if (!batch.length) { settle(); return; }
+            batch.forEach(walk);
+            readBatch(); // readEntries 每次最多返回 100 条，读到空为止
+          }, settle);
+        })();
+      } else settle();
+    }
+    function settle() { if (--left === 0) cb(out.concat(plain)); }
+    entries.forEach(walk);
+  }
+
   $('uploadBtn').addEventListener('click', function () {
-    var btn = this;
     var fileEl = $('fileInput');
     if (!fileEl.files || !fileEl.files.length) {
       showMsg($('mainMsg'), '请先选择文件', 'err'); return;
     }
-    var form = new FormData();
-    form.append('type', currentType);
-    form.append('title', $('titleInput').value);
-    form.append('file', fileEl.files[0]);
+    uploadFiles(fileEl.files);
+  });
 
-    var xhr = new XMLHttpRequest();
-    xhr.open('POST', '/api/admin/upload');
-    xhr.withCredentials = true;
-    btn.disabled = true;
-    $('progress').style.display = 'block';
-    showMsg($('mainMsg'), '正在上传…');
-    xhr.upload.onprogress = function (e) {
-      if (e.lengthComputable) {
-        $('progressBar').style.width = Math.round(e.loaded / e.total * 100) + '%';
-      }
-    };
-    xhr.onload = function () {
-      btn.disabled = false;
-      $('progress').style.display = 'none';
-      $('progressBar').style.width = '0';
-      var data = {};
-      try { data = JSON.parse(xhr.responseText); } catch (e) {}
-      if (xhr.status === 200 && data.ok) {
-        fileEl.value = ''; $('titleInput').value = '';
-        showMsg($('mainMsg'), '上传成功', 'ok');
-        loadList();
-      } else if (xhr.status === 401) {
-        show('login');
-      } else {
-        showMsg($('mainMsg'), data.error || '上传失败', 'err');
-      }
-    };
-    xhr.onerror = function () {
-      btn.disabled = false;
-      $('progress').style.display = 'none';
-      showMsg($('mainMsg'), '网络错误，上传失败', 'err');
-    };
-    xhr.send(form);
+  // 拖拽上传：绑在整个媒体面板上；内部拖拽排序（dragFrom 有值）不抢
+  var mediaPanel = $('mediaPanel');
+  var uploadRow = $('uploadRow');
+  mediaPanel.addEventListener('dragover', function (e) {
+    e.preventDefault();
+    if (!dragFrom) uploadRow.classList.add('dragover');
+  });
+  mediaPanel.addEventListener('dragleave', function (e) {
+    if (!mediaPanel.contains(e.relatedTarget)) uploadRow.classList.remove('dragover');
+  });
+  mediaPanel.addEventListener('drop', function (e) {
+    uploadRow.classList.remove('dragover');
+    if (dragFrom) return; // 列表内部排序
+    e.preventDefault();
+    filesFromDataTransfer(e.dataTransfer, uploadFiles);
   });
 
   loadStatus();

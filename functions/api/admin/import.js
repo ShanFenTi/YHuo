@@ -45,7 +45,12 @@ export async function onRequestPost({ request, env }) {
     if (!title || existing.has(title)) { skipped.push(title || '(无标题)'); continue; }
 
     let url;
-    try { url = new URL(String(f.url || ''), request.url); } catch { skipped.push(title); continue; }
+    try {
+      const raw = String(f.url || '');
+      // 清单里是站点根相对路径（如 images/1.jpg）；直接拿 request.url 当 base
+      // 会解析到 /api/admin/* 下被会话门卫 401，必须按站点根解析
+      url = new URL(/^https?:\/\//.test(raw) || raw.startsWith('/') ? raw : '/' + raw, request.url);
+    } catch { skipped.push(title); continue; }
 
     let res;
     try { res = await fetch(url); } catch { skipped.push(title); continue; }

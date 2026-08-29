@@ -2,3 +2,8 @@
 .zcode/
 .design/
 *.bat
+node_modules/
+.wrangler/
+package.json
+package-lock.json
+动效.html

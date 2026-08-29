@@ -6,15 +6,15 @@ export async function onRequest({ request, env, params }) {
   const key = String(params.key || '').replace(/\/+$/, '');
   if (!key) return new Response('Not Found', { status: 404 });
 
-  // KV 有边缘缓存，同一地区的第二次读取走缓存，速度很快
-  const obj = await env.MEDIA.get(key, { type: 'arrayBuffer', cacheTtl: 300 });
+  // getWithMetadata 返回 { value, metadata }；KV 有边缘缓存，同地区第二次读取走缓存
+  const obj = await env.MEDIA.getWithMetadata(key, { type: 'arrayBuffer', cacheTtl: 300 });
   if (!obj || !obj.value) return new Response('Not Found', { status: 404 });
 
   const buf = obj.value;
   const size = buf.byteLength;
 
   const headers = new Headers();
-  headers.set('Content-Type', obj.metadata?.mime || 'application/octet-stream');
+  headers.set('Content-Type', (obj.metadata && obj.metadata.mime) || 'application/octet-stream');
   headers.set('Accept-Ranges', 'bytes');
   headers.set('Cache-Control', 'public, max-age=31536000'); // 键名含唯一 UUID，内容永不变化
 

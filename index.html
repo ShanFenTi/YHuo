@@ -2683,16 +2683,11 @@
         img.src = 'images/' + n + '.' + IMAGE_EXT[extIndex];
       }
 
-      // 优先读管理后台的图片清单（Cloudflare 部署时可用），失败再按老约定扫描本地 images/1..N
-      function loadGalleryStatic() {
-        imgPending = IMAGES.length;
-        IMAGES.forEach(function (n) {
-          tryImage(n, 0);
-        });
-      }
-      function loadGalleryApi(list) {
-        imgPending = list.length;
-        list.forEach(function (m, i) {
+      // 后台图片 + 本地 images/ 合并显示：后台的排前面，随后按老约定扫描 images/1..N
+      function startGallery(apiImages) {
+        var apiPart = (apiImages && apiImages.length) ? apiImages : [];
+        imgPending = apiPart.length + IMAGES.length;
+        apiPart.forEach(function (m, i) {
           var img = new Image();
           img.alt = m.name;
           img.onload = function () {
@@ -2701,16 +2696,16 @@
           img.onerror = function () { imgDone(); };
           img.src = m.url;
         });
+        IMAGES.forEach(function (n) {
+          tryImage(n, 0);
+        });
       }
       fetch('/api/playlist', { credentials: 'same-origin' })
         .then(function (res) { return res.ok ? res.json() : Promise.reject(new Error('无后台接口')); })
         .then(function (data) {
-          if (!data || !data.ok || !Array.isArray(data.images) || !data.images.length) {
-            throw new Error('后台图片清单为空');
-          }
-          loadGalleryApi(data.images);
+          startGallery(data && data.ok ? data.images : null);
         })
-        .catch(loadGalleryStatic);
+        .catch(function () { startGallery(null); });
 
       function imgDone() {
         imgPending--;
@@ -2925,20 +2920,33 @@
       videoList = list;
       playVideoAt(0);
     }
-    // 优先读管理后台的视频清单（Cloudflare 部署时可用），失败再走目录/静态清单兜底
+    // 后台清单 + 静态文件夹合并显示：后台的排前面，同名去重
     function autoLoadVideoFolder() {
-      fetch('/api/playlist', { credentials: 'same-origin' })
+      var apiList = null;
+      var staticList = null;
+      var apiP = fetch('/api/playlist', { credentials: 'same-origin' })
         .then(function (res) { return res.ok ? res.json() : Promise.reject(new Error('无后台接口')); })
         .then(function (data) {
-          if (!data || !data.ok || !Array.isArray(data.video) || !data.video.length) {
-            throw new Error('后台视频清单为空');
-          }
-          playVideoList(data.video);
+          if (data && data.ok && Array.isArray(data.video) && data.video.length) apiList = data.video;
         })
-        .catch(loadVideoFolderStatic);
+        .catch(function () {});
+      var staticP = loadVideoStaticNames()
+        .then(function (names) { staticList = names; })
+        .catch(function () {});
+      Promise.all([apiP, staticP]).then(function () {
+        var seen = {};
+        var combined = [];
+        [].concat(apiList || [], staticList || []).forEach(function (item) {
+          var n = typeof item === 'string' ? item : item.name;
+          if (seen[n]) return;
+          seen[n] = true;
+          combined.push(item);
+        });
+        if (combined.length) playVideoList(combined);
+      });
     }
-    function loadVideoFolderStatic() {
-      fetch('video/', { credentials: 'same-origin' })
+    function loadVideoStaticNames() {
+      return fetch('video/', { credentials: 'same-origin' })
         .then(function (res) {
           if (!res.ok) throw new Error('video 目录不可访问');
           return res.text();
@@ -2955,10 +2963,10 @@
           }
           // 与歌单同理：Cloudflare Pages 对不存在目录也返回 200，空结果必须抛错走清单兜底
           if (!names.length) throw new Error('目录列表中没有视频，改用清单文件');
-          playVideoList(names);
+          return names;
         })
         .catch(function () {
-          fetch('video/playlist.json', { credentials: 'same-origin' })
+          return fetch('video/playlist.json', { credentials: 'same-origin' })
             .then(function (res) {
               if (!res.ok) throw new Error('无清单文件');
               return res.json();
@@ -2967,7 +2975,7 @@
               if (!Array.isArray(names) || !names.length) throw new Error('清单为空');
               var list = names.filter(function (n) { return isVideoName(n); });
               if (!list.length) throw new Error('清单里没有视频');
-              playVideoList(list);
+              return list;
             })
             .catch(function () {});
         });
@@ -3432,21 +3440,34 @@
       next();
     }
 
-    // 自动读取曲库：优先管理后台接口（Cloudflare 部署时可用），失败再走 music 文件夹/清单兜底
+    // 自动读取曲库：后台清单 + music 文件夹合并，后台的排前面，同名去重
     function autoLoadMusicFolder() {
-      fetch('/api/playlist', { credentials: 'same-origin' })
+      var apiItems = null;
+      var staticNames = null;
+      var apiP = fetch('/api/playlist', { credentials: 'same-origin' })
         .then(function (res) { return res.ok ? res.json() : Promise.reject(new Error('无后台接口')); })
         .then(function (data) {
-          if (!data || !data.ok || !Array.isArray(data.music) || !data.music.length) {
-            throw new Error('后台歌单为空');
+          if (data && data.ok && Array.isArray(data.music) && data.music.length) {
+            apiItems = data.music.map(function (m) { return { name: m.name, url: m.url }; });
           }
-          loadMusicFiles(data.music.map(function (m) { return { name: m.name, url: m.url }; }));
         })
-        .catch(loadMusicFolderStatic);
+        .catch(function () {});
+      var staticP = loadMusicStaticNames()
+        .then(function (names) { staticNames = names; })
+        .catch(function () {});
+      Promise.all([apiP, staticP]).then(function () {
+        var combined = [].concat(apiItems || [], staticNames || []);
+        if (combined.length) { loadMusicFiles(combined); return; }
+        // 彻底失败（如 file:// 直接打开）：给出明确提示，并退回用浏览器缓存恢复曲目
+        if (!tracks.length && miniTitle && miniTitle.textContent === '曲库加载中…') {
+          miniTitle.textContent = '无法读取 music 文件夹，请通过本地服务器打开';
+        }
+        if (!tracks.length) restoreCachedTracks();
+      });
     }
 
-    function loadMusicFolderStatic() {
-      fetch('music/', { credentials: 'same-origin' })
+    function loadMusicStaticNames() {
+      return fetch('music/', { credentials: 'same-origin' })
         .then(function (res) {
           if (!res.ok) throw new Error('music 目录不可访问');
           return res.text();
@@ -3465,12 +3486,12 @@
           // Cloudflare Pages 对不存在的目录也返回 200 + 首页内容（SPA 回退），
           // 静默 return 会导致歌单永远加载不出来
           if (!names.length) throw new Error('目录列表中没有音频，改用清单文件');
-          loadMusicFiles(names);
+          return names;
         })
         .catch(function () {
           // 目录列表不可用时（GitHub Pages 等静态托管不支持）：
           // 退回读取清单文件 music/playlist.json（用"生成歌单.bat"维护）
-          fetch('music/playlist.json', { credentials: 'same-origin' })
+          return fetch('music/playlist.json', { credentials: 'same-origin' })
             .then(function (res) {
               if (!res.ok) throw new Error('无清单文件');
               return res.json();
@@ -3479,14 +3500,7 @@
               if (!Array.isArray(names) || !names.length) throw new Error('清单为空');
               var list = names.filter(function (n) { return isAudio(n); });
               if (!list.length) throw new Error('清单里没有音频');
-              loadMusicFiles(list);
-            })
-            .catch(function () {
-              // 彻底失败（如 file:// 直接打开）：给出明确提示，并退回用浏览器缓存恢复曲目
-              if (!tracks.length && miniTitle && miniTitle.textContent === '曲库加载中…') {
-                miniTitle.textContent = '无法读取 music 文件夹，请通过本地服务器打开';
-              }
-              if (!tracks.length) restoreCachedTracks();
+              return list;
             });
         });
     }

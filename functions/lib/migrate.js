@@ -30,6 +30,7 @@ const DDL = [
     username      TEXT NOT NULL UNIQUE,
     password_hash TEXT NOT NULL,
     salt          TEXT NOT NULL,
+    banned        INTEGER NOT NULL DEFAULT 0,
     created_at    TEXT NOT NULL DEFAULT (datetime('now'))
   )`,
   `CREATE TABLE IF NOT EXISTS user_sessions (
@@ -48,5 +49,9 @@ export async function ensureSchema(env) {
   for (const sql of DDL) {
     await env.DB.prepare(sql).run();
   }
+  // 老库补列：早期版本的 users 表没有 banned 列（列已存在时报错，忽略即可）
+  try {
+    await env.DB.prepare("ALTER TABLE users ADD COLUMN banned INTEGER NOT NULL DEFAULT 0").run();
+  } catch {}
   migrated = true;
 }

@@ -3943,9 +3943,9 @@
           return res.json().catch(function () { return { ok: false, error: '响应异常' }; });
         })
         .then(function (d) {
-          done(!!(d && d.ok), (d && d.error) || '服务暂时不可用，请稍后重试');
+          done(d && d.ok ? d : { ok: false, error: (d && d.error) || '服务暂时不可用，请稍后重试' });
         })
-        .catch(function () { done(false, '网络错误，请稍后重试'); })
+        .catch(function () { done({ ok: false, error: '网络错误，请稍后重试' }); })
         .then(function () { busyBtns.forEach(function (b) { if (b) b.disabled = false; }); });
     }
     function openGate() {
@@ -4042,9 +4042,18 @@
           var p = loginPass ? loginPass.value : '';
           if (!u || !p) { showLoginMsg('请填写账号和密码'); return; }
           showLoginMsg('登录中…');
-          authPost('/api/user/login', u, p, function (ok, msg) {
-            if (ok) { showLoginMsg(''); passGate(u); }
-            else showLoginMsg(msg);
+          authPost('/api/user/login', u, p, function (d) {
+            if (d.ok) {
+              showLoginMsg('');
+              // 管理员账号在主页登录：直接进入管理后台
+              if (d.admin) {
+                passGate(u);
+                location.href = '/admin';
+                return;
+              }
+              passGate(u);
+            }
+            else showLoginMsg(d.error);
           }, loginButtons);
         });
       }

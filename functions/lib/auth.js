@@ -93,14 +93,18 @@ export async function createUserSession(env, userId) {
   return token;
 }
 
-// 返回 { username } 或 null
+// 返回 { username } 或 null；被禁用的账号一律视为未登录
 export async function getUserSession(env, token) {
   if (!token) return null;
   const row = await env.DB
-    .prepare('SELECT s.user_id, s.expires_at, u.username FROM user_sessions s JOIN users u ON u.id = s.user_id WHERE s.token = ?')
+    .prepare('SELECT s.user_id, s.expires_at, u.username, u.banned FROM user_sessions s JOIN users u ON u.id = s.user_id WHERE s.token = ?')
     .bind(token)
     .first();
   if (!row) return null;
+  if (row.banned) {
+    await env.DB.prepare('DELETE FROM user_sessions WHERE token = ?').bind(token).run();
+    return null;
+  }
   if (row.expires_at < new Date().toISOString()) {
     await env.DB.prepare('DELETE FROM user_sessions WHERE token = ?').bind(token).run();
     return null;

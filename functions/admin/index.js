@@ -14,16 +14,26 @@ const PAGE = `<!DOCTYPE html>
   body {
     min-height: 100vh;
     display: flex; flex-direction: column; align-items: center;
-    padding: 40px 16px;
-    background: #f5f5f7; color: #1d1d1f;
+    padding: 36px 16px 60px;
+    background: linear-gradient(180deg, #eef1f6 0%, #f5f5f7 240px);
+    color: #1d1d1f;
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
   }
-  header { width: 100%; max-width: 760px; display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; }
-  header h1 { font-size: 20px; font-weight: 600; }
+  header { width: 100%; max-width: 860px; display: flex; align-items: center; justify-content: space-between; margin-bottom: 22px; }
+  .brand { display: flex; align-items: center; gap: 12px; }
+  .brand .mark {
+    width: 42px; height: 42px; border-radius: 12px;
+    background: linear-gradient(135deg, #0a84ff, #5e5ce6);
+    color: #fff; font-weight: 700; font-size: 15px; letter-spacing: .05em;
+    display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 6px 16px rgba(10, 132, 255, .35);
+  }
+  .brand h1 { font-size: 19px; font-weight: 700; }
+  .brand p { font-size: 12px; color: #86868b; margin-top: 2px; }
   .card {
-    width: 100%; max-width: 760px;
-    background: #fff; border-radius: 16px; padding: 28px;
-    box-shadow: 0 1px 3px rgba(0,0,0,.08);
+    width: 100%; max-width: 860px;
+    background: #fff; border-radius: 18px; padding: 24px;
+    box-shadow: 0 1px 3px rgba(0,0,0,.06), 0 12px 32px rgba(0,0,0,.05);
   }
   .hint { color: #86868b; font-size: 13px; line-height: 1.6; margin-bottom: 16px; }
   input[type=text], input[type=password] {
@@ -34,41 +44,75 @@ const PAGE = `<!DOCTYPE html>
   button {
     padding: 9px 18px; border: none; border-radius: 10px; font-size: 14px;
     background: #0071e3; color: #fff; cursor: pointer;
+    transition: background .15s, transform .1s, opacity .15s;
   }
   button:hover { background: #0077ed; }
-  button.ghost { background: #e8e8ed; color: #1d1d1f; }
-  button.ghost:hover { background: #dddde2; }
-  button.danger { background: #e8e8ed; color: #d70015; }
+  button:active { transform: scale(.97); }
+  button.ghost { background: #ececf0; color: #1d1d1f; }
+  button.ghost:hover { background: #e0e0e5; }
+  button.danger { background: #ececf0; color: #d70015; }
+  button.danger:hover { background: #fbe9eb; }
   button:disabled { opacity: .5; cursor: default; }
   .msg { min-height: 18px; font-size: 13px; margin-top: 10px; }
   .msg.err { color: #d70015; }
   .msg.ok { color: #008a00; }
-  .tabs { display: flex; gap: 8px; margin-bottom: 20px; }
-  .tabs button { background: #e8e8ed; color: #1d1d1f; }
-  .tabs button.active { background: #1d1d1f; color: #fff; }
-  .upload-row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; padding: 14px; background: #f5f5f7; border-radius: 12px; }
+  .tabs { display: flex; gap: 6px; margin-bottom: 20px; background: #ececf0; padding: 4px; border-radius: 12px; width: fit-content; }
+  .tabs button { background: transparent; color: #1d1d1f; padding: 8px 18px; border-radius: 9px; }
+  .tabs button.active { background: #fff; color: #1d1d1f; font-weight: 600; box-shadow: 0 1px 4px rgba(0,0,0,.12); }
+  .stats { width: 100%; max-width: 860px; display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-bottom: 22px; }
+  .stat {
+    background: #fff; border-radius: 16px; padding: 16px 18px;
+    box-shadow: 0 1px 3px rgba(0,0,0,.05);
+    display: flex; align-items: center; gap: 14px;
+  }
+  .stat .ico { width: 40px; height: 40px; border-radius: 11px; display: flex; align-items: center; justify-content: center; font-size: 19px; }
+  .stat .num { font-size: 22px; font-weight: 700; line-height: 1.1; }
+  .stat .lbl { font-size: 12px; color: #86868b; }
+  .upload-row {
+    display: flex; gap: 10px; flex-wrap: wrap; align-items: center;
+    padding: 14px; background: #f5f5f7; border-radius: 14px;
+    border: 1.5px dashed #d2d2d7;
+  }
   .upload-row input[type=text] { flex: 1 1 160px; margin: 0; }
   .upload-row input[type=file] { font-size: 13px; max-width: 260px; }
   .progress { height: 4px; background: #e8e8ed; border-radius: 2px; margin-top: 12px; overflow: hidden; display: none; }
-  .progress i { display: block; height: 100%; width: 0; background: #0071e3; transition: width .2s; }
-  ul.list { list-style: none; padding: 0; margin-top: 18px; }
+  .progress i { display: block; height: 100%; width: 0; background: linear-gradient(90deg, #0a84ff, #5e5ce6); transition: width .2s; }
+  ul.list { list-style: none; padding: 0; margin-top: 14px; }
   ul.list li {
-    display: flex; align-items: center; gap: 8px;
-    padding: 10px 4px; border-bottom: 1px solid #f0f0f2; font-size: 14px;
+    display: flex; align-items: center; gap: 10px;
+    padding: 11px 8px; border-bottom: 1px solid #f0f0f2; font-size: 14px;
+    border-radius: 8px;
+    transition: background .15s, box-shadow .15s;
   }
+  ul.list li.dragging { opacity: .45; }
+  ul.list li.dragover { box-shadow: inset 0 2px 0 #0a84ff; }
+  ul.list li .handle { color: #c7c7cc; cursor: grab; font-size: 15px; letter-spacing: -2px; user-select: none; padding: 0 2px; }
   ul.list li .title { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; cursor: pointer; }
   ul.list li .title:hover { color: #0071e3; }
   ul.list li .meta { color: #86868b; font-size: 12px; white-space: nowrap; }
   ul.list li button { padding: 5px 10px; font-size: 12px; border-radius: 8px; }
-  .empty { color: #86868b; font-size: 14px; text-align: center; padding: 30px 0; }
+  .empty { color: #86868b; font-size: 14px; text-align: center; padding: 34px 0; }
+  .avatar {
+    width: 34px; height: 34px; border-radius: 50%; flex: none;
+    color: #fff; font-size: 15px; font-weight: 600;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .badge { font-size: 11px; padding: 2px 8px; border-radius: 99px; white-space: nowrap; }
+  .badge.ok { background: #e8f6e8; color: #008a00; }
+  .badge.banned { background: #fbe9eb; color: #d70015; }
   [hidden] { display: none !important; }
   footer { margin-top: 24px; font-size: 12px; color: #86868b; }
-  footer a { color: inherit; }
 </style>
 </head>
 <body>
 <header>
-  <h1>YHuo 管理后台</h1>
+  <div class="brand">
+    <div class="mark">YH</div>
+    <div>
+      <h1>YHuo 管理后台</h1>
+      <p>内容与用户一站式管理</p>
+    </div>
+  </div>
   <button id="logoutBtn" class="ghost" hidden>退出登录</button>
 </header>
 
@@ -95,26 +139,41 @@ const PAGE = `<!DOCTYPE html>
   <div class="msg" id="netMsg"></div>
 </div>
 
+<div class="stats" id="stats" hidden>
+  <div class="stat"><div class="ico" style="background:#e8f1ff">🎵</div><div><div class="num" id="statMusic">0</div><div class="lbl">音乐</div></div></div>
+  <div class="stat"><div class="ico" style="background:#f0ebff">🎬</div><div><div class="num" id="statVideo">0</div><div class="lbl">视频</div></div></div>
+  <div class="stat"><div class="ico" style="background:#ffeef2">🖼️</div><div><div class="num" id="statImage">0</div><div class="lbl">图片</div></div></div>
+  <div class="stat"><div class="ico" style="background:#e8f6e8">👥</div><div><div class="num" id="statUsers">0</div><div class="lbl">注册用户</div></div></div>
+</div>
+
 <div class="card" id="mainCard" hidden>
   <div class="tabs">
     <button data-type="music" class="active">音乐</button>
     <button data-type="video">视频</button>
     <button data-type="image">图片</button>
+    <button data-type="users">用户</button>
   </div>
 
-  <div class="upload-row">
-    <input type="file" id="fileInput">
-    <input type="text" id="titleInput" placeholder="显示名称（可选，默认用文件名）">
-    <button id="uploadBtn">上传</button>
+  <div id="mediaPanel">
+    <div class="upload-row">
+      <input type="file" id="fileInput">
+      <input type="text" id="titleInput" placeholder="显示名称（可选，默认用文件名）">
+      <button id="uploadBtn">上传</button>
+    </div>
+    <div class="progress" id="progress"><i id="progressBar"></i></div>
+    <div class="msg" id="mainMsg"></div>
+    <ul class="list" id="list"></ul>
+    <div class="empty" id="empty" hidden>还没有内容，先上传一个文件吧。也可以拖动条目调整顺序。</div>
   </div>
-  <div class="progress" id="progress"><i id="progressBar"></i></div>
-  <div class="msg" id="mainMsg"></div>
 
-  <ul class="list" id="list"></ul>
-  <div class="empty" id="empty" hidden>还没有内容，先上传一个文件吧。</div>
+  <div id="userPanel" hidden>
+    <div class="msg" id="userMsg"></div>
+    <ul class="list" id="userList"></ul>
+    <div class="empty" id="userEmpty" hidden>还没有用户注册。</div>
+  </div>
 </div>
 
-<footer>文件存放在 Cloudflare KV（单文件上限 24MB），删除即彻底删除，操作前请确认。</footer>
+<footer>文件存放在 Cloudflare KV（单文件上限 24MB）；删除与禁用操作即时生效，请谨慎确认。</footer>
 
 <script>
 (function () {
@@ -126,8 +185,10 @@ const PAGE = `<!DOCTYPE html>
     video: '.mp4,.webm,.mov,.m4v,.ogv',
     image: '.jpg,.jpeg,.png,.gif,.webp,.svg,.avif,.bmp'
   };
+  var AVATAR_COLORS = ['#0a84ff', '#5e5ce6', '#bf5af2', '#ff375f', '#ff9f0a', '#30d158', '#64d2ff'];
   var currentType = 'music';
   var items = { music: [], video: [], image: [] };
+  var users = [];
 
   function escapeHtml(s) {
     return String(s).replace(/[&<>"']/g, function (c) {
@@ -139,6 +200,9 @@ const PAGE = `<!DOCTYPE html>
     if (n < 1024 * 1024) return (n / 1024).toFixed(0) + ' KB';
     return (n / 1024 / 1024).toFixed(1) + ' MB';
   }
+  function fmtDate(s) {
+    return s ? String(s).replace('T', ' ').slice(0, 16) : '';
+  }
   function showMsg(el, text, cls) {
     el.textContent = text || '';
     el.className = 'msg' + (cls ? ' ' + cls : '');
@@ -147,7 +211,6 @@ const PAGE = `<!DOCTYPE html>
   function api(path, opts) {
     opts = opts || {};
     opts.credentials = 'same-origin';
-    // 网络挂起时 20 秒自动中断，避免"点了没反应"
     if (typeof AbortController === 'function') {
       var ctl = new AbortController();
       opts.signal = ctl.signal;
@@ -165,6 +228,7 @@ const PAGE = `<!DOCTYPE html>
     $('loginCard').hidden = name !== 'login';
     $('neterrCard').hidden = name !== 'neterr';
     $('mainCard').hidden = name !== 'main';
+    $('stats').hidden = name !== 'main';
     $('logoutBtn').hidden = name !== 'main';
   }
 
@@ -227,6 +291,14 @@ const PAGE = `<!DOCTYPE html>
   function enterMain() {
     show('main');
     loadList();
+    loadUsers();
+  }
+
+  function refreshStats() {
+    $('statMusic').textContent = items.music.length;
+    $('statVideo').textContent = items.video.length;
+    $('statImage').textContent = items.image.length;
+    $('statUsers').textContent = users.length;
   }
 
   function loadList() {
@@ -234,8 +306,19 @@ const PAGE = `<!DOCTYPE html>
       if (data.ok) {
         items = data.items;
         renderList();
+        refreshStats();
       } else if (data._status === 401) {
         show('login');
+      }
+    }).catch(function () {});
+  }
+
+  function loadUsers() {
+    api('/api/admin/users').then(function (data) {
+      if (data.ok) {
+        users = data.users;
+        renderUsers();
+        refreshStats();
       }
     }).catch(function () {});
   }
@@ -247,6 +330,12 @@ const PAGE = `<!DOCTYPE html>
     $('empty').hidden = arr.length > 0;
     arr.forEach(function (it, i) {
       var li = document.createElement('li');
+      li.draggable = true;
+
+      var handle = document.createElement('span');
+      handle.className = 'handle';
+      handle.textContent = '⠿';
+      handle.title = '拖动排序';
 
       var title = document.createElement('span');
       title.className = 'title';
@@ -270,8 +359,50 @@ const PAGE = `<!DOCTYPE html>
       del.className = 'danger'; del.textContent = '删除';
       del.addEventListener('click', function () { removeItem(it); });
 
-      li.appendChild(title); li.appendChild(meta); li.appendChild(up); li.appendChild(down); li.appendChild(del);
+      li.appendChild(handle); li.appendChild(title); li.appendChild(meta);
+      li.appendChild(up); li.appendChild(down); li.appendChild(del);
+      addDragHandlers(li, currentType, i);
       list.appendChild(li);
+    });
+  }
+
+  // ---------- 拖拽排序 ----------
+  var dragFrom = null;
+  function addDragHandlers(li, type, index) {
+    li.addEventListener('dragstart', function (e) {
+      dragFrom = { type: type, index: index };
+      li.classList.add('dragging');
+      if (e.dataTransfer) e.dataTransfer.effectAllowed = 'move';
+    });
+    li.addEventListener('dragend', function () {
+      dragFrom = null;
+      li.classList.remove('dragging');
+    });
+    li.addEventListener('dragover', function (e) {
+      e.preventDefault();
+      if (dragFrom && dragFrom.type === type) li.classList.add('dragover');
+    });
+    li.addEventListener('dragleave', function () { li.classList.remove('dragover'); });
+    li.addEventListener('drop', function (e) {
+      e.preventDefault();
+      li.classList.remove('dragover');
+      if (!dragFrom || dragFrom.type !== type || dragFrom.index === index) return;
+      var arr = items[type];
+      var ids = arr.map(function (x) { return x.id; });
+      var moved = ids.splice(dragFrom.index, 1)[0];
+      ids.splice(index, 0, moved);
+      reorder(type, ids);
+    });
+  }
+
+  function reorder(type, ids) {
+    api('/api/admin/media', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ type: type, ids: ids })
+    }).then(function (data) {
+      if (data.ok) { loadList(); showMsg($('mainMsg'), '顺序已更新', 'ok'); }
+      else showMsg($('mainMsg'), data.error || '操作失败', 'err');
     });
   }
 
@@ -304,30 +435,90 @@ const PAGE = `<!DOCTYPE html>
     var target = index + delta;
     if (target < 0 || target >= ids.length) return;
     var tmp = ids[index]; ids[index] = ids[target]; ids[target] = tmp;
-    api('/api/admin/media', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ type: type, ids: ids })
-    }).then(function (data) {
-      if (data.ok) loadList();
-      else showMsg($('mainMsg'), data.error || '操作失败', 'err');
+    reorder(type, ids);
+  }
+
+  // ---------- 用户管理 ----------
+  function renderUsers() {
+    var list = $('userList');
+    list.innerHTML = '';
+    $('userEmpty').hidden = users.length > 0;
+    users.forEach(function (u) {
+      var li = document.createElement('li');
+
+      var avatar = document.createElement('div');
+      avatar.className = 'avatar';
+      avatar.style.background = AVATAR_COLORS[(u.username || '?').charCodeAt(0) % AVATAR_COLORS.length];
+      avatar.textContent = (u.username || '?').slice(0, 1).toUpperCase();
+
+      var title = document.createElement('span');
+      title.className = 'title';
+      title.textContent = u.username;
+
+      var badge = document.createElement('span');
+      badge.className = 'badge ' + (u.banned ? 'banned' : 'ok');
+      badge.textContent = u.banned ? '已禁用' : '正常';
+
+      var meta = document.createElement('span');
+      meta.className = 'meta';
+      meta.textContent = '注册于 ' + fmtDate(u.created_at);
+
+      var ban = document.createElement('button');
+      ban.className = 'ghost';
+      ban.textContent = u.banned ? '解封' : '禁用';
+      ban.addEventListener('click', function () { setBanned(u, !u.banned); });
+
+      var del = document.createElement('button');
+      del.className = 'danger';
+      del.textContent = '删除';
+      del.addEventListener('click', function () { removeUser(u); });
+
+      li.appendChild(avatar); li.appendChild(title); li.appendChild(badge); li.appendChild(meta);
+      li.appendChild(ban); li.appendChild(del);
+      list.appendChild(li);
     });
   }
 
-  // ---------- 上传（XHR 以显示进度） ----------
+  function setBanned(u, banned) {
+    if (banned && !confirm('禁用「' + u.username + '」？该用户会立即被踢下线且无法再登录。')) return;
+    api('/api/admin/users/' + u.id, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ banned: banned })
+    }).then(function (data) {
+      if (data.ok) { loadUsers(); showMsg($('userMsg'), banned ? '已禁用' : '已解封', 'ok'); }
+      else showMsg($('userMsg'), data.error || '操作失败', 'err');
+    });
+  }
+
+  function removeUser(u) {
+    if (!confirm('彻底删除账号「' + u.username + '」？此操作不可恢复。')) return;
+    api('/api/admin/users/' + u.id, { method: 'DELETE' }).then(function (data) {
+      if (data.ok) { loadUsers(); showMsg($('userMsg'), '账号已删除', 'ok'); }
+      else showMsg($('userMsg'), data.error || '删除失败', 'err');
+    });
+  }
+
+  // ---------- 标签页 ----------
   var tabs = document.querySelectorAll('.tabs button');
   tabs.forEach(function (btn) {
     btn.addEventListener('click', function () {
       tabs.forEach(function (b) { b.classList.remove('active'); });
       btn.classList.add('active');
       currentType = btn.getAttribute('data-type');
-      $('fileInput').accept = TYPE_EXT[currentType];
-      $('titleInput').value = '';
-      renderList();
+      var isUsers = currentType === 'users';
+      $('mediaPanel').hidden = isUsers;
+      $('userPanel').hidden = !isUsers;
+      if (!isUsers) {
+        $('fileInput').accept = TYPE_EXT[currentType];
+        $('titleInput').value = '';
+        renderList();
+      }
     });
   });
   $('fileInput').accept = TYPE_EXT.music;
 
+  // ---------- 上传（XHR 以显示进度） ----------
   $('uploadBtn').addEventListener('click', function () {
     var btn = this;
     var fileEl = $('fileInput');

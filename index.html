@@ -3292,7 +3292,10 @@
             var name = decodeURIComponent(href);
             if (isAudio(name) && names.indexOf(name) === -1) names.push(name);
           }
-          if (!names.length) return;
+          // 没解析到音频时必须抛错走清单兜底：
+          // Cloudflare Pages 对不存在的目录也返回 200 + 首页内容（SPA 回退），
+          // 静默 return 会导致歌单永远加载不出来
+          if (!names.length) throw new Error('目录列表中没有音频，改用清单文件');
           loadMusicFiles(names);
         })
         .catch(function () {

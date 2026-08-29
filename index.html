@@ -3302,6 +3302,16 @@
       }
       bgLayer.style.backgroundImage = 'url(' + src + ')';
       document.body.classList.add('has-custom-bg');
+      // 图片已不存在（如站内图片被删除）时自动清除，避免整页空白背景。
+      // 加时间参数绕过浏览器缓存，确保探测的是服务器上的真实状态
+      var probe = new Image();
+      probe.onerror = function () {
+        if (bgLayer.style.backgroundImage.indexOf(src) !== -1) {
+          applyCustomBg(null);
+          try { localStorage.removeItem(BG_SRC_KEY); } catch (e) {}
+        }
+      };
+      probe.src = src + (src.indexOf('?') === -1 ? '?' : '&') + '_ck=' + Date.now();
     }
 
     function openBgPicker() {

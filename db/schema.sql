@@ -1,0 +1,32 @@
+-- YHuo 管理后台数据库表结构
+-- 用法：Cloudflare 控制台 → Storage & Databases → D1 → 创建数据库 yhuo-db
+--       → 打开 Console，整段粘贴执行（可以重复执行，不会破坏已有数据）
+
+-- 管理员（只有一个超级管理员，首次打开 /admin 时也可以在页面上创建）
+CREATE TABLE IF NOT EXISTS admin_users (
+  id            INTEGER PRIMARY KEY AUTOINCREMENT,
+  username      TEXT NOT NULL UNIQUE,
+  password_hash TEXT NOT NULL,             -- PBKDF2-SHA256，十六进制
+  salt          TEXT NOT NULL,             -- 随机盐，十六进制
+  created_at    TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+-- 登录会话（HttpOnly Cookie 里只存 token，服务器查这张表）
+CREATE TABLE IF NOT EXISTS sessions (
+  token      TEXT PRIMARY KEY,
+  expires_at TEXT NOT NULL,                -- ISO 时间，过期即失效
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+-- 媒体清单：音乐 / 视频 / 图片的元数据，文件本体存在 R2 里
+CREATE TABLE IF NOT EXISTS media (
+  id         INTEGER PRIMARY KEY AUTOINCREMENT,
+  type       TEXT NOT NULL CHECK (type IN ('music', 'video', 'image')),
+  title      TEXT NOT NULL,                -- 前台显示名
+  r2_key     TEXT NOT NULL UNIQUE,         -- R2 里的存储键
+  mime       TEXT,
+  size       INTEGER,
+  sort_order INTEGER NOT NULL DEFAULT 0,   -- 后台可调整顺序
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_media_type_order ON media (type, sort_order, id);

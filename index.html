@@ -2539,7 +2539,7 @@
       // 约定：图片命名为 1、2、3… 放入 images 文件夹，自动尝试多种格式
       var IMAGES = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
       var IMAGE_EXT = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'bmp', 'avif'];
-      var imgPending = IMAGES.length;
+      var imgPending = 0; // 等加载路径确定（后台接口或本地扫描）后再计数
       var loadedImgs = [];
 
       // 散落网格布局：按已加载图片数量计算行列，数量变化/窗口缩放时自动重排
@@ -2651,6 +2651,21 @@
         updateLbCounter();
       }
 
+      function addGalleryImg(img, n) {
+        // 每张图带一点确定性倾斜/抖动，保留照片随手摆放的感觉
+        img.style.setProperty('--tilt', (((n * 47) % 17) - 8) + 'deg');
+        img.style.setProperty('--jx', (((n * 29) % 21) - 10) + 'px');
+        img.style.setProperty('--jy', (((n * 13) % 15) - 7) + 'px');
+        img.style.zIndex = n;
+        img.addEventListener('click', function () {
+          openLightbox(loadedImgs.indexOf(img));
+        });
+        loadedImgs.push(img);
+        gallery.appendChild(img);
+        layoutGallery();
+        imgDone();
+      }
+
       function tryImage(n, extIndex) {
         if (extIndex >= IMAGE_EXT.length) {
           imgDone();
@@ -2659,18 +2674,7 @@
         var img = new Image();
         img.alt = 'image ' + n;
         img.onload = function () {
-          // 每张图带一点确定性倾斜/抖动，保留照片随手摆放的感觉
-          img.style.setProperty('--tilt', (((n * 47) % 17) - 8) + 'deg');
-          img.style.setProperty('--jx', (((n * 29) % 21) - 10) + 'px');
-          img.style.setProperty('--jy', (((n * 13) % 15) - 7) + 'px');
-          img.style.zIndex = n;
-          img.addEventListener('click', function () {
-            openLightbox(loadedImgs.indexOf(img));
-          });
-          loadedImgs.push(img);
-          gallery.appendChild(img);
-          layoutGallery();
-          imgDone();
+          addGalleryImg(img, n);
         };
         img.onerror = function () {
           tryImage(n, extIndex + 1);
@@ -2679,9 +2683,34 @@
         img.src = 'images/' + n + '.' + IMAGE_EXT[extIndex];
       }
 
-      IMAGES.forEach(function (n) {
-        tryImage(n, 0);
-      });
+      // 优先读管理后台的图片清单（Cloudflare 部署时可用），失败再按老约定扫描本地 images/1..N
+      function loadGalleryStatic() {
+        imgPending = IMAGES.length;
+        IMAGES.forEach(function (n) {
+          tryImage(n, 0);
+        });
+      }
+      function loadGalleryApi(list) {
+        imgPending = list.length;
+        list.forEach(function (m, i) {
+          var img = new Image();
+          img.alt = m.name;
+          img.onload = function () {
+            addGalleryImg(img, i + 1);
+          };
+          img.onerror = function () { imgDone(); };
+          img.src = m.url;
+        });
+      }
+      fetch('/api/playlist', { credentials: 'same-origin' })
+        .then(function (res) { return res.ok ? res.json() : Promise.reject(new Error('无后台接口')); })
+        .then(function (data) {
+          if (!data || !data.ok || !Array.isArray(data.images) || !data.images.length) {
+            throw new Error('后台图片清单为空');
+          }
+          loadGalleryApi(data.images);
+        })
+        .catch(loadGalleryStatic);
 
       function imgDone() {
         imgPending--;
@@ -2881,18 +2910,34 @@
     function isVideoName(n) {
       return /\.(mp4|webm|mov|m4v|ogv)$/i.test(n);
     }
+    function videoSrcOf(item) {
+      if (typeof item === 'string') return 'video/' + encodeURIComponent(item);
+      return item.url || 'video/' + encodeURIComponent(item.name);
+    }
     function playVideoAt(i) {
       if (!homeVideo || !videoList.length) return;
       videoIndex = ((i % videoList.length) + videoList.length) % videoList.length;
-      homeVideo.src = 'video/' + encodeURIComponent(videoList[videoIndex]);
+      homeVideo.src = videoSrcOf(videoList[videoIndex]);
       var p = homeVideo.play();
       if (p && p.catch) p.catch(function () {});
     }
-    function playVideoList(names) {
-      videoList = names;
+    function playVideoList(list) {
+      videoList = list;
       playVideoAt(0);
     }
+    // 优先读管理后台的视频清单（Cloudflare 部署时可用），失败再走目录/静态清单兜底
     function autoLoadVideoFolder() {
+      fetch('/api/playlist', { credentials: 'same-origin' })
+        .then(function (res) { return res.ok ? res.json() : Promise.reject(new Error('无后台接口')); })
+        .then(function (data) {
+          if (!data || !data.ok || !Array.isArray(data.video) || !data.video.length) {
+            throw new Error('后台视频清单为空');
+          }
+          playVideoList(data.video);
+        })
+        .catch(loadVideoFolderStatic);
+    }
+    function loadVideoFolderStatic() {
       fetch('video/', { credentials: 'same-origin' })
         .then(function (res) {
           if (!res.ok) throw new Error('video 目录不可访问');
@@ -3387,8 +3432,20 @@
       next();
     }
 
-    // 自动读取 music 文件夹
+    // 自动读取曲库：优先管理后台接口（Cloudflare 部署时可用），失败再走 music 文件夹/清单兜底
     function autoLoadMusicFolder() {
+      fetch('/api/playlist', { credentials: 'same-origin' })
+        .then(function (res) { return res.ok ? res.json() : Promise.reject(new Error('无后台接口')); })
+        .then(function (data) {
+          if (!data || !data.ok || !Array.isArray(data.music) || !data.music.length) {
+            throw new Error('后台歌单为空');
+          }
+          loadMusicFiles(data.music.map(function (m) { return { name: m.name, url: m.url }; }));
+        })
+        .catch(loadMusicFolderStatic);
+    }
+
+    function loadMusicFolderStatic() {
       fetch('music/', { credentials: 'same-origin' })
         .then(function (res) {
           if (!res.ok) throw new Error('music 目录不可访问');
@@ -3434,15 +3491,57 @@
         });
     }
 
-    function loadMusicFiles(names) {
+    function loadMusicFiles(items) {
       // 合并模式：只补充列表里没有的新文件，不覆盖已恢复的会话
+      // items 可以是文件名数组（静态目录模式）或 {name, url} 数组（后台接口模式）
+      var nameOf = function (it) { return typeof it === 'string' ? it : it.name; };
       var existing = {};
       tracks.forEach(function (t) { existing[t.name] = true; });
-      var fresh = names.filter(function (n) { return !existing[n]; });
+      var fresh = items.filter(function (it) { return !existing[nameOf(it)]; });
       if (!fresh.length) return;
       var pending = fresh.length;
       var added = 0;
-      fresh.forEach(function (name) {
+      // 接口模式：直接挂流地址播放（不整文件下载进缓存），顺序以接口返回为准
+      var apiMode = fresh.some(function (it) { return typeof it !== 'string' && it.url; });
+      var order = {};
+      items.forEach(function (it, i) {
+        var n = nameOf(it);
+        if (!(n in order)) order[n] = i;
+      });
+
+      function trackDone() {
+        pending--;
+        if (pending === 0 && added) {
+          if (apiMode) {
+            tracks.sort(function (a, b) {
+              return (order[a.name] !== undefined ? order[a.name] : 1e9) -
+                     (order[b.name] !== undefined ? order[b.name] : 1e9);
+            });
+          } else {
+            tracks.sort(function (a, b) {
+              return a.name.localeCompare(b.name, 'zh-Hans-CN');
+            });
+          }
+          syncCurrentByName();
+          finishMusicLoad();
+          saveMeta();
+        }
+      }
+
+      fresh.forEach(function (item) {
+        var name = nameOf(item);
+        if (typeof item !== 'string' && item.url) {
+          var dup = false;
+          for (var i = 0; i < tracks.length; i++) {
+            if (tracks[i].name === name) { dup = true; break; }
+          }
+          if (!dup) {
+            tracks.push({ name: name, src: item.url });
+            added++;
+          }
+          trackDone();
+          return;
+        }
         fetch('music/' + encodeURIComponent(name))
           .then(function (res) {
             if (!res.ok) throw new Error('读取失败');
@@ -3462,17 +3561,7 @@
             }
           })
           .catch(function () {})
-          .then(function () {
-            pending--;
-            if (pending === 0 && added) {
-              tracks.sort(function (a, b) {
-                return a.name.localeCompare(b.name, 'zh-Hans-CN');
-              });
-              syncCurrentByName();
-              finishMusicLoad();
-              saveMeta();
-            }
-          });
+          .then(trackDone);
       });
     }
 

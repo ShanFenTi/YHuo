@@ -89,6 +89,12 @@ const PAGE = `<!DOCTYPE html>
   <div class="msg" id="loginMsg"></div>
 </div>
 
+<div class="card" id="neterrCard" hidden>
+  <p class="hint">无法连接服务器。你的网络访问 Cloudflare 可能不稳定，请稍候点击重试（或检查代理/VPN）。</p>
+  <button id="retryBtn">重试</button>
+  <div class="msg" id="netMsg"></div>
+</div>
+
 <div class="card" id="mainCard" hidden>
   <div class="tabs">
     <button data-type="music" class="active">音乐</button>
@@ -151,18 +157,28 @@ const PAGE = `<!DOCTYPE html>
   function show(name) {
     $('setupCard').hidden = name !== 'setup';
     $('loginCard').hidden = name !== 'login';
+    $('neterrCard').hidden = name !== 'neterr';
     $('mainCard').hidden = name !== 'main';
     $('logoutBtn').hidden = name !== 'main';
   }
 
-  function loadStatus() {
+  // 自动重试 3 次：网络抖动时误显示登录表单会让人误以为账号丢了
+  function loadStatus(tries) {
+    tries = tries || 0;
     api('/api/auth/status').then(function (data) {
-      if (!data || !data.ok) { show('login'); return; }
+      if (!data || !data.ok) { show('neterr'); return; }
       if (!data.initialized) show('setup');
       else if (data.authenticated) enterMain();
       else show('login');
-    }).catch(function () { show('login'); });
+    }).catch(function () {
+      if (tries < 2) setTimeout(function () { loadStatus(tries + 1); }, 1200);
+      else show('neterr');
+    });
   }
+  $('retryBtn').addEventListener('click', function () {
+    showMsg($('netMsg'), '正在重试…');
+    loadStatus(0);
+  });
 
   // ---------- 初始化 / 登录 / 退出 ----------
   $('setupBtn').addEventListener('click', function () {

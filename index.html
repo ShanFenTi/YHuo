@@ -1380,6 +1380,11 @@
       color: var(--apple-foreground);
     }
 
+    /* 页脚运行时长：数字等宽避免每秒跳动 */
+    .uptime {
+      font-variant-numeric: tabular-nums;
+    }
+
     /* ===== Back to Top Button ===== */
     .back-top {
       position: fixed;
@@ -2294,7 +2299,7 @@
 
   <!-- 页脚 -->
   <footer class="site-footer">
-    <p>&copy; 2026 YHuo</p>
+    <p>&copy; 2026 YHuo<span class="uptime" id="siteUptime" title="自 2026-08-29 起运行"> · 已运行 0 天 0 时 0 分 0 秒</span></p>
     <a href="#home" id="footerTop">回到顶部 <svg class="svg-icon inline-arrow" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 7-7 7 7"/><path d="M12 19V5"/></svg></a>
   </footer>
 
@@ -4028,6 +4033,20 @@
         });
       }
     }
+    // 页脚：网站运行时长（起点为网站启用时间；如调整上线时间，改 SITE_BIRTH 即可）
+    var SITE_BIRTH = new Date('2026-08-29T12:42:07+08:00');
+    var uptimeEl = document.getElementById('siteUptime');
+    function renderUptime() {
+      if (!uptimeEl) return;
+      var s = Math.max(0, Math.floor((Date.now() - SITE_BIRTH.getTime()) / 1000));
+      var d = Math.floor(s / 86400);
+      var h = Math.floor(s % 86400 / 3600);
+      var m = Math.floor(s % 3600 / 60);
+      uptimeEl.textContent = ' · 已运行 ' + d + ' 天 ' + h + ' 时 ' + m + ' 分 ' + (s % 60) + ' 秒';
+    }
+    renderUptime();
+    setInterval(renderUptime, 1000);
+
     // =========================
     // 登录界面：真实账号体系（注册/登录走服务端验证），游客可进入；本次会话内记住，刷新不重弹
     // =========================

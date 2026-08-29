@@ -23,5 +23,13 @@ export async function onRequestGet({ env }) {
       report.dbError = String(e && e.message ? e.message : e).slice(0, 300);
     }
   }
+  if (report.media) {
+    try {
+      const l = await env.MEDIA.list({ limit: 10 });
+      report.kvKeys = l.keys.map((k) => k.name);
+    } catch (e) {
+      report.kvError = String(e && e.message ? e.message : e).slice(0, 200);
+    }
+  }
   return json(report, 200, { 'Cache-Control': 'no-store' });
 }

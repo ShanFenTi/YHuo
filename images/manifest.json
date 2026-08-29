@@ -1,0 +1,37 @@
+{
+  "type": "image",
+  "files": [
+    {
+      "title": "1",
+      "url": "images/1.jpg"
+    },
+    {
+      "title": "3",
+      "url": "images/3.webp"
+    },
+    {
+      "title": "4",
+      "url": "images/4.webp"
+    },
+    {
+      "title": "5",
+      "url": "images/5.webp"
+    },
+    {
+      "title": "6",
+      "url": "images/6.webp"
+    },
+    {
+      "title": "7",
+      "url": "images/7.webp"
+    },
+    {
+      "title": "8",
+      "url": "images/8.jpeg"
+    },
+    {
+      "title": "9",
+      "url": "images/9.webp"
+    }
+  ]
+}

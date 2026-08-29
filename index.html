@@ -2708,10 +2708,14 @@
         img.src = 'images/' + n + '.' + IMAGE_EXT[extIndex];
       }
 
-      // 后台图片 + 本地 images/ 合并显示：后台的排前面，随后按老约定扫描 images/1..N
+      // 后台图片 + 本地 images/ 合并显示：后台的排前面；
+      // 编号已在后台里的静态图跳过（如"1"已导入），避免前台重复显示
       function startGallery(apiImages) {
         var apiPart = (apiImages && apiImages.length) ? apiImages : [];
-        imgPending = apiPart.length + IMAGES.length;
+        var have = {};
+        apiPart.forEach(function (m) { have[m.name] = true; });
+        var staticNums = IMAGES.filter(function (n) { return !have[String(n)]; });
+        imgPending = apiPart.length + staticNums.length;
         apiPart.forEach(function (m, i) {
           var img = new Image();
           img.alt = m.name;
@@ -2721,7 +2725,7 @@
           img.onerror = function () { imgDone(); };
           img.src = m.url;
         });
-        IMAGES.forEach(function (n) {
+        staticNums.forEach(function (n) {
           tryImage(n, 0);
         });
       }

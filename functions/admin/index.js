@@ -578,62 +578,47 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
         $('fileInput').accept = TYPE_EXT[currentType];
         $('titleInput').value = '';
         renderList();
+        // 第一次打开"图片"页时自动把静态图片导入后台（读清单，无需手动扫描）
+        if (currentType === 'image' && !autoImportDone) {
+          autoImportDone = true;
+          importStaticImages(true);
+        }
       }
     });
   });
   $('fileInput').accept = TYPE_EXT.music;
 
-  // ---------- 导入静态图片（images/1.jpg… 约定命名） ----------
-  $('importBtn').addEventListener('click', function () {
-    var btn = this; btn.disabled = true;
-    if (currentType !== 'image') { showMsg($('mainMsg'), '请先切到"图片"标签页再导入', 'err'); btn.disabled = false; return; }
-    showMsg($('mainMsg'), '正在扫描静态图片…');
+  // ---------- 导入静态图片（读 images/manifest.json 清单，自动 + 手动） ----------
+  var autoImportDone = false;
+  function importStaticImages(auto) {
+    if (currentType !== 'image') return;
+    var btn = $('importBtn');
+    btn.disabled = true;
+    showMsg($('mainMsg'), auto ? '正在检查静态图片…' : '正在读取图片清单…');
 
-    var exts = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'bmp', 'avif'];
-    function probeNumber(n) {
-      return new Promise(function (resolve) {
-        var i = 0;
-        function tryNext() {
-          if (i >= exts.length) { resolve(null); return; }
-          var ext = exts[i++];
-          var img = new Image();
-          img.onload = function () { resolve({ title: String(n), url: 'images/' + n + '.' + ext }); };
-          img.onerror = tryNext;
-          img.src = 'images/' + n + '.' + ext;
-        }
-        tryNext();
-      });
-    }
-    // 逐个编号探测，连续 5 个编号都不存在就停（最多扫到 40）
-    function scanAll() {
-      var found = [];
-      var n = 1, misses = 0;
-      function step() {
-        if (n > 40 || misses >= 5) return Promise.resolve(found);
-        return probeNumber(n).then(function (r) {
-          if (r) { found.push(r); misses = 0; } else { misses++; }
-          n++;
-          showMsg($('mainMsg'), '正在扫描静态图片… 已找到 ' + found.length + ' 张');
-          return step();
-        });
-      }
-      return step();
-    }
-
-    scanAll().then(function (found) {
-      if (!found.length) {
+    api('/images/manifest.json').then(function (m) {
+      if (!m || !m.files || !m.files.length) {
         btn.disabled = false;
-        showMsg($('mainMsg'), '没有发现静态图片（需按 images/1.jpg、2.webp… 约定命名）', 'err');
+        showMsg($('mainMsg'), '图片清单为空或缺失（images/manifest.json），可双击"生成图片清单.bat"重新生成', 'err');
+        return;
+      }
+      // 只导入后台还没有的（按显示名去重）
+      var existing = {};
+      items.image.forEach(function (it) { existing[it.title] = true; });
+      var files = m.files.filter(function (f) { return f && f.title && !existing[f.title]; });
+      if (!files.length) {
+        btn.disabled = false;
+        if (!auto) showMsg($('mainMsg'), '静态图片都已导入，没有新增', 'ok');
         return;
       }
       // 分批提交，单次最多 12 个（服务端子请求限制）
       var chunks = [];
-      for (var i = 0; i < found.length; i += 12) chunks.push(found.slice(i, i + 12));
+      for (var i = 0; i < files.length; i += 12) chunks.push(files.slice(i, i + 12));
       var imported = 0, skipped = 0;
       function nextChunk() {
         if (!chunks.length) {
           btn.disabled = false;
-          showMsg($('mainMsg'), '导入完成：新增 ' + imported + ' 张' + (skipped ? '，跳过 ' + skipped + ' 张（已存在或不可读）' : ''), imported ? 'ok' : 'err');
+          showMsg($('mainMsg'), '静态图片导入完成：新增 ' + imported + ' 张' + (skipped ? '，跳过 ' + skipped + ' 张' : ''), imported ? 'ok' : undefined);
           loadList();
           return;
         }
@@ -648,8 +633,13 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
         }).catch(function () { showMsg($('mainMsg'), '网络错误，导入中断', 'err'); nextChunk(); });
       }
       nextChunk();
+    }).catch(function () {
+      btn.disabled = false;
+      showMsg($('mainMsg'), '读取图片清单失败（images/manifest.json）', 'err');
     });
-  });
+  }
+
+  $('importBtn').addEventListener('click', function () { importStaticImages(false); });
 
   // ---------- 上传（XHR 以显示进度） ----------
   $('uploadBtn').addEventListener('click', function () {

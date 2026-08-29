@@ -413,6 +413,38 @@
       transition: background-color 180ms var(--ease-out), border-color 180ms var(--ease-out), transform 180ms var(--ease-out);
     }
 
+    /* 右上角按钮组：登录选项 + 深色模式 */
+    .header-actions {
+      justify-self: end;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .login-toggle {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 36px;
+      height: 36px;
+      border: 1px solid var(--apple-border);
+      border-radius: 999px;
+      background: var(--apple-card);
+      color: var(--apple-foreground);
+      cursor: pointer;
+      transition: background-color 180ms var(--ease-out), border-color 180ms var(--ease-out), transform 180ms var(--ease-out);
+    }
+
+    .login-toggle:hover,
+    .theme-toggle:hover {
+      transform: scale(1.06);
+    }
+
+    .login-toggle.logged-in {
+      color: var(--apple-primary);
+      border-color: var(--apple-primary);
+    }
+
     .theme-toggle:hover {
       background: var(--apple-secondary);
       transform: scale(1.06);
@@ -1979,7 +2011,11 @@
       <a href="#home" class="nav-link active" data-target="home">首页</a>
       <button class="nav-link album-entry" id="albumBtn" type="button" aria-haspopup="dialog" aria-controls="albumView">相册</button>
     </nav>
-    <button class="theme-toggle" id="themeToggle" type="button" aria-label="切换深色模式">
+    <div class="header-actions">
+      <button class="login-toggle" id="loginToggle" type="button" aria-label="登录选项" title="登录选项">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+      </button>
+      <button class="theme-toggle" id="themeToggle" type="button" aria-label="切换深色模式">
       <span id="iconMoon" class="svg-icon" width="18" height="18" aria-hidden="true">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
       </span>
@@ -1987,6 +2023,7 @@
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>
       </span>
     </button>
+    </div>
   </header>
 
   <main class="page-main">
@@ -3590,7 +3627,34 @@
       try { sessionStorage.setItem(LOGIN_KEY, role); } catch (e) {}
       if (loginError) loginError.hidden = true;
       loginGate.classList.add('hide');
+      refreshLoginBadge();
       setTimeout(function () { loginGate.hidden = true; }, 450);
+    }
+    // 顶栏登录按钮：悬停提示当前身份；真实登录显示主题色描边
+    var loginToggle = document.getElementById('loginToggle');
+    function refreshLoginBadge() {
+      if (!loginToggle) return;
+      var role = null;
+      try { role = sessionStorage.getItem(LOGIN_KEY); } catch (e) {}
+      if (role === '1') {
+        loginToggle.classList.add('logged-in');
+        loginToggle.title = '登录选项（当前：已登录）';
+      } else if (role === 'guest') {
+        loginToggle.classList.remove('logged-in');
+        loginToggle.title = '登录选项（当前：游客）';
+      } else {
+        loginToggle.classList.remove('logged-in');
+        loginToggle.title = '登录选项（未登录）';
+      }
+    }
+    if (loginToggle) {
+      refreshLoginBadge();
+      loginToggle.addEventListener('click', function () {
+        // 重新打开登录界面，可切换身份（登录 / 游客）
+        loginGate.hidden = false;
+        void loginGate.offsetWidth;
+        loginGate.classList.remove('hide');
+      });
     }
     if (loginGate) {
       if (gatePassed()) {

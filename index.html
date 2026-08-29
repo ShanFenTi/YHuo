@@ -1871,7 +1871,13 @@
     /* ===== 登录界面（演示版门） ===== */
     .login-gate {
       position: fixed;
-      inset: 0;
+      /* 显式四边定位，兼容不支持 inset 简写的浏览器，确保铺满全屏 */
+      top: 0;
+      right: 0;
+      bottom: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
       z-index: 400; /* 盖住所有浮层，登录后才放行 */
       display: flex;
       align-items: center;
@@ -1887,6 +1893,11 @@
       opacity: 0;
       visibility: hidden;
       pointer-events: none;
+    }
+
+    /* 门开着时锁定背后的页面：无滚动条、不可滚动 */
+    body.login-lock {
+      overflow: hidden;
     }
 
     .login-card {
@@ -3626,6 +3637,7 @@
     function passGate(role) {
       try { sessionStorage.setItem(LOGIN_KEY, role); } catch (e) {}
       if (loginError) loginError.hidden = true;
+      document.body.classList.remove('login-lock');
       loginGate.classList.add('hide');
       refreshLoginBadge();
       setTimeout(function () { loginGate.hidden = true; }, 450);
@@ -3651,6 +3663,7 @@
       refreshLoginBadge();
       loginToggle.addEventListener('click', function () {
         // 重新打开登录界面，可切换身份（登录 / 游客）
+        document.body.classList.add('login-lock');
         loginGate.hidden = false;
         void loginGate.offsetWidth;
         loginGate.classList.remove('hide');
@@ -3660,6 +3673,9 @@
       if (gatePassed()) {
         loginGate.classList.add('hide');
         loginGate.hidden = true;
+      } else {
+        // 首次到访：门盖住全屏时锁定背后的页面
+        document.body.classList.add('login-lock');
       }
       if (loginForm) {
         loginForm.addEventListener('submit', function (e) {

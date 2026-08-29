@@ -1,0 +1,4 @@
+# 本地开发/工具文件，不需要发布到 GitHub Pages
+.zcode/
+.design/
+*.bat

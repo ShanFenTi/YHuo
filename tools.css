@@ -1,0 +1,232 @@
+/* =========================================
+   小工具页 · 图片展示 + 音乐播放
+   延续黑白极简：无卡片、无圆角、无阴影
+   ========================================= */
+
+.tools-main {
+  max-width: 1080px;
+  margin: 0 auto;
+  padding: 0 6vw 60px;
+}
+
+.tools-title {
+  font-size: clamp(2rem, 5vw, 3.2rem);
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  padding: 12vh 0 8vh;
+}
+
+.tool-section {
+  padding: 0 0 100px;
+}
+
+.tool-tip {
+  font-size: 14px;
+  color: var(--muted);
+  margin: -32px 0 40px;
+}
+
+.tool-tip-gap {
+  margin: 56px 0 40px;
+}
+
+/* ---------- 首页小工具分区 ---------- */
+.tool-block {
+  margin-bottom: 96px;
+}
+
+.tool-block:last-child {
+  margin-bottom: 0;
+}
+
+.tool-kicker {
+  font-size: 12px;
+  letter-spacing: 0.3em;
+  color: var(--muted);
+  text-transform: uppercase;
+  padding-bottom: 12px;
+  margin-bottom: 32px;
+  border-bottom: 1px solid var(--line);
+  transition: color 0.3s ease, border-color 0.3s ease;
+}
+
+/* ---------- 图片展示 ---------- */
+.gallery {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 24px;
+}
+
+.gallery img {
+  width: 100%;
+  display: block;
+  cursor: zoom-in;
+  transition: opacity 0.25s ease;
+}
+
+.gallery img:hover {
+  opacity: 0.75;
+}
+
+.empty-hint {
+  font-size: 14px;
+  color: var(--muted);
+  padding: 32px 0 0;
+}
+
+/* 大图预览 */
+.lightbox {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  background: rgba(0, 0, 0, 0.92);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: zoom-out;
+  padding: 5vw;
+}
+
+/* 保持 hidden 属性生效，避免页面加载时被遮罩覆盖 */
+.lightbox[hidden] {
+  display: none;
+}
+
+.lightbox img {
+  max-width: 100%;
+  max-height: 100%;
+  display: block;
+}
+
+/* ---------- 音乐播放 ---------- */
+.player-info {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.player-title {
+  font-size: 1.2rem;
+  font-weight: 700;
+  word-break: break-all;
+}
+
+.player-time {
+  font-size: 13px;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+  flex-shrink: 0;
+}
+
+.player-progress {
+  position: relative;
+  height: 3px;
+  background: var(--line);
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+
+.player-progress-fill {
+  height: 100%;
+  width: 0;
+  background: var(--ink);
+  transition: background-color 0.3s ease;
+}
+
+.player-controls {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  margin: 24px 0 40px;
+}
+
+.transport {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.controls-divider {
+  width: 1px;
+  height: 20px;
+  background: var(--line);
+  flex-shrink: 0;
+  transition: background-color 0.3s ease;
+}
+
+.file-actions {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 28px;
+}
+
+.player-controls button {
+  background: none;
+  border: none;
+  font-size: 22px;
+  color: var(--ink);
+  cursor: pointer;
+  padding: 6px;
+  line-height: 1;
+  transition: opacity 0.2s;
+}
+
+.player-controls button:hover {
+  opacity: 0.55;
+}
+
+.player-controls .play-btn {
+  font-size: 30px;
+}
+
+.player-controls .file-btn {
+  font-size: 13px;
+  color: var(--muted);
+  border-bottom: 1px solid var(--muted);
+  padding: 0 0 2px;
+  transition: color 0.2s;
+}
+
+.player-controls .file-btn:hover {
+  color: var(--ink);
+  opacity: 1;
+}
+
+/* 曲目列表 */
+.track-list {
+  list-style: none;
+}
+
+.track-list li {
+  display: flex;
+  align-items: baseline;
+  gap: 20px;
+  padding: 12px 4px;
+  border-bottom: 1px solid var(--line);
+  cursor: pointer;
+  font-size: 14px;
+  color: var(--muted);
+  transition: color 0.2s, padding-left 0.2s ease;
+}
+
+.track-list li:first-child {
+  border-top: 1px solid var(--line);
+}
+
+.track-list li:hover {
+  color: var(--ink);
+  padding-left: 12px;
+}
+
+.track-list li.active {
+  color: var(--ink);
+  font-weight: 700;
+}
+
+.track-index {
+  flex-shrink: 0;
+  font-size: 12px;
+}

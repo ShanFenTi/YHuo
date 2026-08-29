@@ -1,0 +1,3157 @@
+<!DOCTYPE html>
+<html lang="zh-CN" class="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>YHuo — 个人主页</title>
+  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,100..1000;1,9..40,100..1000&family=JetBrains+Mono:wght@100..800&display=swap" rel="stylesheet">
+  <style type="text/tailwindcss">
+    @theme inline {
+      --color-background: var(--apple-background);
+      --color-foreground: var(--apple-foreground);
+      --color-card: var(--apple-card);
+      --color-card-foreground: var(--apple-card-foreground);
+      --color-popover: var(--apple-popover);
+      --color-popover-foreground: var(--apple-popover-foreground);
+      --color-primary: var(--apple-primary);
+      --color-primary-foreground: var(--apple-primary-foreground);
+      --color-secondary: var(--apple-secondary);
+      --color-secondary-foreground: var(--apple-secondary-foreground);
+      --color-muted: var(--apple-muted);
+      --color-muted-foreground: var(--apple-muted-foreground);
+      --color-accent: var(--apple-accent);
+      --color-accent-foreground: var(--apple-accent-foreground);
+      --color-destructive: var(--apple-destructive);
+      --color-destructive-foreground: var(--apple-destructive-foreground);
+      --color-border: var(--apple-border);
+      --color-input: var(--apple-input);
+      --color-ring: var(--apple-ring);
+      --radius: var(--apple-radius, 1.2rem);
+      --radius-sm: calc(var(--apple-radius, 1.2rem) * 0.6);
+      --radius-md: calc(var(--apple-radius, 1.2rem) * 0.85);
+      --radius-lg: var(--apple-radius, 1.2rem);
+      --radius-xl: calc(var(--apple-radius, 1.2rem) * 1.2);
+      --font-sans: DM Sans, ui-sans-serif, sans-serif, system-ui;
+      --font-mono: JetBrains Mono, monospace;
+      --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+      --shadow: 0 1px 2px -1px rgb(0 0 0 / 0.06), 0 1px 2px -1px rgb(0 0 0 / 0.05);
+      --shadow-md: 0 4px 8px -2px rgb(0 0 0 / 0.06), 0 2px 4px -2px rgb(0 0 0 / 0.05);
+      --shadow-lg: 0 8px 24px -8px rgb(0 0 0 / 0.08), 0 4px 8px -4px rgb(0 0 0 / 0.05);
+      --shadow-xl: 0 16px 40px -10px rgb(0 0 0 / 0.10), 0 8px 16px -8px rgb(0 0 0 / 0.06);
+    }
+    @layer base {
+      *, *::before, *::after { box-sizing: border-box; }
+      html { -webkit-text-size-adjust: 100%; tab-size: 4; }
+      body { margin: 0; background: var(--apple-background); color: var(--apple-foreground); font-family: var(--font-sans); -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
+      hr { height: 0; color: inherit; border-top-width: 1px; }
+      abbr:where([title]) { text-decoration: underline dotted; }
+      h1, h2, h3, h4, h5, h6 { font-size: inherit; font-weight: inherit; }
+      a { color: inherit; text-decoration: inherit; }
+      b, strong { font-weight: bolder; }
+      code, kbd, samp, pre { font-family: var(--font-mono); font-size: 1em; }
+      small { font-size: 80%; }
+      sub, sup { font-size: 75%; line-height: 0; position: relative; vertical-align: baseline; }
+      sub { bottom: -0.25em; }
+      sup { top: -0.5em; }
+      table { text-indent: 0; border-color: inherit; border-collapse: collapse; }
+      button, input, optgroup, select, textarea { font-family: inherit; font-feature-settings: inherit; font-variation-settings: inherit; font-size: 100%; font-weight: inherit; line-height: inherit; color: inherit; margin: 0; padding: 0; }
+      button, select { text-transform: none; }
+      button, [type='button'], [type='reset'], [type='submit'] { -webkit-appearance: button; }
+      ::-webkit-file-upload-button { -webkit-appearance: button; font: inherit; }
+      :-moz-focusring { outline: auto; }
+      :-moz-ui-invalid { box-shadow: none; }
+      progress { vertical-align: baseline; }
+      ::-webkit-inner-spin-button, ::-webkit-outer-spin-button { height: auto; }
+      [type='search'] { -webkit-appearance: textfield; outline-offset: -2px; }
+      ::-webkit-search-decoration { -webkit-appearance: none; }
+      summary { display: list-item; }
+      blockquote, dl, dd, h1, h2, h3, h4, h5, h6, hr, figure, p, pre { margin: 0; }
+      fieldset { margin: 0; padding: 0; }
+      legend { padding: 0; }
+      ol, ul, menu { list-style: none; margin: 0; padding: 0; }
+      dialog { padding: 0; }
+      textarea { resize: vertical; }
+      input::placeholder, textarea::placeholder { opacity: 1; color: color-mix(in srgb, currentColor 50%, transparent); }
+      button, [role="button"] { cursor: pointer; }
+      :disabled { cursor: default; }
+      img, svg, video, canvas, audio, iframe, embed, object { display: block; vertical-align: middle; }
+      img, video { max-width: 100%; height: auto; }
+      [hidden]:where(:not([hidden="until-found"])) { display: none !important; }
+    }
+  </style>
+  <style id="theme-vars">
+    /* ===== Pinguo Apple Design Tokens ===== */
+    :root {
+      --apple-background: var(--background, #ffffff);
+      --apple-foreground: var(--foreground, #0f172a);
+      --apple-card: var(--card, var(--background));
+      --apple-card-foreground: var(--card-foreground, var(--foreground));
+      --apple-popover: var(--popover, var(--card));
+      --apple-popover-foreground: var(--popover-foreground, var(--card-foreground, var(--foreground)));
+      --apple-primary: var(--primary, #007AFF);
+      --apple-primary-foreground: var(--primary-foreground, #ffffff);
+      --apple-secondary: var(--secondary, var(--muted, var(--card)));
+      --apple-secondary-foreground: var(--secondary-foreground, var(--foreground));
+      --apple-muted: var(--muted, var(--card));
+      --apple-muted-foreground: var(--muted-foreground, var(--foreground));
+      --apple-accent: var(--accent, var(--secondary, var(--muted, var(--card))));
+      --apple-accent-foreground: var(--accent-foreground, var(--foreground));
+      --apple-destructive: var(--destructive, #ef4444);
+      --apple-destructive-foreground: var(--destructive-foreground, #ffffff);
+      --apple-border: var(--border, currentColor);
+      --apple-input: var(--input, var(--border));
+      --apple-ring: var(--ring, var(--primary));
+
+      /* Primitive palette */
+      --brand-50: #e8f2ff;
+      --brand-100: #cfe5ff;
+      --brand-200: #9fcbff;
+      --brand-300: #66abff;
+      --brand-400: #2e8dff;
+      --brand-500: #007aff;
+      --brand-600: #0064d6;
+      --brand-700: #004fad;
+      --brand-800: #003b82;
+      --brand-900: #00275a;
+
+      --background-50: #ffffff;
+      --background-100: #f7f7fa;
+      --background-200: #f2f2f7;
+      --background-300: #e5e5ea;
+      --background-400: #d1d1d6;
+      --background-500: #aeaeb2;
+      --background-600: #8e8e93;
+      --background-700: #3a3a3c;
+      --background-800: #1c1c1e;
+      --background-900: #000000;
+
+      --text-50: #f5f5f7;
+      --text-100: #e3e3e8;
+      --text-200: #c7c7cc;
+      --text-300: #aeaeb2;
+      --text-400: #8e8e93;
+      --text-500: #6e6e73;
+      --text-600: #48484a;
+      --text-700: #3c3c43;
+      --text-800: #1d1d1f;
+      --text-900: #000000;
+
+      /* Semantic roles - light */
+      --background: var(--background-50);
+      --foreground: var(--text-800);
+      --card: var(--background-50);
+      --card-foreground: var(--text-800);
+      --popover: var(--background-50);
+      --popover-foreground: var(--text-900);
+
+      --primary: var(--brand-500);
+      --primary-foreground: var(--background-50);
+      --secondary: var(--background-200);
+      --secondary-foreground: var(--text-800);
+      --muted: var(--background-200);
+      --muted-foreground: var(--text-400);
+      --accent: var(--background-100);
+      --accent-foreground: var(--text-800);
+      --destructive: #ff3b30;
+      --destructive-foreground: #ffffff;
+      --success: #34c759;
+      --success-foreground: #ffffff;
+      --border: var(--background-300);
+      --input: var(--background-400);
+      --ring: var(--brand-500);
+
+      /* Typography */
+      --font-sans: 'DM Sans', ui-sans-serif, sans-serif, system-ui;
+      --font-mono: 'JetBrains Mono', monospace;
+
+      /* Radius */
+      --radius: 1.2rem;
+
+      /* Shadows */
+      --shadow-2xs: 0 1px 2px -1px rgba(0, 0, 0, 0.04);
+      --shadow-xs: 0 1px 2px 0 rgba(0, 0, 0, 0.04);
+      --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05), 0 1px 3px -1px rgba(0, 0, 0, 0.05);
+      --shadow: 0 2px 4px -1px rgba(0, 0, 0, 0.06), 0 1px 2px -1px rgba(0, 0, 0, 0.05);
+      --shadow-md: 0 4px 8px -2px rgba(0, 0, 0, 0.06), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
+      --shadow-lg: 0 8px 24px -8px rgba(0, 0, 0, 0.08), 0 4px 8px -4px rgba(0, 0, 0, 0.05);
+      --shadow-xl: 0 16px 40px -10px rgba(0, 0, 0, 0.10), 0 8px 16px -8px rgba(0, 0, 0, 0.06);
+      --shadow-2xl: 0 24px 64px -12px rgba(0, 0, 0, 0.12);
+
+      /* Spacing */
+      --spacing: 0.24rem;
+
+      /* Motion */
+      --ease-out: cubic-bezier(0.32, 0.72, 0, 1);
+    }
+
+    /* 主题色（外观卡片可切换，覆盖 brand-400/500 即可全局生效） */
+    html[data-accent='purple'] { --brand-400: #a78bfa; --brand-500: #8b5cf6; }
+    html[data-accent='pink'] { --brand-400: #f472b6; --brand-500: #ec4899; }
+    html[data-accent='green'] { --brand-400: #34d399; --brand-500: #10b981; }
+    html[data-accent='orange'] { --brand-400: #fbbf24; --brand-500: #f59e0b; }
+
+    /* Dark mode */
+    .dark {
+      --background: var(--background-900);
+      --foreground: var(--text-50);
+      --card: var(--background-800);
+      --card-foreground: var(--text-50);
+      --popover: var(--background-700);
+      --popover-foreground: var(--text-50);
+
+      --primary: var(--brand-400);
+      --primary-foreground: var(--background-900);
+      --secondary: var(--background-800);
+      --secondary-foreground: var(--text-50);
+      --muted: var(--background-800);
+      --muted-foreground: var(--text-400);
+      --accent: var(--background-700);
+      --accent-foreground: var(--text-50);
+      --destructive: #ff453a;
+      --destructive-foreground: #ffffff;
+      --success: #30d158;
+      --success-foreground: #ffffff;
+      --border: var(--background-700);
+      --input: var(--background-700);
+      --ring: var(--brand-400);
+
+      --shadow-2xs: 0 1px 2px -1px rgba(0, 0, 0, 0.30);
+      --shadow-xs: 0 1px 2px 0 rgba(0, 0, 0, 0.30);
+      --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.36), 0 1px 3px -1px rgba(0, 0, 0, 0.36);
+      --shadow: 0 2px 4px -1px rgba(0, 0, 0, 0.40), 0 1px 2px -1px rgba(0, 0, 0, 0.36);
+      --shadow-md: 0 4px 8px -2px rgba(0, 0, 0, 0.44), 0 2px 4px -2px rgba(0, 0, 0, 0.36);
+      --shadow-lg: 0 8px 24px -8px rgba(0, 0, 0, 0.50), 0 4px 8px -4px rgba(0, 0, 0, 0.40);
+      --shadow-xl: 0 16px 40px -10px rgba(0, 0, 0, 0.55), 0 8px 16px -8px rgba(0, 0, 0, 0.44);
+      --shadow-2xl: 0 24px 64px -12px rgba(0, 0, 0, 0.60);
+    }
+
+    /* ===== Reset & Base ===== */
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    body {
+      font-family: var(--font-sans);
+      background: var(--apple-background);
+      color: var(--apple-foreground);
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+      transition: background-color 300ms var(--ease-out), color 300ms var(--ease-out);
+    }
+
+    ::selection {
+      background: var(--apple-primary);
+      color: var(--apple-primary-foreground);
+    }
+
+    /* ===== Inline SVG Icon System ===== */
+    .svg-icon {
+      flex-shrink: 0;
+      stroke: currentColor;
+      transition: stroke 0.2s ease;
+    }
+
+    .svg-icon.inline-arrow {
+      vertical-align: 1px;
+      margin-left: 2px;
+    }
+
+    .play-icon {
+      stroke-width: 2;
+    }
+
+    /* ===== Icon System (CSS Mask) ===== */
+    .icon {
+      display: inline-block;
+      width: 1em;
+      height: 1em;
+      background-color: currentColor;
+      -webkit-mask-size: contain;
+      mask-size: contain;
+      -webkit-mask-repeat: no-repeat;
+      mask-repeat: no-repeat;
+      -webkit-mask-position: center;
+      mask-position: center;
+      flex-shrink: 0;
+    }
+
+    .icon-house { -webkit-mask-image: url('../assets/icons/dl_builtin_apple/house.svg'); mask-image: url('../assets/icons/dl_builtin_apple/house.svg'); }
+    .icon-user { -webkit-mask-image: url('../assets/icons/dl_builtin_apple/user.svg'); mask-image: url('../assets/icons/dl_builtin_apple/user.svg'); }
+    .icon-circle-play { -webkit-mask-image: url('../assets/icons/dl_builtin_apple/circle-play.svg'); mask-image: url('../assets/icons/dl_builtin_apple/circle-play.svg'); }
+    .icon-circle-pause { -webkit-mask-image: url('../assets/icons/dl_builtin_apple/circle-pause.svg'); mask-image: url('../assets/icons/dl_builtin_apple/circle-pause.svg'); }
+    .icon-chevron-right { -webkit-mask-image: url('../assets/icons/dl_builtin_apple/chevron-right.svg'); mask-image: url('../assets/icons/dl_builtin_apple/chevron-right.svg'); }
+    .icon-chevron-left { -webkit-mask-image: url('../assets/icons/dl_builtin_apple/chevron-left.svg'); mask-image: url('../assets/icons/dl_builtin_apple/chevron-left.svg'); }
+    .icon-chevron-up { -webkit-mask-image: url('../assets/icons/dl_builtin_apple/chevron-up.svg'); mask-image: url('../assets/icons/dl_builtin_apple/chevron-up.svg'); }
+    .icon-chevron-down { -webkit-mask-image: url('../assets/icons/dl_builtin_apple/chevron-down.svg'); mask-image: url('../assets/icons/dl_builtin_apple/chevron-down.svg'); }
+
+    .icon-folder { -webkit-mask-image: url('../assets/icons/dl_builtin_apple/folder.svg'); mask-image: url('../assets/icons/dl_builtin_apple/folder.svg'); }
+    .icon-file { -webkit-mask-image: url('../assets/icons/dl_builtin_apple/file.svg'); mask-image: url('../assets/icons/dl_builtin_apple/file.svg'); }
+    .icon-heart { -webkit-mask-image: url('../assets/icons/dl_builtin_apple/heart.svg'); mask-image: url('../assets/icons/dl_builtin_apple/heart.svg'); }
+    .icon-star { -webkit-mask-image: url('../assets/icons/dl_builtin_apple/star.svg'); mask-image: url('../assets/icons/dl_builtin_apple/star.svg'); }
+    .icon-mail { -webkit-mask-image: url('../assets/icons/dl_builtin_apple/mail.svg'); mask-image: url('../assets/icons/dl_builtin_apple/mail.svg'); }
+    .icon-external-link { -webkit-mask-image: url('../assets/icons/dl_builtin_apple/external-link.svg'); mask-image: url('../assets/icons/dl_builtin_apple/external-link.svg'); }
+    .icon-trash-2 { -webkit-mask-image: url('../assets/icons/dl_builtin_apple/trash-2.svg'); mask-image: url('../assets/icons/dl_builtin_apple/trash-2.svg'); }
+    .icon-circle-play { -webkit-mask-image: url('../assets/icons/dl_builtin_apple/circle-play.svg'); mask-image: url('../assets/icons/dl_builtin_apple/circle-play.svg'); }
+    .icon-circle-pause { -webkit-mask-image: url('../assets/icons/dl_builtin_apple/circle-pause.svg'); mask-image: url('../assets/icons/dl_builtin_apple/circle-pause.svg'); }
+    .icon-circle-plus { -webkit-mask-image: url('../assets/icons/dl_builtin_apple/circle-plus.svg'); mask-image: url('../assets/icons/dl_builtin_apple/circle-plus.svg'); }
+    .icon-circle-minus { -webkit-mask-image: url('../assets/icons/dl_builtin_apple/circle-minus.svg'); mask-image: url('../assets/icons/dl_builtin_apple/circle-minus.svg'); }
+    .icon-circle-check { -webkit-mask-image: url('../assets/icons/dl_builtin_apple/circle-check.svg'); mask-image: url('../assets/icons/dl_builtin_apple/circle-check.svg'); }
+    .icon-circle-alert { -webkit-mask-image: url('../assets/icons/dl_builtin_apple/circle-alert.svg'); mask-image: url('../assets/icons/dl_builtin_apple/circle-alert.svg'); }
+    .icon-arrow-up { -webkit-mask-image: url('../assets/icons/dl_builtin_apple/arrow-up.svg'); mask-image: url('../assets/icons/dl_builtin_apple/arrow-up.svg'); }
+    .icon-arrow-down { -webkit-mask-image: url('../assets/icons/dl_builtin_apple/arrow-down.svg'); mask-image: url('../assets/icons/dl_builtin_apple/arrow-down.svg'); }
+    .icon-arrow-left { -webkit-mask-image: url('../assets/icons/dl_builtin_apple/arrow-left.svg'); mask-image: url('../assets/icons/dl_builtin_apple/arrow-left.svg'); }
+    .icon-arrow-right { -webkit-mask-image: url('../assets/icons/dl_builtin_apple/arrow-right.svg'); mask-image: url('../assets/icons/dl_builtin_apple/arrow-right.svg'); }
+
+    /* ===== Reading Progress Bar ===== */
+    .progress-bar {
+      position: fixed;
+      top: 0;
+      left: 0;
+      height: 3px;
+      width: 0;
+      background: var(--apple-primary);
+      z-index: 100;
+      transition: width 100ms linear;
+    }
+
+    /* ===== Site Header ===== */
+    .site-header {
+      position: sticky;
+      top: 0;
+      z-index: 50;
+      /* 三列网格：Logo 居左、导航居中、主题按钮居右 */
+      display: grid;
+      grid-template-columns: 1fr auto 1fr;
+      align-items: center;
+      height: 52px;
+      padding: 0 6vw;
+      background: rgba(255, 255, 255, 0.72);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border-bottom: 1px solid transparent;
+      transition: border-color 250ms var(--ease-out), box-shadow 250ms var(--ease-out), background-color 250ms var(--ease-out);
+    }
+
+    .dark .site-header {
+      background: rgba(0, 0, 0, 0.72);
+    }
+
+    .site-header.scrolled {
+      border-bottom-color: var(--apple-border);
+      box-shadow: var(--shadow-sm);
+    }
+
+    .logo {
+      font-size: 14px;
+      font-weight: 700;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      color: var(--apple-foreground);
+      text-decoration: none;
+      transition: color 250ms var(--ease-out);
+    }
+
+    .site-nav {
+      justify-self: center;
+      display: flex;
+      align-items: center;
+      gap: calc(var(--spacing) * 1.5);
+    }
+
+    .nav-link {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      height: 32px;
+      padding: 0 calc(var(--spacing) * 2.5);
+      border-radius: 999px;
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--apple-foreground);
+      text-decoration: none;
+      transition: background-color 180ms var(--ease-out), color 180ms var(--ease-out);
+    }
+
+    .nav-link:hover {
+      background: var(--apple-secondary);
+    }
+
+    .nav-link.active {
+      background: var(--apple-secondary);
+      font-weight: 600;
+    }
+
+    .nav-link:focus-visible {
+      outline: 2px solid var(--apple-ring);
+      outline-offset: 2px;
+    }
+
+    /* Theme toggle button */
+    .theme-toggle {
+      justify-self: end;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 36px;
+      height: 36px;
+      border: 1px solid var(--apple-border);
+      border-radius: 999px;
+      background: var(--apple-card);
+      color: var(--apple-foreground);
+      font-size: 16px;
+      cursor: pointer;
+      transition: background-color 180ms var(--ease-out), border-color 180ms var(--ease-out), transform 180ms var(--ease-out);
+    }
+
+    .theme-toggle:hover {
+      background: var(--apple-secondary);
+      transform: scale(1.06);
+    }
+
+    .theme-toggle:focus-visible {
+      outline: 2px solid var(--apple-ring);
+      outline-offset: 2px;
+    }
+
+    /* ===== Main Content ===== */
+    .page-main {
+      max-width: 1080px;
+      margin: 0 auto;
+      padding: 0 6vw;
+    }
+
+    /* ===== Hero / Clock Section ===== */
+    .hero-section {
+      min-height: auto;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-start;
+      padding: 48px 0 60px;
+      opacity: 0;
+      transform: translateY(20px);
+      animation: fadeInUp 600ms var(--ease-out) 100ms forwards;
+    }
+
+    @keyframes fadeInUp {
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    /* ===== 科幻终端时钟（黑白） ===== */
+    .clock-hud {
+      position: relative;
+      display: inline-block;
+      padding: 22px 34px 20px;
+      margin-left: -8px;
+      overflow: hidden;
+    }
+
+    .hud-corner {
+      position: absolute;
+      width: 14px;
+      height: 14px;
+      border: 1px solid color-mix(in srgb, var(--apple-foreground) 55%, transparent);
+      pointer-events: none;
+    }
+
+    .hud-corner.tl { top: 0; left: 0; border-right: none; border-bottom: none; }
+    .hud-corner.tr { top: 0; right: 0; border-left: none; border-bottom: none; }
+    .hud-corner.bl { bottom: 0; left: 0; border-right: none; border-top: none; }
+    .hud-corner.br { bottom: 0; right: 0; border-left: none; border-top: none; }
+
+    .hud-label {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      letter-spacing: 0.35em;
+      text-transform: uppercase;
+      color: var(--apple-muted-foreground);
+      margin-bottom: 8px;
+    }
+
+    .clock-display {
+      position: relative;
+      display: flex;
+      align-items: baseline;
+      font-family: var(--font-mono);
+      color: var(--apple-foreground);
+      text-shadow:
+        0 0 16px color-mix(in srgb, currentColor 30%, transparent),
+        0 0 56px color-mix(in srgb, currentColor 14%, transparent);
+      transition: color 300ms var(--ease-out);
+    }
+
+    .clock-seg,
+    .clock-colon {
+      font-size: clamp(3rem, 9vw, 6rem);
+      font-weight: 600;
+      line-height: 1;
+      font-variant-numeric: tabular-nums;
+      letter-spacing: 0.02em;
+    }
+
+    .clock-colon {
+      padding: 0 0.1em;
+      font-weight: 400;
+      animation: colonBreath 2s ease-in-out infinite;
+    }
+
+    @keyframes colonBreath {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.2; }
+    }
+
+    /* 秒位跳动脉冲 */
+    .clock-seg.tick {
+      animation: segTick 420ms var(--ease-out);
+    }
+
+    @keyframes segTick {
+      0% { transform: translateY(-0.1em); opacity: 0.35; filter: blur(3px); }
+      100% { transform: translateY(0); opacity: 1; filter: blur(0); }
+    }
+
+    /* 毫秒滚数 */
+    .clock-ms {
+      font-size: clamp(1rem, 2.4vw, 1.5rem);
+      font-weight: 400;
+      color: var(--apple-muted-foreground);
+      margin-left: 10px;
+      font-variant-numeric: tabular-nums;
+      min-width: 3.4em;
+    }
+
+    /* 扫描线：周期性从上到下扫过时钟区域 */
+    .scanline {
+      position: absolute;
+      left: 0;
+      right: 0;
+      top: 0;
+      height: 2px;
+      background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--apple-foreground) 30%, transparent), transparent);
+      animation: scan 5s linear infinite;
+      pointer-events: none;
+    }
+
+    @keyframes scan {
+      0% { top: 0; opacity: 0; }
+      10% { opacity: 1; }
+      90% { opacity: 1; }
+      100% { top: 100%; opacity: 0; }
+    }
+
+    .clock-date {
+      font-size: clamp(1rem, 2vw, 1.25rem);
+      font-weight: 500;
+      color: var(--apple-muted-foreground);
+      font-variant-numeric: tabular-nums;
+    }
+
+    /* 时钟上方的时段问候 */
+    .hero-greeting {
+      font-size: 14px;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      color: var(--apple-muted-foreground);
+      margin-bottom: 10px;
+    }
+
+    /* 每日一言（加载成功后淡入，失败自动隐藏） */
+    .hero-quote {
+      margin-top: 14px;
+      font-size: 14px;
+      line-height: 1.8;
+      color: var(--apple-muted-foreground);
+      max-width: 520px;
+      opacity: 0;
+      transform: translateY(4px);
+      transition: opacity 600ms var(--ease-out), transform 600ms var(--ease-out);
+    }
+
+    .hero-quote.loaded {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    /* 窗口最大化/宽屏时，顶部本地时间靠左对齐（与左上角 logo 的 6vw 左边距一致，不会被遮挡） */
+    @media (min-width: 1200px) {
+      :root {
+        --main-w: min(1560px, 94vw);
+      }
+
+      .page-main {
+        max-width: var(--main-w);
+      }
+
+      .hero-section {
+        padding-top: 56px;
+      }
+
+      .content-section {
+        padding: 100px 0;
+      }
+
+      .gallery img {
+        width: min(calc(100% / var(--cols, 1) - 44px), 300px);
+      }
+    }
+
+    /* ===== Section Styles ===== */
+    .content-section {
+      padding: 80px 0;
+      opacity: 0;
+      transform: translateY(24px);
+      transition: opacity 500ms var(--ease-out), transform 500ms var(--ease-out);
+    }
+
+    .content-section.visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    /* ===== 外观设置抽屉：默认靠右隐藏，点击箭头弹出 ===== */
+    .appear-dock {
+      position: fixed;
+      bottom: 16px;
+      right: 0;
+      z-index: 60;
+      transition: transform 350ms var(--ease-out);
+    }
+
+    /* 收起时整个抽屉（含面板）右移出屏，箭头恰好贴住屏幕右下角 */
+    body:not(.appear-open) .appear-dock {
+      transform: translateX(100%);
+    }
+
+    /* 用 .apple-card.appear-panel 提高特异性，确保直角覆盖 .apple-card 的 border-radius：
+       右侧贴屏、左下接箭头，均为直角，避免衔接处出现圆角缺口 */
+    .apple-card.appear-panel {
+      width: min(300px, 82vw);
+      max-height: calc(100vh - 96px);
+      overflow-y: auto;
+      border-top-right-radius: 0;
+      border-bottom-right-radius: 0;
+      border-bottom-left-radius: 0;
+      box-shadow: var(--shadow-md);
+    }
+
+    .apple-card.appear-panel:hover {
+      transform: none;
+    }
+
+    .appear-tab {
+      position: absolute;
+      bottom: 0;
+      /* 右移 1px 盖住面板左边框，消除箭头与面板之间的接缝线 */
+      right: calc(100% - 1px);
+      z-index: 1;
+      width: 34px;
+      height: 60px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: 1px solid var(--apple-border);
+      border-right: none;
+      border-radius: var(--radius) 0 0 var(--radius);
+      background: var(--apple-card);
+      color: var(--apple-card-foreground);
+      box-shadow: var(--shadow-sm);
+      cursor: pointer;
+      transition: background-color 300ms var(--ease-out), box-shadow 250ms var(--ease-out);
+    }
+
+    .appear-tab:hover {
+      box-shadow: var(--shadow-md);
+    }
+
+    .appear-tab svg {
+      transition: transform 350ms var(--ease-out);
+    }
+
+    body.appear-open .appear-tab svg {
+      transform: rotate(180deg);
+    }
+
+    /* ===== Card Component ===== */
+    .apple-card {
+      background: var(--apple-card);
+      color: var(--apple-card-foreground);
+      border: 1px solid var(--apple-border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow-sm);
+      transition: transform 250ms var(--ease-out), box-shadow 250ms var(--ease-out), background-color 300ms var(--ease-out), border-color 300ms var(--ease-out);
+    }
+
+    .apple-card:hover {
+      transform: translateY(-2px);
+      box-shadow: var(--shadow-md);
+    }
+
+    .card-padding {
+      padding: calc(var(--spacing) * 6);
+    }
+
+    .card-eyebrow {
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--apple-muted-foreground);
+      margin-bottom: 16px;
+    }
+
+    /* ===== Music Player（底部悬浮迷你播放器） ===== */
+    /* 均衡器：常驻显示在歌名左侧。播放=主题色跳动；暂停=灰色静止 */
+    .mini-eq {
+      display: flex;
+      align-items: flex-end;
+      gap: 3px;
+      height: 18px;
+      flex-shrink: 0;
+      padding-bottom: 1px;
+    }
+
+    .mini-eq i {
+      width: 3.5px;
+      border-radius: 2px;
+      background: var(--apple-muted-foreground);
+      transform-origin: bottom;
+    }
+
+    .mini-eq i:nth-child(1) { height: 55%; }
+    .mini-eq i:nth-child(2) { height: 100%; }
+    .mini-eq i:nth-child(3) { height: 75%; }
+
+    .mini-player.playing .mini-eq i {
+      background: var(--apple-primary);
+      animation: eq 0.9s ease-in-out infinite;
+    }
+
+    .mini-player.playing .mini-eq i:nth-child(1) { animation-delay: -0.3s; }
+    .mini-player.playing .mini-eq i:nth-child(2) { animation-delay: -0.15s; }
+    .mini-player.playing .mini-eq i:nth-child(3) { animation-delay: -0.45s; }
+
+    @keyframes eq {
+      0%, 100% { transform: scaleY(0.3); }
+      50% { transform: scaleY(1); }
+    }
+
+    .ctrl-btn {
+      position: relative;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 42px;
+      height: 42px;
+      border: 1px solid var(--apple-border);
+      border-radius: 999px;
+      background: var(--apple-card);
+      color: var(--apple-card-foreground);
+      font-size: 18px;
+      cursor: pointer;
+      overflow: hidden;
+      transition: background-color 200ms var(--ease-out),
+                  color 200ms var(--ease-out),
+                  transform 200ms var(--ease-out),
+                  border-color 200ms var(--ease-out),
+                  box-shadow 200ms var(--ease-out);
+    }
+
+    .ctrl-btn:hover {
+      background: var(--apple-accent);
+      border-color: color-mix(in srgb, var(--apple-border) 80%, var(--apple-primary) 20%);
+      transform: translateY(-1px);
+      box-shadow: var(--shadow-sm);
+    }
+
+    .ctrl-btn:active {
+      transform: translateY(0) scale(0.94);
+      transition: transform 80ms ease;
+    }
+
+    .ctrl-btn:focus-visible {
+      outline: 2px solid var(--apple-ring);
+      outline-offset: 2px;
+    }
+
+    .play-btn-main {
+      position: relative;
+      width: 52px;
+      height: 52px;
+      background: linear-gradient(135deg, var(--apple-primary) 0%, color-mix(in srgb, var(--apple-primary) 85%, #ffffff) 100%);
+      color: var(--apple-primary-foreground);
+      box-shadow:
+        0 2px 8px -2px color-mix(in srgb, var(--apple-primary) 35%, transparent),
+        0 4px 16px -4px color-mix(in srgb, var(--apple-primary) 30%, transparent),
+        inset 0 1px 0 rgba(255, 255, 255, 0.25);
+      overflow: visible;
+    }
+
+    .play-btn-main::before {
+      content: '';
+      position: absolute;
+      inset: -4px;
+      border-radius: 999px;
+      background: var(--apple-primary);
+      opacity: 0;
+      filter: blur(12px);
+      z-index: -1;
+      transition: opacity 350ms var(--ease-out), transform 350ms var(--ease-out);
+      transform: scale(0.8);
+    }
+
+    .play-btn-main:hover {
+      background: linear-gradient(135deg, color-mix(in srgb, var(--apple-primary) 92%, #000000) 0%, var(--apple-primary) 100%);
+      transform: translateY(-1px) scale(1.04);
+      box-shadow:
+        0 4px 12px -2px color-mix(in srgb, var(--apple-primary) 45%, transparent),
+        0 8px 24px -6px color-mix(in srgb, var(--apple-primary) 40%, transparent),
+        inset 0 1px 0 rgba(255, 255, 255, 0.3);
+    }
+
+    .play-btn-main:hover::before {
+      opacity: 0.4;
+      transform: scale(1);
+    }
+
+    .play-btn-main:active {
+      transform: translateY(0) scale(0.96);
+      transition: transform 100ms ease;
+    }
+
+    .play-btn-main:focus-visible {
+      outline: 2px solid var(--apple-ring);
+      outline-offset: 3px;
+    }
+
+    /* 播放按钮涟漪效果 */
+    .play-btn-main .ripple {
+      position: absolute;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.4);
+      transform: scale(0);
+      animation: ripple 600ms var(--ease-out) forwards;
+      pointer-events: none;
+    }
+
+    @keyframes ripple {
+      to {
+        transform: scale(2.5);
+        opacity: 0;
+      }
+    }
+
+    /* 播放图标动画 */
+    .play-btn-main .play-icon {
+      transition: transform 250ms var(--ease-out);
+    }
+
+    .play-btn-main:hover .play-icon {
+      transform: scale(1.08);
+    }
+
+    /* 播放状态脉冲动画 */
+    .play-btn-main.is-playing::after {
+      content: '';
+      position: absolute;
+      inset: -2px;
+      border-radius: 999px;
+      border: 2px solid var(--apple-primary);
+      opacity: 0;
+      animation: pulse-ring 2s ease-out infinite;
+      pointer-events: none;
+    }
+
+    @keyframes pulse-ring {
+      0% {
+        transform: scale(0.95);
+        opacity: 0.6;
+      }
+      100% {
+        transform: scale(1.4);
+        opacity: 0;
+      }
+    }
+
+    /* ===== Image Gallery（照片散落堆叠 + 悬停抽出） ===== */
+    .gallery {
+      position: relative;
+    }
+
+    .gallery:not(:empty) {
+      margin: 8px 0 4px;
+    }
+
+    .gallery img {
+      position: absolute;
+      /* 散落网格：--cols/--rows/--col/--row 由 JS 按已加载图片数量统一计算 */
+      left: calc((100% / var(--cols, 1)) * (var(--col, 0) + 0.5));
+      top: calc((100% / var(--rows, 1)) * (var(--row, 0) + 0.5));
+      width: min(calc(100% / var(--cols, 1) - 44px), 260px);
+      aspect-ratio: 4/3;
+      object-fit: cover;
+      border-radius: calc(var(--radius) - 4px);
+      border: 6px solid var(--apple-card);
+      box-shadow: var(--shadow-md);
+      cursor: zoom-in;
+      display: block;
+      transform: translate(-50%, -50%) perspective(900px) rotateX(var(--ix, 0deg)) rotateY(var(--iy, 0deg))
+        rotate(var(--tilt, 0deg))
+        translate(calc(var(--jx, 0px) + var(--px, 0px)), calc(var(--jy, 0px) + var(--py, 0px)));
+      transition: transform 320ms var(--ease-out), box-shadow 250ms var(--ease-out);
+    }
+
+    /* 悬停：从照片堆里抽出——摆正、放大、浮到最上层（保留单张 3D 倾斜） */
+    .gallery img:hover {
+      z-index: 20;
+      transform: translate(-50%, -50%) perspective(900px) rotateX(var(--ix, 0deg)) rotateY(var(--iy, 0deg))
+        rotate(0deg)
+        translate(calc(var(--jx, 0px) + var(--px, 0px)), calc(var(--jy, 0px) + var(--py, 0px))) scale(1.15);
+      box-shadow: var(--shadow-xl);
+    }
+
+    /* 卡片 3D 倾斜 + 鼠标聚光灯（跟随 JS 写入的 --cx/--cy/--mx/--my） */
+    .gallery-card {
+      transform: perspective(1200px) rotateX(var(--cx, 0deg)) rotateY(var(--cy, 0deg));
+    }
+
+    .gallery-card:hover {
+      transform: perspective(1200px) rotateX(var(--cx, 0deg)) rotateY(var(--cy, 0deg));
+    }
+
+    .gallery-card::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      border-radius: inherit;
+      background: radial-gradient(420px circle at var(--mx, 50%) var(--my, 50%),
+        color-mix(in srgb, var(--apple-foreground) 7%, transparent), transparent 70%);
+      opacity: 0;
+      transition: opacity 300ms var(--ease-out);
+      pointer-events: none;
+    }
+
+    .gallery-card:hover::after {
+      opacity: 1;
+    }
+
+    .empty-hint {
+      font-size: 14px;
+      color: var(--apple-muted-foreground);
+      padding: 24px 0 8px;
+    }
+
+    /* ===== Lightbox ===== */
+    .lightbox {
+      position: fixed;
+      inset: 0;
+      z-index: 200;
+      background: rgba(0, 0, 0, 0.85);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: zoom-out;
+      padding: 5vw;
+      opacity: 0;
+      visibility: hidden;
+      transition: opacity 250ms var(--ease-out), visibility 250ms var(--ease-out);
+    }
+
+    .lightbox.show {
+      opacity: 1;
+      visibility: visible;
+    }
+
+    /* ===== 相册独立界面：顶栏"相册"按钮进入 ===== */
+    .album-view {
+      position: fixed;
+      /* 从顶栏(52px)下方开始，进入相册后顶栏保持可见可导航 */
+      top: 52px;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      z-index: 150; /* 低于灯箱(200)，相册里点图可正常打开大图预览 */
+      display: flex;
+      flex-direction: column;
+      background: color-mix(in srgb, var(--apple-background) 88%, transparent);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      opacity: 0;
+      visibility: hidden;
+      transition: opacity 250ms var(--ease-out), visibility 250ms var(--ease-out);
+    }
+
+    .album-view.show {
+      opacity: 1;
+      visibility: visible;
+    }
+
+    .album-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-shrink: 0;
+      padding: 16px 6vw;
+      border-bottom: 1px solid var(--apple-border);
+    }
+
+    .album-title {
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      color: var(--apple-foreground);
+    }
+
+    .album-close {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 36px;
+      height: 36px;
+      border: 1px solid var(--apple-border);
+      border-radius: 999px;
+      background: var(--apple-card);
+      color: var(--apple-foreground);
+      cursor: pointer;
+      transition: background-color 180ms var(--ease-out), transform 180ms var(--ease-out);
+    }
+
+    .album-close:hover {
+      transform: scale(1.06);
+    }
+
+    .album-scroll {
+      flex: 1;
+      overflow-y: auto;
+      padding: 24px 6vw 48px;
+    }
+
+    /* 顶栏"相册"入口：复用导航链接外观，按钮需要显式继承字体 */
+    .album-entry {
+      font-family: inherit;
+    }
+
+    .lightbox[hidden] {
+      display: none;
+    }
+
+    .lightbox img {
+      max-width: 100%;
+      max-height: 90vh;
+      border-radius: calc(var(--radius) * 0.8);
+      box-shadow: var(--shadow-2xl);
+      transform: scale(0.95);
+      transition: transform 300ms var(--ease-out);
+    }
+
+    .lightbox.show img {
+      transform: scale(1);
+    }
+
+    /* 灯箱左右翻页按钮 + 张数指示 */
+    .lb-nav {
+      position: absolute;
+      top: 50%;
+      width: 44px;
+      height: 44px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: none;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.15);
+      color: #ffffff;
+      cursor: pointer;
+      -webkit-backdrop-filter: blur(8px);
+      backdrop-filter: blur(8px);
+      transition: background-color 180ms var(--ease-out), transform 180ms var(--ease-out);
+    }
+
+    .lb-nav:hover {
+      background: rgba(255, 255, 255, 0.3);
+      transform: translateY(-50%) scale(1.08);
+    }
+
+    .lb-prev {
+      left: 24px;
+    }
+
+    .lb-next {
+      right: 24px;
+    }
+
+    .lb-nav[hidden] {
+      display: none;
+    }
+
+    .lb-counter {
+      position: absolute;
+      bottom: 22px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-family: var(--font-mono);
+      font-size: 13px;
+      letter-spacing: 0.15em;
+      color: rgba(255, 255, 255, 0.8);
+    }
+
+    /* ===== Footer ===== */
+    .site-footer {
+      max-width: 1080px;
+      margin: 0 auto;
+      padding: 48px 6vw;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 13px;
+      color: var(--apple-muted-foreground);
+      border-top: 1px solid var(--apple-border);
+      transition: color 300ms var(--ease-out), border-color 300ms var(--ease-out);
+    }
+
+    .site-footer a {
+      color: var(--apple-muted-foreground);
+      text-decoration: none;
+      transition: color 180ms var(--ease-out);
+    }
+
+    .site-footer a:hover {
+      color: var(--apple-foreground);
+    }
+
+    /* ===== Back to Top Button ===== */
+    .back-top {
+      position: fixed;
+      right: 28px;
+      /* 上移避让右下角的外观抽屉箭头（箭头占底部 16~76px） */
+      bottom: 92px;
+      width: 48px;
+      height: 48px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--apple-primary);
+      color: var(--apple-primary-foreground);
+      border: none;
+      border-radius: 999px;
+      font-size: 18px;
+      cursor: pointer;
+      z-index: 40;
+      opacity: 0;
+      visibility: hidden;
+      transform: translateY(12px);
+      box-shadow: var(--shadow-lg);
+      transition: opacity 250ms var(--ease-out), visibility 250ms var(--ease-out), transform 250ms var(--ease-out), background-color 180ms var(--ease-out);
+    }
+
+    .back-top.show {
+      opacity: 1;
+      visibility: visible;
+      transform: translateY(0);
+    }
+
+    .back-top:hover {
+      transform: translateY(-3px);
+      filter: brightness(0.96);
+    }
+
+    .back-top:active {
+      transform: translateY(0);
+    }
+
+    .back-top:focus-visible {
+      outline: 2px solid var(--apple-ring);
+      outline-offset: 3px;
+    }
+
+    /* ===== 底部悬浮迷你播放器 ===== */
+    .mini-player {
+      position: fixed;
+      left: 50%;
+      bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+      transform: translate(-50%, 16px);
+      z-index: 90;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      width: min(520px, calc(100vw - 32px));
+      padding: 8px 12px 8px 8px;
+      background: rgba(255, 255, 255, 0.82);
+      -webkit-backdrop-filter: blur(20px);
+      backdrop-filter: blur(20px);
+      border: 1px solid var(--apple-border);
+      border-radius: 999px;
+      box-shadow: var(--shadow-lg);
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+      transition: opacity 250ms var(--ease-out), visibility 250ms var(--ease-out), transform 250ms var(--ease-out), background-color 300ms var(--ease-out), border-color 300ms var(--ease-out);
+    }
+
+    .dark .mini-player {
+      background: rgba(28, 28, 30, 0.82);
+    }
+
+    .mini-player.show {
+      opacity: 1;
+      visibility: visible;
+      transform: translate(-50%, 0);
+      pointer-events: auto;
+    }
+
+    /* 顶在胶囊下沿的细进度线 */
+    .mini-progress {
+      position: absolute;
+      bottom: 0;
+      left: 28px;
+      right: 28px;
+      height: 2px;
+      border-radius: 999px;
+      overflow: hidden;
+    }
+
+    .mini-progress-fill {
+      height: 100%;
+      width: 0;
+      background: var(--apple-primary);
+      border-radius: 999px;
+    }
+
+    .mini-cover {
+      position: relative;
+      width: 40px;
+      height: 40px;
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #ffffff;
+      background: linear-gradient(135deg, var(--apple-primary) 0%, color-mix(in srgb, var(--apple-primary) 55%, #1c1c3a) 100%);
+      border-radius: 999px;
+    }
+
+    .mini-title {
+      flex: 1;
+      min-width: 0;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--apple-foreground);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      cursor: pointer;
+    }
+
+    .mini-btn {
+      width: 36px;
+      height: 36px;
+      flex-shrink: 0;
+      border: none;
+      font-size: 16px;
+    }
+
+    .mini-btn.play-btn-main {
+      width: 40px;
+      height: 40px;
+    }
+
+    .mini-btn.active {
+      background: var(--apple-secondary);
+    }
+
+    /* ===== 播放列表面板（悬浮在胶囊上方） ===== */
+    .mini-playlist {
+      position: absolute;
+      bottom: calc(100% + 12px);
+      left: 0;
+      right: 0;
+      max-height: 320px;
+      overflow-y: auto;
+      padding: 6px;
+      background: rgba(255, 255, 255, 0.92);
+      -webkit-backdrop-filter: blur(20px);
+      backdrop-filter: blur(20px);
+      border: 1px solid var(--apple-border);
+      border-radius: 18px;
+      box-shadow: var(--shadow-xl);
+      opacity: 0;
+      transform: translateY(8px);
+      pointer-events: none;
+      transition: opacity 200ms var(--ease-out), transform 200ms var(--ease-out);
+    }
+
+    .dark .mini-playlist {
+      background: rgba(28, 28, 30, 0.92);
+    }
+
+    .mini-playlist.show {
+      opacity: 1;
+      transform: translateY(0);
+      pointer-events: auto;
+    }
+
+    .mini-playlist[hidden] {
+      display: none;
+    }
+
+    .mini-playlist ul {
+      list-style: none;
+    }
+
+    .mini-playlist li {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 10px 12px;
+      border-radius: 10px;
+      cursor: pointer;
+      font-size: 13px;
+      color: var(--apple-muted-foreground);
+      transition: background-color 150ms var(--ease-out), color 150ms var(--ease-out);
+    }
+
+    .mini-playlist li:hover {
+      background: var(--apple-secondary);
+      color: var(--apple-card-foreground);
+    }
+
+    .mini-playlist li.active {
+      color: var(--apple-primary);
+      font-weight: 600;
+      background: var(--apple-secondary);
+    }
+
+    .mini-playlist .pl-index {
+      flex-shrink: 0;
+      width: 20px;
+      text-align: center;
+      font-family: var(--font-mono);
+      font-size: 11px;
+    }
+
+    .mini-playlist .pl-name {
+      flex: 1;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    /* 迷你播放器出现时，回顶按钮上移避让 */
+    body.mini-active .back-top {
+      bottom: calc(84px + env(safe-area-inset-bottom, 0px));
+    }
+
+    /* ===== 自定义背景层 ===== */
+    html {
+      background: var(--apple-background);
+    }
+
+    .bg-layer {
+      position: fixed;
+      inset: 0;
+      z-index: -1;
+      background-position: center;
+      background-size: cover;
+      background-repeat: no-repeat;
+    }
+
+    .bg-dim {
+      position: absolute;
+      inset: 0;
+      background: #000000;
+      opacity: 0;
+      transition: opacity 300ms var(--ease-out);
+    }
+
+    /* 使用自定义背景时：页面底色透明让图露出来，卡片变半透明+毛玻璃保证可读 */
+    body.has-custom-bg {
+      background: transparent;
+    }
+
+    body.has-custom-bg .apple-card {
+      background: color-mix(in srgb, var(--apple-card) 85%, transparent);
+      -webkit-backdrop-filter: blur(14px);
+      backdrop-filter: blur(14px);
+    }
+
+    /* ===== 外观设置卡片 ===== */
+    .appear-label {
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--apple-muted-foreground);
+      margin: 20px 0 10px;
+    }
+
+    .appear-label:first-of-type {
+      margin-top: 0;
+    }
+
+    .swatch-row {
+      display: flex;
+      gap: 14px;
+    }
+
+    .swatch {
+      position: relative;
+      width: 28px;
+      height: 28px;
+      border: none;
+      border-radius: 999px;
+      background: var(--sw);
+      cursor: pointer;
+      transition: transform 150ms var(--ease-out);
+    }
+
+    .swatch:hover {
+      transform: scale(1.12);
+    }
+
+    .swatch.active::after {
+      content: '';
+      position: absolute;
+      inset: -5px;
+      border-radius: 999px;
+      border: 2px solid var(--apple-foreground);
+    }
+
+    .bg-actions {
+      display: flex;
+      align-items: center;
+      gap: 20px;
+      flex-wrap: wrap;
+    }
+
+    .appear-btn {
+      background: none;
+      border: none;
+      font-size: 13px;
+      font-family: inherit;
+      color: var(--apple-primary);
+      cursor: pointer;
+      padding: 0 0 2px;
+      border-bottom: 1px solid currentColor;
+      transition: opacity 0.2s;
+    }
+
+    .appear-btn:hover {
+      opacity: 0.6;
+    }
+
+    .dim-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+      color: var(--apple-muted-foreground);
+    }
+
+    .dim-row input[type='range'] {
+      width: 110px;
+      accent-color: var(--apple-primary);
+    }
+
+    .appear-hint {
+      font-size: 12px;
+      color: var(--apple-muted-foreground);
+      margin-top: 14px;
+    }
+
+    /* 开关 */
+    .switch-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      font-size: 13px;
+      color: var(--apple-muted-foreground);
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .switch-row input {
+      display: none;
+    }
+
+    .switch-ui {
+      position: relative;
+      width: 40px;
+      height: 22px;
+      flex-shrink: 0;
+      border-radius: 999px;
+      background: var(--apple-muted);
+      transition: background-color 200ms var(--ease-out);
+    }
+
+    .switch-ui::after {
+      content: '';
+      position: absolute;
+      top: 2px;
+      left: 2px;
+      width: 18px;
+      height: 18px;
+      border-radius: 999px;
+      background: #ffffff;
+      box-shadow: var(--shadow-sm);
+      transition: transform 200ms var(--ease-out);
+    }
+
+    .switch-row input:checked + .switch-ui {
+      background: var(--apple-primary);
+    }
+
+    .switch-row input:checked + .switch-ui::after {
+      transform: translateX(18px);
+    }
+
+    .switch-row + .switch-row {
+      margin-top: 12px;
+    }
+
+    /* ===== Responsive ===== */
+
+    /* 平板横向 (900-1199px) */
+    @media (min-width: 900px) and (max-width: 1199px) {
+      .page-main {
+        max-width: 860px;
+        padding: 0 5vw;
+      }
+
+      .content-section {
+        padding: 80px 0;
+      }
+    }
+
+    /* 平板纵向 (768-899px) */
+    @media (min-width: 768px) and (max-width: 899px) {
+      .page-main {
+        max-width: 720px;
+        padding: 0 5vw;
+      }
+
+      .hero-section {
+        padding: 44px 0 48px;
+      }
+
+      .content-section {
+        padding: 70px 0;
+      }
+
+    }
+
+    /* 大屏手机 (480-767px) */
+    @media (max-width: 767px) {
+      .site-header {
+        height: 50px;
+        padding: 0 4vw;
+      }
+
+      .album-view {
+        top: 50px;
+      }
+
+      .site-nav {
+        gap: calc(var(--spacing));
+      }
+
+      .nav-link {
+        height: 30px;
+        padding: 0 calc(var(--spacing) * 2);
+        font-size: 12px;
+      }
+
+      .page-main {
+        padding: 0 4vw;
+      }
+
+      .hero-section {
+        padding: 40px 0 44px;
+      }
+
+      .clock-date {
+        font-size: 0.95rem;
+      }
+
+      .content-section {
+        padding: 56px 0;
+      }
+
+      .card-padding {
+        padding: calc(var(--spacing) * 4);
+      }
+
+      .tool-block + .tool-block {
+        margin-top: 32px;
+      }
+
+      .site-footer {
+        padding: 28px 4vw;
+        flex-direction: column;
+        gap: 10px;
+        text-align: center;
+      }
+
+      .back-top {
+        right: 18px;
+        bottom: 18px;
+        width: 44px;
+        height: 44px;
+      }
+    }
+
+    /* 小屏手机 (≤480px) */
+    @media (max-width: 480px) {
+      .site-header {
+        height: 48px;
+        padding: 0 4vw;
+      }
+
+      .logo {
+        font-size: 13px;
+        letter-spacing: 0.12em;
+      }
+
+      .site-nav {
+        gap: 6px;
+      }
+
+      .nav-link {
+        height: 28px;
+        padding: 0 10px;
+        font-size: 11px;
+      }
+
+      .theme-toggle {
+        width: 32px;
+        height: 32px;
+      }
+
+      .page-main {
+        padding: 0 5vw;
+      }
+
+      .hero-section {
+        padding: 36px 0 40px;
+      }
+
+      .clock-date {
+        font-size: 0.85rem;
+      }
+
+      .content-section {
+        padding: 48px 0;
+      }
+
+      .card-padding {
+        padding: 16px;
+      }
+
+      .card-eyebrow {
+        font-size: 10px;
+        letter-spacing: 0.2em;
+        margin-bottom: 16px;
+      }
+
+      .tool-block + .tool-block {
+        margin-top: 28px;
+      }
+
+      .ctrl-btn {
+        width: 38px;
+        height: 38px;
+      }
+
+      .play-btn-main {
+        width: 46px;
+        height: 46px;
+      }
+
+      .gallery img {
+        border-width: 4px;
+      }
+
+      .site-footer {
+        padding: 24px 5vw;
+        font-size: 12px;
+      }
+
+      .back-top {
+        right: 16px;
+        bottom: 16px;
+        width: 40px;
+        height: 40px;
+      }
+
+      .back-top .svg-icon {
+        width: 18px;
+        height: 18px;
+      }
+    }
+
+    /* 超小屏 (≤360px) */
+    @media (max-width: 360px) {
+      .nav-link {
+        padding: 0 8px;
+        font-size: 10px;
+      }
+    }
+
+    /* 横屏手机优化 */
+    @media (max-height: 500px) and (orientation: landscape) {
+      .hero-section {
+        padding: 40px 0 36px;
+      }
+    }
+
+    /* ===== Reduced Motion ===== */
+    @media (prefers-reduced-motion: reduce) {
+      html {
+        scroll-behavior: auto;
+      }
+      .clock-colon,
+      .scanline,
+      .clock-seg.tick {
+        animation: none;
+      }
+      .hero-section,
+      .content-section {
+        opacity: 1;
+        transform: none;
+        animation: none;
+      }
+      *, *::before, *::after {
+        transition-duration: 0.01ms !important;
+        animation-duration: 0.01ms !important;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- 阅读进度条 -->
+  <div class="progress-bar" id="progressBar" role="progressbar" aria-label="阅读进度"></div>
+
+  <!-- 自定义背景层 -->
+  <div class="bg-layer" id="bgLayer" aria-hidden="true"><div class="bg-dim" id="bgDimLayer"></div></div>
+
+  <!-- 顶部导航 -->
+  <header class="site-header" id="siteHeader">
+    <a class="logo" href="#home" aria-label="回到首页">YHuo</a>
+    <nav class="site-nav" aria-label="主导航">
+      <a href="#home" class="nav-link active" data-target="home">首页</a>
+      <a href="#tools" class="nav-link" data-target="tools">小工具</a>
+      <button class="nav-link album-entry" id="albumBtn" type="button" aria-haspopup="dialog" aria-controls="albumView">相册</button>
+    </nav>
+    <button class="theme-toggle" id="themeToggle" type="button" aria-label="切换深色模式">
+      <span id="iconMoon" class="svg-icon" width="18" height="18" aria-hidden="true">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+      </span>
+      <span id="iconSun" class="svg-icon" width="18" height="18" aria-hidden="true" hidden>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>
+      </span>
+    </button>
+  </header>
+
+  <main class="page-main">
+    <!-- 顶部锚点 -->
+    <div id="home"></div>
+
+    <!-- Hero / 时钟区域 -->
+    <section class="hero-section" aria-label="本地时间">
+      <p class="hero-greeting" id="heroGreeting">你好</p>
+      <div class="clock-hud">
+        <i class="hud-corner tl" aria-hidden="true"></i><i class="hud-corner tr" aria-hidden="true"></i><i class="hud-corner bl" aria-hidden="true"></i><i class="hud-corner br" aria-hidden="true"></i>
+        <p class="hud-label">SYS.TIME // LOCAL</p>
+        <div class="clock-display">
+          <span class="clock-seg" id="clockH">00</span><i class="clock-colon">:</i><span class="clock-seg" id="clockM">00</span><i class="clock-colon">:</i><span class="clock-seg" id="clockS">00</span><span class="clock-ms" id="clockMs">.000</span>
+        </div>
+        <span class="scanline" aria-hidden="true"></span>
+      </div>
+      <p class="clock-date" id="clockDate">--</p>
+      <p class="hero-quote" id="heroQuote" hidden></p>
+    </section>
+
+    <!-- 小工具板块 -->
+    <section id="tools" class="content-section">
+      <!-- 图片画廊 -->
+      <div class="tool-block">
+        <div class="apple-card gallery-card">
+          <div class="card-padding">
+            <p class="card-eyebrow">图片 · IMAGES</p>
+            <div class="gallery" id="galleryGrid"></div>
+            <p class="empty-hint" id="galleryEmpty" hidden>images 文件夹里还没有图片，放入后刷新即可显示。</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- 外观设置已移至右侧抽屉（appear-dock） -->
+    </section>
+  </main>
+
+  <!-- 外观设置抽屉：默认靠右隐藏，点击箭头弹出 -->
+  <div class="appear-dock" id="appearDock">
+    <div class="apple-card appear-panel" role="region" aria-label="外观设置">
+      <div class="card-padding">
+        <p class="card-eyebrow">外观 · APPEARANCE</p>
+
+        <p class="appear-label">主题色</p>
+        <div class="swatch-row">
+          <button class="swatch active" data-accent="blue" style="--sw: #007aff" type="button" aria-label="蓝色主题"></button>
+          <button class="swatch" data-accent="purple" style="--sw: #8b5cf6" type="button" aria-label="紫色主题"></button>
+          <button class="swatch" data-accent="pink" style="--sw: #ec4899" type="button" aria-label="粉色主题"></button>
+          <button class="swatch" data-accent="green" style="--sw: #10b981" type="button" aria-label="绿色主题"></button>
+          <button class="swatch" data-accent="orange" style="--sw: #f59e0b" type="button" aria-label="橙色主题"></button>
+        </div>
+
+        <p class="appear-label">自定义背景</p>
+        <div class="bg-actions">
+          <button class="appear-btn" id="bgUploadBtn" type="button">选择图片…</button>
+          <button class="appear-btn" id="bgClearBtn" type="button">恢复默认</button>
+          <label class="dim-row">背景变暗 <input type="range" id="bgDim" min="0" max="70" value="25"></label>
+        </div>
+        <input type="file" id="bgInput" accept="image/*" hidden>
+
+        <p class="appear-label">动效</p>
+        <label class="switch-row">
+          <span>大卡片跟随鼠标</span>
+          <input type="checkbox" id="cardMouseToggle" checked>
+          <span class="switch-ui" aria-hidden="true"></span>
+        </label>
+        <label class="switch-row">
+          <span>小图片倾斜动效</span>
+          <input type="checkbox" id="imgMouseToggle" checked>
+          <span class="switch-ui" aria-hidden="true"></span>
+        </label>
+
+        <p class="appear-hint">背景图保存在本地浏览器中，仅自己可见。</p>
+      </div>
+    </div>
+    <button class="appear-tab" id="appearTab" type="button" aria-label="外观设置" title="外观设置" aria-expanded="false">
+      <svg class="svg-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg>
+    </button>
+  </div>
+
+  <!-- 页脚 -->
+  <footer class="site-footer">
+    <p>&copy; 2026 YHuo</p>
+    <a href="#home" id="footerTop">回到顶部 <svg class="svg-icon inline-arrow" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 7-7 7 7"/><path d="M12 19V5"/></svg></a>
+  </footer>
+
+  <!-- 回到顶部按钮 -->
+  <button class="back-top" id="backTop" type="button" aria-label="回到顶部">
+    <svg class="svg-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 7-7 7 7"/><path d="M12 19V5"/></svg>
+  </button>
+
+  <!-- 底部悬浮迷你播放器（滚出音乐卡片后显示） -->
+  <div class="mini-player" id="miniPlayer" role="region" aria-label="音乐迷你播放器">
+    <div class="mini-progress" aria-hidden="true"><div class="mini-progress-fill" id="miniProgressFill"></div></div>
+    <div class="mini-cover" id="miniCover" aria-hidden="true">
+      <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
+    </div>
+    <!-- 均衡器：常驻显示，播放=主题色跳动，暂停=灰色静止 -->
+    <span class="mini-eq" aria-hidden="true"><i></i><i></i><i></i></span>
+    <span class="mini-title" id="miniTitle">未在播放</span>
+    <button class="ctrl-btn mini-btn" id="miniPrevBtn" type="button" aria-label="上一首">
+      <svg class="svg-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg>
+    </button>
+    <button class="ctrl-btn mini-btn play-btn-main" id="miniPlayBtn" type="button" aria-label="播放或暂停">
+      <svg class="svg-icon play-icon" id="miniPlayIcon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 9.003a1 1 0 0 1 1.517-.859l4.997 2.997a1 1 0 0 1 0 1.718l-4.997 2.997A1 1 0 0 1 9 14.996z"/><circle cx="12" cy="12" r="10"/></svg>
+    </button>
+    <button class="ctrl-btn mini-btn" id="miniNextBtn" type="button" aria-label="下一首">
+      <svg class="svg-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>
+    </button>
+    <button class="ctrl-btn mini-btn" id="miniModeBtn" type="button" aria-label="顺序播放" title="顺序播放"></button>
+    <button class="ctrl-btn mini-btn" id="miniListBtn" type="button" aria-label="播放列表">
+      <svg class="svg-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="4" x2="20" y1="7" y2="7"/><line x1="4" x2="20" y1="12" y2="12"/><line x1="4" x2="14" y1="17" y2="17"/></svg>
+    </button>
+
+    <!-- 播放列表面板 -->
+    <div class="mini-playlist" id="miniPlaylist" hidden>
+      <ul id="miniPlaylistList"></ul>
+    </div>
+  </div>
+
+  <!-- 灯箱大图预览 -->
+  <div class="lightbox" id="lightbox" hidden role="dialog" aria-modal="true" aria-label="图片预览">
+    <img id="lightboxImg" alt="大图预览">
+    <button class="lb-nav lb-prev" id="lbPrev" type="button" aria-label="上一张">
+      <svg class="svg-icon" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg>
+    </button>
+    <button class="lb-nav lb-next" id="lbNext" type="button" aria-label="下一张">
+      <svg class="svg-icon" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>
+    </button>
+    <span class="lb-counter" id="lbCounter"></span>
+  </div>
+
+  <!-- 相册独立界面：顶栏"相册"按钮进入，Esc 或右上角按钮退出；点图片打开大图预览 -->
+  <div class="album-view" id="albumView" hidden role="dialog" aria-modal="true" aria-label="相册">
+    <header class="album-bar">
+      <p class="album-title">相册 · ALBUM</p>
+      <button class="album-close" id="albumCloseBtn" type="button" aria-label="关闭相册">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>
+      </button>
+    </header>
+    <div class="album-scroll">
+      <div class="apple-card gallery-card">
+        <div class="card-padding">
+          <p class="card-eyebrow">图片 · IMAGES</p>
+          <div class="gallery" id="albumGrid"></div>
+          <p class="empty-hint" id="albumEmpty" hidden>images 文件夹里还没有图片，放入后刷新即可显示。</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+  (function () {
+    'use strict';
+
+    // =========================
+    // DOM 引用
+    // =========================
+    var siteHeader = document.getElementById('siteHeader');
+    var progressBar = document.getElementById('progressBar');
+    var backTopBtn = document.getElementById('backTop');
+    var themeBtn = document.getElementById('themeToggle');
+    
+    var navLinks = Array.prototype.slice.call(document.querySelectorAll('.nav-link'));
+    var sectionLinks = navLinks.filter(function (a) {
+      return a.getAttribute('data-target');
+    });
+    var sections = sectionLinks.map(function (a) {
+      return document.getElementById(a.getAttribute('data-target'));
+    }).filter(Boolean);
+
+    var clockHEl = document.getElementById('clockH');
+    var clockMEl = document.getElementById('clockM');
+    var clockSEl = document.getElementById('clockS');
+    var clockMsEl = document.getElementById('clockMs');
+    var clockDateEl = document.getElementById('clockDate');
+
+    var gallery = document.getElementById('galleryGrid');
+    var galleryEmpty = document.getElementById('galleryEmpty');
+    var lightbox = document.getElementById('lightbox');
+    var lightboxImg = document.getElementById('lightboxImg');
+
+    var miniPlayer = document.getElementById('miniPlayer');
+    var miniTitle = document.getElementById('miniTitle');
+    var miniPlayBtn = document.getElementById('miniPlayBtn');
+    var miniPlayIcon = document.getElementById('miniPlayIcon');
+    var miniPrevBtn = document.getElementById('miniPrevBtn');
+    var miniNextBtn = document.getElementById('miniNextBtn');
+    var miniProgressFill = document.getElementById('miniProgressFill');
+    var miniListBtn = document.getElementById('miniListBtn');
+    var miniPlaylist = document.getElementById('miniPlaylist');
+    var miniPlaylistList = document.getElementById('miniPlaylistList');
+    var miniModeBtn = document.getElementById('miniModeBtn');
+
+    var footerTop = document.getElementById('footerTop');
+
+    // =========================
+    // 深色模式
+    // =========================
+    var THEME_KEY = 'apple-theme';
+    var iconMoon = document.getElementById('iconMoon');
+    var iconSun = document.getElementById('iconSun');
+
+    function applyTheme(theme) {
+      if (theme === 'dark') {
+        document.documentElement.classList.add('dark');
+        if (iconMoon) iconMoon.hidden = true;
+        if (iconSun) iconSun.hidden = false;
+      } else {
+        document.documentElement.classList.remove('dark');
+        if (iconMoon) iconMoon.hidden = false;
+        if (iconSun) iconSun.hidden = true;
+      }
+    }
+
+    // 初始化主题（在渲染前尽可能早地应用，避免闪烁）
+    var savedTheme = null;
+    try {
+      savedTheme = localStorage.getItem(THEME_KEY);
+    } catch (e) {}
+    var prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+    applyTheme(savedTheme || (prefersDark ? 'dark' : 'light'));
+
+    themeBtn.addEventListener('click', function () {
+      var isDark = document.documentElement.classList.contains('dark');
+      var next = isDark ? 'light' : 'dark';
+      applyTheme(next);
+      try { localStorage.setItem(THEME_KEY, next); } catch (e) {}
+    });
+
+    // =========================
+    // 滚动处理：导航高亮 + 进度条 + 回顶按钮 + 导航阴影
+    // =========================
+    function onScroll() {
+      var scrollY = window.scrollY;
+      var doc = document.documentElement;
+      var maxScroll = doc.scrollHeight - window.innerHeight;
+
+      // 阅读进度条
+      if (progressBar) {
+        progressBar.style.width = (maxScroll > 0 ? (scrollY / maxScroll) * 100 : 0) + '%';
+      }
+
+      // 导航滚动阴影
+      if (siteHeader) {
+        siteHeader.classList.toggle('scrolled', scrollY > 10);
+      }
+
+      // 导航高亮
+      var pos = scrollY + 120;
+      var current = sections[0];
+      sections.forEach(function (sec) {
+        if (sec.offsetTop <= pos) current = sec;
+      });
+      var id = current ? current.id : '';
+      navLinks.forEach(function (a) {
+        a.classList.toggle('active', a.getAttribute('data-target') === id);
+      });
+
+      // 回到顶部按钮
+      if (backTopBtn) {
+        backTopBtn.classList.toggle('show', scrollY > 600);
+      }
+    }
+
+    window.addEventListener('scroll', onScroll, { passive: true });
+    onScroll();
+
+    // =========================
+    // 平滑滚动导航
+    // =========================
+    sectionLinks.forEach(function (a) {
+      a.addEventListener('click', function (e) {
+        e.preventDefault();
+        var target = document.getElementById(a.getAttribute('data-target'));
+        if (!target) return;
+        var top = target.getBoundingClientRect().top + window.scrollY - 52;
+        window.scrollTo({ top: top, behavior: 'smooth' });
+      });
+    });
+
+    // 回到顶部按钮
+    backTopBtn.addEventListener('click', function () {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    });
+
+    // 页脚回顶链接
+    if (footerTop) {
+      footerTop.addEventListener('click', function (e) {
+        e.preventDefault();
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      });
+    }
+
+    // =========================
+    // 实时时钟
+    // =========================
+    var WEEK = ['日', '一', '二', '三', '四', '五', '六'];
+    function pad2(n) {
+      return (n < 10 ? '0' : '') + n;
+    }
+    function greetingText(h) {
+      if (h < 5) return '夜深了 🌌';
+      if (h < 11) return '早上好 ☀️';
+      if (h < 13) return '中午好 🍚';
+      if (h < 18) return '下午好 🌤️';
+      return '晚上好 🌙';
+    }
+    var heroGreeting = document.getElementById('heroGreeting');
+    var lastSecond = null;
+    function updateClock() {
+      var d = new Date();
+      var s = pad2(d.getSeconds());
+      if (clockHEl) clockHEl.textContent = pad2(d.getHours());
+      if (clockMEl) clockMEl.textContent = pad2(d.getMinutes());
+      if (clockSEl && s !== lastSecond) {
+        clockSEl.textContent = s;
+        if (lastSecond !== null) {
+          // 秒位跳动脉冲
+          clockSEl.classList.remove('tick');
+          void clockSEl.offsetWidth;
+          clockSEl.classList.add('tick');
+        }
+        lastSecond = s;
+      }
+      if (clockDateEl) {
+        clockDateEl.textContent = d.getFullYear() + '.' + pad2(d.getMonth() + 1) + '.' + pad2(d.getDate()) + '  周' + WEEK[d.getDay()];
+      }
+      if (heroGreeting) {
+        heroGreeting.textContent = greetingText(d.getHours());
+      }
+    }
+    updateClock();
+    setInterval(updateClock, 200);
+    // 毫秒滚数
+    if (clockMsEl) {
+      setInterval(function () {
+        clockMsEl.textContent = '.' + ('00' + new Date().getMilliseconds()).slice(-3);
+      }, 50);
+    }
+
+    // =========================
+    // 每日一言（当天缓存，加载失败自动隐藏）
+    // =========================
+    var heroQuote = document.getElementById('heroQuote');
+    if (heroQuote) {
+      var todayKey = new Date().toDateString();
+      var cachedQuote = null;
+      try {
+        cachedQuote = JSON.parse(localStorage.getItem('dailyQuote'));
+      } catch (e) {}
+      var showQuote = function (text) {
+        heroQuote.textContent = text;
+        heroQuote.hidden = false;
+        requestAnimationFrame(function () {
+          heroQuote.classList.add('loaded');
+        });
+      };
+      if (cachedQuote && cachedQuote.date === todayKey && cachedQuote.text) {
+        showQuote(cachedQuote.text);
+      } else {
+        fetch('https://v1.hitokoto.cn/?c=i&encode=json')
+          .then(function (res) { return res.json(); })
+          .then(function (data) {
+            var text = data.hitokoto + (data.from ? ' —— 「' + data.from + '」' : '');
+            showQuote(text);
+            try {
+              localStorage.setItem('dailyQuote', JSON.stringify({ date: todayKey, text: text }));
+            } catch (e) {}
+          })
+          .catch(function () { heroQuote.hidden = true; });
+      }
+    }
+
+    // =========================
+    // 滚动入场动画
+    // =========================
+    if ('IntersectionObserver' in window) {
+      var observer = new IntersectionObserver(function (entries) {
+        entries.forEach(function (entry) {
+          if (entry.isIntersecting) {
+            entry.target.classList.add('visible');
+            observer.unobserve(entry.target);
+          }
+        });
+      }, { threshold: 0.1, rootMargin: '0px 0px -60px 0px' });
+
+      document.querySelectorAll('.content-section').forEach(function (el) {
+        observer.observe(el);
+      });
+    } else {
+      // 降级：直接显示
+      document.querySelectorAll('.content-section').forEach(function (el) {
+        el.classList.add('visible');
+      });
+    }
+
+    // =========================
+    // 图片画廊 + 灯箱
+    // =========================
+    if (gallery) {
+      // 约定：图片命名为 1、2、3… 放入 images 文件夹，自动尝试多种格式
+      var IMAGES = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
+      var IMAGE_EXT = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'bmp', 'avif'];
+      var imgPending = IMAGES.length;
+      var loadedImgs = [];
+
+      // 散落网格布局：按已加载图片数量计算行列，数量变化/窗口缩放时自动重排
+      function layoutGallery() {
+        var total = loadedImgs.length;
+        if (!total) return;
+        var w = gallery.clientWidth || 800;
+        var cols = Math.max(1, Math.min(total, Math.round(w / 340)));
+        var rows = Math.ceil(total / cols);
+        var cellW = w / cols;
+        var imgH = Math.min(300, Math.max(120, cellW - 44)) * 0.75;
+        gallery.style.setProperty('--cols', cols);
+        gallery.style.setProperty('--rows', rows);
+        gallery.style.height = (rows * (imgH + 56) + 20) + 'px';
+        loadedImgs.forEach(function (el, i) {
+          el.style.setProperty('--col', i % cols);
+          el.style.setProperty('--row', Math.floor(i / cols));
+        });
+      }
+      window.addEventListener('resize', layoutGallery);
+
+      // 鼠标动效：卡片 3D 倾斜 + 照片视差 + 聚光灯（rAF 节流，纯 CSS 变量驱动）
+      var cardMouseOn = true; // 大卡片跟随鼠标（外观卡片开关）
+      var imgTiltOn = true;   // 小图片倾斜动效（外观卡片开关）
+      var galleryCard = gallery.closest('.apple-card');
+      var tiltRaf = null;
+      var lastMove = null;
+      var hoverImg = null;
+      var reduceMotion = window.matchMedia &&
+        window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      if (galleryCard && !reduceMotion) {
+        function applyCardMouse() {
+          tiltRaf = null;
+          if (!lastMove) return;
+          var r = galleryCard.getBoundingClientRect();
+          var nx = (lastMove.clientX - r.left) / r.width * 2 - 1; // -1 ~ 1
+          var ny = (lastMove.clientY - r.top) / r.height * 2 - 1;
+          if (cardMouseOn) {
+            galleryCard.style.setProperty('--cx', (ny * -2.5).toFixed(2) + 'deg');
+            galleryCard.style.setProperty('--cy', (nx * 2.5).toFixed(2) + 'deg');
+            galleryCard.style.setProperty('--mx', ((nx + 1) / 2 * 100).toFixed(1) + '%');
+            galleryCard.style.setProperty('--my', ((ny + 1) / 2 * 100).toFixed(1) + '%');
+            loadedImgs.forEach(function (el, i) {
+              var depth = 6 + (i % 3) * 5; // 每张照片视差深度不同
+              el.style.setProperty('--px', (nx * depth).toFixed(1) + 'px');
+              el.style.setProperty('--py', (ny * depth).toFixed(1) + 'px');
+            });
+          }
+
+          // 单张照片自己的 3D 倾斜（跟随鼠标在照片内的位置）
+          var t = lastMove.target && lastMove.target.tagName === 'IMG' ? lastMove.target : null;
+          if (t !== hoverImg) {
+            if (hoverImg) {
+              hoverImg.style.setProperty('--ix', '0deg');
+              hoverImg.style.setProperty('--iy', '0deg');
+            }
+            hoverImg = t;
+          }
+          if (hoverImg) {
+            if (imgTiltOn) {
+              var ir = hoverImg.getBoundingClientRect();
+              var ix = (lastMove.clientX - ir.left) / ir.width * 2 - 1;
+              var iy = (lastMove.clientY - ir.top) / ir.height * 2 - 1;
+              hoverImg.style.setProperty('--ix', (iy * -10).toFixed(2) + 'deg');
+              hoverImg.style.setProperty('--iy', (ix * 10).toFixed(2) + 'deg');
+            } else {
+              hoverImg.style.setProperty('--ix', '0deg');
+              hoverImg.style.setProperty('--iy', '0deg');
+            }
+          }
+        }
+        galleryCard.addEventListener('mousemove', function (e) {
+          if (!cardMouseOn && !imgTiltOn) return;
+          lastMove = e;
+          if (tiltRaf === null) {
+            tiltRaf = requestAnimationFrame(applyCardMouse);
+          }
+        });
+        galleryCard.addEventListener('mouseleave', resetCardMouse);
+      }
+
+      var lbPrev = document.getElementById('lbPrev');
+      var lbNext = document.getElementById('lbNext');
+      var lbCounter = document.getElementById('lbCounter');
+      var lightboxIndex = 0;
+
+      function updateLbCounter() {
+        var many = loadedImgs.length > 1;
+        if (lbCounter) lbCounter.textContent = many ? (lightboxIndex + 1) + ' / ' + loadedImgs.length : '';
+        if (lbPrev) lbPrev.hidden = !many;
+        if (lbNext) lbNext.hidden = !many;
+      }
+
+      function openLightbox(index) {
+        if (!loadedImgs.length) return;
+        lightboxIndex = index;
+        lightboxImg.src = loadedImgs[lightboxIndex].src;
+        updateLbCounter();
+        lightbox.hidden = false;
+        // 触发重排以启用过渡动画
+        void lightbox.offsetWidth;
+        lightbox.classList.add('show');
+      }
+
+      function lbStep(delta) {
+        if (loadedImgs.length < 2) return;
+        lightboxIndex = (lightboxIndex + delta + loadedImgs.length) % loadedImgs.length;
+        lightboxImg.src = loadedImgs[lightboxIndex].src;
+        updateLbCounter();
+      }
+
+      function tryImage(n, extIndex) {
+        if (extIndex >= IMAGE_EXT.length) {
+          imgDone();
+          return;
+        }
+        var img = new Image();
+        img.alt = 'image ' + n;
+        img.onload = function () {
+          // 每张图带一点确定性倾斜/抖动，保留照片随手摆放的感觉
+          img.style.setProperty('--tilt', (((n * 47) % 17) - 8) + 'deg');
+          img.style.setProperty('--jx', (((n * 29) % 21) - 10) + 'px');
+          img.style.setProperty('--jy', (((n * 13) % 15) - 7) + 'px');
+          img.style.zIndex = n;
+          img.addEventListener('click', function () {
+            openLightbox(loadedImgs.indexOf(img));
+          });
+          loadedImgs.push(img);
+          gallery.appendChild(img);
+          layoutGallery();
+          imgDone();
+        };
+        img.onerror = function () {
+          tryImage(n, extIndex + 1);
+        };
+        // 图片位于项目根目录 images/ 文件夹
+        img.src = 'images/' + n + '.' + IMAGE_EXT[extIndex];
+      }
+
+      IMAGES.forEach(function (n) {
+        tryImage(n, 0);
+      });
+
+      function imgDone() {
+        imgPending--;
+        if (imgPending === 0 && gallery.children.length === 0) {
+          galleryEmpty.hidden = false;
+        }
+      }
+
+      // 灯箱关闭（点按钮不关闭，点遮罩或大图关闭）
+      function closeLightbox() {
+        lightbox.classList.remove('show');
+        setTimeout(function () {
+          lightbox.hidden = true;
+        }, 250);
+      }
+
+      lightbox.addEventListener('click', closeLightbox);
+      if (lbPrev) {
+        lbPrev.addEventListener('click', function (e) {
+          e.stopPropagation();
+          lbStep(-1);
+        });
+      }
+      if (lbNext) {
+        lbNext.addEventListener('click', function (e) {
+          e.stopPropagation();
+          lbStep(1);
+        });
+      }
+      document.addEventListener('keydown', function (e) {
+        if (lightbox.hidden) return;
+        if (e.key === 'Escape') {
+          closeLightbox();
+        } else if (e.key === 'ArrowLeft') {
+          lbStep(-1);
+        } else if (e.key === 'ArrowRight') {
+          lbStep(1);
+        }
+      });
+
+      // =========================
+      // 相册独立界面：顶栏"相册"按钮进入；复用上面已加载的图片（克隆节点，外观与主页画廊一致）
+      // =========================
+      var albumView = document.getElementById('albumView');
+      var albumGrid = document.getElementById('albumGrid');
+      var albumBtn = document.getElementById('albumBtn');
+      var albumCloseBtn = document.getElementById('albumCloseBtn');
+      var albumEmpty = document.getElementById('albumEmpty');
+      var albumImgs = [];
+
+      function layoutAlbum() {
+        var total = albumImgs.length;
+        if (!total) return;
+        var w = albumGrid.clientWidth || 800;
+        var cols = Math.max(1, Math.min(total, Math.round(w / 340)));
+        var rows = Math.ceil(total / cols);
+        var cellW = w / cols;
+        var imgH = Math.min(300, Math.max(120, cellW - 44)) * 0.75;
+        albumGrid.style.setProperty('--cols', cols);
+        albumGrid.style.setProperty('--rows', rows);
+        albumGrid.style.height = (rows * (imgH + 56) + 20) + 'px';
+        albumImgs.forEach(function (el, i) {
+          el.style.setProperty('--col', i % cols);
+          el.style.setProperty('--row', Math.floor(i / cols));
+        });
+      }
+      window.addEventListener('resize', layoutAlbum);
+
+      function syncAlbumImages() {
+        if (albumImgs.length === loadedImgs.length) return;
+        albumGrid.innerHTML = '';
+        albumImgs = loadedImgs.map(function (img, i) {
+          var clone = img.cloneNode(false); // img 无子节点，内联样式（倾斜/抖动/层级）随属性一并复制
+          clone.addEventListener('click', function () {
+            openLightbox(i);
+          });
+          albumGrid.appendChild(clone);
+          return clone;
+        });
+        layoutAlbum();
+      }
+
+      function openAlbum() {
+        if (albumEmpty) albumEmpty.hidden = loadedImgs.length > 0;
+        syncAlbumImages();
+        albumView.hidden = false;
+        void albumView.offsetWidth; // 触发重排以启用过渡动画
+        albumView.classList.add('show');
+        document.body.style.overflow = 'hidden';
+        layoutAlbum(); // 打开后容器才有真实宽度，再排一次
+      }
+
+      function closeAlbum() {
+        albumView.classList.remove('show');
+        document.body.style.overflow = '';
+        setTimeout(function () {
+          albumView.hidden = true;
+        }, 250);
+      }
+
+      if (albumBtn) albumBtn.addEventListener('click', openAlbum);
+      if (albumCloseBtn) albumCloseBtn.addEventListener('click', closeAlbum);
+      // 在相册里点顶栏其他页面链接时，自动退出相册让页面可见
+      sectionLinks.forEach(function (a) {
+        a.addEventListener('click', function () {
+          if (!albumView.hidden) closeAlbum();
+        });
+      });
+      // Esc 逐层退出：灯箱先关（见上方处理器），灯箱关完再按 Esc 才退出相册
+      document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape' && !albumView.hidden && lightbox.hidden) closeAlbum();
+      });
+    }
+
+    // =========================
+    // 音乐播放器
+    // =========================
+    var audio = new Audio();
+    var AUDIO_EXT = ['.mp3', '.wav', '.m4a', '.flac', '.ogg', '.aac', '.opus', '.aiff', '.aif', '.weba'];
+
+    function isAudio(name) {
+      var n = name.toLowerCase();
+      return AUDIO_EXT.some(function (ext) {
+        return n.indexOf(ext) === n.length - ext.length;
+      });
+    }
+
+    var tracks = [];
+    var current = -1;
+    // 当前曲目按歌名追踪：列表合并/重排后按下标会错位，先记名再重新定位
+    var currentName = null;
+    // 上次会话的播放进度（等文件夹扫描完成后尝试接续；读不到文件夹时用于缓存兜底）
+    var pendingMeta = null;
+
+    function syncCurrentByName() {
+      if (!currentName) return;
+      for (var i = 0; i < tracks.length; i++) {
+        if (tracks[i].name === currentName) { current = i; return; }
+      }
+    }
+
+    function playIndex(i) {
+      if (i < 0 || i >= tracks.length) return;
+      current = i;
+      currentName = tracks[i].name;
+      audio.src = tracks[i].src;
+      audio.play().catch(function () {});
+      if (miniTitle) miniTitle.textContent = tracks[i].name;
+      renderPlaylist();
+      saveMeta();
+    }
+
+    function updatePlayIcon(playing) {
+      var pauseSvg = '<circle cx="12" cy="12" r="10"/><line x1="10" x2="10" y1="15" y2="9"/><line x1="14" x2="14" y1="15" y2="9"/>';
+      var playSvg = '<path d="M9 9.003a1 1 0 0 1 1.517-.859l4.997 2.997a1 1 0 0 1 0 1.718l-4.997 2.997A1 1 0 0 1 9 14.996z"/><circle cx="12" cy="12" r="10"/>';
+      if (miniPlayIcon) miniPlayIcon.innerHTML = playing ? pauseSvg : playSvg;
+      if (miniPlayer) miniPlayer.classList.toggle('playing', playing);
+    }
+
+    var pendingPlay = false; // 曲库加载期间点击过播放：加载完成后自动开始
+    function togglePlay() {
+      if (!tracks.length) {
+        // 首次进入时曲库可能还在加载：记住播放意图，避免点击无反应
+        pendingPlay = true;
+        if (miniTitle) miniTitle.textContent = '曲库加载中…';
+        return;
+      }
+      if (current < 0) {
+        playIndex(0);
+        return;
+      }
+      if (audio.paused) {
+        audio.play().catch(function () {});
+      } else {
+        audio.pause();
+      }
+    }
+
+    if (miniPlayBtn) miniPlayBtn.addEventListener('click', togglePlay);
+    if (miniPrevBtn) {
+      miniPrevBtn.addEventListener('click', function () {
+        if (tracks.length) playIndex((current - 1 + tracks.length) % tracks.length);
+      });
+    }
+    function nextTrack() {
+      if (!tracks.length) return;
+      // 随机播放：下一首随机（且不与当前重复，单曲时重播）
+      if (playMode === 'shuffle' && tracks.length > 1) {
+        var n = current;
+        while (n === current) {
+          n = Math.floor(Math.random() * tracks.length);
+        }
+        playIndex(n);
+        return;
+      }
+      playIndex((current + 1) % tracks.length);
+    }
+
+    if (miniNextBtn) {
+      miniNextBtn.addEventListener('click', nextTrack);
+    }
+
+    audio.addEventListener('play', function () {
+      updatePlayIcon(true);
+      saveMeta();
+    });
+    audio.addEventListener('pause', function () {
+      updatePlayIcon(false);
+      saveMeta();
+    });
+    audio.addEventListener('ended', function () {
+      if (!tracks.length) return;
+      // 单曲循环：重播当前曲目
+      if (playMode === 'one') {
+        audio.currentTime = 0;
+        audio.play().catch(function () {});
+        return;
+      }
+      nextTrack();
+    });
+
+    var lastMetaSave = 0;
+    audio.addEventListener('timeupdate', function () {
+      if (audio.duration) {
+        if (miniProgressFill) {
+          miniProgressFill.style.width = (audio.currentTime / audio.duration) * 100 + '%';
+        }
+        var now = Date.now();
+        if (now - lastMetaSave > 1000) {
+          lastMetaSave = now;
+          saveMeta();
+        }
+      }
+    });
+
+    // =========================
+    // 底部悬浮迷你播放器
+    // =========================
+    function updateMiniPlayerVisibility() {
+      if (!miniPlayer) return;
+      var show = tracks.length > 0;
+      miniPlayer.classList.toggle('show', show);
+      document.body.classList.toggle('mini-active', show);
+    }
+
+    // 曲库扫描结束的统一收口：刷新列表、接续上次进度、补上加载期间点击的播放
+    function finishMusicLoad() {
+      updateMiniPlayerVisibility();
+      var resumed = false;
+      if (pendingMeta) resumed = applyResume();
+      if (tracks.length) renderPlaylist();
+      if (pendingPlay) {
+        pendingPlay = false;
+        if (!tracks.length) {
+          if (miniTitle) miniTitle.textContent = '未找到歌曲';
+        } else if (!resumed) {
+          playIndex(0);
+        } else if (audio.paused) {
+          audio.play().catch(function () {});
+        }
+      } else if (!tracks.length && !resumed && miniTitle && miniTitle.textContent === '曲库加载中…') {
+        miniTitle.textContent = 'music 文件夹里没有歌曲';
+      }
+    }
+
+    // 恢复上次的播放进度：只在文件夹扫描结果里能找到那首歌时才接续（曲库严格跟随文件夹）
+    function applyResume() {
+      var meta = pendingMeta;
+      pendingMeta = null;
+      if (!meta || !meta.names || meta.current < 0 || meta.current >= meta.names.length) return false;
+      var want = meta.names[meta.current];
+      var idx = -1;
+      for (var i = 0; i < tracks.length; i++) {
+        if (tracks[i].name === want) { idx = i; break; }
+      }
+      if (idx < 0) return false;
+      current = idx;
+      currentName = tracks[idx].name;
+      if (miniTitle) miniTitle.textContent = tracks[idx].name;
+      audio.src = tracks[idx].src;
+      audio.addEventListener('loadedmetadata', function () {
+        audio.currentTime = meta.time || 0;
+        if (meta.playing) {
+          audio.play().catch(function () { updatePlayIcon(false); });
+        }
+      }, { once: true });
+      if (meta.playing) updatePlayIcon(true);
+      return true;
+    }
+
+    // =========================
+    // 播放模式：顺序播放 / 随机播放 / 单曲循环
+    // =========================
+    var PLAY_MODES = ['order', 'shuffle', 'one'];
+    var MODE_META = {
+      order: {
+        label: '顺序播放',
+        icon: '<line x1="4" y1="8" x2="15" y2="8"/><path d="m12 5 3 3-3 3"/><line x1="4" y1="16" x2="15" y2="16"/><path d="m12 13 3 3-3 3"/>'
+      },
+      shuffle: {
+        label: '随机播放',
+        icon: '<path d="M2 18h1.4c1.3 0 2.5-.6 3.3-1.7l6.1-8.6c.8-1.1 2-1.7 3.3-1.7H22"/><path d="m18 2 4 4-4 4"/><path d="M2 6h1.9c1.5 0 2.9.9 3.6 2.2"/><path d="M22 18h-5.9c-1.3 0-2.6-.7-3.3-1.8l-.5-.8"/><path d="m18 14 4 4-4 4"/>'
+      },
+      one: {
+        label: '单曲循环',
+        icon: '<path d="m17 2 4 4-4 4"/><path d="M3 11v-1a4 4 0 0 1 4-4h14"/><path d="m7 22-4-4 4-4"/><path d="M21 13v1a4 4 0 0 1-4 4H3"/><path d="M11 10h1v4"/>'
+      }
+    };
+    var playMode = 'order';
+    try {
+      var savedMode = localStorage.getItem('playMode');
+      if (PLAY_MODES.indexOf(savedMode) >= 0) playMode = savedMode;
+    } catch (e) {}
+
+    function applyPlayMode() {
+      if (!miniModeBtn) return;
+      var meta = MODE_META[playMode];
+      miniModeBtn.innerHTML =
+        '<svg class="svg-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+        meta.icon + '</svg>';
+      miniModeBtn.title = meta.label;
+      miniModeBtn.setAttribute('aria-label', meta.label);
+    }
+    applyPlayMode();
+
+    if (miniModeBtn) {
+      miniModeBtn.addEventListener('click', function () {
+        playMode = PLAY_MODES[(PLAY_MODES.indexOf(playMode) + 1) % PLAY_MODES.length];
+        try { localStorage.setItem('playMode', playMode); } catch (e) {}
+        applyPlayMode();
+      });
+    }
+
+    // =========================
+    // 播放列表面板
+    // =========================
+    var plCloseTimer = null;
+
+    function renderPlaylist() {
+      if (!miniPlaylistList) return;
+      miniPlaylistList.innerHTML = '';
+      tracks.forEach(function (t, i) {
+        var li = document.createElement('li');
+        if (i === current) li.className = 'active';
+        var idx = document.createElement('span');
+        idx.className = 'pl-index';
+        idx.textContent = String(i + 1).padStart(2, '0');
+        var name = document.createElement('span');
+        name.className = 'pl-name';
+        name.textContent = t.name;
+        li.appendChild(idx);
+        li.appendChild(name);
+        li.addEventListener('click', function () {
+          playIndex(i);
+        });
+        miniPlaylistList.appendChild(li);
+      });
+      if (miniPlaylist && !miniPlaylist.hidden) {
+        var act = miniPlaylistList.querySelector('li.active');
+        if (act) act.scrollIntoView({ block: 'nearest' });
+      }
+    }
+
+    function togglePlaylist(force) {
+      if (!miniPlaylist) return;
+      var show = typeof force === 'boolean' ? force : miniPlaylist.hidden;
+      if (plCloseTimer) {
+        clearTimeout(plCloseTimer);
+        plCloseTimer = null;
+      }
+      if (show && tracks.length) {
+        renderPlaylist();
+        miniPlaylist.hidden = false;
+        void miniPlaylist.offsetWidth;
+        miniPlaylist.classList.add('show');
+        var act = miniPlaylistList.querySelector('li.active');
+        if (act) act.scrollIntoView({ block: 'nearest' });
+      } else {
+        miniPlaylist.classList.remove('show');
+        plCloseTimer = setTimeout(function () {
+          miniPlaylist.hidden = true;
+        }, 200);
+      }
+      if (miniListBtn) miniListBtn.classList.toggle('active', show && tracks.length);
+    }
+
+    if (miniListBtn) {
+      miniListBtn.addEventListener('click', function () {
+        togglePlaylist();
+      });
+    }
+    // 点击胶囊外或按 Esc 收起面板
+    if (miniPlayer) {
+      miniPlayer.addEventListener('click', function (e) { e.stopPropagation(); });
+    }
+    document.addEventListener('click', function () { togglePlaylist(false); });
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape') togglePlaylist(false);
+    });
+
+    // =========================
+    // IndexedDB 持久化
+    // =========================
+    var DB_NAME = 'musicStore';
+    var STORE = 'files';
+    var META_KEY = 'musicMeta';
+    var DIR_KEY = 'musicDirHandle';
+    var _dbPromise = null;
+
+    function idbOpen() {
+      if (_dbPromise) return _dbPromise;
+      _dbPromise = new Promise(function (resolve, reject) {
+        var req = indexedDB.open(DB_NAME, 1);
+        req.onupgradeneeded = function () {
+          req.result.createObjectStore(STORE);
+        };
+        req.onsuccess = function () { resolve(req.result); };
+        req.onerror = function () { reject(req.error); };
+      });
+      return _dbPromise;
+    }
+
+    function idbPut(key, blob) {
+      return idbOpen().then(function (db) {
+        return new Promise(function (resolve, reject) {
+          var tx = db.transaction(STORE, 'readwrite');
+          tx.objectStore(STORE).put(blob, key);
+          tx.oncomplete = resolve;
+          tx.onerror = function () { reject(tx.error); };
+        });
+      });
+    }
+
+    function idbGetAll(keys) {
+      return idbOpen().then(function (db) {
+        return Promise.all(keys.map(function (k) {
+          return new Promise(function (resolve) {
+            var tx = db.transaction(STORE, 'readonly');
+            var req = tx.objectStore(STORE).get(k);
+            req.onsuccess = function () { resolve(req.result); };
+            req.onerror = function () { resolve(null); };
+          });
+        }));
+      });
+    }
+
+    function saveMeta() {
+      try {
+        localStorage.setItem(META_KEY, JSON.stringify({
+          names: tracks.map(function (t) { return t.name; }),
+          current: current,
+          time: audio.currentTime || 0,
+          playing: !audio.paused
+        }));
+      } catch (e) {}
+    }
+
+    // 兜底：读不到 music 文件夹（如 file:// 直接打开）时，用浏览器缓存恢复曲目
+    function restoreCachedTracks() {
+      var meta = pendingMeta;
+      pendingMeta = null;
+      if (!meta || !meta.names || !meta.names.length || meta.current < 0) return;
+
+      idbGetAll(meta.names).then(function (blobs) {
+        var valid = blobs.every(function (b) { return !!b; });
+        if (!valid) return;
+
+        // 合并恢复：跳过已扫描到的新歌，避免互相覆盖
+        var existing = {};
+        tracks.forEach(function (t) { existing[t.name] = true; });
+        meta.names.forEach(function (name, i) {
+          if (existing[name]) return;
+          tracks.push({ name: name, src: URL.createObjectURL(blobs[i]) });
+          existing[name] = true;
+        });
+        tracks.sort(function (a, b) {
+          return a.name.localeCompare(b.name, 'zh-Hans-CN');
+        });
+        updateMiniPlayerVisibility();
+
+        // 排序后按歌名找回当前曲目
+        currentName = meta.names[meta.current] || null;
+        current = 0;
+        syncCurrentByName();
+        if (miniTitle) miniTitle.textContent = tracks[current].name;
+        audio.src = tracks[current].src;
+
+        // 曲库加载期间用户点过播放：直接开始
+        if (pendingPlay) {
+          pendingPlay = false;
+          audio.play().catch(function () {});
+        }
+
+        audio.addEventListener('loadedmetadata', function () {
+          audio.currentTime = meta.time || 0;
+          if (meta.playing) {
+            audio.play().catch(function () {
+              updatePlayIcon(false);
+            });
+          }
+        }, { once: true });
+        if (meta.playing) updatePlayIcon(true);
+      });
+    }
+
+    // =========================
+    // 文件夹句柄持久化（File System Access API）
+    // =========================
+    function getDirHandle() {
+      return idbOpen().then(function (db) {
+        return new Promise(function (resolve) {
+          var tx = db.transaction(STORE, 'readonly');
+          var req = tx.objectStore(STORE).get(DIR_KEY);
+          req.onsuccess = function () { resolve(req.result || null); };
+          req.onerror = function () { resolve(null); };
+        });
+      });
+    }
+
+    function loadFromDirHandle(handle) {
+      var collected = [];
+      var iter = handle.values();
+
+      function next() {
+        try {
+          var p = iter.next();
+          if (p && typeof p.then === 'function') {
+            p.then(onEntry).catch(function () { onEntry({ done: true }); });
+          } else {
+            onEntry(p);
+          }
+        } catch (e) {
+          onEntry({ done: true });
+        }
+      }
+
+      function onEntry(res) {
+        if (!res || res.done) { finish(); return; }
+        var entry = res.value;
+        if (entry.kind === 'file' && isAudio(entry.name)) {
+          entry.getFile().then(function (file) {
+            collected.push({ name: entry.name, file: file });
+            next();
+          }).catch(function () { next(); });
+        } else {
+          next();
+        }
+      }
+
+      function finish() {
+        collected.sort(function (a, b) {
+          return a.name.localeCompare(b.name, 'zh-Hans-CN');
+        });
+        if (collected.length) {
+          tracks = collected.map(function (item) {
+            return { name: item.name, src: URL.createObjectURL(item.file) };
+          });
+          syncCurrentByName();
+          collected.forEach(function (item) { idbPut(item.name, item.file); });
+        }
+        finishMusicLoad();
+        if (tracks.length) saveMeta();
+      }
+
+      next();
+    }
+
+    // 自动读取 music 文件夹
+    function autoLoadMusicFolder() {
+      fetch('music/', { credentials: 'same-origin' })
+        .then(function (res) {
+          if (!res.ok) throw new Error('music 目录不可访问');
+          return res.text();
+        })
+        .then(function (html) {
+          var names = [];
+          var re = /<a href="([^"]+)">/g;
+          var m;
+          while ((m = re.exec(html))) {
+            var href = m[1];
+            if (href.indexOf('../') === 0 || href === '/') continue;
+            var name = decodeURIComponent(href);
+            if (isAudio(name) && names.indexOf(name) === -1) names.push(name);
+          }
+          if (!names.length) return;
+          loadMusicFiles(names);
+        })
+        .catch(function () {
+          // 目录列表不可用时（GitHub Pages 等静态托管不支持）：
+          // 退回读取清单文件 music/playlist.json（用"生成歌单.bat"维护）
+          fetch('music/playlist.json', { credentials: 'same-origin' })
+            .then(function (res) {
+              if (!res.ok) throw new Error('无清单文件');
+              return res.json();
+            })
+            .then(function (names) {
+              if (!Array.isArray(names) || !names.length) throw new Error('清单为空');
+              var list = names.filter(function (n) { return isAudio(n); });
+              if (!list.length) throw new Error('清单里没有音频');
+              loadMusicFiles(list);
+            })
+            .catch(function () {
+              // 彻底失败（如 file:// 直接打开）：给出明确提示，并退回用浏览器缓存恢复曲目
+              if (!tracks.length && miniTitle && miniTitle.textContent === '曲库加载中…') {
+                miniTitle.textContent = '无法读取 music 文件夹，请通过本地服务器打开';
+              }
+              if (!tracks.length) restoreCachedTracks();
+            });
+        });
+    }
+
+    function loadMusicFiles(names) {
+      // 合并模式：只补充列表里没有的新文件，不覆盖已恢复的会话
+      var existing = {};
+      tracks.forEach(function (t) { existing[t.name] = true; });
+      var fresh = names.filter(function (n) { return !existing[n]; });
+      if (!fresh.length) return;
+      var pending = fresh.length;
+      var added = 0;
+      fresh.forEach(function (name) {
+        fetch('music/' + encodeURIComponent(name))
+          .then(function (res) {
+            if (!res.ok) throw new Error('读取失败');
+            return res.blob();
+          })
+          .then(function (blob) {
+            // push 前再查一次：缓存恢复（restoreSession）可能已经把同名歌加进来了
+            var dup = false;
+            for (var i = 0; i < tracks.length; i++) {
+              if (tracks[i].name === name) { dup = true; break; }
+            }
+            if (!dup) {
+              var file = new File([blob], name, { type: blob.type });
+              tracks.push({ name: name, src: URL.createObjectURL(file) });
+              added++;
+              idbPut(name, file);
+            }
+          })
+          .catch(function () {})
+          .then(function () {
+            pending--;
+            if (pending === 0 && added) {
+              tracks.sort(function (a, b) {
+                return a.name.localeCompare(b.name, 'zh-Hans-CN');
+              });
+              syncCurrentByName();
+              finishMusicLoad();
+              saveMeta();
+            }
+          });
+      });
+    }
+
+    function autoRestoreDir() {
+      if (window.showDirectoryPicker) {
+        getDirHandle()
+          .then(function (handle) {
+            if (!handle) return autoLoadMusicFolder();
+            return handle.queryPermission({ mode: 'read' }).then(function (perm) {
+              if (perm === 'granted') loadFromDirHandle(handle);
+              else autoLoadMusicFolder();
+            });
+          })
+          .catch(function () { autoLoadMusicFolder(); });
+      } else {
+        autoLoadMusicFolder();
+      }
+    }
+
+    // 初始化音乐：曲库严格跟随 music 文件夹，缓存只用于恢复"上次听到哪了"
+    pendingMeta = null;
+    try {
+      var _m = JSON.parse(localStorage.getItem(META_KEY));
+      if (_m && _m.names && _m.names.length && _m.current >= 0) pendingMeta = _m;
+    } catch (e) {}
+    autoRestoreDir();
+
+    // 复位所有鼠标跟随变量（供 mouseleave 和外观开关共用；放在外层作用域，严格模式下块内函数声明不可见）
+    function resetCardMouse() {
+      if (tiltRaf !== null && tiltRaf !== undefined) {
+        cancelAnimationFrame(tiltRaf);
+        tiltRaf = null;
+      }
+      if (galleryCard) {
+        galleryCard.style.setProperty('--cx', '0deg');
+        galleryCard.style.setProperty('--cy', '0deg');
+        galleryCard.style.setProperty('--mx', '50%');
+        galleryCard.style.setProperty('--my', '50%');
+      }
+      if (hoverImg) {
+        hoverImg.style.setProperty('--ix', '0deg');
+        hoverImg.style.setProperty('--iy', '0deg');
+        hoverImg = null;
+      }
+      loadedImgs.forEach(function (el) {
+        el.style.setProperty('--px', '0px');
+        el.style.setProperty('--py', '0px');
+      });
+    }
+
+    // =========================
+    // 外观抽屉：点击箭头弹出/收起，点外部或 Esc 收起
+    // =========================
+    var appearDock = document.getElementById('appearDock');
+    var appearTab = document.getElementById('appearTab');
+
+    function setAppearOpen(open) {
+      document.body.classList.toggle('appear-open', open);
+      if (appearTab) appearTab.setAttribute('aria-expanded', open ? 'true' : 'false');
+    }
+
+    if (appearTab) {
+      appearTab.addEventListener('click', function (e) {
+        e.stopPropagation();
+        setAppearOpen(!document.body.classList.contains('appear-open'));
+      });
+    }
+    document.addEventListener('click', function (e) {
+      if (!document.body.classList.contains('appear-open')) return;
+      if (appearDock && appearDock.contains(e.target)) return;
+      setAppearOpen(false);
+    });
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape') setAppearOpen(false);
+    });
+
+    // =========================
+    // 外观：主题色 + 自定义背景
+    // =========================
+    var swatches = Array.prototype.slice.call(document.querySelectorAll('.swatch'));
+    var bgLayer = document.getElementById('bgLayer');
+    var bgDimLayer = document.getElementById('bgDimLayer');
+    var bgUploadBtn = document.getElementById('bgUploadBtn');
+    var bgClearBtn = document.getElementById('bgClearBtn');
+    var bgInput = document.getElementById('bgInput');
+    var bgDimSlider = document.getElementById('bgDim');
+
+    function applyAccent(name) {
+      document.documentElement.setAttribute('data-accent', name);
+      swatches.forEach(function (b) {
+        b.classList.toggle('active', b.getAttribute('data-accent') === name);
+      });
+    }
+    var savedAccent = null;
+    try { savedAccent = localStorage.getItem('accent'); } catch (e) {}
+    applyAccent(savedAccent || 'blue');
+    swatches.forEach(function (b) {
+      b.addEventListener('click', function () {
+        var name = b.getAttribute('data-accent');
+        applyAccent(name);
+        try { localStorage.setItem('accent', name); } catch (e) {}
+      });
+    });
+
+    function applyDim(v) {
+      if (bgDimLayer) bgDimLayer.style.opacity = v / 100;
+      if (bgDimSlider) bgDimSlider.value = v;
+    }
+    var savedDim = 25;
+    try { savedDim = parseInt(localStorage.getItem('bgDim'), 10); } catch (e) {}
+    if (isNaN(savedDim)) savedDim = 25;
+    applyDim(savedDim);
+    if (bgDimSlider) {
+      bgDimSlider.addEventListener('input', function () {
+        applyDim(parseInt(bgDimSlider.value, 10));
+        try { localStorage.setItem('bgDim', bgDimSlider.value); } catch (e) {}
+      });
+    }
+
+    function applyCustomBg(blob) {
+      if (!bgLayer) return;
+      if (bgLayer.dataset.bgUrl) {
+        URL.revokeObjectURL(bgLayer.dataset.bgUrl);
+        delete bgLayer.dataset.bgUrl;
+      }
+      if (blob && blob.size) {
+        var url = URL.createObjectURL(blob);
+        bgLayer.style.backgroundImage = 'url(' + url + ')';
+        bgLayer.dataset.bgUrl = url;
+        document.body.classList.add('has-custom-bg');
+      } else {
+        bgLayer.style.backgroundImage = '';
+        document.body.classList.remove('has-custom-bg');
+      }
+    }
+
+    idbGetAll(['customBg']).then(function (blobs) {
+      applyCustomBg(blobs[0]);
+    }).catch(function () {});
+
+    if (bgUploadBtn) {
+      bgUploadBtn.addEventListener('click', function () { bgInput.click(); });
+    }
+    if (bgInput) {
+      bgInput.addEventListener('change', function () {
+        var f = bgInput.files[0];
+        if (!f) return;
+        applyCustomBg(f);
+        idbPut('customBg', f);
+        bgInput.value = '';
+      });
+    }
+    if (bgClearBtn) {
+      bgClearBtn.addEventListener('click', function () {
+        applyCustomBg(null);
+        idbPut('customBg', '');
+      });
+    }
+
+    // 动效开关：大卡片跟随鼠标 / 小图片倾斜
+    var cardMouseToggle = document.getElementById('cardMouseToggle');
+    var imgMouseToggle = document.getElementById('imgMouseToggle');
+    if (cardMouseToggle || imgMouseToggle) {
+      var cardMouseSaved = null;
+      var imgMouseSaved = null;
+      try {
+        cardMouseSaved = localStorage.getItem('cardMouse');
+        imgMouseSaved = localStorage.getItem('imgMouse');
+      } catch (e) {}
+      cardMouseOn = cardMouseSaved !== '0';
+      imgTiltOn = imgMouseSaved !== '0';
+      if (cardMouseToggle) {
+        cardMouseToggle.checked = cardMouseOn;
+        cardMouseToggle.addEventListener('change', function () {
+          cardMouseOn = cardMouseToggle.checked;
+          try { localStorage.setItem('cardMouse', cardMouseOn ? '1' : '0'); } catch (e) {}
+          if (!cardMouseOn) resetCardMouse();
+        });
+      }
+      if (imgMouseToggle) {
+        imgMouseToggle.checked = imgTiltOn;
+        imgMouseToggle.addEventListener('change', function () {
+          imgTiltOn = imgMouseToggle.checked;
+          try { localStorage.setItem('imgMouse', imgTiltOn ? '1' : '0'); } catch (e) {}
+          if (!imgTiltOn) resetCardMouse();
+        });
+      }
+    }
+  })();
+  </script>
+</body>
+</html>

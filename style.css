@@ -1,0 +1,435 @@
+/* =========================================
+   黑白极简 · 个人主页
+   无卡片、无圆角、无阴影，仅黑白与细线
+   ========================================= */
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+:root {
+  --bg: #ffffff;
+  --ink: #111111;
+  --muted: #555555;
+  --line: #e3e3e3;
+}
+
+body[data-theme="dark"] {
+  --bg: #111111;
+  --ink: #f2f2f2;
+  --muted: #9a9a9a;
+  --line: #2e2e2e;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "PingFang SC",
+    "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+  background: var(--bg);
+  color: var(--ink);
+  line-height: 1.7;
+  -webkit-font-smoothing: antialiased;
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+::selection {
+  background: var(--ink);
+  color: var(--bg);
+}
+
+/* ---------- 阅读进度条 ---------- */
+.progress-bar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  height: 2px;
+  width: 0;
+  background: var(--ink);
+  z-index: 100;
+  transition: background-color 0.3s ease;
+}
+
+/* ---------- 顶部导航 ---------- */
+.site-header {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: var(--bg);
+  border-bottom: 1px solid var(--line);
+  transition: background-color 0.3s ease, border-color 0.3s ease;
+}
+
+.site-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18px 6vw;
+}
+
+.logo {
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.15em;
+  color: var(--ink);
+  text-decoration: none;
+}
+
+/* 首页主内容区左上角的日期时间 */
+.home-clock {
+  max-width: 1080px;
+  margin: 0 auto;
+  padding: 7vh 6vw 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  border-bottom: 1px solid var(--line);
+  transition: border-color 0.3s ease;
+}
+
+.clock-label {
+  font-size: 12px;
+  letter-spacing: 0.3em;
+  color: var(--muted);
+  text-transform: uppercase;
+}
+
+.clock-line {
+  display: flex;
+  align-items: baseline;
+  font-size: clamp(1.5rem, 3.2vw, 2.2rem);
+}
+
+.clock-time {
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  line-height: 1.2;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  transition: color 0.3s ease;
+}
+
+/* 时间后的打字机光标与时间同等大小 */
+.clock-line .type-cursor {
+  font-weight: 400;
+}
+
+.site-nav {
+  display: flex;
+  gap: 28px;
+}
+
+.site-nav a {
+  font-size: 14px;
+  color: var(--muted);
+  text-decoration: none;
+  transition: color 0.2s;
+}
+
+.site-nav a:hover,
+.site-nav a.active {
+  color: var(--ink);
+}
+
+/* 深色模式切换按钮 */
+.theme-toggle {
+  background: none;
+  border: none;
+  border-left: 1px solid var(--line);
+  padding-left: 28px;
+  font-size: 14px;
+  font-family: inherit;
+  color: var(--muted);
+  cursor: pointer;
+  transition: color 0.2s;
+}
+
+.theme-toggle:hover {
+  color: var(--ink);
+}
+
+/* ---------- 通用排版 ---------- */
+main {
+  max-width: 1080px;
+  margin: 0 auto;
+  padding: 0 6vw;
+}
+
+.section {
+  padding: 120px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.section-title {
+  font-size: clamp(1.5rem, 3vw, 2rem);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  margin-bottom: 56px;
+}
+
+.num {
+  font-size: 14px;
+  font-weight: 400;
+  color: var(--muted);
+  vertical-align: super;
+  margin-right: 12px;
+}
+
+/* ---------- 打字机光标 ---------- */
+.type-cursor {
+  display: inline-block;
+  margin-left: 2px;
+  font-weight: 400;
+  animation: blink 1s step-end infinite;
+}
+
+.type-cursor::after {
+  content: "|";
+}
+
+@keyframes blink {
+  50% {
+    opacity: 0;
+  }
+}
+
+/* ---------- 作品集 ---------- */
+.work-list {
+  list-style: none;
+}
+
+.work-item {
+  border-bottom: 1px solid var(--line);
+}
+
+.work-item:first-child {
+  border-top: 1px solid var(--line);
+}
+
+.work-link {
+  display: flex;
+  align-items: baseline;
+  gap: 24px;
+  padding: 28px 4px;
+  text-decoration: none;
+  color: var(--ink);
+  transition: padding-left 0.25s ease;
+}
+
+.work-link:hover {
+  padding-left: 16px;
+}
+
+.work-index {
+  font-size: 13px;
+  color: var(--muted);
+  flex-shrink: 0;
+}
+
+.work-body {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+}
+
+.work-name {
+  font-size: 1.4rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.work-desc {
+  font-size: 14px;
+  color: var(--muted);
+}
+
+.work-arrow {
+  font-size: 18px;
+  transition: transform 0.25s ease;
+}
+
+.work-link:hover .work-arrow {
+  transform: translate(4px, -4px);
+}
+
+/* ---------- 技能与经历 ---------- */
+.exp-block {
+  margin-bottom: 56px;
+}
+
+.exp-subtitle {
+  font-size: 13px;
+  font-weight: 400;
+  letter-spacing: 0.2em;
+  color: var(--muted);
+  text-transform: uppercase;
+  margin-bottom: 20px;
+}
+
+.skills {
+  font-size: 17px;
+}
+
+.timeline {
+  list-style: none;
+}
+
+.tl-item {
+  display: flex;
+  gap: 32px;
+  padding: 20px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.tl-item:first-child {
+  border-top: 1px solid var(--line);
+}
+
+.tl-year {
+  flex-shrink: 0;
+  width: 160px;
+  font-size: 14px;
+  color: var(--muted);
+}
+
+.tl-body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.tl-title {
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.tl-desc {
+  font-size: 14px;
+  color: var(--muted);
+}
+
+/* ---------- 联系我 ---------- */
+.contact-intro {
+  font-size: 17px;
+  color: var(--muted);
+  margin-bottom: 28px;
+}
+
+.contact-mail {
+  display: inline-block;
+  font-size: clamp(1.6rem, 4vw, 2.6rem);
+  font-weight: 700;
+  color: var(--ink);
+  text-decoration: none;
+  border-bottom: 2px solid var(--ink);
+  padding-bottom: 6px;
+  transition: opacity 0.2s;
+}
+
+.contact-mail:hover {
+  opacity: 0.5;
+}
+
+.contact-links {
+  list-style: none;
+  margin-top: 40px;
+  display: flex;
+  gap: 32px;
+  flex-wrap: wrap;
+}
+
+.contact-links a {
+  font-size: 15px;
+  color: var(--muted);
+  text-decoration: none;
+  transition: color 0.2s;
+}
+
+.contact-links a:hover {
+  color: var(--ink);
+}
+
+/* ---------- 页脚 ---------- */
+.site-footer {
+  max-width: 1080px;
+  margin: 0 auto;
+  padding: 40px 6vw;
+  display: flex;
+  justify-content: space-between;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.site-footer a {
+  color: var(--muted);
+  text-decoration: none;
+}
+
+.site-footer a:hover {
+  color: var(--ink);
+}
+
+/* ---------- 回到顶部 ---------- */
+.back-top {
+  position: fixed;
+  right: 28px;
+  bottom: 28px;
+  width: 46px;
+  height: 46px;
+  background: var(--ink);
+  color: var(--bg);
+  border: none;
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(6px);
+  transition: opacity 0.3s ease, visibility 0.3s ease,
+    transform 0.3s ease, background-color 0.3s ease, color 0.3s ease;
+}
+
+.back-top.show {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
+}
+
+.back-top:hover {
+  transform: translateY(-3px);
+}
+
+/* ---------- 响应式 ---------- */
+@media (max-width: 640px) {
+  .site-header {
+    padding: 14px 5vw;
+  }
+  .site-nav {
+    gap: 16px;
+  }
+  .section {
+    padding: 80px 0;
+  }
+  .tool-block {
+    margin-bottom: 72px;
+  }
+  .file-actions {
+    gap: 14px;
+  }
+}
+
+/* ---------- 减少动效 ---------- */
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  .type-cursor {
+    animation: none;
+  }
+}

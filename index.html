@@ -490,6 +490,49 @@
       overflow: hidden;
     }
 
+    /* Hero 左右布局：时钟在左，视频轮播卡片在右 */
+    .hero-row {
+      display: flex;
+      align-items: stretch;
+      gap: 28px;
+    }
+
+    .hero-row .clock-hud {
+      flex: 1 1 auto;
+    }
+
+    .video-box {
+      flex: 0 0 320px;
+      min-height: 200px;
+      border: 1px solid var(--apple-border);
+      border-radius: var(--radius);
+      overflow: hidden;
+      background: #000;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .video-box video {
+      display: block;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    /* 窄屏：视频换到时钟下方占满宽度 */
+    @media (max-width: 900px) {
+      .hero-row {
+        flex-direction: column;
+        gap: 20px;
+      }
+
+      .video-box {
+        flex: none;
+        width: 100%;
+        aspect-ratio: 16 / 9;
+        min-height: 0;
+      }
+    }
+
     .hud-corner {
       position: absolute;
       width: 14px;
@@ -2056,20 +2099,26 @@
     <!-- 顶部锚点 -->
     <div id="home"></div>
 
-    <!-- Hero / 时钟区域 -->
-    <section class="hero-section" aria-label="本地时间">
-      <p class="hero-greeting" id="heroGreeting">你好</p>
-      <div class="clock-hud">
-        <i class="hud-corner tl" aria-hidden="true"></i><i class="hud-corner tr" aria-hidden="true"></i><i class="hud-corner bl" aria-hidden="true"></i><i class="hud-corner br" aria-hidden="true"></i>
-        <p class="hud-label">SYS.TIME // LOCAL</p>
-        <div class="clock-display">
-          <span class="clock-seg" id="clockH">00</span><i class="clock-colon">:</i><span class="clock-seg" id="clockM">00</span><i class="clock-colon">:</i><span class="clock-seg" id="clockS">00</span><span class="clock-ms" id="clockMs">.000</span>
+      <!-- Hero / 时钟区域 -->
+      <section class="hero-section" aria-label="本地时间">
+        <p class="hero-greeting" id="heroGreeting">你好</p>
+        <div class="hero-row">
+          <div class="clock-hud">
+            <i class="hud-corner tl" aria-hidden="true"></i><i class="hud-corner tr" aria-hidden="true"></i><i class="hud-corner bl" aria-hidden="true"></i><i class="hud-corner br" aria-hidden="true"></i>
+            <p class="hud-label">SYS.TIME // LOCAL</p>
+            <div class="clock-display">
+              <span class="clock-seg" id="clockH">00</span><i class="clock-colon">:</i><span class="clock-seg" id="clockM">00</span><i class="clock-colon">:</i><span class="clock-seg" id="clockS">00</span><span class="clock-ms" id="clockMs">.000</span>
+            </div>
+            <span class="scanline" aria-hidden="true"></span>
+          </div>
+          <!-- 视频轮播卡片：video 文件夹里的视频依次循环播放 -->
+          <div class="video-box">
+            <video id="homeVideo" muted playsinline controls preload="metadata"></video>
+          </div>
         </div>
-        <span class="scanline" aria-hidden="true"></span>
-      </div>
-      <p class="clock-date" id="clockDate">--</p>
-      <p class="hero-quote" id="heroQuote" hidden></p>
-    </section>
+        <p class="clock-date" id="clockDate">--</p>
+        <p class="hero-quote" id="heroQuote" hidden></p>
+      </section>
 
     <!-- 小工具板块 -->
     <section id="tools" class="content-section">
@@ -2820,6 +2869,69 @@
           }
         });
       }
+    }
+
+    // =========================
+    // 首页视频轮播：video 文件夹里的视频依次循环播放（静音自动播放，控件可取消静音）
+    // =========================
+    var homeVideo = document.getElementById('homeVideo');
+    var videoList = [];
+    var videoIndex = 0;
+
+    function isVideoName(n) {
+      return /\.(mp4|webm|mov|m4v|ogv)$/i.test(n);
+    }
+    function playVideoAt(i) {
+      if (!homeVideo || !videoList.length) return;
+      videoIndex = ((i % videoList.length) + videoList.length) % videoList.length;
+      homeVideo.src = 'video/' + encodeURIComponent(videoList[videoIndex]);
+      var p = homeVideo.play();
+      if (p && p.catch) p.catch(function () {});
+    }
+    function playVideoList(names) {
+      videoList = names;
+      playVideoAt(0);
+    }
+    function autoLoadVideoFolder() {
+      fetch('video/', { credentials: 'same-origin' })
+        .then(function (res) {
+          if (!res.ok) throw new Error('video 目录不可访问');
+          return res.text();
+        })
+        .then(function (html) {
+          var names = [];
+          var re = /<a href="([^"]+)">/g;
+          var m;
+          while ((m = re.exec(html))) {
+            var href = m[1];
+            if (href.indexOf('../') === 0 || href === '/') continue;
+            var name = decodeURIComponent(href);
+            if (isVideoName(name) && names.indexOf(name) === -1) names.push(name);
+          }
+          // 与歌单同理：Cloudflare Pages 对不存在目录也返回 200，空结果必须抛错走清单兜底
+          if (!names.length) throw new Error('目录列表中没有视频，改用清单文件');
+          playVideoList(names);
+        })
+        .catch(function () {
+          fetch('video/playlist.json', { credentials: 'same-origin' })
+            .then(function (res) {
+              if (!res.ok) throw new Error('无清单文件');
+              return res.json();
+            })
+            .then(function (names) {
+              if (!Array.isArray(names) || !names.length) throw new Error('清单为空');
+              var list = names.filter(function (n) { return isVideoName(n); });
+              if (!list.length) throw new Error('清单里没有视频');
+              playVideoList(list);
+            })
+            .catch(function () {});
+        });
+    }
+    if (homeVideo) {
+      homeVideo.addEventListener('ended', function () {
+        playVideoAt(videoIndex + 1); // 播完自动切下一个，到末尾回到第一个
+      });
+      autoLoadVideoFolder();
     }
 
     // =========================

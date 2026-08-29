@@ -205,7 +205,6 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
       <input type="file" id="fileInput">
       <input type="text" id="titleInput" placeholder="显示名称（可选，默认用文件名）">
       <button id="uploadBtn">上传</button>
-      <button id="importBtn" class="ghost" title="把仓库 images/1.jpg… 约定命名的静态图片导入后台统一管理">导入静态图片</button>
     </div>
     <div class="progress" id="progress"><i id="progressBar"></i></div>
     <div class="msg" id="mainMsg"></div>
@@ -368,7 +367,7 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
   // ---------- 主界面 ----------
   function enterMain() {
     show('main');
-    loadList();
+    loadList().then(function () { syncStaticMedia(); });
     loadUsers();
   }
 
@@ -380,7 +379,7 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
   }
 
   function loadList() {
-    api('/api/admin/media').then(function (data) {
+    return api('/api/admin/media').then(function (data) {
       if (data.ok) {
         items = data.items;
         renderList();
@@ -687,68 +686,61 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
         $('fileInput').accept = TYPE_EXT[currentType];
         $('titleInput').value = '';
         renderList();
-        // 第一次打开"图片"页时自动把静态图片导入后台（读清单，无需手动扫描）
-        if (currentType === 'image' && !autoImportDone) {
-          autoImportDone = true;
-          importStaticImages(true);
-        }
       }
     });
   });
   $('fileInput').accept = TYPE_EXT.music;
 
-  // ---------- 导入静态图片（读 images/manifest.json 清单，自动 + 手动） ----------
-  var autoImportDone = false;
-  function importStaticImages(auto) {
-    if (currentType !== 'image') return;
-    var btn = $('importBtn');
-    btn.disabled = true;
-    showMsg($('mainMsg'), auto ? '正在检查静态图片…' : '正在读取图片清单…');
-
-    api('/images/manifest.json').then(function (m) {
-      if (!m || !m.files || !m.files.length) {
-        btn.disabled = false;
-        showMsg($('mainMsg'), '图片清单为空或缺失（images/manifest.json），可双击"生成图片清单.bat"重新生成', 'err');
-        return;
+  // ---------- 静态媒体自动同步 ----------
+  // 打开后台即自动对比三个清单（images/manifest.json、music/playlist.json、video/playlist.json），
+  // 把静态文件夹里还没进后台的文件批量搬进 KV，音乐/视频/图片全部直接可见，无需任何手动导入。
+  function syncStaticMedia() {
+    var jobs = [
+      { type: 'image', url: '/images/manifest.json', pick: function (m) { return m && m.files ? m.files : []; } },
+      {
+        type: 'music', url: '/music/playlist.json',
+        pick: function (m) { return (m || []).map(function (n) { return { title: n, url: 'music/' + n }; }); }
+      },
+      {
+        type: 'video', url: '/video/playlist.json',
+        pick: function (m) { return (m || []).map(function (n) { return { title: n, url: 'video/' + n }; }); }
       }
-      // 只导入后台还没有的（按显示名去重）
-      var existing = {};
-      items.image.forEach(function (it) { existing[it.title] = true; });
-      var files = m.files.filter(function (f) { return f && f.title && !existing[f.title]; });
-      if (!files.length) {
-        btn.disabled = false;
-        if (!auto) showMsg($('mainMsg'), '静态图片都已导入，没有新增', 'ok');
-        return;
-      }
-      // 分批提交，单次最多 12 个（服务端子请求限制）
-      var chunks = [];
-      for (var i = 0; i < files.length; i += 12) chunks.push(files.slice(i, i + 12));
-      var imported = 0, skipped = 0;
-      function nextChunk() {
-        if (!chunks.length) {
-          btn.disabled = false;
-          showMsg($('mainMsg'), '静态图片导入完成：新增 ' + imported + ' 张' + (skipped ? '，跳过 ' + skipped + ' 张' : ''), imported ? 'ok' : undefined);
-          loadList();
-          return;
-        }
-        api('/api/admin/import', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ type: 'image', files: chunks.shift() })
-        }).then(function (d) {
-          if (d.ok) { imported += d.imported; skipped += (d.skipped || []).length; }
-          else showMsg($('mainMsg'), d.error || '导入失败', 'err');
-          nextChunk();
-        }).catch(function () { showMsg($('mainMsg'), '网络错误，导入中断', 'err'); nextChunk(); });
-      }
-      nextChunk();
-    }).catch(function () {
-      btn.disabled = false;
-      showMsg($('mainMsg'), '读取图片清单失败（images/manifest.json）', 'err');
+    ];
+    var pending = [];
+    var done = 0;
+    jobs.forEach(function (job) {
+      api(job.url).then(function (m) {
+        var existing = {};
+        (items[job.type] || []).forEach(function (it) { existing[it.title] = true; });
+        job.pick(m).forEach(function (f) {
+          if (f && f.title && !existing[f.title]) pending.push({ type: job.type, title: f.title, url: f.url });
+        });
+      }).catch(function () {}).then(function () {
+        done++;
+        if (done === jobs.length) runImport();
+      });
     });
+
+    function runImport() {
+      if (!pending.length) return; // 没有缺的，静默结束
+      showMsg($('mainMsg'), '正在同步静态媒体… 剩余 ' + pending.length + ' 个');
+      var type = pending[0].type;
+      var batch = [];
+      while (batch.length < 12 && pending.length && pending[0].type === type) batch.push(pending.shift());
+      api('/api/admin/import', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type: type, files: batch })
+      }).then(function (d) {
+        if (!d.ok) { showMsg($('mainMsg'), d.error || '同步失败', 'err'); pending = []; }
+        loadList().then(runImport);
+      }).catch(function () {
+        showMsg($('mainMsg'), '网络错误，同步中断（重新打开后台会自动续传）', 'err');
+      });
+    }
   }
 
-  $('importBtn').addEventListener('click', function () { importStaticImages(false); });
+  // ---------- 外观设置（站点默认主题色 / 默认背景图） ----------
 
   // ---------- 上传（XHR 以显示进度） ----------
   $('uploadBtn').addEventListener('click', function () {

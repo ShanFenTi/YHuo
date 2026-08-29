@@ -2540,6 +2540,76 @@
       document.addEventListener('keydown', function (e) {
         if (e.key === 'Escape' && !albumView.hidden && lightbox.hidden) closeAlbum();
       });
+
+      // =========================
+      // 相册卡片动效：与首页画廊一致（卡片3D倾斜+聚光灯+照片视差+悬停倾斜）
+      // =========================
+      var albumCard = albumGrid.closest('.apple-card');
+      var albumRaf = null;
+      var albumLast = null;
+      var albumHover = null;
+      if (albumCard && !reduceMotion) {
+        function applyAlbumMouse() {
+          albumRaf = null;
+          if (!albumLast) return;
+          var r = albumCard.getBoundingClientRect();
+          var nx = (albumLast.clientX - r.left) / r.width * 2 - 1;
+          var ny = (albumLast.clientY - r.top) / r.height * 2 - 1;
+          if (cardMouseOn) {
+            albumCard.style.setProperty('--cx', (ny * -2.5).toFixed(2) + 'deg');
+            albumCard.style.setProperty('--cy', (nx * 2.5).toFixed(2) + 'deg');
+            albumCard.style.setProperty('--mx', ((nx + 1) / 2 * 100).toFixed(1) + '%');
+            albumCard.style.setProperty('--my', ((ny + 1) / 2 * 100).toFixed(1) + '%');
+            albumImgs.forEach(function (el, i) {
+              var depth = 6 + (i % 3) * 5;
+              el.style.setProperty('--px', (nx * depth).toFixed(1) + 'px');
+              el.style.setProperty('--py', (ny * depth).toFixed(1) + 'px');
+            });
+          }
+          var t = albumLast.target && albumLast.target.tagName === 'IMG' ? albumLast.target : null;
+          if (t !== albumHover) {
+            if (albumHover) {
+              albumHover.style.setProperty('--ix', '0deg');
+              albumHover.style.setProperty('--iy', '0deg');
+            }
+            albumHover = t;
+          }
+          if (albumHover) {
+            if (imgTiltOn) {
+              var ir = albumHover.getBoundingClientRect();
+              var ix = (albumLast.clientX - ir.left) / ir.width * 2 - 1;
+              var iy = (albumLast.clientY - ir.top) / ir.height * 2 - 1;
+              albumHover.style.setProperty('--ix', (iy * -10).toFixed(2) + 'deg');
+              albumHover.style.setProperty('--iy', (ix * 10).toFixed(2) + 'deg');
+            } else {
+              albumHover.style.setProperty('--ix', '0deg');
+              albumHover.style.setProperty('--iy', '0deg');
+            }
+          }
+        }
+        albumCard.addEventListener('mousemove', function (e) {
+          if (!cardMouseOn && !imgTiltOn) return;
+          albumLast = e;
+          if (albumRaf === null) {
+            albumRaf = requestAnimationFrame(applyAlbumMouse);
+          }
+        });
+        albumCard.addEventListener('mouseleave', function () {
+          albumCard.style.setProperty('--cx', '0deg');
+          albumCard.style.setProperty('--cy', '0deg');
+          albumImgs.forEach(function (el) {
+            el.style.setProperty('--px', '0px');
+            el.style.setProperty('--py', '0px');
+            el.style.setProperty('--ix', '0deg');
+            el.style.setProperty('--iy', '0deg');
+          });
+          if (albumHover) {
+            albumHover.style.setProperty('--ix', '0deg');
+            albumHover.style.setProperty('--iy', '0deg');
+            albumHover = null;
+          }
+        });
+      }
     }
 
     // =========================

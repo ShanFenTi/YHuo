@@ -1835,6 +1835,115 @@
         animation-duration: 0.01ms !important;
       }
     }
+
+    /* ===== 登录界面（演示版门） ===== */
+    .login-gate {
+      position: fixed;
+      inset: 0;
+      z-index: 400; /* 盖住所有浮层，登录后才放行 */
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      background: var(--apple-background);
+      opacity: 1;
+      visibility: visible;
+      transition: opacity 400ms var(--ease-out), visibility 400ms var(--ease-out);
+    }
+
+    .login-gate.hide {
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+    }
+
+    .login-card {
+      width: min(340px, 90vw);
+      display: flex;
+      flex-direction: column;
+      padding: calc(var(--spacing) * 7) calc(var(--spacing) * 6);
+    }
+
+    .login-logo {
+      font-size: 20px;
+      font-weight: 700;
+      letter-spacing: 0.25em;
+      text-align: center;
+      color: var(--apple-foreground);
+    }
+
+    .login-sub {
+      font-size: 13px;
+      text-align: center;
+      color: var(--apple-muted-foreground);
+      margin: 8px 0 24px;
+    }
+
+    .login-field {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      margin-bottom: 14px;
+    }
+
+    .login-field span {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--apple-muted-foreground);
+    }
+
+    .login-field input {
+      height: 40px;
+      padding: 0 12px;
+      font-size: 14px;
+      font-family: inherit;
+      color: var(--apple-foreground);
+      background: var(--apple-secondary);
+      border: 1px solid var(--apple-border);
+      border-radius: 10px;
+      outline: none;
+      transition: border-color 180ms var(--ease-out), box-shadow 180ms var(--ease-out);
+    }
+
+    .login-field input:focus {
+      border-color: var(--apple-primary);
+      box-shadow: 0 0 0 3px color-mix(in srgb, var(--apple-primary) 22%, transparent);
+    }
+
+    .login-error {
+      font-size: 12px;
+      color: #ff3b30;
+      margin-bottom: 8px;
+    }
+
+    .login-btn {
+      height: 42px;
+      border: none;
+      border-radius: 10px;
+      background: var(--apple-primary);
+      color: var(--apple-primary-foreground);
+      font-size: 14px;
+      font-weight: 600;
+      font-family: inherit;
+      letter-spacing: 0.3em;
+      cursor: pointer;
+      transition: opacity 180ms var(--ease-out), transform 180ms var(--ease-out);
+    }
+
+    .login-btn:hover {
+      opacity: 0.88;
+    }
+
+    .login-btn:active {
+      transform: scale(0.98);
+    }
+
+    .login-hint {
+      font-size: 11px;
+      text-align: center;
+      color: var(--apple-muted-foreground);
+      margin-top: 14px;
+    }
   </style>
 </head>
 <body>
@@ -2023,6 +2132,25 @@
         <button class="appear-btn" id="bgPickerClose" type="button">取消</button>
       </div>
     </div>
+  </div>
+
+  <!-- 登录界面（演示版）：输入任意账号密码进入；接真实验证前的占位门 -->
+  <div class="login-gate" id="loginGate" role="dialog" aria-modal="true" aria-label="登录">
+    <form class="login-card" id="loginForm" autocomplete="off">
+      <p class="login-logo">YHUO</p>
+      <p class="login-sub">欢迎回来，请登录</p>
+      <label class="login-field">
+        <span>账号</span>
+        <input type="text" id="loginUser" placeholder="用户名或邮箱">
+      </label>
+      <label class="login-field">
+        <span>密码</span>
+        <input type="password" id="loginPass" placeholder="请输入密码">
+      </label>
+      <p class="login-error" id="loginError" hidden>请填写账号和密码</p>
+      <button class="login-btn" type="submit">登 录</button>
+      <p class="login-hint">演示登录：输入任意账号密码即可进入</p>
+    </form>
   </div>
 
   <script>
@@ -3421,6 +3549,40 @@
           imgTiltOn = imgMouseToggle.checked;
           try { localStorage.setItem('imgMouse', imgTiltOn ? '1' : '0'); } catch (e) {}
           if (!imgTiltOn) resetCardMouse();
+        });
+      }
+    }
+    // =========================
+    // 登录界面（演示版）：任意非空账号密码进入；本次会话内记住，刷新不重弹
+    // =========================
+    var loginGate = document.getElementById('loginGate');
+    var loginForm = document.getElementById('loginForm');
+    var loginUser = document.getElementById('loginUser');
+    var loginPass = document.getElementById('loginPass');
+    var loginError = document.getElementById('loginError');
+    var LOGIN_KEY = 'demoLogin';
+
+    function gatePassed() {
+      try { return sessionStorage.getItem(LOGIN_KEY) === '1'; } catch (e) { return false; }
+    }
+    if (loginGate) {
+      if (gatePassed()) {
+        loginGate.classList.add('hide');
+        loginGate.hidden = true;
+      }
+      if (loginForm) {
+        loginForm.addEventListener('submit', function (e) {
+          e.preventDefault();
+          var u = loginUser ? loginUser.value.trim() : '';
+          var p = loginPass ? loginPass.value : '';
+          if (!u || !p) {
+            if (loginError) loginError.hidden = false;
+            return;
+          }
+          if (loginError) loginError.hidden = true;
+          try { sessionStorage.setItem(LOGIN_KEY, '1'); } catch (err) {}
+          loginGate.classList.add('hide');
+          setTimeout(function () { loginGate.hidden = true; }, 450);
         });
       }
     }

@@ -1045,6 +1045,84 @@
       font-family: inherit;
     }
 
+    /* ===== 背景图选择器：从站内图片中挑选 ===== */
+    .bg-picker {
+      position: fixed;
+      inset: 0;
+      z-index: 300; /* 高于灯箱(200)：选择背景时盖住一切 */
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      background: rgba(0, 0, 0, 0.5);
+      backdrop-filter: blur(6px);
+      -webkit-backdrop-filter: blur(6px);
+      opacity: 0;
+      visibility: hidden;
+      transition: opacity 250ms var(--ease-out), visibility 250ms var(--ease-out);
+    }
+
+    .bg-picker.show {
+      opacity: 1;
+      visibility: visible;
+    }
+
+    .bg-picker-panel {
+      width: min(560px, 92vw);
+      max-height: min(70vh, 620px);
+      display: flex;
+      flex-direction: column;
+      background: var(--apple-card);
+      color: var(--apple-card-foreground);
+      border: 1px solid var(--apple-border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow-md);
+      padding: calc(var(--spacing) * 5);
+    }
+
+    .bg-picker-title {
+      font-size: 13px;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      margin-bottom: 14px;
+      color: var(--apple-foreground);
+    }
+
+    .bg-picker-grid {
+      flex: 1;
+      overflow-y: auto;
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+      gap: 12px;
+      padding: 2px;
+    }
+
+    .bg-picker-grid img {
+      width: 100%;
+      aspect-ratio: 4 / 3;
+      object-fit: cover;
+      border-radius: 10px;
+      border: 2px solid transparent;
+      cursor: pointer;
+      transition: transform 150ms var(--ease-out), border-color 150ms var(--ease-out);
+    }
+
+    .bg-picker-grid img:hover {
+      transform: scale(1.04);
+      border-color: var(--apple-border);
+    }
+
+    .bg-picker-grid img.picked {
+      border-color: var(--apple-primary);
+    }
+
+    .bg-picker-foot {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-top: 14px;
+    }
+
     .lightbox[hidden] {
       display: none;
     }
@@ -1913,6 +1991,19 @@
           <div class="gallery" id="albumGrid"></div>
           <p class="empty-hint" id="albumEmpty" hidden>images 文件夹里还没有图片，放入后刷新即可显示。</p>
         </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 背景图选择器：从站内图片中挑选，也可上传本地图片 -->
+  <div class="bg-picker" id="bgPicker" hidden role="dialog" aria-modal="true" aria-label="选择背景图片">
+    <div class="bg-picker-panel">
+      <p class="bg-picker-title">选择背景图片</p>
+      <div class="bg-picker-grid" id="bgPickerGrid"></div>
+      <p class="empty-hint" id="bgPickerEmpty" hidden>images 文件夹里还没有图片。</p>
+      <div class="bg-picker-foot">
+        <button class="appear-btn" id="bgLocalBtn" type="button">上传本地图片…</button>
+        <button class="appear-btn" id="bgPickerClose" type="button">取消</button>
       </div>
     </div>
   </div>
@@ -3099,19 +3190,96 @@
       }
     }
 
+    // =========================
+    // 背景图选择器：默认从站内图片（images 文件夹）中挑选；也可上传本地图片
+    // =========================
+    var BG_SRC_KEY = 'customBgSrc';
+    var bgPicker = document.getElementById('bgPicker');
+    var bgPickerGrid = document.getElementById('bgPickerGrid');
+    var bgPickerEmpty = document.getElementById('bgPickerEmpty');
+    var bgLocalBtn = document.getElementById('bgLocalBtn');
+    var bgPickerClose = document.getElementById('bgPickerClose');
+
+    function applyBgFromSrc(src) {
+      if (!bgLayer) return;
+      if (bgLayer.dataset.bgUrl) {
+        URL.revokeObjectURL(bgLayer.dataset.bgUrl);
+        delete bgLayer.dataset.bgUrl;
+      }
+      bgLayer.style.backgroundImage = 'url(' + src + ')';
+      document.body.classList.add('has-custom-bg');
+    }
+
+    function openBgPicker() {
+      bgPickerGrid.innerHTML = '';
+      var imgs = typeof loadedImgs !== 'undefined' ? loadedImgs : [];
+      if (bgPickerEmpty) bgPickerEmpty.hidden = imgs.length > 0;
+      var savedSrc = null;
+      try { savedSrc = localStorage.getItem(BG_SRC_KEY); } catch (e) {}
+      imgs.forEach(function (img) {
+        var thumb = document.createElement('img');
+        thumb.src = img.src;
+        thumb.alt = '设为背景：' + (img.alt || '站内图片');
+        if (savedSrc && img.src.indexOf(savedSrc) !== -1) thumb.classList.add('picked');
+        thumb.addEventListener('click', function () {
+          applyBgFromSrc(img.src);
+          idbPut('customBg', '');
+          try { localStorage.setItem(BG_SRC_KEY, img.src); } catch (e) {}
+          closeBgPicker();
+        });
+        bgPickerGrid.appendChild(thumb);
+      });
+      bgPicker.hidden = false;
+      void bgPicker.offsetWidth; // 触发重排以启用过渡动画
+      bgPicker.classList.add('show');
+    }
+
+    function closeBgPicker() {
+      bgPicker.classList.remove('show');
+      setTimeout(function () {
+        bgPicker.hidden = true;
+      }, 250);
+    }
+
     idbGetAll(['customBg']).then(function (blobs) {
-      applyCustomBg(blobs[0]);
+      var savedSrc = null;
+      try { savedSrc = localStorage.getItem(BG_SRC_KEY); } catch (e) {}
+      if (!savedSrc && blobs[0]) applyCustomBg(blobs[0]);
     }).catch(function () {});
+    {
+      var _savedBgSrc = null;
+      try { _savedBgSrc = localStorage.getItem(BG_SRC_KEY); } catch (e) {}
+      if (_savedBgSrc) applyBgFromSrc(_savedBgSrc);
+    }
 
     if (bgUploadBtn) {
-      bgUploadBtn.addEventListener('click', function () { bgInput.click(); });
+      bgUploadBtn.addEventListener('click', openBgPicker);
     }
+    if (bgPickerClose) {
+      bgPickerClose.addEventListener('click', closeBgPicker);
+    }
+    if (bgLocalBtn) {
+      bgLocalBtn.addEventListener('click', function () {
+        closeBgPicker();
+        bgInput.click();
+      });
+    }
+    // 点遮罩空白处关闭
+    if (bgPicker) {
+      bgPicker.addEventListener('click', function (e) {
+        if (e.target === bgPicker) closeBgPicker();
+      });
+    }
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape' && bgPicker && !bgPicker.hidden) closeBgPicker();
+    });
     if (bgInput) {
       bgInput.addEventListener('change', function () {
         var f = bgInput.files[0];
         if (!f) return;
         applyCustomBg(f);
         idbPut('customBg', f);
+        try { localStorage.removeItem(BG_SRC_KEY); } catch (e) {}
         bgInput.value = '';
       });
     }
@@ -3119,6 +3287,7 @@
       bgClearBtn.addEventListener('click', function () {
         applyCustomBg(null);
         idbPut('customBg', '');
+        try { localStorage.removeItem(BG_SRC_KEY); } catch (e) {}
       });
     }
 

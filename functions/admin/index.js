@@ -18,12 +18,14 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
     --muted: #86868b; --border: #d2d2d7; --chip: #ececf0; --chip-hover: #e0e0e5;
     --input-bg: #ffffff; --hover: #f0f0f2; --row-line: #ececee;
     --shadow: 0 1px 3px rgba(0,0,0,.07), 0 12px 32px rgba(0,0,0,.05);
+    --ok: #16a34a; --warn: #d97706; --danger: #dc2626;
   }
   [data-theme="dark"] {
     --bg: #111113; --card: #1c1c1e; --fg: #f5f5f7; --bg-fg: #111113;
     --muted: #98989d; --border: #3a3a3c; --chip: #2c2c2e; --chip-hover: #3a3a3c;
     --input-bg: #2a2a2c; --hover: #2c2c2e; --row-line: #2c2c2e;
     --shadow: 0 1px 3px rgba(0,0,0,.5);
+    --ok: #4ade80; --warn: #fbbf24; --danger: #f87171;
   }
   * { box-sizing: border-box; margin: 0; }
   body {
@@ -127,7 +129,7 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
   .msg.err::before { content: "✕ "; }
   .msg.ok { color: var(--muted); }
   .msg.ok::before { content: "✓ "; }
-  .appear-label2 { font-size: 13px; font-weight: 600; margin: 18px 0 10px; }
+  .appear-label2 { font-size: 12px; font-weight: 600; color: var(--muted); letter-spacing: .05em; margin: 20px 0 10px; }
   .accent-row { display: flex; gap: 10px; }
   .accent-dot { width: 34px; height: 34px; border-radius: 50%; border: 3px solid transparent; padding: 0; }
   .accent-dot.active { border-color: var(--fg); }
@@ -136,53 +138,78 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
   .meta2 { color: var(--muted); font-size: 13px; }
   /* AI 供应商管理：左侧列表 + 右侧详情（仿客户端模型设置页） */
   .ai-mgr { display: flex; border: 1px solid var(--border); border-radius: 14px; overflow: hidden; background: var(--card); min-height: 420px; }
-  .ai-mgr-side { width: 220px; flex: none; border-right: 1px solid var(--border); padding: 10px 8px; display: flex; flex-direction: column; gap: 2px; }
-  .ai-mgr-group { font-size: 12px; color: var(--muted); padding: 6px 10px; }
+  .ai-mgr-side { width: 230px; flex: none; border-right: 1px solid var(--border); padding: 12px 10px; display: flex; flex-direction: column; gap: 2px; }
+  .ai-mgr-group { font-size: 11px; font-weight: 600; color: var(--muted); letter-spacing: .06em; padding: 4px 10px 8px; }
   .ai-mgr-item {
-    display: flex; align-items: center; gap: 8px; width: 100%;
-    padding: 9px 10px; border-radius: 10px; border: 1px solid transparent;
-    background: none; cursor: pointer; font-size: 14px; color: var(--fg);
+    display: flex; align-items: center; gap: 10px; width: 100%;
+    padding: 7px 9px; border-radius: 11px; border: 1px solid transparent;
+    background: none; cursor: pointer; font-size: 13.5px; color: var(--fg);
     text-align: left; font-family: inherit;
+    transition: background .15s, border-color .15s;
   }
   .ai-mgr-item:hover { background: var(--hover); }
   .ai-mgr-item.active { border-color: var(--border); background: var(--chip); }
   .ai-mgr-item.off { color: var(--muted); }
-  .ai-mgr-item .ai-mgr-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .ai-mgr-dot { flex: none; width: 8px; height: 8px; border-radius: 50%; background: #16a34a; }
-  .ai-mgr-item.off .ai-mgr-dot { background: transparent; border: 1px solid var(--muted); }
-  .ai-mgr-ico { flex: none; display: inline-flex; opacity: 0.7; }
-  .ai-mgr-add { margin-top: 8px; background: none; border: none; color: var(--fg); text-align: left; padding: 9px 10px; font-size: 14px; font-family: inherit; border-radius: 10px; cursor: pointer; }
-  .ai-mgr-add:hover { background: var(--hover); }
+  .ai-mgr-item .ai-mgr-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 500; }
+  .ai-mgr-ico {
+    flex: none; width: 28px; height: 28px; border-radius: 8px;
+    display: inline-flex; align-items: center; justify-content: center;
+    background: var(--chip); color: var(--fg); opacity: 0.85;
+  }
+  .ai-mgr-ico svg { display: block; }
+  .ai-mgr-dot { flex: none; width: 8px; height: 8px; border-radius: 50%; background: var(--ok); box-shadow: 0 0 0 3px color-mix(in srgb, var(--ok) 22%, transparent); }
+  .ai-mgr-item.off .ai-mgr-dot { background: transparent; box-shadow: none; border: 1.5px solid var(--muted); }
+  .ai-mgr-add {
+    margin-top: 10px; background: none; border: 1.5px dashed var(--border); color: var(--fg);
+    text-align: left; padding: 8px 10px; font-size: 13px; font-family: inherit; border-radius: 10px; cursor: pointer;
+    display: flex; align-items: center; gap: 7px; transition: border-color .15s, background .15s;
+  }
+  .ai-mgr-add:hover { border-color: var(--muted); background: var(--hover); }
   .ai-mgr-add:disabled { opacity: 0.5; cursor: default; }
-  .ai-mgr-main { flex: 1; padding: 18px 20px 20px; min-width: 0; }
+  .ai-mgr-add svg { flex: none; opacity: 0.75; }
+  .ai-mgr-main { flex: 1; padding: 20px 22px 22px; min-width: 0; }
   .ai-mgr-empty { flex: 1; display: flex; align-items: center; justify-content: center; color: var(--muted); font-size: 13px; }
   .ai-mgr-head { display: flex; align-items: center; gap: 10px; margin-bottom: 4px; }
-  .ai-mgr-head strong { font-size: 17px; }
+  .ai-mgr-head strong { font-size: 18px; letter-spacing: -0.01em; }
   .ai-mgr-flex { flex: 1; }
-  .ai-pill-on { font-size: 12px; font-weight: 700; color: #16a34a; background: rgba(22, 163, 74, 0.12); border-radius: 999px; padding: 3px 12px; }
+  .ai-pill-on { font-size: 12px; font-weight: 700; color: var(--ok); background: color-mix(in srgb, var(--ok) 13%, transparent); border-radius: 999px; padding: 3px 12px; }
   .ai-pill-off { font-size: 12px; font-weight: 700; color: var(--muted); background: var(--chip); border-radius: 999px; padding: 3px 12px; }
   .icon-mini {
     flex: none; display: inline-flex; align-items: center; justify-content: center;
-    background: none; border: none; padding: 5px; border-radius: 8px; cursor: pointer;
-    color: var(--fg); opacity: 0.65; font-size: 14px; font-family: inherit;
+    background: none; border: none; padding: 6px; border-radius: 8px; cursor: pointer;
+    color: var(--fg); opacity: 0.6; font-size: 14px; font-family: inherit;
+    transition: background .15s, opacity .15s, color .15s;
   }
   .icon-mini:hover { background: var(--hover); opacity: 1; }
-  .ai-mgr-label { font-size: 13px; font-weight: 600; margin: 14px 0 4px; }
-  .ai-key-wrap { display: flex; align-items: center; gap: 6px; }
-  .ai-key-wrap input { flex: 1; margin: 0; }
+  .icon-mini.danger-hover:hover { color: var(--danger); }
+  .icon-mini svg { display: block; }
+  .ai-mgr-label { font-size: 12px; font-weight: 600; color: var(--muted); letter-spacing: .05em; margin: 16px 0 4px; }
+  .ai-key-wrap { display: flex; align-items: center; position: relative; }
+  .ai-key-wrap input { flex: 1; margin: 0; padding-right: 44px; font-family: ui-monospace, SFMono-Regular, Consolas, monospace; font-size: 13.5px; }
+  .ai-key-wrap .ai-key-eye { position: absolute; right: 6px; }
   .ai-model-row {
     display: flex; align-items: center; gap: 6px;
-    border: 1px solid var(--border); border-radius: 10px;
-    padding: 6px 6px 6px 12px; margin-bottom: 6px;
+    border: 1px solid var(--border); border-radius: 12px;
+    background: color-mix(in srgb, var(--hover) 55%, transparent);
+    padding: 5px 5px 5px 14px; margin-bottom: 6px;
+    transition: border-color .15s, background .15s;
   }
+  .ai-model-row:hover { border-color: var(--muted); }
   .ai-model-row .ai-mr-name {
     flex: 1; min-width: 0; font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
     font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
   }
-  .ai-model-row .ai-mr-def { flex: none; font-size: 11px; font-weight: 700; color: var(--bg); background: var(--fg); border-radius: 999px; padding: 1px 8px; }
-  .ai-model-row .star-def.on { color: #f59e0b; opacity: 1; }
+  .ai-model-row .ai-mr-def {
+    flex: none; font-size: 11px; font-weight: 700; color: var(--ok);
+    background: color-mix(in srgb, var(--ok) 13%, transparent);
+    border-radius: 999px; padding: 2px 9px;
+  }
+  .ai-model-row .star-def.on { color: var(--warn); opacity: 1; }
+  .ai-model-row .star-def svg { display: block; }
   .ai-mgr-addmodel { display: flex; gap: 6px; margin-top: 8px; }
   .ai-mgr-addmodel input { flex: 1; margin: 0; }
+  .ai-test-ok { color: var(--ok); font-weight: 600; }
+  .ai-test-err { color: var(--danger); font-weight: 600; }
   .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-bottom: 22px; }
   .stat {
     background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 16px 18px;
@@ -218,7 +245,14 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
   ul.list li .title { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; cursor: pointer; }
   ul.list li .title:hover { text-decoration: underline; }
   ul.list li .meta { color: var(--muted); font-size: 12px; white-space: nowrap; }
-  ul.list li button { padding: 5px 10px; font-size: 12px; border-radius: 8px; }
+  ul.list li button { padding: 5px 10px; font-size: 12px; border-radius: 8px; display: inline-flex; align-items: center; gap: 5px; }
+  ul.list li button svg { display: block; }
+  /* 行内小图标钮：方形、hover 浅底 */
+  .icon-btn-sm {
+    padding: 5px 7px !important; line-height: 0; border-radius: 8px;
+  }
+  .icon-btn-sm svg { display: block; }
+  ul.list li:hover { background: color-mix(in srgb, var(--hover) 55%, transparent); }
   .empty { color: var(--muted); font-size: 14px; text-align: center; padding: 34px 0; }
   .upload-row.dragover { border-color: var(--fg); background: var(--chip); }
   .upload-hint { color: var(--muted); font-size: 12px; margin-top: 8px; line-height: 1.5; }
@@ -288,11 +322,14 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
   .album-side-item.active .as-count { background: rgba(255,255,255,.2); color: var(--bg); }
   .album-side-item .as-more {
     flex: none; width: 22px; height: 22px; padding: 0; border: none; border-radius: 7px;
-    background: none; color: inherit; cursor: pointer; font-size: 13px; line-height: 1;
+    background: none; color: inherit; cursor: pointer; line-height: 1;
+    display: inline-flex; align-items: center; justify-content: center;
     opacity: 0; transition: opacity 120ms;
   }
+  .album-side-item .as-more svg { width: 14px; height: 14px; display: block; }
   .album-side-item:hover .as-more, .album-side-item .as-more:focus { opacity: .8; }
-  .album-side-new { width: 100%; margin-top: 8px; }
+  .album-side-new { width: 100%; margin-top: 8px; display: flex; align-items: center; justify-content: center; gap: 6px; }
+  .album-side-new svg { display: block; }
   .album-side-hint { font-size: 12px; color: var(--muted); margin-top: 8px; padding: 0 4px; line-height: 1.5; }
   /* 相册 ⋯ 菜单 */
   .album-menu {
@@ -497,7 +534,7 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
       <aside class="album-side" id="albumSide">
         <div class="album-side-head">相册</div>
         <div class="album-side-list" id="albumSideList"></div>
-        <button class="ghost album-side-new" id="albumSideNewBtn">＋ 新建相册</button>
+        <button class="ghost album-side-new" id="albumSideNewBtn"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>新建相册</button>
         <p class="album-side-hint">把图片拖到相册名上即可归类；勾选后点相册名可批量移入。点 ⋯ 重命名或解散（解散不删图）。</p>
       </aside>
       <div class="album-main">
@@ -560,7 +597,7 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
       <aside class="ai-mgr-side">
         <div class="ai-mgr-group">自定义供应商</div>
         <div id="aiProvList"></div>
-        <button id="aiAddBtn" class="ai-mgr-add" type="button">＋ 添加供应商</button>
+        <button id="aiAddBtn" class="ai-mgr-add" type="button"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>添加供应商</button>
       </aside>
       <div class="ai-mgr-main" id="aiProvDetail" hidden>
         <div class="ai-mgr-head">
@@ -582,7 +619,7 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
         <p class="ai-mgr-label">API Key</p>
         <div class="ai-key-wrap">
           <input type="password" id="aiApiKey" autocomplete="new-password" placeholder="sk-…">
-          <button id="aiKeyEye" class="icon-mini" type="button" title="显示/隐藏"></button>
+          <button id="aiKeyEye" class="icon-mini ai-key-eye" type="button" title="显示/隐藏"></button>
         </div>
         <p class="meta2" id="aiKeyHint" style="margin-top:6px">未设置</p>
         <p class="ai-mgr-label">系统提示词（AI 人设，可选，≤2000 字）</p>
@@ -596,8 +633,8 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
           <button id="aiAddModelCancel" class="ghost" type="button">取消</button>
         </div>
         <div class="bgset-row" style="margin-top:10px">
-          <button id="aiAddModelBtn" class="ghost" type="button">＋ 添加模型</button>
-          <button id="aiFetchModelsBtn" class="ghost" type="button">↻ 自动获取</button>
+          <button id="aiAddModelBtn" class="ghost" type="button"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>添加模型</button>
+          <button id="aiFetchModelsBtn" class="ghost" type="button"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg>自动获取</button>
           <span class="meta2" id="aiModelHint">自动获取会请求该供应商的 /models 接口</span>
         </div>
         <div class="bgset-row" style="margin-top:18px">
@@ -654,6 +691,30 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
   var currentType = 'music';
   var items = { music: [], video: [], image: [] };
   var users = [];
+
+  // ---------- 统一线性图标（16px 渲染、stroke 2、currentColor，深浅主题通用） ----------
+  function ico(paths, filled) {
+    return '<svg width="16" height="16" viewBox="0 0 24 24"' + (filled
+      ? ' fill="currentColor" stroke="none"'
+      : ' fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"') + ' aria-hidden="true">' + paths + '</svg>';
+  }
+  var ICO = {
+    plus: ico('<path d="M12 5v14M5 12h14"/>'),
+    pencil: ico('<path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/>'),
+    trash: ico('<path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="m19 6-1 14H6L5 6"/>'),
+    eye: ico('<path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/>'),
+    eyeOff: ico('<path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><path d="m2 2 20 20"/>'),
+    starOn: ico('<path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>', true),
+    starOff: ico('<path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>'),
+    play: ico('<path d="M6 4l14 8-14 8z"/>', true),
+    view: ico('<rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m21 15-5-5L5 21"/>'),
+    refresh: ico('<path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/>'),
+    dots: ico('<circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/>', true),
+    grip: ico('<circle cx="8" cy="6" r="1.5"/><circle cx="16" cy="6" r="1.5"/><circle cx="8" cy="12" r="1.5"/><circle cx="16" cy="12" r="1.5"/><circle cx="8" cy="18" r="1.5"/><circle cx="16" cy="18" r="1.5"/>', true),
+    up: ico('<path d="M12 19V5"/><path d="m5 12 7-7 7 7"/>'),
+    down: ico('<path d="M12 5v14"/><path d="m19 12-7 7-7-7"/>'),
+    box: ico('<path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/>'),
+  };
 
   // ---------- 黑白主题切换（浅色 / 深色，本地记住） ----------
   var SUN_SVG = '<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/>';
@@ -1085,7 +1146,7 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
         var more = document.createElement('button');
         more.type = 'button';
         more.className = 'as-more';
-        more.textContent = '⋯';
+        more.innerHTML = ICO.dots;
         more.title = '相册操作';
         more.addEventListener('click', function (e) {
           e.stopPropagation();
@@ -1200,7 +1261,7 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
 
       var handle = document.createElement('span');
       handle.className = 'handle';
-      handle.textContent = '⠿';
+      handle.innerHTML = ICO.grip;
       handle.title = '拖动排序';
 
       if (!filtering) li.appendChild(handle);
@@ -1280,26 +1341,27 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
       actions.className = 'row-actions';
 
       var renameBtn = document.createElement('button');
-      renameBtn.className = 'ghost';
-      renameBtn.textContent = '✏️';
+      renameBtn.className = 'ghost icon-btn-sm';
+      renameBtn.innerHTML = ICO.pencil;
       renameBtn.title = '修改显示名称';
       renameBtn.addEventListener('click', function () { startRename(it, title); });
       actions.appendChild(renameBtn);
 
       var playBtn = document.createElement('button');
       playBtn.className = 'ghost';
-      playBtn.textContent = currentType === 'music' ? '▶ 试听' : (currentType === 'video' ? '▶ 预览' : '👁 查看');
+      playBtn.innerHTML = (currentType === 'image' ? ICO.view : ICO.play) +
+        '<span>' + (currentType === 'music' ? '试听' : (currentType === 'video' ? '预览' : '查看')) + '</span>';
       playBtn.addEventListener('click', function () { openPreview(it); });
       actions.appendChild(playBtn);
 
       if (!filtering) {
         var up = document.createElement('button');
-        up.className = 'ghost'; up.textContent = '↑'; up.disabled = i === 0;
+        up.className = 'ghost icon-btn-sm'; up.innerHTML = ICO.up; up.disabled = i === 0;
         up.title = '上移';
         up.addEventListener('click', function () { move(currentType, i, -1); });
 
         var down = document.createElement('button');
-        down.className = 'ghost'; down.textContent = '↓'; down.disabled = i === arr.length - 1;
+        down.className = 'ghost icon-btn-sm'; down.innerHTML = ICO.down; down.disabled = i === arr.length - 1;
         down.title = '下移';
         down.addEventListener('click', function () { move(currentType, i, 1); });
 
@@ -1308,7 +1370,8 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
       }
 
       var del = document.createElement('button');
-      del.className = 'danger'; del.textContent = '删除';
+      del.className = 'danger';
+      del.innerHTML = ICO.trash + '<span>删除</span>';
       del.addEventListener('click', function () { removeItem(it); });
       actions.appendChild(del);
 
@@ -1719,13 +1782,20 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
   var aiNewModels = [];    // 新增模式下的模型列表
   var aiModelsSig = null;
 
-  var PENCIL_SVG = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>';
-  var TRASH_SVG = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="m19 6-1 14H6L5 6"/></svg>';
-  var EYE_SVG = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg>';
-  var BOX_SVG = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/></svg>';
+  var PENCIL_SVG = ICO.pencil;
+  var TRASH_SVG = ICO.trash;
+  var BOX_SVG = ICO.box;
   $('aiRenameBtn').innerHTML = PENCIL_SVG;
   $('aiDelProvBtn').innerHTML = TRASH_SVG;
-  $('aiKeyEye').innerHTML = EYE_SVG;
+  $('aiKeyEye').innerHTML = ICO.eye;
+  $('aiDelProvBtn').classList.add('danger-hover');
+
+  // 测试结果着色：ok===true 绿 / false 红 / 未定中性
+  function setTestResult(text, ok) {
+    var el = $('aiTestResult');
+    el.textContent = text;
+    el.className = 'meta2' + (ok === true ? ' ai-test-ok' : ok === false ? ' ai-test-err' : '');
+  }
 
   function updateAiToggle(enabled, usable) {
     currentAiEnabled = !!enabled;
@@ -1790,7 +1860,7 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
     $('aiProvDetail').hidden = !showDetail;
     $('aiProvEmpty').hidden = showDetail;
     if (!showDetail) return;
-    $('aiTestResult').textContent = '';
+    setTestResult('');
     $('aiAddModelWrap').hidden = true;
     aiModelsSig = null;
 
@@ -1862,11 +1932,11 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
         row.appendChild(def);
       }
       if (p) {
-        var star = document.createElement('button');
-        star.type = 'button';
-        star.className = 'icon-mini star-def' + (isDef ? ' on' : '');
-        star.title = isDef ? '当前默认模型' : '设为默认';
-        star.textContent = isDef ? '★' : '☆';
+      var star = document.createElement('button');
+      star.type = 'button';
+      star.className = 'icon-mini star-def' + (isDef ? ' on' : '');
+      star.title = isDef ? '当前默认模型' : '设为默认';
+      star.innerHTML = isDef ? ICO.starOn : ICO.starOff;
         star.addEventListener('click', function () {
           api('/api/admin/ai', {
             method: 'PUT',
@@ -1902,7 +1972,7 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
 
         var del = document.createElement('button');
         del.type = 'button';
-        del.className = 'icon-mini';
+        del.className = 'icon-mini danger-hover';
         del.title = '删除模型';
         del.innerHTML = TRASH_SVG;
         del.addEventListener('click', function () {
@@ -1927,7 +1997,7 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
     if (!models.length) {
       var empty = document.createElement('p');
       empty.className = 'meta2';
-      empty.textContent = '还没有模型，点下方"＋ 添加模型"。';
+      empty.textContent = '还没有模型，点下方"添加模型"。';
       wrap.appendChild(empty);
     }
   }
@@ -2037,27 +2107,28 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
   });
 
   $('aiTestBtn').addEventListener('click', function () {
-    $('aiTestResult').textContent = '测试中…（先保存再用当前配置实测）';
+    setTestResult('测试中…（先保存再用当前配置实测）');
     var np = currentProviderDraft();
-    if (isNewMode() && !np.name) { $('aiTestResult').textContent = '✕ 先填写供应商名称'; return; }
-    if (!np.models.length) { $('aiTestResult').textContent = '✕ 至少添加一个模型'; return; }
+    if (isNewMode() && !np.name) { setTestResult('✕ 先填写供应商名称', false); return; }
+    if (!np.models.length) { setTestResult('✕ 至少添加一个模型', false); return; }
     saveProviderDraft(np, function (d) {
-      if (!d.ok) { $('aiTestResult').textContent = '保存失败：' + (d.error || '未知错误'); return; }
+      if (!d.ok) { setTestResult('保存失败：' + (d.error || '未知错误'), false); return; }
       api('/api/admin/ai/test', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ key: d.name + '/' + np.models[0] }),
       }).then(function (t) {
-        $('aiTestResult').textContent = t.ok
+        setTestResult(t.ok
           ? '✓ 「' + t.name + '」连接成功（' + t.ms + 'ms）：' + t.reply
-          : '✕ ' + (t.error || '未知错误');
-      }).catch(function () { $('aiTestResult').textContent = '✕ 网络错误'; });
+          : '✕ ' + (t.error || '未知错误'), t.ok);
+      }).catch(function () { setTestResult('✕ 网络错误', false); });
     });
   });
 
-  // ---------- API Key 显示/隐藏 ----------
+  // ---------- API Key 显示/隐藏（图标同步切换） ----------
   function setEye(on) {
     $('aiApiKey').type = on ? 'text' : 'password';
+    $('aiKeyEye').innerHTML = on ? ICO.eyeOff : ICO.eye;
   }
   $('aiKeyEye').addEventListener('click', function () {
     setEye($('aiApiKey').type === 'password');
@@ -2147,7 +2218,11 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
     $('userPanel').hidden = !isUsers;
     $('appearancePanel').hidden = !isAppear;
     $('aiPanel').hidden = !isAi;
-    $('imageShell').hidden = type !== 'image'; // 相册侧栏只在图片页
+    // 列表对所有媒体类型常显（列表/工具/存储条都在 image-shell 里，隐藏它会连列表一起藏掉）；
+    // 只收起左侧相册侧栏
+    $('imageShell').hidden = false;
+    var albumSideEl = document.querySelector('.album-side');
+    if (albumSideEl) albumSideEl.hidden = type !== 'image';
     document.body.classList.remove('nav-open'); // 窄屏选完即收起菜单
     if (isAppear) {
       loadAppearance();

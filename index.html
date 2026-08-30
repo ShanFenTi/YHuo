@@ -949,6 +949,12 @@
       visibility: visible;
     }
 
+    /* 标题栏复用相册的 .album-bar（默认透明+上移），进入个人主页后同样要复位显示 */
+    .profile-view.show .album-bar {
+      transform: none;
+      opacity: 1;
+    }
+
     .profile-scroll {
       flex: 1;
       overflow-y: auto;

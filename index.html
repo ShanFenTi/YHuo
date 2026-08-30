@@ -5255,16 +5255,20 @@
               setLoginAvatar(d.avatar || null); // 登录响应带头像键
               // 管理员账密验证通过时响应才带 admin:true，据此弹欢迎浮窗（含"进入后台"按钮）；
               // 不能查 /api/auth/status 判断登录身份——它只看浏览器有无管理员会话 Cookie，
-              // 浏览器残留后台登录态时普通账号登录也会被误判（2026-08-30 踩过）
+              // 浏览器残留后台登录态时普通账号也会被误判（坑 11，欢迎浮窗也曾因此误弹）
               passGate(u);
               favLoad(); // 拉取该账号的收藏
-              if (d.admin) {
-                try {
-                  sessionStorage.setItem('adminWelcomed', '1');
-                  sessionStorage.setItem('adminWelcomedChecked', '1');
-                } catch (e) {}
-                showAdminWelcome(d.username || u);
-              }
+              try {
+                if (d.admin) {
+                  sessionStorage.setItem('adminWelcome', '1');      // 本次会话是管理员登录
+                  sessionStorage.setItem('adminWelcomeShown', '1'); // 刚弹过，刷新不重复
+                  showAdminWelcome(d.username || u);
+                } else {
+                  // 普通账号登录：清掉可能残留的管理员标记
+                  sessionStorage.removeItem('adminWelcome');
+                  sessionStorage.removeItem('adminWelcomeShown');
+                }
+              } catch (e) {}
             }
             else showLoginMsg(d.error);
           }, loginButtons);
@@ -5436,16 +5440,18 @@
           fetch('/api/user/logout', { method: 'POST', credentials: 'same-origin' })
             .catch(function () {})
             .then(function () {
-              try {
-                sessionStorage.removeItem(LOGIN_KEY);
-                sessionStorage.removeItem(LOGIN_NAME_KEY);
-              } catch (e) {}
-              setLoginAvatar(null); // 退出清空三键
-              refreshLoginBadge();
-              favLoad(); // 收藏是账号数据，退出即清空内存态
-              setProfileOpen(false); // 回到未登录态并收起面板
-              updateProfilePanel();
-              showProfileMsg('已退出登录');
+            try {
+              sessionStorage.removeItem(LOGIN_KEY);
+              sessionStorage.removeItem(LOGIN_NAME_KEY);
+              sessionStorage.removeItem('adminWelcome');
+              sessionStorage.removeItem('adminWelcomeShown');
+            } catch (e) {}
+            setLoginAvatar(null); // 退出清空三键
+            refreshLoginBadge();
+            favLoad(); // 收藏是账号数据，退出即清空内存态
+            setProfileOpen(false); // 回到未登录态并收起面板
+            updateProfilePanel();
+            showProfileMsg('已退出登录');
             });
         });
       }
@@ -5718,6 +5724,8 @@
             try {
               sessionStorage.removeItem(LOGIN_KEY);
               sessionStorage.removeItem(LOGIN_NAME_KEY);
+              sessionStorage.removeItem('adminWelcome');
+              sessionStorage.removeItem('adminWelcomeShown');
             } catch (e) {}
             setLoginAvatar(null); // 退出清空三键
             refreshLoginBadge();
@@ -5769,8 +5777,10 @@
     if (isMember()) favLoad();
 
     // =========================
-    // 管理员欢迎浮窗：管理员账密登录时立即弹出；同会话首次进首页时若检测到
-    // 已有管理员会话也欢迎一次（sessionStorage 防重复，不反复打扰）
+    // 管理员欢迎浮窗：仅在管理员账密登录（响应带 admin:true）时弹出；
+    // 页面加载时只认 sessionStorage 里的 adminWelcome 标记（刷新不重复弹）。
+    // 注意：绝不能用 /api/auth/status 做"是不是管理员"的判断——它只反映
+    // 浏览器有无管理员会话 Cookie，分不清当前登录的是谁（坑 11）
     // =========================
     var adminToast = document.getElementById('adminToast');
     var adminToastTimer = null;
@@ -5794,23 +5804,19 @@
       location.href = '/admin';
     });
 
-    // 页面加载时的管理员会话检测：每会话只查一次
-    (function checkAdminSession() {
-      var checked = null;
-      try { checked = sessionStorage.getItem('adminWelcomedChecked'); } catch (e) {}
-      if (checked || !isMember()) return;
-      fetch('/api/auth/status', { credentials: 'same-origin' })
-        .then(function (r) { return r.ok ? r.json() : null; })
-        .then(function (s) {
-          try { sessionStorage.setItem('adminWelcomedChecked', '1'); } catch (e) {}
-          if (s && s.authenticated) {
-            try { sessionStorage.setItem('adminWelcomed', '1'); } catch (e) {}
-            var name = null;
-            try { name = sessionStorage.getItem(LOGIN_NAME_KEY); } catch (e) {}
-            showAdminWelcome(name);
-          }
-        })
-        .catch(function () {});
+    // 页面加载：仅当本会话确实发生过管理员登录（且本次刷新还没弹过）才补弹
+    (function checkAdminWelcome() {
+      var flag = null, shown = null;
+      try {
+        flag = sessionStorage.getItem('adminWelcome');
+        shown = sessionStorage.getItem('adminWelcomeShown');
+      } catch (e) {}
+      if (flag === '1' && shown !== '1') {
+        try { sessionStorage.setItem('adminWelcomeShown', '1'); } catch (e) {}
+        var name = null;
+        try { name = sessionStorage.getItem(LOGIN_NAME_KEY); } catch (e) {}
+        showAdminWelcome(name);
+      }
     })();
   })();
   </script>

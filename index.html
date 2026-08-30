@@ -748,53 +748,57 @@
       transform: none;
     }
 
-    /* ===== 个人中心面板（头像/资料/退出）：点击顶栏头像展开，从头像下方滑出 ===== */
+    /* ===== 个人中心下拉菜单：点击顶栏头像展开，右缘/顶缘由 JS 对齐头像按钮（留 8px 间距） ===== */
     .profile-dock {
       position: fixed;
-      top: 64px; /* 顶栏(52px)下方，与头像对齐 */
-      right: 0;
+      top: 64px; /* JS 打开时会按头像按钮实际位置覆盖 */
+      right: 12px;
       z-index: 160; /* 高于相册界面(150)：相册里也能点头像打开 */
-      transition: transform 350ms var(--ease-out), opacity 250ms var(--ease-out), visibility 250ms var(--ease-out);
+      transition: visibility 220ms;
     }
 
     body:not(.profile-open) .profile-dock {
-      transform: translateX(110%);
       visibility: hidden;
     }
 
-    .profile-close {
-      position: absolute;
-      top: 10px;
-      right: 10px;
-      z-index: 2;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      width: 28px;
-      height: 28px;
-      padding: 0;
-      border: none;
-      border-radius: 999px;
-      background: var(--apple-secondary, var(--apple-card));
-      color: var(--apple-foreground);
-      cursor: pointer;
+    /* 独立于外观抽屉(appear-panel)的菜单样式：全圆角 + 重投影 + 从头像方向缩放淡入 */
+    .apple-card.profile-panel {
+      width: min(272px, calc(100vw - 24px));
+      border-radius: 16px;
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.22), 0 4px 14px rgba(0, 0, 0, 0.12);
+      padding: 16px 12px 10px;
+      transform-origin: top right;
+      opacity: 0;
+      transform: translateY(-8px) scale(0.95);
+      pointer-events: none;
+      transition: opacity 180ms var(--ease-out), transform 200ms var(--ease-out),
+        box-shadow 250ms var(--ease-out), background-color 300ms var(--ease-out), border-color 300ms var(--ease-out);
     }
 
-    .profile-close:hover { background: var(--apple-chip, var(--apple-secondary)); }
+    body.profile-open .apple-card.profile-panel {
+      opacity: 1;
+      transform: none;
+      pointer-events: auto;
+    }
 
-    .profile-panel .card-eyebrow { margin-bottom: 18px; }
+    /* 菜单不参与 .apple-card 的悬停抬升（:hover 规则在后面，需显式压回） */
+    .apple-card.profile-panel:hover {
+      transform: none;
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.22), 0 4px 14px rgba(0, 0, 0, 0.12);
+    }
 
     .profile-head {
       display: flex;
       align-items: center;
-      gap: 14px;
-      margin-bottom: 14px;
+      gap: 12px;
+      padding: 0 6px;
+      margin-bottom: 12px;
     }
 
     .profile-avatar {
       position: relative;
-      width: 72px;
-      height: 72px;
+      width: 64px;
+      height: 64px;
       flex: none;
       border-radius: 999px;
       overflow: hidden;
@@ -805,7 +809,10 @@
       justify-content: center;
       color: var(--apple-muted-foreground);
       cursor: pointer;
+      transition: transform 180ms var(--ease-out);
     }
+
+    .profile-avatar:hover { transform: scale(1.05); }
 
     .profile-avatar-img {
       display: none;
@@ -817,7 +824,7 @@
     .profile-avatar.has-img .profile-avatar-img { display: block; }
 
     .profile-avatar-letter {
-      font-size: 26px;
+      font-size: 24px;
       font-weight: 600;
       line-height: 1;
     }
@@ -841,11 +848,10 @@
 
     .profile-avatar:hover .profile-avatar-mask,
     .profile-avatar:focus-visible .profile-avatar-mask { opacity: 1; }
-    .profile-avatar.member-only-hidden { cursor: default; }
 
     .profile-info { min-width: 0; }
     .profile-name {
-      font-size: 15px;
+      font-size: 14px;
       font-weight: 700;
       overflow: hidden;
       text-overflow: ellipsis;
@@ -854,41 +860,71 @@
     .profile-status {
       font-size: 12px;
       color: var(--apple-muted-foreground);
-      margin-top: 4px;
+      margin-top: 3px;
     }
 
     .profile-hint {
       font-size: 12px;
       color: var(--apple-muted-foreground);
       line-height: 1.6;
+      padding: 0 6px;
       margin-bottom: 10px;
     }
 
+    /* 消息行：空内容时不占位（不留死空白） */
     .profile-msg {
-      min-height: 18px;
       font-size: 12px;
       color: var(--apple-muted-foreground);
+      padding: 0 6px;
       margin-bottom: 6px;
     }
+    .profile-msg:empty { display: none; }
     .profile-msg.err { color: #ef4444; }
 
-    .profile-actions {
+    .profile-menu {
+      border-top: 1px solid var(--apple-border);
+      padding-top: 6px;
       display: flex;
-      gap: 8px;
-      margin-top: 8px;
-    }
-    .profile-actions .appear-btn { flex: 1; }
-
-    .danger-btn {
-      color: #ef4444;
-      border-color: color-mix(in srgb, #ef4444 40%, transparent);
+      flex-direction: column;
     }
 
-    /* 游客/未登录：隐藏仅登录可见的操作 */
-    body:not(.profile-member) .member-only { display: none !important; }
-    body:not(.profile-member) #profileLogoutBtn { display: none !important; }
+    .profile-menu-sep {
+      height: 1px;
+      background: var(--apple-border);
+      margin: 5px 6px;
+    }
+
+    .profile-menu-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      width: 100%;
+      padding: 9px 10px;
+      border: none;
+      border-radius: 10px;
+      background: none;
+      color: var(--apple-foreground);
+      font-size: 13px;
+      text-align: left;
+      cursor: pointer;
+      transition: background-color 150ms var(--ease-out);
+    }
+
+    .profile-menu-item:hover { background: var(--apple-chip, var(--apple-secondary, rgba(128, 128, 128, 0.14))); }
+    .profile-menu-item .svg-icon { flex: none; opacity: 0.72; }
+
+    .profile-menu-item.danger { color: #ef4444; }
+    .profile-menu-item.danger:hover { background: rgba(239, 68, 68, 0.1); }
+    .profile-menu-item.danger .svg-icon { opacity: 0.9; }
+
+    /* 没有头像时隐藏"移除头像"项 */
+    .profile-panel:not(.has-avatar) .remove-only { display: none; }
+
+    /* 游客/未登录：隐藏菜单区，只留提示文案 */
+    body:not(.profile-member) .profile-menu { display: none; }
     body:not(.profile-member) #profileAvatar { cursor: default; }
     body:not(.profile-member) .profile-avatar-mask { display: none; }
+    body:not(.profile-member) .profile-avatar:hover { transform: none; }
 
     .appear-tab {
       position: absolute;
@@ -2583,39 +2619,40 @@
     </button>
   </div>
 
-  <!-- 个人中心面板：点击顶栏头像展开（body.profile-open 控制），未登录点头像走登录卡片 -->
+  <!-- 个人中心下拉菜单：点击顶栏头像展开（body.profile-open 控制），未登录点头像走登录卡片 -->
   <div class="profile-dock" id="profileDock">
-    <div class="apple-card appear-panel profile-panel" id="profilePanel" role="region" aria-label="个人中心">
-      <button class="profile-close" id="profileCloseBtn" type="button" aria-label="关闭个人中心">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>
-      </button>
-      <div class="card-padding">
-        <p class="card-eyebrow">个人中心 · PROFILE</p>
-
-        <div class="profile-head">
-          <div class="profile-avatar" id="profileAvatar" role="button" tabindex="0" title="更换头像">
-            <img class="profile-avatar-img" id="profileAvatarImg" alt="头像">
-            <span class="profile-avatar-letter" id="profileAvatarLetter" aria-hidden="true"></span>
-            <span class="profile-avatar-mask" aria-hidden="true">更换</span>
-          </div>
-          <div class="profile-info">
-            <p class="profile-name" id="profileName">未登录</p>
-            <p class="profile-status" id="profileStatus">点右上角人像登录</p>
-          </div>
+    <div class="apple-card profile-panel" id="profilePanel" role="region" aria-label="个人中心">
+      <div class="profile-head">
+        <div class="profile-avatar" id="profileAvatar" role="button" tabindex="0" title="更换头像">
+          <img class="profile-avatar-img" id="profileAvatarImg" alt="头像">
+          <span class="profile-avatar-letter" id="profileAvatarLetter" aria-hidden="true"></span>
+          <span class="profile-avatar-mask" aria-hidden="true">更换</span>
         </div>
-
-        <p class="profile-hint" id="profileHint">游客模式下无法设置头像，登录后即可上传。</p>
-        <p class="profile-msg" id="profileMsg"></p>
-
-        <div class="profile-actions member-only">
-          <button class="appear-btn" id="avatarChangeBtn" type="button">更换头像</button>
-          <button class="appear-btn" id="avatarRemoveBtn" type="button">移除头像</button>
+        <div class="profile-info">
+          <p class="profile-name" id="profileName">未登录</p>
+          <p class="profile-status" id="profileStatus"></p>
         </div>
-        <div class="profile-actions">
-          <button class="appear-btn danger-btn" id="profileLogoutBtn" type="button">退出登录</button>
-        </div>
-        <input type="file" id="avatarInput" accept=".jpg,.jpeg,.png,.gif,.webp,image/jpeg,image/png,image/gif,image/webp" hidden>
       </div>
+
+      <p class="profile-hint" id="profileHint">游客模式下无法设置头像，登录后即可上传。</p>
+      <p class="profile-msg" id="profileMsg"></p>
+
+      <div class="profile-menu">
+        <button class="profile-menu-item member-only" id="avatarChangeBtn" type="button">
+          <svg class="svg-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14.5 4h-5C7.4 4 6.4 5 6.4 7.2v9.6C6.4 19 7.4 20 9.5 20h5c2.1 0 3.1-1 3.1-3.2V7.2C17.6 5 16.6 4 14.5 4z"/><circle cx="12" cy="10" r="1.6"/><path d="m8.4 16.4 2.2-2.2a1 1 0 0 1 1.4 0l2.2 2.2"/></svg>
+          更换头像
+        </button>
+        <button class="profile-menu-item member-only remove-only" id="avatarRemoveBtn" type="button">
+          <svg class="svg-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></svg>
+          移除头像
+        </button>
+        <div class="profile-menu-sep" aria-hidden="true"></div>
+        <button class="profile-menu-item danger" id="profileLogoutBtn" type="button">
+          <svg class="svg-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="m16 17 5-5-5-5"/><line x1="21" x2="9" y1="12" y2="12"/></svg>
+          退出登录
+        </button>
+      </div>
+      <input type="file" id="avatarInput" accept=".jpg,.jpeg,.png,.gif,.webp,image/jpeg,image/png,image/gif,image/webp" hidden>
     </div>
   </div>
 
@@ -4811,7 +4848,6 @@
     //       否则块内函数声明不外提，顶栏监听里调 setProfileOpen 会 ReferenceError
     // =========================
     var profileDock = document.getElementById('profileDock');
-      var profileCloseBtn = document.getElementById('profileCloseBtn');
       var profilePanel = document.getElementById('profilePanel');
       var profileAvatar = document.getElementById('profileAvatar');
       var profileAvatarImg = document.getElementById('profileAvatarImg');
@@ -4825,11 +4861,24 @@
       var avatarRemoveBtn = document.getElementById('avatarRemoveBtn');
       var profileLogoutBtn = document.getElementById('profileLogoutBtn');
 
+      // 打开时把面板右缘/顶缘对齐到头像按钮（下方留 8px 间距），窄屏至少留 12px 边距
+      function positionProfileDock() {
+        if (!profileDock || !loginToggle) return;
+        var r = loginToggle.getBoundingClientRect();
+        profileDock.style.right = Math.max(12, window.innerWidth - r.right) + 'px';
+        profileDock.style.top = Math.max(60, r.bottom + 8) + 'px';
+      }
+
       function setProfileOpen(open) {
+        if (open) positionProfileDock();
         document.body.classList.toggle('profile-open', open);
         if (loginToggle) loginToggle.setAttribute('aria-expanded', open ? 'true' : 'false');
         if (open) updateProfilePanel();
       }
+
+      window.addEventListener('resize', function () {
+        if (document.body.classList.contains('profile-open')) positionProfileDock();
+      });
 
       function showProfileMsg(text, err) {
         if (!profileMsg) return;
@@ -4849,10 +4898,10 @@
         var isMember = role === '1';
         document.body.classList.toggle('profile-member', isMember);
         if (profileName) profileName.textContent = isMember ? (name || '已登录') : (role === 'guest' ? '游客' : '未登录');
-        if (profileStatus) profileStatus.textContent = isMember
-          ? (av ? '已登录 · 已设置头像' : '已登录')
-          : (role === 'guest' ? '游客模式' : '点右上角人像登录');
+        if (profileStatus) profileStatus.textContent = isMember ? '已登录' : (role === 'guest' ? '游客模式' : '点右上角人像登录');
         if (profileHint) profileHint.hidden = isMember;
+        // 控制面板内"移除头像"菜单项的显隐
+        if (profilePanel) profilePanel.classList.toggle('has-avatar', !!(isMember && av));
         if (profileAvatar) {
           profileAvatar.classList.toggle('has-img', !!(isMember && av));
           if (isMember && av && profileAvatarImg) profileAvatarImg.src = '/media/' + av;
@@ -4860,11 +4909,6 @@
         }
       }
 
-      if (profileCloseBtn) {
-        profileCloseBtn.addEventListener('click', function () {
-          setProfileOpen(false);
-        });
-      }
       document.addEventListener('click', function (e) {
         if (!document.body.classList.contains('profile-open')) return;
         if (profileDock && profileDock.contains(e.target)) return;

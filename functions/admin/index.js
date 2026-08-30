@@ -516,8 +516,13 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
     <p class="appear-label2">API Key</p>
     <input type="password" id="aiApiKey" autocomplete="new-password" placeholder="sk-…">
     <span class="meta2" id="aiKeyHint">未设置</span>
-    <p class="appear-label2">模型名</p>
-    <input type="text" id="aiModel" placeholder="如 glm-4.7 / deepseek-chat / claude-sonnet-4-5">
+    <p class="appear-label2">模型名（填好接口地址和 Key 后可自动获取列表）</p>
+    <input type="text" id="aiModel" list="aiModelList" placeholder="如 glm-4.7 / deepseek-chat / claude-sonnet-4-5">
+    <datalist id="aiModelList"></datalist>
+    <div class="bgset-row">
+      <button id="aiModelsBtn" class="ghost">↻ 获取模型列表</button>
+      <span class="meta2" id="aiModelHint">改协议/地址/Key 后会自动获取，点模型输入框下拉选择</span>
+    </div>
     <p class="appear-label2">系统提示词（AI 人设，可选，≤2000 字）</p>
     <textarea id="aiPrompt" rows="4" maxlength="2000" placeholder="例如：你是 YHuo 个人主页的 AI 助手，回答简洁友好，默认用中文。"></textarea>
     <div class="bgset-row" style="margin-top:18px">
@@ -1655,6 +1660,8 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
       aiKeyHint(d.has_key, d.key_hint);
       updateAiToggle(d.enabled, d.usable);
       $('aiTestResult').textContent = '';
+      aiModelsSig = null; // 进标签页用已保存配置自动拉一次模型列表
+      fetchAiModels(false);
     }).catch(function () { toast('网络错误', 'err'); });
   }
 
@@ -1707,6 +1714,48 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
       }).catch(function () { $('aiTestResult').textContent = '✕ 网络错误'; });
     });
   });
+
+  // ---------- AI 模型列表自动获取（服务端代理 GET {base}/models，key 不出后端） ----------
+  var aiModelsSig = null; // 上次获取时的配置指纹，防重复拉取
+
+  function fetchAiModels(manual) {
+    var key = $('aiApiKey').value.trim();
+    // 指纹里 Key 只取尾 4 位：不完整输入不打到服务端
+    var sig = $('aiProtocol').value + '|' + $('aiBaseUrl').value.trim() + '|' + (key ? key.length + ':' + key.slice(-4) : 'saved');
+    if (!manual && sig === aiModelsSig) return;
+    aiModelsSig = sig;
+    $('aiModelHint').textContent = '获取模型列表中…';
+    api('/api/admin/ai/models', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        protocol: $('aiProtocol').value,
+        base_url: $('aiBaseUrl').value.trim(),
+        api_key: key, // 留空 = 服务端用已保存的 Key
+      }),
+    }).then(function (d) {
+      if (d.ok) {
+        var dl = $('aiModelList');
+        dl.innerHTML = '';
+        d.models.forEach(function (m) {
+          var o = document.createElement('option');
+          o.value = m;
+          dl.appendChild(o);
+        });
+        $('aiModelHint').textContent = '已获取 ' + d.models.length + ' 个模型，点模型输入框下拉选择';
+        if (!$('aiModel').value.trim() && d.models.length === 1) $('aiModel').value = d.models[0];
+      } else {
+        $('aiModelHint').textContent = '获取失败：' + (d.error || '未知错误');
+      }
+    }).catch(function () {
+      $('aiModelHint').textContent = '获取失败：网络错误，可手动填写模型名';
+    });
+  }
+
+  $('aiModelsBtn').addEventListener('click', function () { fetchAiModels(true); });
+  $('aiBaseUrl').addEventListener('change', function () { fetchAiModels(false); });
+  $('aiApiKey').addEventListener('change', function () { fetchAiModels(false); });
+  $('aiProtocol').addEventListener('change', function () { fetchAiModels(false); });
 
   // ---------- 侧边栏导航 ----------
   var PAGE_TITLES = { overview: '概览', music: '音乐', video: '视频', image: '图片', users: '用户', appearance: '外观', ai: 'AI 设置' };

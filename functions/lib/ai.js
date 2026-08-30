@@ -5,7 +5,7 @@ import { ensureSchema } from './migrate.js';
 export const AI_PROTOCOLS = ['openai', 'anthropic'];
 
 // 各协议的默认接口地址（后台 Base URL 留空时使用）
-const PROTOCOL_BASES = {
+export const PROTOCOL_BASES = {
   openai: 'https://api.openai.com/v1',
   anthropic: 'https://api.anthropic.com/v1',
 };

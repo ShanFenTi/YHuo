@@ -1153,6 +1153,50 @@
     .ai-input-bar button:hover { transform: scale(1.06); }
     .ai-input-bar button:disabled { opacity: 0.5; cursor: default; transform: none; }
 
+    /* AI 界面顶栏：模型名徽标 + 新对话/关闭按钮组 */
+    .ai-bar-actions { display: flex; align-items: center; gap: 8px; }
+    .ai-model-badge {
+      display: inline-block;
+      margin-left: 10px;
+      padding: 2px 10px;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      border-radius: 999px;
+      background: color-mix(in srgb, var(--apple-primary) 12%, transparent);
+      color: var(--apple-primary);
+      max-width: 240px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      vertical-align: 2px;
+    }
+
+    /* AI 回复里的 Markdown（复用文档区渲染器，先转义再解析） */
+    .ai-msg.bot p { margin: 0; }
+    .ai-msg.bot p + p { margin-top: 8px; }
+    .ai-msg.bot ul, .ai-msg.bot ol { margin: 8px 0; padding-left: 20px; }
+    .ai-msg.bot li { margin: 2px 0; }
+    .ai-msg.bot h1, .ai-msg.bot h2, .ai-msg.bot h3 { margin: 10px 0 6px; font-size: 15px; }
+    .ai-msg.bot blockquote { margin: 8px 0; padding: 2px 0 2px 10px; border-left: 3px solid var(--apple-border); opacity: 0.85; }
+    .ai-msg.bot hr { border: none; border-top: 1px solid var(--apple-border); margin: 10px 0; }
+    .ai-msg.bot a { color: var(--apple-primary); }
+    .ai-msg.bot pre {
+      background: color-mix(in srgb, var(--apple-foreground) 7%, transparent);
+      border: 1px solid var(--apple-border);
+      border-radius: 10px;
+      padding: 10px 12px;
+      overflow-x: auto;
+      margin: 8px 0;
+    }
+    .ai-msg.bot code { font-family: ui-monospace, SFMono-Regular, Consolas, 'Courier New', monospace; font-size: 13px; }
+    .ai-msg.bot p code, .ai-msg.bot li code {
+      background: color-mix(in srgb, var(--apple-foreground) 8%, transparent);
+      border-radius: 5px;
+      padding: 1px 5px;
+    }
+    .ai-msg.bot pre code { background: none; padding: 0; }
+
     /* 窗口最大化/宽屏时，顶部本地时间靠左对齐（与左上角 logo 的 6vw 左边距一致，不会被遮挡） */
     @media (min-width: 1200px) {
       :root {
@@ -3713,13 +3757,18 @@
     </div>
   </div>
 
-  <!-- AI 界面：顶栏"AI"进入（聊天骨架，对话功能待接入） -->
+  <!-- AI 界面：顶栏"AI"进入，对话走 /api/ai/chat（服务端代理，key 在后台配置） -->
   <div class="ai-view" id="aiView" hidden role="dialog" aria-modal="true" aria-label="AI 助手">
     <header class="album-bar">
-      <p class="album-title">AI 助手 · AI</p>
-      <button class="album-close" id="aiViewClose" type="button" aria-label="关闭 AI 界面">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>
-      </button>
+      <p class="album-title">AI 助手<span class="ai-model-badge" id="aiModelBadge" hidden></span></p>
+      <div class="ai-bar-actions">
+        <button class="album-close" id="aiNewChatBtn" type="button" aria-label="新对话" title="新对话（清空当前聊天）">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg>
+        </button>
+        <button class="album-close" id="aiViewClose" type="button" aria-label="关闭 AI 界面">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>
+        </button>
+      </div>
     </header>
     <div class="ai-chat">
       <div class="ai-messages" id="aiMessages"></div>
@@ -7071,16 +7120,19 @@
     }
 
     // =========================
-    // AI 界面：聊天骨架（对话功能待接入，发送只回占位回复）
-    // 接入真模型时：把 addMsg 的占位 setTimeout 换成对后端接口的调用即可，
-    // 后端建议走 functions/api/ai/*（key 不能放前端）
+    // AI 界面：对话实装（后端 /api/ai/* 代理转发，服务商 Key 只存在后台数据库）
+    // 流式回复：后端把上游 SSE 归一化成 data: {"delta":"..."} / [DONE]，前端按行解析；
+    // 多轮历史只存在内存里，关闭界面或点"新对话"即清空
     // =========================
     var aiView = document.getElementById('aiView');
     var aiBtn = document.getElementById('aiBtn');
     var aiForm = document.getElementById('aiForm');
     var aiInput = document.getElementById('aiInput');
     var aiMessages = document.getElementById('aiMessages');
-    var aiOpened = false;
+    var aiHistory = [];   // 本次对话 {role, content} 列表
+    var aiConfig = null;  // {enabled, model}，来自 /api/ai/config
+    var aiBusy = false;
+    var aiAbort = null;
 
     function addAiMsg(role, text, pending) {
       if (!aiMessages) return null;
@@ -7090,6 +7142,59 @@
       aiMessages.appendChild(el);
       aiMessages.scrollTop = aiMessages.scrollHeight;
       return el;
+    }
+
+    // 机器人消息走 Markdown 渲染（mdToHtml 先整体转义再解析，防 XSS）
+    function aiRenderBot(el, text) {
+      if (!el) return;
+      el.innerHTML = mdToHtml(text);
+      aiMessages.scrollTop = aiMessages.scrollHeight;
+    }
+
+    function aiGreeting() {
+      if (aiConfig && aiConfig.enabled) return '你好，我是 YHuo 的 AI 助手 🤖\n有什么想问的尽管说～';
+      return '你好，我是 YHuo 的 AI 助手 🤖\n对话能力还在接入中，敬请期待～';
+    }
+
+    function aiGreetIfEmpty() {
+      if (aiMessages && !aiMessages.children.length) addAiMsg('bot', aiGreeting());
+    }
+
+    function fetchAiConfig(force) {
+      if (aiConfig && !force) return Promise.resolve(aiConfig);
+      return fetch('/api/ai/config', { credentials: 'same-origin' })
+        .then(function (r) { return r.ok ? r.json() : { enabled: false, model: null }; })
+        .catch(function () { return { enabled: false, model: null }; })
+        .then(function (d) {
+          aiConfig = { enabled: !!(d && d.enabled), model: (d && d.model) || null };
+          var badge = document.getElementById('aiModelBadge');
+          if (badge) {
+            if (aiConfig.enabled && aiConfig.model) {
+              badge.textContent = aiConfig.model;
+              badge.hidden = false;
+            } else {
+              badge.hidden = true;
+            }
+          }
+          return aiConfig;
+        });
+    }
+
+    function aiStopBusy() {
+      aiBusy = false;
+      var sendBtn = document.getElementById('aiSendBtn');
+      if (sendBtn) sendBtn.disabled = false;
+    }
+
+    // 清空对话（关闭界面 / 新对话共用）：中断进行中的流式请求
+    function aiResetChat() {
+      if (aiAbort) {
+        try { aiAbort.abort(); } catch (e) {}
+        aiAbort = null;
+      }
+      aiHistory = [];
+      if (aiMessages) aiMessages.innerHTML = '';
+      aiStopBusy();
     }
 
     function openAiView() {
@@ -7110,10 +7215,8 @@
       // 顶栏高亮切到"AI"（与相册同款接管，滚动监听在 aiView 打开期间不抢回）
       navLinks.forEach(function (a) { a.classList.remove('active'); });
       if (aiBtn) aiBtn.classList.add('active');
-      if (!aiOpened) {
-        aiOpened = true;
-        addAiMsg('bot', '你好，我是 YHuo 的 AI 助手 🤖\n对话功能还在接入中，先和我打个招呼吧～');
-      }
+      // 每次打开都刷新一次配置（后台开关/改配置即时生效），再补开场白
+      fetchAiConfig(true).then(aiGreetIfEmpty);
       setTimeout(function () { if (aiInput) aiInput.focus(); }, 200);
     }
 
@@ -7122,15 +7225,128 @@
       aiView.classList.remove('show');
       document.body.style.overflow = '';
       if (aiBtn) aiBtn.classList.remove('active');
+      aiResetChat(); // 关闭即清空：中断流式请求 + 清历史
       setTimeout(function () {
         aiView.hidden = true;
         onScroll(); // 关闭后恢复按滚动位置的导航高亮
       }, 250);
     }
 
+    function aiFail(messages, pending, msg) {
+      // 失败时把刚 push 的用户消息弹回去，重试不会重复入历史
+      if (messages.length && messages[messages.length - 1].role === 'user') messages.pop();
+      if (pending) pending.remove();
+      addAiMsg('bot', '⚠️ ' + msg);
+      aiStopBusy();
+    }
+
+    function streamAiReply(messages, pending) {
+      var full = '';
+      var finished = false;
+      var ctl = typeof AbortController === 'function' ? new AbortController() : null;
+      aiAbort = ctl;
+      var decoder = typeof TextDecoder === 'function' ? new TextDecoder() : null;
+
+      function finish() {
+        if (finished) return;
+        finished = true;
+        aiAbort = null;
+        if (full) {
+          if (pending) {
+            pending.classList.remove('pending');
+            aiRenderBot(pending, full);
+          } else {
+            aiRenderBot(addAiMsg('bot', ''), full);
+          }
+          messages.push({ role: 'assistant', content: full });
+        } else {
+          if (pending) pending.remove();
+          addAiMsg('bot', '（模型没有返回内容，换个问法试试？）');
+        }
+        aiStopBusy();
+      }
+
+      // 解析一行归一化 SSE 数据；错误对象 {aiError} / {aiAuth} 抛给外层 catch
+      function handleData(data) {
+        if (data === '[DONE]') { finish(); return; }
+        var j;
+        try {
+          j = JSON.parse(data);
+        } catch (e) { return; }
+        if (j.error) throw { aiError: j.error };
+        if (j.delta) {
+          full += j.delta;
+          if (pending) {
+            pending.classList.remove('pending');
+            aiRenderBot(pending, full);
+          }
+        }
+      }
+
+      fetch('/api/ai/chat', {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ messages: messages.slice(-20) }),
+        signal: ctl ? ctl.signal : undefined
+      }).then(function (res) {
+        if (res.status === 401) throw { aiAuth: true };
+        if (!res.ok) {
+          return res.json().catch(function () { return {}; }).then(function (d) {
+            throw { aiError: (d && d.error) || '服务暂时不可用（HTTP ' + res.status + '）' };
+          });
+        }
+        if (!res.body || !res.body.getReader) {
+          // 极端兜底：浏览器不支持流式，整段读完再解析
+          return res.text().then(function (t) {
+            t.split(/\n\n/).forEach(function (seg) {
+              seg.split(/\r?\n/).forEach(function (line) {
+                if (line.indexOf('data:') !== 0) return;
+                handleData(line.slice(5).trim());
+              });
+            });
+            finish();
+          });
+        }
+        var reader = res.body.getReader();
+        var buf = '';
+        function pump() {
+          return reader.read().then(function (r) {
+            if (r.done) { finish(); return; }
+            buf += decoder.decode(r.value, { stream: true });
+            var idx;
+            while ((idx = buf.indexOf('\n\n')) !== -1) {
+              var seg = buf.slice(0, idx);
+              buf = buf.slice(idx + 2);
+              seg.split(/\r?\n/).forEach(function (line) {
+                line = line.trim();
+                if (line.indexOf('data:') !== 0) return;
+                handleData(line.slice(5).trim());
+              });
+              if (finished) return;
+            }
+            return pump();
+          });
+        }
+        return pump();
+      }).catch(function (e) {
+        if (e && e.aiAuth) { aiFail(messages, pending, '登录状态已过期，请重新登录后再聊'); openGate(); return; }
+        if (e && e.name === 'AbortError') return; // 关闭界面/新对话主动中断，不提示
+        if (e && e.aiError) { aiFail(messages, pending, e.aiError); return; }
+        if (!finished) aiFail(messages, pending, '网络错误，请稍后再试');
+      });
+    }
+
     if (aiBtn) aiBtn.addEventListener('click', openAiView);
     var aiViewClose = document.getElementById('aiViewClose');
     if (aiViewClose) aiViewClose.addEventListener('click', closeAiView);
+    var aiNewChatBtn = document.getElementById('aiNewChatBtn');
+    if (aiNewChatBtn) {
+      aiNewChatBtn.addEventListener('click', function () {
+        aiResetChat();
+        fetchAiConfig(false).then(aiGreetIfEmpty);
+      });
+    }
     document.addEventListener('keydown', function (e) {
       if (e.key === 'Escape' && aiView && !aiView.hidden && lightbox.hidden) closeAiView();
     });
@@ -7139,18 +7355,27 @@
       aiForm.addEventListener('submit', function (e) {
         e.preventDefault();
         var text = aiInput ? aiInput.value.trim() : '';
-        if (!text) return;
-        addAiMsg('user', text);
-        if (aiInput) aiInput.value = '';
+        if (!text || aiBusy) return;
+        if (!isMember()) {
+          addAiMsg('bot', '要和我聊天，请先登录或注册一个账号哦～（右上角头像进入登录）');
+          openGate();
+          return;
+        }
+        aiBusy = true;
         var sendBtn = document.getElementById('aiSendBtn');
         if (sendBtn) sendBtn.disabled = true;
-        var pending = addAiMsg('bot', '思考中…', true);
-        // 占位回复：接入真模型后替换为接口调用
-        setTimeout(function () {
-          if (pending) pending.remove();
-          addAiMsg('bot', '（演示）我的对话能力还在接入中，敬请期待。');
-          if (sendBtn) sendBtn.disabled = false;
-        }, 700);
+        fetchAiConfig(false).then(function (cfg) {
+          if (!cfg.enabled) {
+            addAiMsg('bot', 'AI 对话还没有配置好，请等站长在后台接入～');
+            aiStopBusy();
+            return;
+          }
+          addAiMsg('user', text);
+          aiHistory.push({ role: 'user', content: text });
+          if (aiInput) aiInput.value = '';
+          var pending = addAiMsg('bot', '思考中…', true);
+          streamAiReply(aiHistory, pending);
+        });
       });
     }
 

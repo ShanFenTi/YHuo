@@ -104,6 +104,12 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
     background: var(--input-bg); color: var(--fg);
   }
   input:focus { outline: 2px solid var(--fg); outline-offset: -1px; border-color: transparent; }
+  textarea {
+    width: 100%; padding: 10px 12px; margin: 6px 0 4px;
+    border: 1px solid var(--border); border-radius: 10px; font-size: 14px;
+    background: var(--input-bg); color: var(--fg);
+    font-family: inherit; line-height: 1.6; resize: vertical; min-height: 90px;
+  }
   button {
     padding: 9px 18px; border: none; border-radius: 10px; font-size: 14px;
     background: var(--fg); color: var(--bg); cursor: pointer;
@@ -380,6 +386,7 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
       <button data-type="image" title="图片"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m21 15-5-5L5 21"/></svg><span>图片</span></button>
       <button data-type="users" title="用户"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg><span>用户</span></button>
       <button data-type="appearance" title="外观"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 2a10 10 0 0 0 0 20z" fill="currentColor" stroke="none"/></svg><span>外观</span></button>
+      <button data-type="ai" title="AI 设置"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="8" width="16" height="12" rx="2"/><path d="M12 8V4"/><path d="M9 4h6"/><circle cx="9" cy="13" r="1" fill="currentColor" stroke="none"/><circle cx="15" cy="13" r="1" fill="currentColor" stroke="none"/><path d="M9 17h6"/></svg><span>AI</span></button>
     </nav>
     <div class="sidenav-foot">
       <button id="themeBtn" class="ghost icon-btn" title="切换浅色/深色">
@@ -489,6 +496,34 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
     <div class="bgset-row">
       <button id="exportBtn" class="ghost">导出媒体清单备份（JSON）</button>
       <span class="meta2">含全部媒体条目与访问地址；KV 里的文件本体请自行下载保存。</span>
+    </div>
+  </div>
+
+  <div id="aiPanel" hidden>
+    <p class="hint">配置前台「AI」界面的对话能力。API Key 只存在站点数据库里，不会下发给浏览器；对话统一走服务端代理转发。两种协议可覆盖主流服务商（GLM / DeepSeek / Kimi / Gemini 兼容端点等都是 OpenAI 兼容格式），换服务商只需改协议、地址、模型名。</p>
+    <p class="appear-label2">启用开关</p>
+    <div class="bgset-row">
+      <button id="aiToggleBtn" class="ghost">停用 AI</button>
+      <span class="meta2" id="aiStateText">状态读取中…</span>
+    </div>
+    <p class="appear-label2">接口协议</p>
+    <select id="aiProtocol">
+      <option value="openai">OpenAI 兼容（OpenAI / GLM / DeepSeek / Kimi 等）</option>
+      <option value="anthropic">Anthropic（Claude 原生）</option>
+    </select>
+    <p class="appear-label2">接口地址 Base URL（留空用所选协议的官方默认）</p>
+    <input type="text" id="aiBaseUrl" placeholder="https://api.openai.com/v1">
+    <p class="appear-label2">API Key</p>
+    <input type="password" id="aiApiKey" autocomplete="new-password" placeholder="sk-…">
+    <span class="meta2" id="aiKeyHint">未设置</span>
+    <p class="appear-label2">模型名</p>
+    <input type="text" id="aiModel" placeholder="如 glm-4.7 / deepseek-chat / claude-sonnet-4-5">
+    <p class="appear-label2">系统提示词（AI 人设，可选，≤2000 字）</p>
+    <textarea id="aiPrompt" rows="4" maxlength="2000" placeholder="例如：你是 YHuo 个人主页的 AI 助手，回答简洁友好，默认用中文。"></textarea>
+    <div class="bgset-row" style="margin-top:18px">
+      <button id="aiSaveBtn">保存设置</button>
+      <button id="aiTestBtn" class="ghost">测试连接</button>
+      <span class="meta2" id="aiTestResult"></span>
     </div>
   </div>
     </main>
@@ -1593,8 +1628,88 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
     });
   });
 
+  // ---------- AI 设置 ----------
+  var currentAiEnabled = false;
+
+  function updateAiToggle(enabled, usable) {
+    currentAiEnabled = !!enabled;
+    $('aiToggleBtn').textContent = enabled ? '停用 AI' : '启用 AI';
+    $('aiStateText').textContent = enabled
+      ? (usable ? '启用中，前台 AI 界面可正常对话' : '启用中，但还缺 API Key 或模型名，前台暂不可用')
+      : '已停用，前台显示"接入中"';
+  }
+
+  function aiKeyHint(hasKey, hint) {
+    $('aiKeyHint').textContent = hasKey ? '已保存（' + hint + '）；输入框留空 = 不修改' : '未设置';
+    $('aiApiKey').placeholder = hasKey ? '留空保持不变' : 'sk-…';
+  }
+
+  function loadAiSettings() {
+    api('/api/admin/ai').then(function (d) {
+      if (!d.ok) { toast(d.error || '读取 AI 配置失败', 'err'); return; }
+      $('aiProtocol').value = d.protocol;
+      $('aiBaseUrl').value = d.base_url || '';
+      $('aiModel').value = d.model || '';
+      $('aiPrompt').value = d.system_prompt || '';
+      $('aiApiKey').value = '';
+      aiKeyHint(d.has_key, d.key_hint);
+      updateAiToggle(d.enabled, d.usable);
+      $('aiTestResult').textContent = '';
+    }).catch(function () { toast('网络错误', 'err'); });
+  }
+
+  // 保存表单字段（不含启用开关；Key 留空即不改）。测试前也会先走一遍保存。
+  function saveAiSettings(done) {
+    var body = {
+      protocol: $('aiProtocol').value,
+      base_url: $('aiBaseUrl').value.trim(),
+      model: $('aiModel').value.trim(),
+      system_prompt: $('aiPrompt').value,
+    };
+    var key = $('aiApiKey').value.trim();
+    if (key) body.api_key = key;
+    api('/api/admin/ai', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
+      .then(done)
+      .catch(function () { done({ ok: false, error: '网络错误' }); });
+  }
+
+  $('aiSaveBtn').addEventListener('click', function () {
+    saveAiSettings(function (d) {
+      if (!d.ok) { toast(d.error || '保存失败', 'err'); return; }
+      aiKeyHint(d.has_key, d.key_hint);
+      updateAiToggle(d.enabled, d.usable);
+      toast(d.usable ? 'AI 设置已保存，前台即刻生效' : '已保存，但还缺 API Key 或模型名，前台暂不可用', 'ok');
+    });
+  });
+
+  $('aiToggleBtn').addEventListener('click', function () {
+    api('/api/admin/ai', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ enabled: !currentAiEnabled }),
+    }).then(function (d) {
+      if (!d.ok) { toast(d.error || '操作失败', 'err'); return; }
+      updateAiToggle(d.enabled, d.usable);
+      toast(d.enabled ? 'AI 已启用' : 'AI 已停用，前台恢复"接入中"文案', 'ok');
+    }).catch(function () { toast('网络错误', 'err'); });
+  });
+
+  $('aiTestBtn').addEventListener('click', function () {
+    $('aiTestResult').textContent = '测试中…（先保存再用当前配置实测）';
+    saveAiSettings(function (d) {
+      if (!d.ok) { $('aiTestResult').textContent = '保存失败：' + (d.error || '未知错误'); return; }
+      aiKeyHint(d.has_key, d.key_hint);
+      updateAiToggle(d.enabled, d.usable);
+      api('/api/admin/ai/test', { method: 'POST' }).then(function (t) {
+        $('aiTestResult').textContent = t.ok
+          ? '✓ 连接成功（' + t.ms + 'ms）：' + t.reply
+          : '✕ ' + (t.error || '未知错误');
+      }).catch(function () { $('aiTestResult').textContent = '✕ 网络错误'; });
+    });
+  });
+
   // ---------- 侧边栏导航 ----------
-  var PAGE_TITLES = { overview: '概览', music: '音乐', video: '视频', image: '图片', users: '用户', appearance: '外观' };
+  var PAGE_TITLES = { overview: '概览', music: '音乐', video: '视频', image: '图片', users: '用户', appearance: '外观', ai: 'AI 设置' };
   var navBtns = document.querySelectorAll('#sideNav button');
   function switchPage(type) {
     currentType = type;
@@ -1603,20 +1718,25 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
     var isOverview = type === 'overview';
     var isUsers = type === 'users';
     var isAppear = type === 'appearance';
+    var isAi = type === 'ai';
     $('overviewPanel').hidden = !isOverview;
-    $('mediaPanel').hidden = isOverview || isUsers || isAppear;
+    $('mediaPanel').hidden = isOverview || isUsers || isAppear || isAi;
     $('userPanel').hidden = !isUsers;
     $('appearancePanel').hidden = !isAppear;
+    $('aiPanel').hidden = !isAi;
     $('imageShell').hidden = type !== 'image'; // 相册侧栏只在图片页
     document.body.classList.remove('nav-open'); // 窄屏选完即收起菜单
     if (isAppear) {
       loadAppearance();
     }
+    if (isAi) {
+      loadAiSettings();
+    }
     if (isUsers) {
       $('userSearch').value = ''; // 换进来重置搜索
       loadUsers();
     }
-    if (!isOverview && !isUsers && !isAppear) {
+    if (!isOverview && !isUsers && !isAppear && !isAi) {
       $('fileInput').accept = TYPE_EXT[type];
       $('titleInput').value = '';
       selected = {}; // 换标签页清空勾选和搜索

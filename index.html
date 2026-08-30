@@ -801,6 +801,230 @@
 
     .weather-picker-foot .appear-btn { flex: 1; }
 
+    /* ===== 工具合集 ===== */
+    .tools-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 14px;
+      margin-top: 4px;
+    }
+
+    @media (max-width: 700px) {
+      .tools-grid { grid-template-columns: 1fr; }
+    }
+
+    .tool-card {
+      border: 1px solid var(--apple-border);
+      border-radius: 14px;
+      padding: 14px;
+      background: color-mix(in srgb, var(--apple-background) 55%, transparent);
+    }
+
+    .tool-card-title {
+      font-size: 13px;
+      font-weight: 700;
+      margin-bottom: 12px;
+    }
+
+    /* 计算器 */
+    .calc-screen {
+      font-variant-numeric: tabular-nums;
+      font-size: 20px;
+      font-weight: 600;
+      text-align: right;
+      background: color-mix(in srgb, var(--apple-background) 80%, transparent);
+      border: 1px solid var(--apple-border);
+      border-radius: 10px;
+      padding: 10px 12px;
+      margin-bottom: 10px;
+      overflow-x: auto;
+      white-space: nowrap;
+      min-height: 44px;
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+    }
+
+    .calc-pad {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 6px;
+    }
+
+    .calc-pad button {
+      padding: 9px 0;
+      border: 1px solid var(--apple-border);
+      border-radius: 9px;
+      background: var(--apple-card);
+      color: var(--apple-foreground);
+      font-size: 14px;
+      cursor: pointer;
+      transition: background-color 130ms var(--ease-out), transform 130ms var(--ease-out);
+    }
+
+    .calc-pad button:hover { background: var(--apple-chip, var(--apple-secondary)); }
+    .calc-pad button:active { transform: scale(0.94); }
+    .calc-pad .calc-eq { background: var(--apple-primary); color: #fff; border-color: var(--apple-primary); }
+
+    /* 倒计时 */
+    .timer-display {
+      font-variant-numeric: tabular-nums;
+      font-size: 40px;
+      font-weight: 700;
+      text-align: center;
+      letter-spacing: 0.04em;
+      margin: 4px 0 12px;
+    }
+
+    .timer-display.ringing { animation: timerBlink 1s steps(2) infinite; }
+
+    @keyframes timerBlink {
+      50% { opacity: 0.25; }
+    }
+
+    .timer-controls {
+      display: flex;
+      gap: 6px;
+      margin-top: 8px;
+    }
+
+    .timer-controls .appear-btn { flex: 1; padding-left: 0; padding-right: 0; text-align: center; }
+
+    /* 密码生成 */
+    .pwd-out-row { display: flex; gap: 6px; margin-bottom: 10px; }
+    .pwd-out-row .profilev-input { margin-bottom: 0; font-family: ui-monospace, monospace; font-size: 12px; }
+    .pwd-out-row .appear-btn { flex: none; }
+
+    .tool-check {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 12px;
+      color: var(--apple-muted-foreground);
+      margin: 8px 0;
+      cursor: pointer;
+    }
+
+    .tool-check input[type="range"] { flex: 1; accent-color: var(--apple-primary); }
+    .tool-check input[type="checkbox"] { accent-color: var(--apple-primary); }
+
+    /* 颜色工具 */
+    .color-row { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; }
+    .color-row input[type="color"] {
+      width: 46px; height: 46px; padding: 0; border: 1px solid var(--apple-border);
+      border-radius: 10px; background: none; cursor: pointer;
+    }
+    .color-preview {
+      flex: 1; height: 46px; border-radius: 10px;
+      border: 1px solid var(--apple-border);
+      background: #4f8ef7;
+    }
+    .color-val { font-size: 12px; color: var(--apple-muted-foreground); margin-top: 6px; }
+    .color-code { font-family: ui-monospace, monospace; color: var(--apple-foreground); cursor: pointer; }
+    .color-code:hover { text-decoration: underline; }
+
+    /* ===== 文档区 ===== */
+    .docs-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+      gap: 12px;
+      margin-top: 4px;
+    }
+
+    .doc-card {
+      text-align: left;
+      border: 1px solid var(--apple-border);
+      border-radius: 14px;
+      background: color-mix(in srgb, var(--apple-background) 55%, transparent);
+      color: var(--apple-foreground);
+      padding: 14px;
+      cursor: pointer;
+      transition: transform 180ms var(--ease-out), box-shadow 180ms var(--ease-out), border-color 180ms var(--ease-out);
+    }
+
+    .doc-card:hover {
+      transform: translateY(-2px);
+      box-shadow: var(--shadow-md);
+      border-color: var(--apple-primary);
+    }
+
+    .doc-card-title { font-size: 14px; font-weight: 700; }
+    .doc-card-desc { font-size: 12px; color: var(--apple-muted-foreground); margin-top: 6px; line-height: 1.6; }
+    .doc-card-meta { font-size: 11px; color: var(--apple-muted-foreground); margin-top: 10px; opacity: 0.8; }
+
+    /* 文档阅读层（结构沿用相册/个人主页的全屏模式） */
+    .doc-viewer {
+      position: fixed;
+      top: 52px;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      z-index: 150;
+      display: flex;
+      flex-direction: column;
+      background: color-mix(in srgb, var(--apple-background) 88%, transparent);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      opacity: 0;
+      visibility: hidden;
+      transition: opacity 250ms var(--ease-out), visibility 250ms var(--ease-out);
+    }
+
+    .doc-viewer.show { opacity: 1; visibility: visible; }
+    .doc-viewer.show .album-bar { transform: none; opacity: 1; }
+
+    .doc-scroll {
+      flex: 1;
+      overflow-y: auto;
+      padding: 24px 6vw 48px;
+      transform: translateY(28px);
+      opacity: 0;
+      transition: transform 400ms var(--ease-out) 60ms, opacity 300ms var(--ease-out) 60ms;
+    }
+
+    .doc-viewer.show .doc-scroll { transform: none; opacity: 1; }
+
+    .doc-article {
+      max-width: 760px;
+      margin: 0 auto;
+      padding: 26px 28px;
+      font-size: 14px;
+      line-height: 1.9;
+    }
+
+    .doc-article h1, .doc-article h2, .doc-article h3 { margin: 22px 0 10px; line-height: 1.4; }
+    .doc-article h1 { font-size: 22px; }
+    .doc-article h2 { font-size: 18px; }
+    .doc-article h3 { font-size: 15px; }
+    .doc-article h1:first-child { margin-top: 0; }
+    .doc-article p { margin: 8px 0; }
+    .doc-article ul, .doc-article ol { padding-left: 22px; margin: 8px 0; }
+    .doc-article li { margin: 3px 0; }
+    .doc-article blockquote {
+      border-left: 3px solid var(--apple-primary);
+      color: var(--apple-muted-foreground);
+      padding: 2px 14px;
+      margin: 10px 0;
+    }
+    .doc-article code {
+      font-family: ui-monospace, monospace;
+      font-size: 12px;
+      background: var(--apple-chip, rgba(128, 128, 128, 0.14));
+      border-radius: 5px;
+      padding: 1px 6px;
+    }
+    .doc-article pre {
+      background: var(--apple-chip, rgba(128, 128, 128, 0.14));
+      border-radius: 10px;
+      padding: 12px 14px;
+      overflow-x: auto;
+      margin: 10px 0;
+    }
+    .doc-article pre code { background: none; padding: 0; }
+    .doc-article a { color: var(--apple-primary); }
+    .doc-article hr { border: none; border-top: 1px solid var(--apple-border); margin: 18px 0; }
+    .doc-article img { max-width: 100%; border-radius: 10px; }
+
     /* 窗口最大化/宽屏时，顶部本地时间靠左对齐（与左上角 logo 的 6vw 左边距一致，不会被遮挡） */
     @media (min-width: 1200px) {
       :root {
@@ -2927,6 +3151,8 @@
     <a class="logo" href="#home" aria-label="回到首页">YHuo</a>
     <nav class="site-nav" aria-label="主导航">
       <a href="#home" class="nav-link active" data-target="home">首页</a>
+      <a href="#tools" class="nav-link" data-target="tools">工具</a>
+      <a href="#docs" class="nav-link" data-target="docs">文档</a>
       <button class="nav-link album-entry" id="albumBtn" type="button" aria-haspopup="dialog" aria-controls="albumView">相册</button>
     </nav>
     <div class="header-actions">
@@ -2976,7 +3202,7 @@
         <p class="hero-quote" id="heroQuote" hidden></p>
       </section>
 
-    <!-- 小工具板块 -->
+    <!-- 小工具板块（顶栏"工具"滚动到这里） -->
     <section id="tools" class="content-section">
       <!-- 图片画廊 -->
       <div class="tool-block">
@@ -2998,7 +3224,96 @@
         </div>
       </div>
 
+      <!-- 工具合集：本地小工具，无外部依赖 -->
+      <div class="tool-block">
+        <div class="apple-card">
+          <div class="card-padding">
+            <p class="card-eyebrow">工具合集 · TOOLBOX</p>
+            <div class="tools-grid">
+              <!-- 计算器 -->
+              <div class="tool-card" id="toolCalc">
+                <p class="tool-card-title">🧮 计算器</p>
+                <div class="calc-screen" id="calcScreen">0</div>
+                <div class="calc-pad" id="calcPad">
+                  <button type="button" data-k="C">C</button>
+                  <button type="button" data-k="(">(</button>
+                  <button type="button" data-k=")">)</button>
+                  <button type="button" data-k="/">÷</button>
+                  <button type="button" data-k="7">7</button>
+                  <button type="button" data-k="8">8</button>
+                  <button type="button" data-k="9">9</button>
+                  <button type="button" data-k="*">×</button>
+                  <button type="button" data-k="4">4</button>
+                  <button type="button" data-k="5">5</button>
+                  <button type="button" data-k="6">6</button>
+                  <button type="button" data-k="-">−</button>
+                  <button type="button" data-k="1">1</button>
+                  <button type="button" data-k="2">2</button>
+                  <button type="button" data-k="3">3</button>
+                  <button type="button" data-k="+">+</button>
+                  <button type="button" data-k="0">0</button>
+                  <button type="button" data-k=".">.</button>
+                  <button type="button" data-k="back">⌫</button>
+                  <button type="button" data-k="=" class="calc-eq">=</button>
+                </div>
+              </div>
+
+              <!-- 倒计时 -->
+              <div class="tool-card" id="toolTimer">
+                <p class="tool-card-title">⏱️ 倒计时</p>
+                <div class="timer-display" id="timerDisplay">05:00</div>
+                <div class="timer-controls">
+                  <button class="appear-btn" type="button" data-t="60">1 分</button>
+                  <button class="appear-btn" type="button" data-t="300">5 分</button>
+                  <button class="appear-btn" type="button" data-t="1500">25 分</button>
+                </div>
+                <div class="timer-controls">
+                  <button class="appear-btn" id="timerStartBtn" type="button">开始</button>
+                  <button class="appear-btn" id="timerResetBtn" type="button">重置</button>
+                </div>
+              </div>
+
+              <!-- 密码生成 -->
+              <div class="tool-card" id="toolPwd">
+                <p class="tool-card-title">🔐 密码生成</p>
+                <div class="pwd-out-row">
+                  <input class="profilev-input" id="pwdGenOut" type="text" readonly>
+                  <button class="appear-btn" id="pwdGenCopy" type="button">复制</button>
+                </div>
+                <label class="tool-check"><input type="range" id="pwdGenLen" min="8" max="32" value="16"> <span id="pwdGenLenLabel">16 位</span></label>
+                <label class="tool-check"><input type="checkbox" id="pwdGenSym" checked> 含符号 !@#$%</label>
+                <button class="appear-btn" id="pwdGenBtn" type="button" style="width:100%;">生成</button>
+              </div>
+
+              <!-- 颜色工具 -->
+              <div class="tool-card" id="toolColor">
+                <p class="tool-card-title">🎨 颜色转换</p>
+                <div class="color-row">
+                  <input type="color" id="colorPick" value="#4f8ef7" aria-label="选颜色">
+                  <div class="color-preview" id="colorPreview"></div>
+                </div>
+                <p class="color-val">HEX <span class="color-code" id="colorHex">#4f8ef7</span></p>
+                <p class="color-val">RGB <span class="color-code" id="colorRgb">rgb(79, 142, 247)</span></p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <!-- 外观设置已移至右侧抽屉（appear-dock） -->
+    </section>
+
+    <!-- 文档板块（顶栏"文档"滚动到这里）：docs/docs.json 清单 + docs/*.md -->
+    <section id="docs" class="content-section">
+      <div class="tool-block">
+        <div class="apple-card">
+          <div class="card-padding">
+            <p class="card-eyebrow">文档 · DOCS</p>
+            <div class="docs-grid" id="docsGrid"></div>
+            <p class="empty-hint" id="docsEmpty" hidden>docs/docs.json 里还没有文档条目。</p>
+          </div>
+        </div>
+      </div>
     </section>
   </main>
 
@@ -3248,6 +3563,19 @@
         <button class="appear-btn" id="bgLocalBtn" type="button">上传本地图片…</button>
         <button class="appear-btn" id="bgPickerClose" type="button">取消</button>
       </div>
+    </div>
+  </div>
+
+  <!-- 文档阅读层：点文档卡片进入，Esc/右上角退出 -->
+  <div class="doc-viewer" id="docViewer" hidden role="dialog" aria-modal="true" aria-label="文档阅读">
+    <header class="album-bar">
+      <p class="album-title" id="docViewerTitle">文档</p>
+      <button class="album-close" id="docViewerClose" type="button" aria-label="关闭文档">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>
+      </button>
+    </header>
+    <div class="doc-scroll">
+      <article class="apple-card doc-article" id="docArticle"></article>
     </div>
   </div>
 
@@ -6237,6 +6565,325 @@
     }
 
     initWeather();
+
+    // =========================
+    // 工具合集：计算器 / 倒计时 / 密码生成 / 颜色转换（纯本地，无外部依赖）
+    // =========================
+
+    // ---- 计算器 ----
+    (function initCalc() {
+      var screen = document.getElementById('calcScreen');
+      var pad = document.getElementById('calcPad');
+      if (!screen || !pad) return;
+      var expr = '';
+      function render() {
+        screen.textContent = expr || '0';
+        screen.scrollLeft = screen.scrollWidth;
+      }
+      function evaluate() {
+        // 只放行数字与四则/括号/小数点，杜绝任意代码执行
+        if (!/^[0-9+\-*/().%\s]+$/.test(expr)) return null;
+        try {
+          var val = Function('"use strict";return (' + expr + ')')();
+          if (typeof val !== 'number' || !isFinite(val)) return null;
+          return Math.round(val * 1e10) / 1e10;
+        } catch (e) { return null; }
+      }
+      pad.addEventListener('click', function (e) {
+        var btn = e.target.closest('button');
+        if (!btn) return;
+        var k = btn.getAttribute('data-k');
+        if (k === 'C') expr = '';
+        else if (k === 'back') expr = expr.slice(0, -1);
+        else if (k === '=') {
+          var v = evaluate();
+          if (v === null) {
+            screen.textContent = '错误';
+            expr = '';
+            return;
+          }
+          expr = String(v);
+        } else expr += k;
+        render();
+      });
+      render();
+    })();
+
+    // ---- 倒计时 ----
+    (function initTimer() {
+      var display = document.getElementById('timerDisplay');
+      var startBtn = document.getElementById('timerStartBtn');
+      var resetBtn = document.getElementById('timerResetBtn');
+      if (!display || !startBtn || !resetBtn) return;
+      var total = 300;
+      var left = 300;
+      var timer = null;
+      function fmt(s) {
+        var m = Math.floor(s / 60);
+        var ss = s % 60;
+        return (m < 10 ? '0' : '') + m + ':' + (ss < 10 ? '0' : '') + ss;
+      }
+      function render() { display.textContent = fmt(left); }
+      function stop() {
+        if (timer) { clearInterval(timer); timer = null; }
+        startBtn.textContent = '开始';
+      }
+      function beep() {
+        try {
+          var ctx = new (window.AudioContext || window.webkitAudioContext)();
+          [0, 0.35, 0.7].forEach(function (delay) {
+            var osc = ctx.createOscillator();
+            var gain = ctx.createGain();
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            osc.frequency.value = 880;
+            gain.gain.setValueAtTime(0.18, ctx.currentTime + delay);
+            gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + delay + 0.25);
+            osc.start(ctx.currentTime + delay);
+            osc.stop(ctx.currentTime + delay + 0.25);
+          });
+        } catch (e) {}
+      }
+      document.querySelectorAll('#toolTimer [data-t]').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          stop();
+          total = Number(btn.getAttribute('data-t')) || 300;
+          left = total;
+          display.classList.remove('ringing');
+          render();
+        });
+      });
+      startBtn.addEventListener('click', function () {
+        if (timer) { stop(); return; }
+        if (left <= 0) left = total;
+        display.classList.remove('ringing');
+        startBtn.textContent = '暂停';
+        timer = setInterval(function () {
+          left--;
+          render();
+          if (left <= 0) {
+            stop();
+            left = 0;
+            display.classList.add('ringing');
+            beep();
+          }
+        }, 1000);
+      });
+      resetBtn.addEventListener('click', function () {
+        stop();
+        left = total;
+        display.classList.remove('ringing');
+        render();
+      });
+      render();
+    })();
+
+    // ---- 密码生成 ----
+    (function initPwdGen() {
+      var out = document.getElementById('pwdGenOut');
+      var lenEl = document.getElementById('pwdGenLen');
+      var lenLabel = document.getElementById('pwdGenLenLabel');
+      var symEl = document.getElementById('pwdGenSym');
+      var genBtn = document.getElementById('pwdGenBtn');
+      var copyBtn = document.getElementById('pwdGenCopy');
+      if (!out || !lenEl || !genBtn) return;
+      function gen() {
+        var len = Number(lenEl.value) || 16;
+        var chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789';
+        if (symEl && symEl.checked) chars += '!@#$%^&*_-+=?';
+        var buf = new Uint32Array(len);
+        crypto.getRandomValues(buf);
+        var s = '';
+        for (var i = 0; i < len; i++) s += chars.charAt(buf[i] % chars.length);
+        out.value = s;
+      }
+      lenEl.addEventListener('input', function () {
+        if (lenLabel) lenLabel.textContent = lenEl.value + ' 位';
+      });
+      genBtn.addEventListener('click', gen);
+      if (copyBtn) {
+        copyBtn.addEventListener('click', function () {
+          if (!out.value) return;
+          (navigator.clipboard ? navigator.clipboard.writeText(out.value) : Promise.reject())
+            .then(function () {
+              copyBtn.textContent = '已复制';
+              setTimeout(function () { copyBtn.textContent = '复制'; }, 1500);
+            })
+            .catch(function () {
+              out.select();
+              try { document.execCommand('copy'); } catch (e) {}
+            });
+        });
+      }
+      gen();
+    })();
+
+    // ---- 颜色转换 ----
+    (function initColor() {
+      var pick = document.getElementById('colorPick');
+      var preview = document.getElementById('colorPreview');
+      var hexEl = document.getElementById('colorHex');
+      var rgbEl = document.getElementById('colorRgb');
+      if (!pick || !hexEl || !rgbEl) return;
+      function render() {
+        var hex = pick.value;
+        var r = parseInt(hex.slice(1, 3), 16);
+        var g = parseInt(hex.slice(3, 5), 16);
+        var b = parseInt(hex.slice(5, 7), 16);
+        if (preview) preview.style.background = hex;
+        hexEl.textContent = hex;
+        rgbEl.textContent = 'rgb(' + r + ', ' + g + ', ' + b + ')';
+      }
+      pick.addEventListener('input', render);
+      [hexEl, rgbEl].forEach(function (el) {
+        el.addEventListener('click', function () {
+          if (navigator.clipboard) navigator.clipboard.writeText(el.textContent).catch(function () {});
+        });
+      });
+      render();
+    })();
+
+    // =========================
+    // 文档区：docs/docs.json 清单 + docs/*.md，点击卡片进全屏阅读层。
+    // 静态托管没有目录列表（坑 1），清单文件必须手工维护：加文档 = 放 md + 在 docs.json 加一条
+    // =========================
+    var docsGrid = document.getElementById('docsGrid');
+    var docsEmpty = document.getElementById('docsEmpty');
+    var docViewer = document.getElementById('docViewer');
+    var docViewerTitle = document.getElementById('docViewerTitle');
+    var docArticle = document.getElementById('docArticle');
+
+    // 迷你 Markdown 渲染：先整体转义 HTML 再按行解析，支持
+    // #/##/### 标题、- 与 1. 列表、> 引用、``` 代码块、--- 分隔线、
+    // **粗** *斜* `行内码` [链接](url) ![图](url)；不支持的语法原样显示
+    function mdToHtml(src) {
+      var esc = function (s) {
+        return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+      };
+      var inline = function (s) {
+        return s
+          .replace(/!\[([^\]]*)\]\(([^)\s]+)\)/g, '<img src="$2" alt="$1">')
+          .replace(/\[([^\]]+)\]\(([^)\s]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>')
+          .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+          .replace(/(^|[^*])\*([^*]+)\*/g, '$1<em>$2</em>')
+          .replace(/`([^`]+)`/g, '<code>$1</code>');
+      };
+      var lines = esc(src).split(/\r?\n/);
+      var html = '';
+      var inCode = false;
+      var listType = null; // 'ul' | 'ol'
+      function closeList() {
+        if (listType) { html += '</' + listType + '>'; listType = null; }
+      }
+      lines.forEach(function (line) {
+        if (/^```/.test(line)) {
+          closeList();
+          html += inCode ? '</code></pre>' : '<pre><code>';
+          inCode = !inCode;
+          return;
+        }
+        if (inCode) { html += line + '\n'; return; }
+        var m;
+        if ((m = line.match(/^(#{1,3})\s+(.*)$/))) {
+          closeList();
+          var lvl = m[1].length;
+          html += '<h' + lvl + '>' + inline(m[2]) + '</h' + lvl + '>';
+        } else if (/^\s*[-*]\s+/.test(line)) {
+          if (listType !== 'ul') { closeList(); html += '<ul>'; listType = 'ul'; }
+          html += '<li>' + inline(line.replace(/^\s*[-*]\s+/, '')) + '</li>';
+        } else if (/^\s*\d+\.\s+/.test(line)) {
+          if (listType !== 'ol') { closeList(); html += '<ol>'; listType = 'ol'; }
+          html += '<li>' + inline(line.replace(/^\s*\d+\.\s+/, '')) + '</li>';
+        } else if (/^>\s?/.test(line)) {
+          closeList();
+          html += '<blockquote>' + inline(line.replace(/^>\s?/, '')) + '</blockquote>';
+        } else if (/^\s*---+\s*$/.test(line)) {
+          closeList();
+          html += '<hr>';
+        } else if (line.trim() === '') {
+          closeList();
+        } else {
+          closeList();
+          html += '<p>' + inline(line) + '</p>';
+        }
+      });
+      closeList();
+      if (inCode) html += '</code></pre>';
+      return html;
+    }
+
+    function openDoc(title, file) {
+      if (!docViewer) return;
+      if (docViewerTitle) docViewerTitle.textContent = title || '文档';
+      if (docArticle) docArticle.innerHTML = '<p style="color:var(--apple-muted-foreground)">加载中…</p>';
+      docViewer.hidden = false;
+      void docViewer.offsetWidth;
+      docViewer.classList.add('show');
+      fetch(file, { credentials: 'same-origin' })
+        .then(function (r) { return r.ok ? r.text() : Promise.reject(new Error('http ' + r.status)); })
+        .then(function (text) {
+          if (docArticle) docArticle.innerHTML = mdToHtml(text);
+        })
+        .catch(function () {
+          if (docArticle) docArticle.innerHTML = '<p>文档加载失败：' + escHtml(file) + '</p>';
+        });
+    }
+
+    function escHtml(s) {
+      return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    }
+
+    function closeDocViewer() {
+      if (!docViewer || docViewer.hidden) return;
+      docViewer.classList.remove('show');
+      setTimeout(function () { docViewer.hidden = true; }, 260);
+    }
+
+    var docViewerClose = document.getElementById('docViewerClose');
+    if (docViewerClose) docViewerClose.addEventListener('click', closeDocViewer);
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape' && docViewer && !docViewer.hidden && lightbox.hidden) closeDocViewer();
+    });
+
+    if (docsGrid) {
+      fetch('/docs/docs.json', { credentials: 'same-origin' })
+        .then(function (r) { return r.ok ? r.json() : Promise.reject(new Error('http ' + r.status)); })
+        .then(function (list) {
+          if (!Array.isArray(list) || !list.length) {
+            if (docsEmpty) docsEmpty.hidden = false;
+            return;
+          }
+          list.forEach(function (d) {
+            var card = document.createElement('button');
+            card.className = 'doc-card';
+            card.type = 'button';
+            var t = document.createElement('p');
+            t.className = 'doc-card-title';
+            t.textContent = d.title || d.file;
+            card.appendChild(t);
+            if (d.desc) {
+              var desc = document.createElement('p');
+              desc.className = 'doc-card-desc';
+              desc.textContent = d.desc;
+              card.appendChild(desc);
+            }
+            if (d.date) {
+              var meta = document.createElement('p');
+              meta.className = 'doc-card-meta';
+              meta.textContent = d.date;
+              card.appendChild(meta);
+            }
+            card.addEventListener('click', function () { openDoc(d.title || d.file, d.file); });
+            docsGrid.appendChild(card);
+          });
+        })
+        .catch(function () {
+          if (docsEmpty) {
+            docsEmpty.textContent = '文档清单加载失败（docs/docs.json）。';
+            docsEmpty.hidden = false;
+          }
+        });
+    }
   })();
   </script>
 </body>

@@ -647,6 +647,12 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
       <button id="bgUploadBtn2" class="ghost">上传背景图</button>
       <button id="bgClearBtn2" class="danger">清除</button>
     </div>
+    <p class="appear-label2">默认背景模糊</p>
+    <div class="bgset-row">
+      <input type="range" id="bgBlurAdmin" min="0" max="30" value="0" style="max-width:220px">
+      <span class="meta2" id="bgBlurAdminVal">未设置（访客不模糊）</span>
+      <button id="bgBlurSaveBtn" class="ghost">保存模糊度</button>
+    </div>
     <p class="appear-label2">主页寄语</p>
     <input type="text" id="quoteInput" maxlength="100" placeholder="显示在时钟下方；留空则用每日一言">
     <button id="quoteSaveBtn" class="ghost">保存寄语</button>
@@ -1823,11 +1829,31 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
         renderAccents();
         renderBgPreview(d.bg);
         $('quoteInput').value = d.quote || '';
+        var blur = d.blur === null || d.blur === undefined ? 0 : d.blur;
+        $('bgBlurAdmin').value = blur;
+        $('bgBlurAdminVal').textContent = d.blur === null || d.blur === undefined
+          ? '未设置（访客不模糊）'
+          : '当前默认 ' + blur + 'px';
       } else if (d._status === 401) {
         show('login');
       }
     }).catch(function () {});
   }
+  $('bgBlurAdmin').addEventListener('input', function () {
+    $('bgBlurAdminVal').textContent = '滑杆值 ' + this.value + 'px（保存后生效）';
+  });
+  $('bgBlurSaveBtn').addEventListener('click', function () {
+    api('/api/admin/appearance', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ blur: parseInt($('bgBlurAdmin').value, 10) || 0 })
+    }).then(function (d) {
+      if (d.ok) {
+        $('bgBlurAdminVal').textContent = d.blur === null ? '未设置（访客不模糊）' : '当前默认 ' + d.blur + 'px';
+        toast(d.blur ? '默认背景模糊已保存（' + d.blur + 'px），前台约 1 分钟内生效' : '已清除默认模糊，前台约 1 分钟内恢复不模糊', 'ok');
+      } else toast(d.error || '保存失败', 'err');
+    }).catch(function () { toast('网络错误', 'err'); });
+  });
 
   $('quoteSaveBtn').addEventListener('click', function () {
     api('/api/admin/appearance', {

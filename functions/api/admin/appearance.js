@@ -1,5 +1,5 @@
-// GET /api/admin/appearance → 当前站点默认外观
-// PUT  /api/admin/appearance { accent } → 设置默认主题色
+// GET /api/admin/appearance → 当前站点默认外观（accent/bg/quote/blur）
+// PUT  /api/admin/appearance { accent } | { quote } | { blur } → 分字段设置（哪个字段在就处理哪个）
 import { json } from '../../lib/util.js';
 import { ensureSchema } from '../../lib/migrate.js';
 
@@ -15,7 +15,8 @@ export async function onRequestGet({ env }) {
   const accent = await getSetting(env, 'accent');
   const bg = await getSetting(env, 'bg');
   const quote = await getSetting(env, 'quote');
-  return json({ ok: true, accent: accent || null, bg: bg || null, quote: quote || null });
+  const blur = await getSetting(env, 'bg_blur');
+  return json({ ok: true, accent: accent || null, bg: bg || null, quote: quote || null, blur: blur === null ? null : parseInt(blur, 10) || 0 });
 }
 
 export async function onRequestPut({ request, env }) {
@@ -25,6 +26,20 @@ export async function onRequestPut({ request, env }) {
     body = await request.json();
   } catch {
     return json({ ok: false, error: '请求格式错误' }, 400);
+  }
+  // 默认背景模糊：0 = 清除设置（恢复默认不模糊）
+  if (body.blur !== undefined) {
+    const blur = parseInt(body.blur, 10);
+    if (isNaN(blur) || blur < 0 || blur > 30) return json({ ok: false, error: '模糊度需在 0~30 之间' }, 400);
+    if (!blur) {
+      await env.DB.prepare("DELETE FROM site_settings WHERE key = 'bg_blur'").run();
+      return json({ ok: true, blur: null });
+    }
+    await env.DB
+      .prepare("INSERT INTO site_settings (key, value) VALUES ('bg_blur', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value")
+      .bind(String(blur))
+      .run();
+    return json({ ok: true, blur });
   }
   // 主页寄语：传空 = 恢复每日一言
   if (body.quote !== undefined) {

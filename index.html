@@ -686,6 +686,121 @@
       transform: translateY(0);
     }
 
+    /* ===== 天气胶囊（首页日期下方，点击换城市） ===== */
+    .weather-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      margin-top: 14px;
+      padding: 7px 14px;
+      border: 1px solid var(--apple-border);
+      border-radius: 999px;
+      background: var(--apple-card);
+      color: var(--apple-muted-foreground);
+      font-size: 13px;
+      font-variant-numeric: tabular-nums;
+      cursor: pointer;
+      opacity: 0;
+      transform: translateY(4px);
+      transition: opacity 600ms var(--ease-out), transform 600ms var(--ease-out),
+        border-color 180ms var(--ease-out), color 180ms var(--ease-out);
+    }
+
+    .weather-chip.loaded {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    .weather-chip:hover {
+      border-color: var(--apple-primary);
+      color: var(--apple-foreground);
+    }
+
+    .weather-icon { font-size: 16px; line-height: 1; }
+
+    .weather-picker {
+      position: fixed;
+      inset: 0;
+      z-index: 250; /* 高于相册/主页(150)、灯箱(200)，低于登录卡片(400) */
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      background: rgba(0, 0, 0, 0.4);
+      opacity: 0;
+      visibility: hidden;
+      transition: opacity 200ms var(--ease-out), visibility 200ms;
+    }
+
+    .weather-picker.show {
+      opacity: 1;
+      visibility: visible;
+    }
+
+    .weather-picker-panel {
+      width: min(360px, 92vw);
+      background: var(--apple-card);
+      color: var(--apple-card-foreground);
+      border: 1px solid var(--apple-border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow-md);
+      padding: 22px 20px 16px;
+      transform: translateY(12px) scale(0.97);
+      transition: transform 250ms var(--ease-out);
+    }
+
+    .weather-picker.show .weather-picker-panel { transform: none; }
+
+    .weather-picker-title {
+      font-size: 15px;
+      font-weight: 700;
+      margin-bottom: 12px;
+    }
+
+    .weather-results {
+      list-style: none;
+      margin: 8px 0 4px;
+      padding: 0;
+      max-height: 200px;
+      overflow-y: auto;
+    }
+
+    .weather-results button {
+      display: flex;
+      align-items: baseline;
+      gap: 8px;
+      width: 100%;
+      padding: 9px 10px;
+      border: none;
+      border-radius: 10px;
+      background: none;
+      color: var(--apple-foreground);
+      font-size: 13px;
+      text-align: left;
+      cursor: pointer;
+      transition: background-color 150ms var(--ease-out);
+    }
+
+    .weather-results button:hover {
+      background: var(--apple-chip, var(--apple-secondary, rgba(128, 128, 128, 0.14)));
+    }
+
+    .weather-results .wr-region {
+      font-size: 12px;
+      color: var(--apple-muted-foreground);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .weather-picker-foot {
+      display: flex;
+      gap: 8px;
+      margin-top: 10px;
+    }
+
+    .weather-picker-foot .appear-btn { flex: 1; }
+
     /* 窗口最大化/宽屏时，顶部本地时间靠左对齐（与左上角 logo 的 6vw 左边距一致，不会被遮挡） */
     @media (min-width: 1200px) {
       :root {
@@ -2853,6 +2968,11 @@
           </div>
         </div>
         <p class="clock-date" id="clockDate">--</p>
+        <!-- 天气胶囊：Open-Meteo 免费接口，点击换城市；加载失败静默隐藏 -->
+        <button class="weather-chip" id="weatherChip" type="button" hidden title="点击更换城市">
+          <span class="weather-icon" id="weatherIcon" aria-hidden="true">☀️</span>
+          <span class="weather-text" id="weatherText">--</span>
+        </button>
         <p class="hero-quote" id="heroQuote" hidden></p>
       </section>
 
@@ -3127,6 +3247,20 @@
       <div class="bg-picker-foot">
         <button class="appear-btn" id="bgLocalBtn" type="button">上传本地图片…</button>
         <button class="appear-btn" id="bgPickerClose" type="button">取消</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 天气城市选择：点击天气胶囊弹出，搜索或定位 -->
+  <div class="weather-picker" id="weatherPicker" hidden role="dialog" aria-modal="true" aria-label="选择城市">
+    <div class="weather-picker-panel">
+      <p class="weather-picker-title">选择城市</p>
+      <input class="profilev-input" id="weatherSearch" type="text" placeholder="输入城市名，如 上海、东京、Paris" autocomplete="off">
+      <ul class="weather-results" id="weatherResults"></ul>
+      <p class="empty-hint" id="weatherResultsEmpty" hidden>没有找到匹配的城市。</p>
+      <div class="weather-picker-foot">
+        <button class="appear-btn" id="weatherLocateBtn" type="button">使用我的位置</button>
+        <button class="appear-btn" id="weatherPickerClose" type="button">关闭</button>
       </div>
     </div>
   </div>
@@ -5818,6 +5952,291 @@
         showAdminWelcome(name);
       }
     })();
+
+    // =========================
+    // 首页天气：Open-Meteo 免费接口（无需 key，支持 CORS），GitHub Pages 静态托管也能用。
+    // 位置优先级：localStorage 手动选择 > IP 自动定位（ipapi.co + bigdatacloud 反查中文城市名）
+    //   > 默认北京；结果缓存 30 分钟；任一环节失败静默隐藏（与每日一言的处理一致）
+    // =========================
+    var weatherChip = document.getElementById('weatherChip');
+    var weatherIcon = document.getElementById('weatherIcon');
+    var weatherText = document.getElementById('weatherText');
+    var weatherPicker = document.getElementById('weatherPicker');
+    var weatherSearch = document.getElementById('weatherSearch');
+    var weatherResults = document.getElementById('weatherResults');
+    var weatherResultsEmpty = document.getElementById('weatherResultsEmpty');
+    var LS_WEATHER_LOC = 'weatherLoc';     // { lat, lon, city } 手动选择的城市
+    var LS_WEATHER_CACHE = 'weatherCache'; // { ts, key, payload }
+    var WEATHER_DEFAULT_LOC = { lat: 39.9042, lon: 116.4074, city: '北京' };
+    // 内置常用城市坐标：在线搜索接口（geocoding-api）在部分网络环境连不上时，本地表保证换城市始终可用
+    var CITY_TABLE = [
+      ['北京', 39.9042, 116.4074], ['上海', 31.2304, 121.4737], ['广州', 23.1291, 113.2644],
+      ['深圳', 22.5431, 114.0579], ['成都', 30.5728, 104.0668], ['杭州', 30.2741, 120.1551],
+      ['武汉', 30.5928, 114.3055], ['西安', 34.3416, 108.9398], ['南京', 32.0603, 118.7969],
+      ['重庆', 29.5630, 106.5516], ['天津', 39.3434, 117.3616], ['苏州', 31.2989, 120.5853],
+      ['长沙', 28.2282, 112.9388], ['郑州', 34.7466, 113.6254], ['青岛', 36.0671, 120.3826],
+      ['大连', 38.9140, 121.6147], ['厦门', 24.4798, 118.0894], ['福州', 26.0745, 119.2965],
+      ['合肥', 31.8206, 117.2272], ['济南', 36.6512, 117.1201], ['沈阳', 41.8057, 123.4315],
+      ['哈尔滨', 45.8038, 126.5350], ['长春', 43.8171, 125.3235], ['石家庄', 38.0428, 114.5149],
+      ['太原', 37.8706, 112.5489], ['南昌', 28.6820, 115.8579], ['昆明', 25.0389, 102.7183],
+      ['贵阳', 26.6470, 106.6302], ['南宁', 22.8170, 108.3665], ['海口', 20.0444, 110.1999],
+      ['兰州', 36.0611, 103.8343], ['乌鲁木齐', 43.8256, 87.6168], ['拉萨', 29.6520, 91.1721],
+      ['银川', 38.4872, 106.2309], ['西宁', 36.6171, 101.7782], ['呼和浩特', 40.8414, 111.7519],
+      ['香港', 22.3193, 114.1694], ['澳门', 22.1987, 113.5439], ['台北', 25.0330, 121.5654],
+      ['东京', 35.6762, 139.6503], ['首尔', 37.5665, 126.9780], ['新加坡', 1.3521, 103.8198],
+      ['曼谷', 13.7563, 100.5018], ['伦敦', 51.5074, -0.1278], ['巴黎', 48.8566, 2.3522],
+      ['纽约', 40.7128, -74.0060], ['洛杉矶', 34.0522, -118.2437], ['旧金山', 37.7749, -122.4194],
+      ['悉尼', -33.8688, 151.2093], ['莫斯科', 55.7558, 37.6173],
+    ];
+
+    function searchLocalCities(q) {
+      var out = [];
+      for (var i = 0; i < CITY_TABLE.length && out.length < 6; i++) {
+        if (CITY_TABLE[i][0].indexOf(q) !== -1) {
+          out.push({ name: CITY_TABLE[i][0], lat: CITY_TABLE[i][1], lon: CITY_TABLE[i][2], region: '' });
+        }
+      }
+      return out;
+    }
+
+    function fetchWithTimeout(url, ms) {
+      var ctrl = new AbortController();
+      var timer = setTimeout(function () { ctrl.abort(); }, ms || 5000);
+      return fetch(url, { signal: ctrl.signal }).finally(function () { clearTimeout(timer); });
+    }
+
+    // WMO 天气码 → 图标 + 中文
+    function wmoInfo(code) {
+      if (code === 0) return { icon: '☀️', text: '晴' };
+      if (code === 1) return { icon: '🌤️', text: '晴间多云' };
+      if (code === 2) return { icon: '⛅', text: '多云' };
+      if (code === 3) return { icon: '☁️', text: '阴' };
+      if (code === 45 || code === 48) return { icon: '🌫️', text: '雾' };
+      if (code >= 51 && code <= 57) return { icon: '🌦️', text: '毛毛雨' };
+      if (code >= 61 && code <= 67) return { icon: '🌧️', text: '雨' };
+      if (code >= 71 && code <= 77) return { icon: '🌨️', text: '雪' };
+      if (code >= 80 && code <= 82) return { icon: '🌧️', text: '阵雨' };
+      if (code === 85 || code === 86) return { icon: '🌨️', text: '阵雪' };
+      if (code >= 95) return { icon: '⛈️', text: '雷雨' };
+      return { icon: '🌡️', text: '—' };
+    }
+
+    function renderWeather(loc, data) {
+      if (!weatherChip || !weatherIcon || !weatherText) return;
+      var info = wmoInfo(data.code);
+      weatherIcon.textContent = info.icon;
+      weatherText.textContent = loc.city + ' ' + Math.round(data.temp) + '°C · ' + info.text +
+        ' ' + Math.round(data.tmax) + '°/' + Math.round(data.tmin) + '°';
+      weatherChip.hidden = false;
+      requestAnimationFrame(function () { weatherChip.classList.add('loaded'); });
+    }
+
+    function loadWeather(loc) {
+      if (!weatherChip) return;
+      var key = loc.lat.toFixed(2) + ',' + loc.lon.toFixed(2);
+      var cache = null;
+      try { cache = JSON.parse(localStorage.getItem(LS_WEATHER_CACHE) || 'null'); } catch (e) {}
+      if (cache && cache.key === key && Date.now() - cache.ts < 30 * 60000) {
+        renderWeather(loc, cache.payload);
+        return;
+      }
+      var url = 'https://api.open-meteo.com/v1/forecast?latitude=' + loc.lat + '&longitude=' + loc.lon +
+        '&current=temperature_2m,weather_code&daily=temperature_2m_max,temperature_2m_min&forecast_days=1&timezone=auto';
+      fetchWithTimeout(url, 6000)
+        .then(function (r) { return r.ok ? r.json() : Promise.reject(new Error('weather http ' + r.status)); })
+        .then(function (d) {
+          if (!d || !d.current || !d.daily) throw new Error('weather bad payload');
+          var payload = {
+            temp: d.current.temperature_2m,
+            code: d.current.weather_code,
+            tmax: d.daily.temperature_2m_max[0],
+            tmin: d.daily.temperature_2m_min[0],
+          };
+          try {
+            localStorage.setItem(LS_WEATHER_CACHE, JSON.stringify({ ts: Date.now(), key: key, payload: payload }));
+          } catch (e) {}
+          renderWeather(loc, payload);
+        })
+        .catch(function () {}); // 失败静默：胶囊保持隐藏
+    }
+
+    // 坐标 → 中文城市名（bigdatacloud 免费客户端接口，无需 key）
+    function reverseCity(lat, lon) {
+      return fetchWithTimeout('https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=' + lat +
+        '&longitude=' + lon + '&localityLanguage=zh', 5000)
+        .then(function (r) { return r.ok ? r.json() : {}; })
+        .then(function (d) { return d.city || d.locality || d.principalSubdivision || ''; })
+        .catch(function () { return ''; });
+    }
+
+    function initWeather() {
+      var loc = null;
+      try { loc = JSON.parse(localStorage.getItem(LS_WEATHER_LOC) || 'null'); } catch (e) {}
+      if (loc && typeof loc.lat === 'number' && typeof loc.lon === 'number') {
+        loadWeather(loc);
+        return;
+      }
+      // 未手动选过城市：尝试 IP 定位（ipwho.is 主源，geojs 备用，都失败退回默认城市）
+      fetchWithTimeout('https://ipwho.is/', 4000)
+        .then(function (r) { return r.ok ? r.json() : Promise.reject(new Error('ip http ' + r.status)); })
+        .then(function (d) {
+          if (!d || d.success === false || typeof d.latitude !== 'number' || typeof d.longitude !== 'number') {
+            return Promise.reject(new Error('ip no coords'));
+          }
+          return reverseCity(d.latitude, d.longitude).then(function (city) {
+            return { lat: d.latitude, lon: d.longitude, city: city || '当前位置' };
+          });
+        })
+        .catch(function () {
+          return fetchWithTimeout('https://get.geojs.io/v1/ip/geo.json', 4000)
+            .then(function (r) { return r.ok ? r.json() : Promise.reject(new Error('geojs http ' + r.status)); })
+            .then(function (d) {
+              var lat = parseFloat(d.latitude);
+              var lon = parseFloat(d.longitude);
+              if (isNaN(lat) || isNaN(lon)) return Promise.reject(new Error('geojs no coords'));
+              return reverseCity(lat, lon).then(function (city) {
+                return { lat: lat, lon: lon, city: city || '当前位置' };
+              });
+            });
+        })
+        .catch(function () { return WEATHER_DEFAULT_LOC; })
+        .then(loadWeather);
+    }
+
+    // ---------- 城市选择弹窗 ----------
+    function openWeatherPicker() {
+      if (!weatherPicker) return;
+      weatherPicker.hidden = false;
+      void weatherPicker.offsetWidth;
+      weatherPicker.classList.add('show');
+      if (weatherSearch) {
+        weatherSearch.value = '';
+        setTimeout(function () { weatherSearch.focus(); }, 120);
+      }
+      if (weatherResults) weatherResults.innerHTML = '';
+      if (weatherResultsEmpty) weatherResultsEmpty.hidden = true;
+    }
+
+    function closeWeatherPicker() {
+      if (!weatherPicker || weatherPicker.hidden) return;
+      weatherPicker.classList.remove('show');
+      setTimeout(function () { weatherPicker.hidden = true; }, 220);
+    }
+
+    function applyCity(loc) {
+      try { localStorage.setItem(LS_WEATHER_LOC, JSON.stringify(loc)); } catch (e) {}
+      try { localStorage.removeItem(LS_WEATHER_CACHE); } catch (e) {}
+      closeWeatherPicker();
+      loadWeather(loc);
+    }
+
+    if (weatherChip) weatherChip.addEventListener('click', openWeatherPicker);
+    var weatherPickerClose = document.getElementById('weatherPickerClose');
+    if (weatherPickerClose) weatherPickerClose.addEventListener('click', closeWeatherPicker);
+    if (weatherPicker) {
+      weatherPicker.addEventListener('click', function (e) {
+        if (e.target === weatherPicker) closeWeatherPicker();
+      });
+    }
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape' && weatherPicker && !weatherPicker.hidden) closeWeatherPicker();
+    });
+
+    // 渲染城市候选列表
+    function renderCityResults(list) {
+      if (!weatherResults) return;
+      weatherResults.innerHTML = '';
+      if (weatherResultsEmpty) weatherResultsEmpty.hidden = list.length > 0;
+      list.forEach(function (item) {
+        var li = document.createElement('li');
+        var btn = document.createElement('button');
+        btn.type = 'button';
+        var nm = document.createElement('span');
+        nm.textContent = item.name;
+        btn.appendChild(nm);
+        if (item.region) {
+          var rg = document.createElement('span');
+          rg.className = 'wr-region';
+          rg.textContent = item.region;
+          btn.appendChild(rg);
+        }
+        btn.addEventListener('click', function () {
+          applyCity({ lat: item.lat, lon: item.lon, city: item.name });
+        });
+        li.appendChild(btn);
+        weatherResults.appendChild(li);
+      });
+    }
+
+    // 城市搜索：本地内置表立即匹配（永远可用），再叠加 Open-Meteo 在线结果；
+    // 在线接口在部分网络环境连不上，失败时静默保留本地结果
+    var weatherSearchTimer = null;
+    if (weatherSearch) {
+      weatherSearch.addEventListener('input', function () {
+        var q = weatherSearch.value.trim();
+        if (weatherSearchTimer) clearTimeout(weatherSearchTimer);
+        if (!q) {
+          if (weatherResults) weatherResults.innerHTML = '';
+          if (weatherResultsEmpty) weatherResultsEmpty.hidden = true;
+          return;
+        }
+        renderCityResults(searchLocalCities(q));
+        weatherSearchTimer = setTimeout(function () {
+          fetchWithTimeout('https://geocoding-api.open-meteo.com/v1/search?name=' + encodeURIComponent(q) +
+            '&count=6&language=zh&format=json', 6000)
+            .then(function (r) { return r.ok ? r.json() : { results: [] }; })
+            .then(function (d) {
+              var merged = [];
+              var seen = {};
+              ((d && d.results) || []).forEach(function (item) {
+                if (!seen[item.name]) {
+                  seen[item.name] = true;
+                  merged.push({
+                    name: item.name,
+                    lat: item.latitude,
+                    lon: item.longitude,
+                    region: [item.admin1, item.country].filter(Boolean).join(' · '),
+                  });
+                }
+              });
+              searchLocalCities(q).forEach(function (c) {
+                if (!seen[c.name]) merged.push(c);
+              });
+              renderCityResults(merged.slice(0, 8));
+            })
+            .catch(function () {}); // 本地结果已在，静默即可
+        }, 400);
+      });
+    }
+
+    // 浏览器定位（需用户授权；拒绝或失败给提示）
+    var weatherLocateBtn = document.getElementById('weatherLocateBtn');
+    if (weatherLocateBtn) {
+      weatherLocateBtn.addEventListener('click', function () {
+        if (!navigator.geolocation) return;
+        weatherLocateBtn.disabled = true;
+        navigator.geolocation.getCurrentPosition(function (pos) {
+          weatherLocateBtn.disabled = false;
+          var lat = pos.coords.latitude;
+          var lon = pos.coords.longitude;
+          reverseCity(lat, lon).then(function (city) {
+            applyCity({ lat: lat, lon: lon, city: city || '当前位置' });
+          });
+        }, function () {
+          weatherLocateBtn.disabled = false;
+          if (weatherResultsEmpty) {
+            weatherResultsEmpty.textContent = '定位失败或未授权，请搜索城市。';
+            weatherResultsEmpty.hidden = false;
+            setTimeout(function () {
+              weatherResultsEmpty.textContent = '没有找到匹配的城市。';
+              weatherResultsEmpty.hidden = true;
+            }, 3000);
+          }
+        }, { timeout: 8000 });
+      });
+    }
+
+    initWeather();
   })();
   </script>
 </body>

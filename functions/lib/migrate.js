@@ -56,6 +56,18 @@ const DDL = [
     last_fail    TEXT,
     locked_until TEXT
   )`,
+  // 前台用户收藏（相册照片/音乐）。url 存站点内路径（如 /media/xxx、/images/1.jpg），
+  // 与域名无关；静态文件和后台媒体统一按路径识别，不与 media 表外键关联（删除媒体后收藏自然失效，前台过滤）
+  `CREATE TABLE IF NOT EXISTS user_favorites (
+    id         INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id    INTEGER NOT NULL,
+    type       TEXT NOT NULL CHECK (type IN ('image', 'music')),
+    url        TEXT NOT NULL,
+    title      TEXT NOT NULL DEFAULT '',
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    UNIQUE (user_id, url)
+  )`,
+  `CREATE INDEX IF NOT EXISTS idx_fav_user ON user_favorites (user_id, created_at)`,
 ];
 
 // 同一个隔离实例里只跑一次

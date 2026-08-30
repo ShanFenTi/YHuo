@@ -926,6 +926,247 @@
     body:not(.profile-member) .profile-avatar-mask { display: none; }
     body:not(.profile-member) .profile-avatar:hover { transform: none; }
 
+    /* ===== 个人主页界面：全屏结构沿用相册（.album-bar/.album-scroll 复用），进入后 Esc/右上角退出 ===== */
+    .profile-view {
+      position: fixed;
+      top: 52px;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      z-index: 150; /* 与相册同级：两者不会同时打开（打开时先收起另一个） */
+      display: flex;
+      flex-direction: column;
+      background: color-mix(in srgb, var(--apple-background) 88%, transparent);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      opacity: 0;
+      visibility: hidden;
+      transition: opacity 250ms var(--ease-out), visibility 250ms var(--ease-out);
+    }
+
+    .profile-view.show {
+      opacity: 1;
+      visibility: visible;
+    }
+
+    .profile-scroll {
+      flex: 1;
+      overflow-y: auto;
+      padding: 24px 6vw 48px;
+      transform: translateY(28px);
+      opacity: 0;
+      transition: transform 400ms var(--ease-out) 60ms, opacity 300ms var(--ease-out) 60ms;
+    }
+
+    .profile-view.show .profile-scroll {
+      transform: none;
+      opacity: 1;
+    }
+
+    .profile-view .apple-card {
+      width: 100%;
+      max-width: 860px;
+      margin: 0 auto 16px;
+    }
+
+    .profilev-head {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    /* 大号头像：复用下拉菜单头像的悬停"更换"遮罩逻辑 */
+    .profilev-avatar {
+      width: 88px;
+      height: 88px;
+    }
+
+    .profilev-avatar .profile-avatar-letter { font-size: 32px; }
+
+    .profilev-name {
+      font-size: 18px;
+      font-weight: 700;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .profilev-sub {
+      font-size: 13px;
+      color: var(--apple-muted-foreground);
+      margin-top: 5px;
+    }
+
+    .profilev-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      max-width: 860px;
+      margin: 0 auto 16px;
+    }
+
+    /* 个人主页操作区按钮行（危险项描红） */
+    .profile-actions {
+      display: flex;
+      gap: 8px;
+      margin-top: 8px;
+    }
+    .profile-actions .appear-btn { flex: 1; }
+
+    .danger-btn {
+      color: #ef4444;
+      border-color: color-mix(in srgb, #ef4444 40%, transparent);
+    }
+
+    @media (max-width: 640px) {
+      .profilev-grid { grid-template-columns: 1fr; }
+    }
+
+    .profilev-input {
+      width: 100%;
+      padding: 9px 12px;
+      border: 1px solid var(--apple-border);
+      border-radius: 10px;
+      background: var(--apple-background);
+      color: var(--apple-foreground);
+      font-size: 13px;
+      margin-bottom: 8px;
+      box-sizing: border-box;
+      font-family: inherit;
+    }
+
+    .profilev-input:focus {
+      outline: none;
+      border-color: var(--apple-primary);
+    }
+
+    .profilev-sec-title {
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      color: var(--apple-muted-foreground);
+      margin: 14px 0 8px;
+    }
+
+    .profilev-sec-title:first-of-type { margin-top: 4px; }
+
+    /* 收藏照片网格：小方图，点击回相册大图 */
+    .fav-photos {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    .fav-photo {
+      width: 108px;
+      height: 108px;
+      padding: 0;
+      border: 1px solid var(--apple-border);
+      border-radius: 12px;
+      overflow: hidden;
+      cursor: pointer;
+      background: var(--apple-secondary, var(--apple-card));
+      transition: transform 180ms var(--ease-out), box-shadow 180ms var(--ease-out);
+    }
+
+    .fav-photo:hover {
+      transform: translateY(-2px) scale(1.03);
+      box-shadow: var(--shadow-md);
+    }
+
+    .fav-photo img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+
+    /* 收藏音乐行 */
+    .fav-music { list-style: none; margin: 0; padding: 0; }
+
+    .fav-music-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 7px 8px;
+      border-radius: 10px;
+      transition: background-color 150ms var(--ease-out);
+    }
+
+    .fav-music-item:hover { background: var(--apple-chip, var(--apple-secondary, rgba(128, 128, 128, 0.12))); }
+
+    .fav-music-name {
+      flex: 1;
+      min-width: 0;
+      font-size: 13px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .fav-icon-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 28px;
+      height: 28px;
+      flex: none;
+      padding: 0;
+      border: none;
+      border-radius: 999px;
+      background: none;
+      color: var(--apple-muted-foreground);
+      cursor: pointer;
+      transition: color 150ms var(--ease-out), background-color 150ms var(--ease-out);
+    }
+
+    .fav-icon-btn:hover { background: rgba(128, 128, 128, 0.14); color: var(--apple-foreground); }
+    .fav-icon-btn:disabled { opacity: 0.35; cursor: default; }
+    .fav-icon-btn.faved { color: #ff4d6a; }
+
+    /* ===== 收藏心形按钮 ===== */
+
+    /* 灯箱右上角 */
+    .lb-fav {
+      position: absolute;
+      top: 18px;
+      right: 18px;
+      z-index: 2;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 40px;
+      height: 40px;
+      padding: 0;
+      border: none;
+      border-radius: 999px;
+      background: rgba(0, 0, 0, 0.42);
+      color: #fff;
+      cursor: pointer;
+      transition: transform 180ms var(--ease-out), background-color 180ms var(--ease-out);
+    }
+
+    .lb-fav:hover { transform: scale(1.1); background: rgba(0, 0, 0, 0.58); }
+    .lb-fav svg { fill: none; transition: fill 180ms var(--ease-out), stroke 180ms var(--ease-out); }
+    .lb-fav.faved svg { fill: #ff4d6a; stroke: #ff4d6a; }
+
+    /* 迷你播放器播放列表行尾 */
+    .pl-fav {
+      margin-left: auto;
+      display: inline-flex;
+      align-items: center;
+      padding: 4px;
+      color: var(--apple-muted-foreground);
+      cursor: pointer;
+      border-radius: 999px;
+      transition: color 150ms var(--ease-out);
+    }
+
+    .pl-fav:hover { color: #ff4d6a; }
+    .pl-fav.faved, .pl-fav.faved:hover { color: #ff4d6a; }
+    .pl-fav svg { fill: none; }
+    .pl-fav.faved svg { fill: #ff4d6a; }
+
     .appear-tab {
       position: absolute;
       bottom: 0;
@@ -2638,6 +2879,10 @@
       <p class="profile-msg" id="profileMsg"></p>
 
       <div class="profile-menu">
+        <button class="profile-menu-item member-only" id="profileHomeBtn" type="button">
+          <svg class="svg-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+          我的主页
+        </button>
         <button class="profile-menu-item member-only" id="avatarChangeBtn" type="button">
           <svg class="svg-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14.5 4h-5C7.4 4 6.4 5 6.4 7.2v9.6C6.4 19 7.4 20 9.5 20h5c2.1 0 3.1-1 3.1-3.2V7.2C17.6 5 16.6 4 14.5 4z"/><circle cx="12" cy="10" r="1.6"/><path d="m8.4 16.4 2.2-2.2a1 1 0 0 1 1.4 0l2.2 2.2"/></svg>
           更换头像
@@ -2699,6 +2944,9 @@
   <!-- 灯箱大图预览 -->
   <div class="lightbox" id="lightbox" hidden role="dialog" aria-modal="true" aria-label="图片预览">
     <img id="lightboxImg" alt="大图预览">
+    <button class="lb-fav" id="lbFav" type="button" aria-label="收藏这张照片" aria-pressed="false">
+      <svg width="18" height="18" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+    </button>
     <button class="lb-nav lb-prev" id="lbPrev" type="button" aria-label="上一张">
       <svg class="svg-icon" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg>
     </button>
@@ -2722,6 +2970,75 @@
           <p class="card-eyebrow">图片 · IMAGES</p>
           <div class="album-list" id="albumList"></div>
           <p class="empty-hint" id="albumEmpty" hidden>images 文件夹里还没有图片，放入后刷新即可显示。</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 个人主页界面：头像下拉菜单"我的主页"进入，Esc 或右上角按钮退出 -->
+  <div class="profile-view" id="profileView" hidden role="dialog" aria-modal="true" aria-label="个人主页">
+    <header class="album-bar">
+      <p class="album-title">个人主页 · PROFILE</p>
+      <button class="album-close" id="profileViewClose" type="button" aria-label="关闭个人主页">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>
+      </button>
+    </header>
+    <div class="profile-scroll">
+      <!-- 身份卡 -->
+      <div class="apple-card">
+        <div class="card-padding">
+          <div class="profilev-head">
+            <div class="profile-avatar profilev-avatar" id="profilevAvatar" role="button" tabindex="0" title="更换头像">
+              <img class="profile-avatar-img" id="profilevAvatarImg" alt="头像">
+              <span class="profile-avatar-letter" id="profilevAvatarLetter" aria-hidden="true"></span>
+              <span class="profile-avatar-mask" aria-hidden="true">更换</span>
+            </div>
+            <div class="profile-info">
+              <p class="profilev-name" id="profilevName">—</p>
+              <p class="profilev-sub" id="profilevSub">加载中…</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="profilev-grid">
+        <!-- 修改密码 -->
+        <div class="apple-card">
+          <div class="card-padding">
+            <p class="card-eyebrow">修改密码 · PASSWORD</p>
+            <form id="pwdForm" autocomplete="off">
+              <input class="profilev-input" id="pwdOld" type="password" placeholder="旧密码" required>
+              <input class="profilev-input" id="pwdNew" type="password" placeholder="新密码（至少 6 位）" required>
+              <input class="profilev-input" id="pwdNew2" type="password" placeholder="再输入一遍新密码" required>
+              <button class="appear-btn" id="pwdSubmit" type="submit">修改密码</button>
+              <p class="profile-msg" id="pwdMsg"></p>
+            </form>
+          </div>
+        </div>
+        <!-- 账号操作 -->
+        <div class="apple-card">
+          <div class="card-padding">
+            <p class="card-eyebrow">账号 · ACCOUNT</p>
+            <div class="profile-actions">
+              <button class="appear-btn" id="profilevAvatarBtn" type="button">更换头像</button>
+            </div>
+            <div class="profile-actions">
+              <button class="appear-btn danger-btn" id="profilevLogoutBtn" type="button">退出登录</button>
+            </div>
+            <p class="profile-hint" style="margin-top:12px;">头像修改立即生效；改密后当前登录保持不变。</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- 我的收藏 -->
+      <div class="apple-card">
+        <div class="card-padding">
+          <p class="card-eyebrow">我的收藏 · FAVORITES</p>
+          <p class="profilev-sec-title">照片</p>
+          <div class="fav-photos" id="favPhotos"></div>
+          <p class="profilev-sec-title">音乐</p>
+          <ul class="fav-music" id="favMusic"></ul>
+          <p class="empty-hint" id="favEmpty" hidden>还没有收藏。相册大图右上角的 ♥ 收藏照片，播放列表里的 ♥ 收藏音乐。</p>
         </div>
       </div>
     </div>
@@ -3154,6 +3471,7 @@
       var lbPrev = document.getElementById('lbPrev');
       var lbNext = document.getElementById('lbNext');
       var lbCounter = document.getElementById('lbCounter');
+      var lbFav = document.getElementById('lbFav');
       var lightboxIndex = 0;
 
       function updateLbCounter() {
@@ -3163,11 +3481,27 @@
         if (lbNext) lbNext.hidden = !many;
       }
 
+      // 收藏心形：状态存在 IIFE 级的 favSet（键=站点内路径），这里只读
+      function currentLbPath() {
+        var img = loadedImgs[lightboxIndex];
+        if (!img) return null;
+        try { return new URL(img.src, location.href).pathname; } catch (e) { return null; }
+      }
+
+      function updateLbFav() {
+        if (!lbFav) return;
+        var p = currentLbPath();
+        var on = !!(p && favHas(p));
+        lbFav.classList.toggle('faved', on);
+        lbFav.setAttribute('aria-pressed', on ? 'true' : 'false');
+      }
+
       function openLightbox(index) {
         if (!loadedImgs.length) return;
         lightboxIndex = index;
         lightboxImg.src = loadedImgs[lightboxIndex].src;
         updateLbCounter();
+        updateLbFav();
         lightbox.hidden = false;
         // 触发重排以启用过渡动画
         void lightbox.offsetWidth;
@@ -3179,6 +3513,7 @@
         lightboxIndex = (lightboxIndex + delta + loadedImgs.length) % loadedImgs.length;
         lightboxImg.src = loadedImgs[lightboxIndex].src;
         updateLbCounter();
+        updateLbFav();
       }
 
       function addGalleryImg(img, n) {
@@ -3257,6 +3592,31 @@
       }
 
       lightbox.addEventListener('click', closeLightbox);
+      if (lbFav) {
+        lbFav.addEventListener('click', function (e) {
+          e.stopPropagation();
+          var p = currentLbPath();
+          if (!p) return;
+          var img = loadedImgs[lightboxIndex];
+          favToggle('image', p, img.alt || '', updateLbFav);
+        });
+      }
+      // 收藏集合变化（可在别处增删）时同步心形；个人主页点收藏照片 → 回相册打开大图
+      document.addEventListener('yhuo:favs-changed', updateLbFav);
+      document.addEventListener('yhuo:open-photo', function (e) {
+        var url = e && e.detail;
+        if (!url) return;
+        var idx = -1;
+        for (var i = 0; i < loadedImgs.length; i++) {
+          try {
+            if (new URL(loadedImgs[i].src, location.href).pathname === url) { idx = i; break; }
+          } catch (err) {}
+        }
+        if (idx >= 0) {
+          openAlbum();
+          openLightbox(idx);
+        }
+      });
       if (lbPrev) {
         lbPrev.addEventListener('click', function (e) {
           e.stopPropagation();
@@ -3916,6 +4276,26 @@
         name.textContent = t.name;
         li.appendChild(idx);
         li.appendChild(name);
+        // 收藏心形：只对站点内路径的曲目显示（本地文件夹的 blob 地址不可收藏）
+        var tp = null;
+        try { tp = new URL(t.src, location.href).pathname; } catch (e) {}
+        if (tp && tp.charAt(0) === '/') {
+          var fav = document.createElement('span');
+          fav.className = 'pl-fav' + (favHas(tp) ? ' faved' : '');
+          fav.title = favHas(tp) ? '取消收藏' : '收藏';
+          fav.setAttribute('role', 'button');
+          fav.setAttribute('aria-label', fav.title);
+          fav.innerHTML = '<svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>';
+          fav.addEventListener('click', function (e) {
+            e.stopPropagation(); // 别触发整行切歌
+            favToggle('music', tp, t.name, function (on) {
+              fav.classList.toggle('faved', on);
+              fav.title = on ? '取消收藏' : '收藏';
+              fav.setAttribute('aria-label', fav.title);
+            });
+          });
+          li.appendChild(fav);
+        }
         li.addEventListener('click', function () {
           playIndex(i);
         });
@@ -4803,6 +5183,7 @@
               // 不能查 /api/auth/status 判断——它只看浏览器有无管理员会话 Cookie，
               // 浏览器残留后台登录态时普通账号登录也会被误跳 /admin（2026-08-30 踩过）
               passGate(u);
+              favLoad(); // 拉取该账号的收藏
               if (d.admin) location.href = '/admin';
             }
             else showLoginMsg(d.error);
@@ -4822,6 +5203,7 @@
               showLoginMsg('');
               setLoginAvatar(null); // 新注册没有头像
               passGate(u);
+              favLoad(); // 新账号收藏为空，同时清掉内存里的残留
             } else showLoginMsg(d.error);
           }, loginButtons);
         });
@@ -4943,6 +5325,7 @@
                 setLoginAvatar(d.avatar);
                 refreshLoginBadge();
                 updateProfilePanel();
+                updateProfileView(); // 个人主页开着时同步大头像
                 showProfileMsg('头像已更新');
               } else showProfileMsg(d.error || '上传失败', true);
             })
@@ -4960,6 +5343,7 @@
                 setLoginAvatar(null);
                 refreshLoginBadge();
                 updateProfilePanel();
+                updateProfileView();
                 showProfileMsg('已移除头像');
               } else showProfileMsg(d.error || '移除失败', true);
             })
@@ -4978,6 +5362,7 @@
               } catch (e) {}
               setLoginAvatar(null); // 退出清空三键
               refreshLoginBadge();
+              favLoad(); // 收藏是账号数据，退出即清空内存态
               setProfileOpen(false); // 回到未登录态并收起面板
               updateProfilePanel();
               showProfileMsg('已退出登录');
@@ -4986,6 +5371,322 @@
       }
 
       updateProfilePanel();
+
+    // =========================
+    // 个人主页界面（下拉菜单"我的主页"进入）+ 收藏功能
+    // 收藏以站点内路径（url 的 pathname）为标识：静态文件与后台媒体统一处理，与域名无关。
+    // favSet 是唯一的收藏状态源：灯箱/播放列表只读它渲染心形，增删都走 favToggle。
+    // =========================
+    var profileView = document.getElementById('profileView');
+    var profileViewClose = document.getElementById('profileViewClose');
+    var profileHomeBtn = document.getElementById('profileHomeBtn');
+    var profilevAvatar = document.getElementById('profilevAvatar');
+    var profilevAvatarImg = document.getElementById('profilevAvatarImg');
+    var profilevAvatarLetter = document.getElementById('profilevAvatarLetter');
+    var profilevName = document.getElementById('profilevName');
+    var profilevSub = document.getElementById('profilevSub');
+    var profilevAvatarBtn = document.getElementById('profilevAvatarBtn');
+    var profilevLogoutBtn = document.getElementById('profilevLogoutBtn');
+    var pwdForm = document.getElementById('pwdForm');
+    var pwdOld = document.getElementById('pwdOld');
+    var pwdNew = document.getElementById('pwdNew');
+    var pwdNew2 = document.getElementById('pwdNew2');
+    var pwdMsg = document.getElementById('pwdMsg');
+    var pwdSubmit = document.getElementById('pwdSubmit');
+    var favPhotosEl = document.getElementById('favPhotos');
+    var favMusicEl = document.getElementById('favMusic');
+    var favEmptyEl = document.getElementById('favEmpty');
+
+    var favSet = {};     // url -> { type, url, title }
+    var favLoaded = false;
+
+    function isMember() {
+      try { return sessionStorage.getItem(LOGIN_KEY) === '1'; } catch (e) { return false; }
+    }
+
+    function normPath(u) {
+      try { return new URL(u, location.href).pathname; } catch (e) { return String(u || ''); }
+    }
+
+    function favHas(url) {
+      return Object.prototype.hasOwnProperty.call(favSet, url);
+    }
+
+    // 心形状态刷新：播放列表直接重绘；灯箱在画廊块里监听 yhuo:favs-changed
+    function refreshHearts() {
+      renderPlaylist();
+      document.dispatchEvent(new CustomEvent('yhuo:favs-changed'));
+    }
+
+    function favLoad() {
+      if (!isMember()) {
+        var had = favLoaded;
+        favSet = {};
+        favLoaded = false;
+        if (had) refreshHearts();
+        return;
+      }
+      fetch('/api/user/favorites', { credentials: 'same-origin' })
+        .then(function (r) { return r.ok ? r.json() : { favorites: [] }; })
+        .then(function (d) {
+          favSet = {};
+          ((d && d.favorites) || []).forEach(function (f) { favSet[f.url] = f; });
+          favLoaded = true;
+          refreshHearts();
+        })
+        .catch(function () {});
+    }
+
+    // 增/删收藏。未登录 → 弹登录卡片。onDone(favorited) 供调用方就地更新心形。
+    function favToggle(type, url, title, onDone) {
+      if (!isMember()) {
+        document.body.classList.add('login-lock');
+        openGate();
+        return;
+      }
+      if (!url || url.charAt(0) !== '/') return;
+      var faved = favHas(url);
+      var opts = faved
+        ? { method: 'DELETE', body: JSON.stringify({ url: url }) }
+        : { method: 'POST', body: JSON.stringify({ type: type, url: url, title: title || '' }) };
+      fetch('/api/user/favorites', {
+        method: opts.method,
+        credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json' },
+        body: opts.body,
+      })
+        .then(function (r) { return r.json().catch(function () { return { ok: false, error: '响应异常' }; }); })
+        .then(function (d) {
+          if (!d.ok) return;
+          if (faved) delete favSet[url];
+          else favSet[url] = { type: type, url: url, title: title || '' };
+          refreshHearts();
+          if (onDone) onDone(!faved);
+        })
+        .catch(function () {});
+    }
+
+    // ---------- 个人主页界面 ----------
+    function fmtDate(d) {
+      return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+    }
+
+    function loadProfileData() {
+      fetch('/api/user/profile', { credentials: 'same-origin' })
+        .then(function (r) { return r.json().catch(function () { return { ok: false }; }); })
+        .then(function (d) {
+          if (!d || !d.ok) {
+            // 管理员账号能登前台但不在 users 表里，这里会 401
+            if (profilevName) profilevName.textContent = d && d.error === '未登录' ? '未登录' : (profilevName.textContent || '—');
+            if (profilevSub && d && d.error === '未登录') profilevSub.textContent = '登录已失效，请重新登录';
+            return;
+          }
+          if (profilevName) profilevName.textContent = d.username;
+          var sub = '';
+          if (d.created_at) {
+            var created = new Date(String(d.created_at).replace(' ', 'T') + 'Z');
+            if (!isNaN(created)) {
+              var days = Math.max(1, Math.floor((Date.now() - created.getTime()) / 86400000) + 1);
+              sub = '已加入 ' + days + ' 天 · 注册于 ' + fmtDate(created);
+            }
+          }
+          if (d.last_seen_at) {
+            var ls = new Date(String(d.last_seen_at).replace(' ', 'T') + 'Z');
+            if (!isNaN(ls)) sub += (sub ? ' · ' : '') + '上次活跃 ' + fmtDate(ls);
+          }
+          if (profilevSub) profilevSub.textContent = sub || '—';
+          if (profilevAvatar) {
+            profilevAvatar.classList.toggle('has-img', !!d.avatar);
+            if (d.avatar && profilevAvatarImg) profilevAvatarImg.src = '/media/' + d.avatar;
+            if (profilevAvatarLetter) profilevAvatarLetter.textContent = (d.username || '?').slice(0, 1).toUpperCase();
+          }
+        })
+        .catch(function () {
+          if (profilevSub) profilevSub.textContent = '资料加载失败';
+        });
+    }
+
+    // 头像变化后同步个人主页（面板由 updateProfilePanel 管，这里管主页大头像）
+    function updateProfileView() {
+      if (profileView && !profileView.hidden) loadProfileData();
+    }
+
+    function updateFavEmpty() {
+      if (!favEmptyEl) return;
+      var n = favPhotosEl ? favPhotosEl.children.length : 0;
+      var m = favMusicEl ? favMusicEl.children.length : 0;
+      favEmptyEl.hidden = !!(n + m);
+    }
+
+    function renderFavorites() {
+      if (!favPhotosEl || !favMusicEl) return;
+      favPhotosEl.innerHTML = '';
+      favMusicEl.innerHTML = '';
+      var photos = [];
+      var music = [];
+      Object.keys(favSet).forEach(function (u) {
+        var f = favSet[u];
+        if (f.type === 'image') photos.push(f);
+        else if (f.type === 'music') music.push(f);
+      });
+
+      photos.forEach(function (f) {
+        var b = document.createElement('button');
+        b.className = 'fav-photo';
+        b.type = 'button';
+        b.title = f.title || '查看照片';
+        var img = document.createElement('img');
+        img.src = f.url;
+        img.alt = f.title || '收藏照片';
+        img.loading = 'lazy';
+        img.onerror = function () { b.remove(); updateFavEmpty(); }; // 媒体已删除的失效收藏
+        b.appendChild(img);
+        b.addEventListener('click', function () {
+          // 关掉主页，让相册界面接收 yhuo:open-photo 打开大图（图已不在相册则无动作）
+          closeProfileView();
+          document.dispatchEvent(new CustomEvent('yhuo:open-photo', { detail: f.url }));
+        });
+        favPhotosEl.appendChild(b);
+      });
+
+      music.forEach(function (f) {
+        var li = document.createElement('li');
+        li.className = 'fav-music-item';
+        var play = document.createElement('button');
+        play.className = 'fav-icon-btn';
+        play.type = 'button';
+        play.title = '播放';
+        play.setAttribute('aria-label', '播放 ' + (f.title || '音乐'));
+        play.innerHTML = '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M10 8.5a.6.6 0 0 1 .9-.52l4.6 2.88a.6.6 0 0 1 0 1.03l-4.6 2.88a.6.6 0 0 1-.9-.52z"/></svg>';
+        play.addEventListener('click', function () {
+          // 按歌名回当前曲库定位（曲库合并/重排按下标会错位，与播放器自身逻辑一致）
+          for (var i = 0; i < tracks.length; i++) {
+            if (tracks[i].name === f.title) { playIndex(i); return; }
+          }
+        });
+        // 曲库里找不到（已删除/本地文件夹曲目）就禁用播放
+        var found = false;
+        for (var i = 0; i < tracks.length; i++) {
+          if (tracks[i].name === f.title) { found = true; break; }
+        }
+        play.disabled = !found;
+        var name = document.createElement('span');
+        name.className = 'fav-music-name';
+        name.textContent = f.title || f.url;
+        var rm = document.createElement('button');
+        rm.className = 'fav-icon-btn faved';
+        rm.type = 'button';
+        rm.title = '取消收藏';
+        rm.setAttribute('aria-label', '取消收藏 ' + (f.title || '音乐'));
+        rm.innerHTML = '<svg viewBox="0 0 24 24" width="15" height="15" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>';
+        rm.addEventListener('click', function () {
+          favToggle('music', f.url, f.title, function () { renderFavorites(); });
+        });
+        li.appendChild(play);
+        li.appendChild(name);
+        li.appendChild(rm);
+        favMusicEl.appendChild(li);
+      });
+
+      updateFavEmpty();
+    }
+
+    function openProfileView() {
+      if (!profileView || !isMember()) return;
+      // 从相册进来时先收起相册（两者同为全屏层，不叠放）
+      var albumClose = document.getElementById('albumCloseBtn');
+      var albumEl = document.getElementById('albumView');
+      if (albumEl && !albumEl.hidden && albumClose) albumClose.click();
+      setProfileOpen(false);
+      loadProfileData();
+      renderFavorites();
+      profileView.hidden = false;
+      void profileView.offsetWidth;
+      profileView.classList.add('show');
+    }
+
+    function closeProfileView() {
+      if (!profileView || profileView.hidden) return;
+      profileView.classList.remove('show');
+      setTimeout(function () { profileView.hidden = true; }, 260);
+    }
+
+    if (profileViewClose) profileViewClose.addEventListener('click', closeProfileView);
+    if (profileHomeBtn) profileHomeBtn.addEventListener('click', openProfileView);
+    document.addEventListener('keydown', function (e) {
+      // 灯箱开着时 Esc 先归灯箱/相册管（它们自己的监听处理）
+      if (e.key === 'Escape' && profileView && !profileView.hidden && lightbox.hidden) closeProfileView();
+    });
+
+    // 主页大头像更换：复用下拉菜单那套 avatarInput 流程
+    function openAvatarPickerFromView() {
+      if (isMember() && avatarInput) avatarInput.click();
+    }
+    if (profilevAvatar) {
+      profilevAvatar.addEventListener('click', openAvatarPickerFromView);
+      profilevAvatar.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openAvatarPickerFromView(); }
+      });
+    }
+    if (profilevAvatarBtn) profilevAvatarBtn.addEventListener('click', openAvatarPickerFromView);
+
+    if (profilevLogoutBtn) {
+      profilevLogoutBtn.addEventListener('click', function () {
+        fetch('/api/user/logout', { method: 'POST', credentials: 'same-origin' })
+          .catch(function () {})
+          .then(function () {
+            try {
+              sessionStorage.removeItem(LOGIN_KEY);
+              sessionStorage.removeItem(LOGIN_NAME_KEY);
+            } catch (e) {}
+            setLoginAvatar(null); // 退出清空三键
+            refreshLoginBadge();
+            favLoad(); // 收藏是账号数据，退出即清空内存态
+            closeProfileView();
+            updateProfilePanel();
+          });
+      });
+    }
+
+    // ---------- 修改密码 ----------
+    function showPwdMsg(text, err) {
+      if (!pwdMsg) return;
+      pwdMsg.textContent = text || '';
+      pwdMsg.classList.toggle('err', !!err);
+    }
+
+    if (pwdForm) {
+      pwdForm.addEventListener('submit', function (e) {
+        e.preventDefault();
+        var o = pwdOld ? pwdOld.value : '';
+        var n = pwdNew ? pwdNew.value : '';
+        var n2 = pwdNew2 ? pwdNew2.value : '';
+        if (!o || !n) { showPwdMsg('请填写旧密码和新密码'); return; }
+        if (n.length < 6) { showPwdMsg('新密码至少 6 位'); return; }
+        if (n !== n2) { showPwdMsg('两次输入的新密码不一致'); return; }
+        showPwdMsg('提交中…');
+        if (pwdSubmit) pwdSubmit.disabled = true;
+        fetch('/api/user/password', {
+          method: 'PUT',
+          credentials: 'same-origin',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ oldPassword: o, newPassword: n }),
+        })
+          .then(function (r) { return r.json().catch(function () { return { ok: false, error: '响应异常' }; }); })
+          .then(function (d) {
+            if (d.ok) {
+              pwdOld.value = '';
+              pwdNew.value = '';
+              pwdNew2.value = '';
+              showPwdMsg('密码已修改');
+            } else showPwdMsg(d.error || '修改失败', true);
+          })
+          .catch(function () { showPwdMsg('网络错误，修改失败', true); })
+          .then(function () { if (pwdSubmit) pwdSubmit.disabled = false; });
+      });
+    }
+
+    if (isMember()) favLoad();
   })();
   </script>
 </body>

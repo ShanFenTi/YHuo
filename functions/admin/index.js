@@ -168,6 +168,8 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
   .ai-mgr-add:disabled { opacity: 0.5; cursor: default; }
   .ai-mgr-add svg { flex: none; opacity: 0.75; }
   .ai-mgr-main { flex: 1; padding: 20px 22px 22px; min-width: 0; }
+  .ai-mgr select { max-width: none; }
+  #aiProtocol { width: 100%; }
   .ai-mgr-empty { flex: 1; display: flex; align-items: center; justify-content: center; color: var(--muted); font-size: 13px; }
   .ai-mgr-head { display: flex; align-items: center; gap: 10px; margin-bottom: 4px; }
   .ai-mgr-head strong { font-size: 18px; letter-spacing: -0.01em; }

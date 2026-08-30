@@ -168,8 +168,41 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
   .ai-mgr-add:disabled { opacity: 0.5; cursor: default; }
   .ai-mgr-add svg { flex: none; opacity: 0.75; }
   .ai-mgr-main { flex: 1; padding: 20px 22px 22px; min-width: 0; }
-  .ai-mgr select { max-width: none; }
-  #aiProtocol { width: 100%; }
+  /* 自定义下拉（替代 AI 面板原生 select，可做展开动画） */
+  .ai-drop { position: relative; display: inline-flex; }
+  .ai-drop-full { display: flex; width: 100%; }
+  .ai-drop-btn {
+    display: inline-flex; align-items: center; gap: 6px; width: 100%;
+    padding: 8px 10px; border: 1px solid var(--border); border-radius: 10px;
+    background: var(--input-bg); color: var(--fg); font-size: 13px; font-family: inherit;
+    cursor: pointer; text-align: left; transition: border-color .15s, background .15s;
+  }
+  .ai-drop-btn:hover { border-color: var(--muted); }
+  .ai-drop-lbl { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .ai-drop-chev { flex: none; display: inline-flex; opacity: .55; transition: transform .18s ease; }
+  .ai-drop-chev svg { display: block; }
+  .ai-drop.open .ai-drop-chev { transform: rotate(180deg); }
+  .ai-drop-menu {
+    position: absolute; top: calc(100% + 5px); left: 0; min-width: 100%; max-height: 240px; overflow-y: auto;
+    z-index: 60; background: var(--card); border: 1px solid var(--border); border-radius: 11px;
+    box-shadow: var(--shadow); padding: 4px;
+    opacity: 0; transform: translateY(-4px) scale(.97); transform-origin: top;
+    transition: opacity .16s ease, transform .16s ease; pointer-events: none;
+  }
+  .ai-drop.open .ai-drop-menu { opacity: 1; transform: none; pointer-events: auto; }
+  .ai-drop.up .ai-drop-menu { top: auto; bottom: calc(100% + 5px); transform-origin: bottom; }
+  .ai-drop-opt {
+    display: flex; align-items: center; gap: 6px; width: 100%;
+    padding: 7px 9px; border: none; border-radius: 8px; background: none;
+    color: var(--fg); font-size: 13px; font-family: inherit; text-align: left;
+    cursor: pointer; white-space: nowrap; transition: background .12s;
+  }
+  .ai-drop-opt:hover { background: var(--hover); }
+  .ai-drop-mark { flex: none; display: inline-flex; width: 14px; height: 14px; opacity: 0; }
+  .ai-drop-mark svg { display: block; width: 14px; height: 14px; }
+  .ai-drop-opt.on { font-weight: 600; }
+  .ai-drop-opt.on .ai-drop-mark { opacity: 1; }
+  .ai-model-row .ai-drop.ai-mr-tag .ai-drop-btn { padding: 4px 7px; font-size: 12px; border-radius: 8px; }
   .ai-mgr-empty { flex: 1; display: flex; align-items: center; justify-content: center; color: var(--muted); font-size: 13px; }
   .ai-mgr-head { display: flex; align-items: center; gap: 10px; margin-bottom: 4px; }
   .ai-mgr-head strong { font-size: 18px; letter-spacing: -0.01em; }
@@ -206,15 +239,21 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
     background: color-mix(in srgb, var(--ok) 13%, transparent);
     border-radius: 999px; padding: 2px 9px;
   }
-  .ai-model-row select.ai-mr-tag {
-    flex: none; max-width: none; padding: 4px 6px; font-size: 12px; border-radius: 8px; margin: 0;
+  .ai-mgr-addmodel {
+    display: flex; gap: 6px; margin-top: 0;
+    overflow: hidden; max-height: 0; opacity: 0; transform: translateY(-4px);
+    transition: max-height .22s ease, opacity .18s ease, transform .18s ease, margin-top .22s ease;
   }
+  .ai-mgr-addmodel.show { max-height: 60px; opacity: 1; transform: none; margin-top: 8px; }
+  /* 展开动画结束后放开裁剪，否则内里的下拉弹层会被 overflow:hidden 裁掉 */
+  .ai-mgr-addmodel.open-ov { overflow: visible; }
   .ai-model-row .star-def.on { color: var(--warn); opacity: 1; }
   .ai-model-row .star-def svg { display: block; }
-  .ai-mgr-addmodel { display: flex; gap: 6px; margin-top: 8px; }
   .ai-mgr-addmodel input { flex: 1; margin: 0; }
   .ai-test-ok { color: var(--ok); font-weight: 600; }
   .ai-test-err { color: var(--danger); font-weight: 600; }
+  @keyframes aiFadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+  .ai-mgr-main.ai-enter { animation: aiFadeIn .2s ease; }
   .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-bottom: 22px; }
   .stat {
     background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 16px 18px;
@@ -598,12 +637,6 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
   </div>
 
   <div id="aiPanel" hidden>
-    <p class="hint">管理模型供应商：配置后前台「AI」对话界面可切换使用；每个供应商可挂多个模型，其中一个是默认。API Key 只存在站点数据库，不下发浏览器，对话统一走服务端代理转发。"Chat Completions" 是 OpenAI 兼容格式，可覆盖 GLM / DeepSeek / Kimi / Gemini 兼容端点等主流服务商。</p>
-    <p class="appear-label2">全局开关</p>
-    <div class="bgset-row">
-      <button id="aiToggleBtn" class="ghost">停用 AI</button>
-      <span class="meta2" id="aiStateText">状态读取中…</span>
-    </div>
     <p class="appear-label2">模型供应商</p>
     <div class="ai-mgr">
       <aside class="ai-mgr-side">
@@ -624,10 +657,7 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
         <p class="ai-mgr-label">Base URL</p>
         <input type="text" id="aiBaseUrl" placeholder="https://api.deepseek.com（留空用所选格式的官方默认）">
         <p class="ai-mgr-label">API 格式</p>
-        <select id="aiProtocol">
-          <option value="openai">Chat Completions（/chat/completions，OpenAI 兼容）</option>
-          <option value="anthropic">Anthropic Messages（/messages）</option>
-        </select>
+        <span id="aiProtocol" class="ai-drop-full"></span>
         <p class="ai-mgr-label">API Key</p>
         <div class="ai-key-wrap">
           <input type="password" id="aiApiKey" autocomplete="new-password" placeholder="sk-…">
@@ -638,15 +668,10 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
         <textarea id="aiPrompt" rows="3" maxlength="2000" placeholder="例如：回答简洁友好，默认用中文。"></textarea>
         <p class="ai-mgr-label">模型列表</p>
         <div id="aiModelRows"></div>
-        <div class="ai-mgr-addmodel" id="aiAddModelWrap" hidden>
+        <div class="ai-mgr-addmodel" id="aiAddModelWrap">
           <input type="text" id="aiNewModelInput" list="aiModelList" maxlength="100" placeholder="输入模型名（如 deepseek-v4-flash）">
           <datalist id="aiModelList"></datalist>
-          <select id="aiNewModelTag" class="ai-mr-tag" title="模型类型标签（前台菜单里显示）">
-            <option value="">无标签</option>
-            <option value="文本">文本</option>
-            <option value="视觉">视觉</option>
-            <option value="推理">推理</option>
-          </select>
+          <span id="aiNewModelTag" class="ai-mr-tag" title="模型类型标签（前台菜单里显示）"></span>
           <button id="aiAddModelOk" class="ghost" type="button">确定</button>
           <button id="aiAddModelCancel" class="ghost" type="button">取消</button>
         </div>
@@ -662,6 +687,11 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
         </div>
       </div>
       <div class="ai-mgr-empty" id="aiProvEmpty">从左侧选择一个供应商，或点"添加供应商"。</div>
+    </div>
+    <p class="appear-label2" style="margin-top:18px">全局开关</p>
+    <div class="bgset-row">
+      <button id="aiToggleBtn" class="ghost">停用 AI</button>
+      <span class="meta2" id="aiStateText">状态读取中…</span>
     </div>
   </div>
     </main>
@@ -1911,9 +1941,15 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
     var showDetail = isNewMode() || !!p;
     $('aiProvDetail').hidden = !showDetail;
     $('aiProvEmpty').hidden = showDetail;
+    if (showDetail) { // 切换供应商/进入新增时整块淡入，避免生硬跳变
+      var det = $('aiProvDetail');
+      det.classList.remove('ai-enter');
+      void det.offsetWidth;
+      det.classList.add('ai-enter');
+    }
     if (!showDetail) return;
     setTestResult('');
-    $('aiAddModelWrap').hidden = true;
+    aiAddModelSetShow(false);
     aiModelsSig = null;
 
     if (isNewMode()) {
@@ -1967,19 +2003,126 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
   function modelKeyOf(pn, m) { return pn + '/' + m; }
 
   var MODEL_TAGS = ['', '文本', '视觉', '推理'];
-  function tagSelect(value, onchange) {
-    var sel = document.createElement('select');
-    sel.className = 'ai-mr-tag';
-    sel.title = '模型类型标签（前台切换菜单里显示）';
-    MODEL_TAGS.forEach(function (t) {
-      var o = document.createElement('option');
-      o.value = t;
-      o.textContent = t === '' ? '无标签' : t;
-      sel.appendChild(o);
+  function tagOptions() {
+    return MODEL_TAGS.map(function (t) { return { value: t, label: t === '' ? '无标签' : t }; });
+  }
+
+  // ---------- 自定义下拉（带展开/收起动画；原生 select 弹层是系统渲染的做不了动画） ----------
+  var aiDrops = []; // 所有实例，供全局"点空白/Esc 全关"用
+  function makeAiDrop(host, opts) {
+    host.classList.add('ai-drop');
+    if (opts.className) host.classList.add(opts.className);
+    if (opts.fullWidth) host.classList.add('ai-drop-full');
+    var btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'ai-drop-btn';
+    btn.title = opts.title || '';
+    var lbl = document.createElement('span');
+    lbl.className = 'ai-drop-lbl';
+    var chev = document.createElement('span');
+    chev.className = 'ai-drop-chev';
+    chev.innerHTML = ico('<path d="m6 9 6 6 6-6"/>');
+    btn.appendChild(lbl);
+    btn.appendChild(chev);
+    var menu = document.createElement('div');
+    menu.className = 'ai-drop-menu';
+    var options = opts.options || [];
+    var cur = opts.value;
+    var open = false, closeTimer = null, inst = { host: host, close: close };
+    options.forEach(function (o) {
+      var it = document.createElement('button');
+      it.type = 'button';
+      it.className = 'ai-drop-opt';
+      it.dataset.value = o.value;
+      var mark = document.createElement('span');
+      mark.className = 'ai-drop-mark';
+      mark.innerHTML = ico('<path d="M20 6 9 17l-5-5"/>');
+      var txt = document.createElement('span');
+      txt.textContent = o.label;
+      it.appendChild(mark);
+      it.appendChild(txt);
+      it.addEventListener('click', function () {
+        var changed = o.value !== cur;
+        set(o.value);
+        close();
+        if (changed) {
+          if (opts.onChange) opts.onChange(o.value);
+          host.dispatchEvent(new Event('change'));
+        }
+      });
+      menu.appendChild(it);
     });
-    sel.value = value || '';
-    sel.addEventListener('change', function () { onchange(sel.value); });
-    return sel;
+    btn.addEventListener('click', function () { open ? close() : openMenu(); });
+    host.appendChild(btn);
+    host.appendChild(menu);
+
+    function paint() {
+      var sel = null;
+      options.forEach(function (o) { if (o.value === cur) sel = o; });
+      lbl.textContent = sel ? sel.label : (options[0] ? options[0].label : '');
+      menu.querySelectorAll('.ai-drop-opt').forEach(function (it) {
+        it.classList.toggle('on', it.dataset.value === cur);
+      });
+    }
+    function openMenu() {
+      clearTimeout(closeTimer);
+      closeAllAiDrops(inst);
+      // 底部空间不够就向上弹
+      host.classList.remove('up');
+      var r = btn.getBoundingClientRect();
+      if (r.bottom + menu.offsetHeight + 12 > window.innerHeight) host.classList.add('up');
+      host.classList.add('open');
+      open = true;
+    }
+    function close() {
+      if (!open) return;
+      host.classList.remove('open');
+      open = false;
+      closeTimer = setTimeout(function () { host.classList.remove('up'); }, 180);
+    }
+    function set(v) { cur = v; paint(); }
+    Object.defineProperty(host, 'value', {
+      get: function () { return cur; },
+      set: function (v) { set(v); },
+    });
+    paint();
+    aiDrops.push(inst);
+    return inst;
+  }
+  function closeAllAiDrops(except) {
+    aiDrops.forEach(function (d) { if (d !== except) d.close(); });
+  }
+  document.addEventListener('pointerdown', function (e) {
+    aiDrops.forEach(function (d) { if (!d.host.contains(e.target)) d.close(); });
+  });
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape') closeAllAiDrops();
+  });
+
+  makeAiDrop($('aiProtocol'), {
+    fullWidth: true,
+    value: 'openai',
+    options: [
+      { value: 'openai', label: 'Chat Completions（/chat/completions，OpenAI 兼容）' },
+      { value: 'anthropic', label: 'Anthropic Messages（/messages）' },
+    ],
+  });
+  makeAiDrop($('aiNewModelTag'), {
+    className: 'ai-mr-tag',
+    title: '模型类型标签（前台切换菜单里显示）',
+    options: tagOptions(),
+  });
+
+  function tagSelect(value, onchange) {
+    var host = document.createElement('span');
+    makeAiDrop(host, {
+      className: 'ai-mr-tag',
+      title: '模型类型标签（前台切换菜单里显示）',
+      value: value || '',
+      options: tagOptions(),
+      onChange: onchange,
+    });
+    return host;
   }
 
   function renderModelRows(p, models) {
@@ -2223,14 +2366,27 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
   });
 
   // ---------- 模型的增删改 + 模型列表自动获取（服务端代理 /models，key 不出后端） ----------
+  var aiAddOvTimer = null;
+  function aiAddModelSetShow(on) {
+    var w = $('aiAddModelWrap');
+    clearTimeout(aiAddOvTimer);
+    if (on) {
+      w.classList.add('show');
+      // 等展开动画播完再放开 overflow，让内里的下拉弹层能弹出容器
+      aiAddOvTimer = setTimeout(function () { w.classList.add('open-ov'); }, 240);
+    } else {
+      w.classList.remove('open-ov');
+      w.classList.remove('show');
+    }
+  }
   $('aiAddModelBtn').addEventListener('click', function () {
-    $('aiAddModelWrap').hidden = false;
+    aiAddModelSetShow(true);
     $('aiNewModelInput').value = '';
     $('aiNewModelTag').value = '';
     $('aiNewModelInput').focus();
   });
   $('aiAddModelCancel').addEventListener('click', function () {
-    $('aiAddModelWrap').hidden = true;
+    aiAddModelSetShow(false);
   });
   function commitAddModel() {
     var val = $('aiNewModelInput').value.trim();
@@ -2243,7 +2399,7 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
       // 新增模式：只重绘模型列表，绝不能重绘整个表单（会把已填的名称/URL/Key 清空）
       aiNewModels.push(entry);
       renderModelRows(null, aiNewModels);
-      $('aiAddModelWrap').hidden = true;
+      aiAddModelSetShow(false);
     } else {
       var np = currentProviderDraft();
       np.models.push(entry);

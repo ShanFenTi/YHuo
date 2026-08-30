@@ -1,7 +1,8 @@
 // 供应商管理（存 site_settings：ai_models 供应商数组 + ai_default 模型键 + ai_enabled 全局开关）
 // GET  /api/admin/ai → 供应商列表（Key 不回传，只回 has_key + 尾 4 位）
 // PUT  /api/admin/ai
-//   {enabled:true|false}                          → 全局开关
+//   {action:'global', enabled:true|false}         → 全局开关（显式动作，与单供应商 toggle 的 enabled 字段不再共用语义）
+//   {enabled:true|false}                          → 旧写法全局开关（兼容，仅无 action 时生效）
 //   {action:'save', provider:{name,protocol,base_url,api_key,system_prompt,models:[id]}} → 新增/更新（api_key 留空 = 保留原 Key）
 //   {action:'rename', from, to}                   → 重命名供应商（保留全部配置）
 //   {action:'toggle', name, enabled}              → 启用/停用单个供应商
@@ -97,8 +98,13 @@ export async function onRequestPut({ request, env }) {
   const state = await getAiProviders(env);
   let providers = state.providers;
 
-  // 全局开关（仅当请求不带 action 时生效，避免误读 toggle 等动作里的 enabled 字段）
-  if (body.enabled !== undefined && !body.action) {
+  // 全局开关：显式 action:'global'（不再靠"无 action 的裸 enabled"猜意图，
+  // 避免与 toggle 等动作里的 enabled 字段混淆——曾因此停用单个供应商把整个 AI 关掉）。
+  // 兼容旧写法 {enabled} 无 action（同一后台版本部署期间的前端旧缓存）
+  if (body.action === 'global') {
+    await setSetting(env, 'ai_enabled', body.enabled !== false ? '1' : '0');
+    state.enabled = body.enabled !== false;
+  } else if (body.enabled !== undefined && !body.action) {
     await setSetting(env, 'ai_enabled', body.enabled ? '1' : '0');
     state.enabled = !!body.enabled;
   }

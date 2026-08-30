@@ -4164,6 +4164,33 @@
     onScroll();
 
     // =========================
+    // 全屏层统一管理（注册制）——坑 13/17 根治
+    // 以前每个 open 函数各自维护互斥清单（漏改一处就出叠层/高亮 bug，踩过三次），
+    // 现在互斥、顶栏高亮接管、滚动锁都收敛在这一处：新增全屏层 = 在自己的代码里
+    // fsRegister 一次 + open 函数开头调 fsOpen(id)，不再需要任何互斥清单。
+    // FS_TOP：顶层互斥组；docViewer 叠在 docsView 上（Esc 逐层退），不参与互斥但会被其他层关闭。
+    // =========================
+    var FS_TOP = ['profileView', 'albumView', 'toolsView', 'docsView', 'aiView'];
+    var FS_ALL = FS_TOP.concat(['docViewer']);
+    var FS_REG = {}; // id → { el, btn, close, lockScroll }
+    function fsRegister(id, opts) { FS_REG[id] = opts || {}; }
+    function fsOpen(id) {
+      FS_ALL.forEach(function (other) {
+        if (other !== id) closeFullscreenOf(other); // 内部自判 hidden，没开就跳过
+      });
+      var r = FS_REG[id] || {};
+      if (r.lockScroll !== false) document.body.style.overflow = 'hidden';
+      if (r.btn) takeNavHighlight(r.btn);
+    }
+    function fsClose(id) {
+      var r = FS_REG[id];
+      if (!r) return;
+      if (r.lockScroll !== false) document.body.style.overflow = '';
+      if (r.btn) r.btn.classList.remove('active');
+    }
+    function fsCloseAll() { FS_ALL.forEach(closeFullscreenOf); }
+
+    // =========================
     // 平滑滚动导航
     // =========================
     sectionLinks.forEach(function (a) {
@@ -4815,24 +4842,19 @@
       }
 
       function openAlbum() {
-        // 与其他全屏界面互斥：进相册前先收起已打开的
-        ['aiView', 'profileView', 'docViewer', 'toolsView', 'docsView'].forEach(closeFullscreenOf);
+        if (!albumView) return;
+        fsOpen('albumView'); // 互斥收起其他全屏层 + 接管顶栏高亮 + 锁背景滚动（统一管理器）
         if (albumEmpty) albumEmpty.hidden = loadedImgs.length > 0;
         renderAlbums();
         albumView.hidden = false;
         void albumView.offsetWidth; // 触发重排以启用过渡动画
         albumView.classList.add('show');
-        document.body.style.overflow = 'hidden';
-        // 顶栏高亮切到"相册"
-        navLinks.forEach(function (a) { a.classList.remove('active'); });
-        if (albumBtn) albumBtn.classList.add('active');
       }
 
       function closeAlbum() {
+        fsClose('albumView'); // 解锁滚动 + 摘高亮（统一管理器）
         albumView.classList.remove('show');
-        document.body.style.overflow = '';
         stopAlbumCycles();
-        if (albumBtn) albumBtn.classList.remove('active');
         setTimeout(function () {
           albumView.hidden = true;
           onScroll(); // 相册完全关闭后，恢复按滚动位置的导航高亮
@@ -4841,12 +4863,13 @@
 
       if (albumBtn) albumBtn.addEventListener('click', openAlbum);
       if (albumCloseBtn) albumCloseBtn.addEventListener('click', closeAlbum);
+      fsRegister('albumView', { el: albumView, btn: albumBtn, close: closeAlbum });
       // 在相册里点顶栏其他页面链接时，自动退出相册让页面可见
       sectionLinks.forEach(function (a) {
         a.addEventListener('click', function () {
           if (!albumView.hidden) closeAlbum();
           // 其他全屏界面也一并收起（首页是唯一滚动锚点）
-          ['aiView', 'toolsView', 'docsView', 'docViewer', 'profileView'].forEach(closeFullscreenOf);
+          fsCloseAll();
         });
       });
       // Esc 逐层退出：灯箱先关（见上方处理器），灯箱关完再按 Esc 才退出相册
@@ -6573,10 +6596,7 @@
 
     function openProfileView() {
       if (!profileView || !isMember()) return;
-      // 从相册进来时先收起相册（两者同为全屏层，不叠放）
-      var albumClose = document.getElementById('albumCloseBtn');
-      var albumEl = document.getElementById('albumView');
-      if (albumEl && !albumEl.hidden && albumClose) albumClose.click();
+      fsOpen('profileView'); // 互斥收起其他全屏层（个人主页不接管高亮/不锁滚动，保持原行为）
       setProfileOpen(false);
       loadProfileData();
       renderFavorites();
@@ -6593,6 +6613,7 @@
 
     if (profileViewClose) profileViewClose.addEventListener('click', closeProfileView);
     if (profileHomeBtn) profileHomeBtn.addEventListener('click', openProfileView);
+    fsRegister('profileView', { el: profileView, btn: null, close: closeProfileView, lockScroll: false });
     document.addEventListener('keydown', function (e) {
       // 灯箱开着时 Esc 先归灯箱/相册管（它们自己的监听处理）
       if (e.key === 'Escape' && profileView && !profileView.hidden && lightbox.hidden) closeProfileView();
@@ -7273,6 +7294,8 @@
 
     var docViewerClose = document.getElementById('docViewerClose');
     if (docViewerClose) docViewerClose.addEventListener('click', closeDocViewer);
+    // docViewer 叠在 docsView 上（Esc 逐层退），不发起互斥；其他全屏层打开时会经管理器把它一并收起
+    fsRegister('docViewer', { el: docViewer, btn: null, close: closeDocViewer });
     document.addEventListener('keydown', function (e) {
       if (e.key === 'Escape' && docViewer && !docViewer.hidden && lightbox.hidden) closeDocViewer();
     });
@@ -7480,16 +7503,11 @@
 
     function openAiView() {
       if (!aiView) return;
-      // 和相册/主页/文档/工具互斥：全屏层之间不叠放
-      ['albumView', 'profileView', 'docViewer', 'toolsView', 'docsView'].forEach(closeFullscreenOf);
+      fsOpen('aiView'); // 互斥收起其他全屏层 + 接管顶栏高亮 + 锁背景滚动（统一管理器）
       setProfileOpen(false);
       aiView.hidden = false;
       void aiView.offsetWidth;
       aiView.classList.add('show');
-      document.body.style.overflow = 'hidden';
-      // 顶栏高亮切到"AI"（与相册同款接管，滚动监听在 aiView 打开期间不抢回）
-      navLinks.forEach(function (a) { a.classList.remove('active'); });
-      if (aiBtn) aiBtn.classList.add('active');
       // 每次打开都刷新一次配置（后台开关/改配置即时生效），再补开场白
       fetchAiConfig(true).then(aiGreetIfEmpty);
       setTimeout(function () { if (aiInput) aiInput.focus(); }, 200);
@@ -7497,9 +7515,8 @@
 
     function closeAiView() {
       if (!aiView || aiView.hidden) return;
+      fsClose('aiView'); // 解锁滚动 + 摘高亮（统一管理器）
       aiView.classList.remove('show');
-      document.body.style.overflow = '';
-      if (aiBtn) aiBtn.classList.remove('active');
       aiResetChat(); // 关闭即清空：中断流式请求 + 清历史
       setTimeout(function () {
         aiView.hidden = true;
@@ -7633,6 +7650,7 @@
     if (aiBtn) aiBtn.addEventListener('click', openAiView);
     var aiViewClose = document.getElementById('aiViewClose');
     if (aiViewClose) aiViewClose.addEventListener('click', closeAiView);
+    fsRegister('aiView', { el: aiView, btn: aiBtn, close: closeAiView });
     var aiNewChatBtn = document.getElementById('aiNewChatBtn');
     if (aiNewChatBtn) {
       aiNewChatBtn.addEventListener('click', function () {
@@ -7825,20 +7843,16 @@
 
     function openToolsView() {
       if (!toolsView) return;
-      ['albumView', 'aiView', 'profileView', 'docsView', 'docViewer'].forEach(closeFullscreenOf);
+      fsOpen('toolsView'); // 互斥收起其他全屏层 + 接管顶栏高亮 + 锁背景滚动（统一管理器）
       setProfileOpen(false);
       toolsView.hidden = false;
       void toolsView.offsetWidth;
       toolsView.classList.add('show');
-      document.body.style.overflow = 'hidden';
-      takeNavHighlight(toolsBtn);
     }
 
     function closeToolsView() {
-      if (!toolsView || toolsView.hidden) return;
+      fsClose('toolsView'); // 解锁滚动 + 摘高亮（统一管理器）
       toolsView.classList.remove('show');
-      document.body.style.overflow = '';
-      if (toolsBtn) toolsBtn.classList.remove('active');
       setTimeout(function () {
         toolsView.hidden = true;
         onScroll();
@@ -7847,20 +7861,16 @@
 
     function openDocsView() {
       if (!docsView) return;
-      ['albumView', 'aiView', 'profileView', 'toolsView', 'docViewer'].forEach(closeFullscreenOf);
+      fsOpen('docsView'); // 互斥收起其他全屏层 + 接管顶栏高亮 + 锁背景滚动（统一管理器）
       setProfileOpen(false);
       docsView.hidden = false;
       void docsView.offsetWidth;
       docsView.classList.add('show');
-      document.body.style.overflow = 'hidden';
-      takeNavHighlight(docsBtn);
     }
 
     function closeDocsView() {
-      if (!docsView || docsView.hidden) return;
+      fsClose('docsView'); // 解锁滚动 + 摘高亮（统一管理器）
       docsView.classList.remove('show');
-      document.body.style.overflow = '';
-      if (docsBtn) docsBtn.classList.remove('active');
       setTimeout(function () {
         docsView.hidden = true;
         onScroll();
@@ -7873,6 +7883,8 @@
     if (docsBtn) docsBtn.addEventListener('click', openDocsView);
     var docsViewClose = document.getElementById('docsViewClose');
     if (docsViewClose) docsViewClose.addEventListener('click', closeDocsView);
+    fsRegister('toolsView', { el: toolsView, btn: toolsBtn, close: closeToolsView });
+    fsRegister('docsView', { el: docsView, btn: docsBtn, close: closeDocsView });
 
     document.addEventListener('keydown', function (e) {
       if (e.key !== 'Escape') return;

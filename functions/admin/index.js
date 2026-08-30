@@ -914,7 +914,7 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
     api('/api/auth/status').then(function (data) {
       if (!data || !data.ok) { show('neterr'); return; }
       if (!data.initialized) show('setup');
-      else if (data.authenticated) enterMain();
+      else if (data.adminSession) enterMain(); // 明确用管理员会话字段（旧字段 authenticated 仍兼容）
       else show('login');
     }).catch(function () {
       if (tries < 2) setTimeout(function () { loadStatus(tries + 1); }, 1200);
@@ -2368,7 +2368,7 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
     api('/api/admin/ai', {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ enabled: !currentAiEnabled }),
+      body: JSON.stringify({ action: 'global', enabled: !currentAiEnabled }),
     }).then(function (d) {
       if (!d.ok) { toast(d.error || '操作失败', 'err'); return; }
       toast(d.enabled ? 'AI 已启用' : 'AI 已停用，前台恢复"接入中"文案', 'ok');

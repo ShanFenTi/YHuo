@@ -1173,6 +1173,65 @@
     .pl-fav svg { fill: none; }
     .pl-fav.faved svg { fill: #ff4d6a; }
 
+    /* ===== 管理员欢迎浮窗：顶部居中，滑入停留约 6 秒 ===== */
+    .admin-toast {
+      position: fixed;
+      top: 64px; /* 顶栏(52px)下方 */
+      left: 50%;
+      transform: translate(-50%, -16px);
+      z-index: 300; /* 高于相册/主页(150)和灯箱(200)，低于登录卡片(400) */
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 10px 12px 10px 18px;
+      background: var(--apple-card);
+      color: var(--apple-card-foreground);
+      border: 1px solid var(--apple-border);
+      border-radius: 14px;
+      box-shadow: 0 16px 48px rgba(0, 0, 0, 0.2), 0 4px 14px rgba(0, 0, 0, 0.1);
+      opacity: 0;
+      visibility: hidden;
+      transition: opacity 250ms var(--ease-out), transform 300ms var(--ease-out), visibility 250ms;
+      max-width: calc(100vw - 24px);
+    }
+
+    .admin-toast.show {
+      opacity: 1;
+      visibility: visible;
+      transform: translate(-50%, 0);
+    }
+
+    .admin-toast-text {
+      font-size: 13px;
+      font-weight: 600;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .admin-toast-btn { flex: none; }
+
+    .admin-toast-close {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 26px;
+      height: 26px;
+      flex: none;
+      padding: 0;
+      border: none;
+      border-radius: 999px;
+      background: none;
+      color: var(--apple-muted-foreground);
+      cursor: pointer;
+      transition: background-color 150ms var(--ease-out), color 150ms var(--ease-out);
+    }
+
+    .admin-toast-close:hover {
+      background: var(--apple-chip, var(--apple-secondary, rgba(128, 128, 128, 0.14)));
+      color: var(--apple-foreground);
+    }
+
     .appear-tab {
       position: absolute;
       bottom: 0;
@@ -2905,6 +2964,15 @@
       </div>
       <input type="file" id="avatarInput" accept=".jpg,.jpeg,.png,.gif,.webp,image/jpeg,image/png,image/gif,image/webp" hidden>
     </div>
+  </div>
+
+  <!-- 管理员欢迎浮窗：管理员账密登录或检测到已有管理员会话时，顶部弹出（同会话只弹一次） -->
+  <div class="admin-toast" id="adminToast" role="status" aria-live="polite">
+    <span class="admin-toast-text" id="adminToastText">欢迎回来，管理员</span>
+    <button class="appear-btn admin-toast-btn" id="adminToastAdminBtn" type="button">进入后台</button>
+    <button class="admin-toast-close" id="adminToastClose" type="button" aria-label="关闭欢迎浮窗">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>
+    </button>
   </div>
 
   <!-- 页脚 -->
@@ -5185,12 +5253,18 @@
             if (d.ok) {
               showLoginMsg('');
               setLoginAvatar(d.avatar || null); // 登录响应带头像键
-              // 管理员账密验证通过时响应才带 admin:true，据此直通后台；
-              // 不能查 /api/auth/status 判断——它只看浏览器有无管理员会话 Cookie，
-              // 浏览器残留后台登录态时普通账号登录也会被误跳 /admin（2026-08-30 踩过）
+              // 管理员账密验证通过时响应才带 admin:true，据此弹欢迎浮窗（含"进入后台"按钮）；
+              // 不能查 /api/auth/status 判断登录身份——它只看浏览器有无管理员会话 Cookie，
+              // 浏览器残留后台登录态时普通账号登录也会被误判（2026-08-30 踩过）
               passGate(u);
               favLoad(); // 拉取该账号的收藏
-              if (d.admin) location.href = '/admin';
+              if (d.admin) {
+                try {
+                  sessionStorage.setItem('adminWelcomed', '1');
+                  sessionStorage.setItem('adminWelcomedChecked', '1');
+                } catch (e) {}
+                showAdminWelcome(d.username || u);
+              }
             }
             else showLoginMsg(d.error);
           }, loginButtons);
@@ -5693,6 +5767,51 @@
     }
 
     if (isMember()) favLoad();
+
+    // =========================
+    // 管理员欢迎浮窗：管理员账密登录时立即弹出；同会话首次进首页时若检测到
+    // 已有管理员会话也欢迎一次（sessionStorage 防重复，不反复打扰）
+    // =========================
+    var adminToast = document.getElementById('adminToast');
+    var adminToastTimer = null;
+
+    function showAdminWelcome(name) {
+      if (!adminToast) return;
+      var textEl = document.getElementById('adminToastText');
+      if (textEl) textEl.textContent = '👑 欢迎回来，管理员 ' + (name || '');
+      adminToast.classList.add('show');
+      if (adminToastTimer) clearTimeout(adminToastTimer);
+      adminToastTimer = setTimeout(function () { adminToast.classList.remove('show'); }, 6000);
+    }
+
+    var adminToastClose = document.getElementById('adminToastClose');
+    if (adminToastClose) adminToastClose.addEventListener('click', function () {
+      if (adminToastTimer) clearTimeout(adminToastTimer);
+      adminToast.classList.remove('show');
+    });
+    var adminToastAdminBtn = document.getElementById('adminToastAdminBtn');
+    if (adminToastAdminBtn) adminToastAdminBtn.addEventListener('click', function () {
+      location.href = '/admin';
+    });
+
+    // 页面加载时的管理员会话检测：每会话只查一次
+    (function checkAdminSession() {
+      var checked = null;
+      try { checked = sessionStorage.getItem('adminWelcomedChecked'); } catch (e) {}
+      if (checked || !isMember()) return;
+      fetch('/api/auth/status', { credentials: 'same-origin' })
+        .then(function (r) { return r.ok ? r.json() : null; })
+        .then(function (s) {
+          try { sessionStorage.setItem('adminWelcomedChecked', '1'); } catch (e) {}
+          if (s && s.authenticated) {
+            try { sessionStorage.setItem('adminWelcomed', '1'); } catch (e) {}
+            var name = null;
+            try { name = sessionStorage.getItem(LOGIN_NAME_KEY); } catch (e) {}
+            showAdminWelcome(name);
+          }
+        })
+        .catch(function () {});
+    })();
   })();
   </script>
 </body>

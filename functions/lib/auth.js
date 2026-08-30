@@ -123,3 +123,39 @@ export function userCookie(token) {
 export function clearUserCookie() {
   return `${USER_COOKIE}=; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age=0`;
 }
+
+// ==================== 登录限速（管理员登录防爆破） ====================
+// 同一 IP+用户名 连续失败 5 次锁 10 分钟；状态存 D1，跨 Worker 隔离实例生效
+const LOGIN_MAX_FAILS = 5;
+const LOGIN_LOCK_MS = 10 * 60 * 1000;
+
+// 限速键：范围 + IP + 用户名（小写）
+export function loginKey(request, scope, username) {
+  const ip = request.headers.get('CF-Connecting-IP') || 'unknown';
+  return scope + ':' + ip + ':' + String(username || '').toLowerCase();
+}
+
+// 返回剩余锁定分钟数（0 = 未锁定）
+export async function loginLockedFor(env, key) {
+  const row = await env.DB.prepare('SELECT locked_until FROM login_throttle WHERE key = ?').bind(key).first();
+  if (!row || !row.locked_until) return 0;
+  const left = new Date(row.locked_until).getTime() - Date.now();
+  return left > 0 ? Math.ceil(left / 60000) : 0;
+}
+
+export async function recordLoginFail(env, key) {
+  await env.DB.prepare(
+    'INSERT INTO login_throttle (key, fails, last_fail) VALUES (?, 1, ?) ' +
+    'ON CONFLICT(key) DO UPDATE SET fails = fails + 1, last_fail = excluded.last_fail'
+  ).bind(key, new Date().toISOString()).run();
+  const row = await env.DB.prepare('SELECT fails FROM login_throttle WHERE key = ?').bind(key).first();
+  if (row && row.fails >= LOGIN_MAX_FAILS) {
+    await env.DB.prepare('UPDATE login_throttle SET locked_until = ?, fails = 0 WHERE key = ?')
+      .bind(new Date(Date.now() + LOGIN_LOCK_MS).toISOString(), key)
+      .run();
+  }
+}
+
+export async function clearLoginFails(env, key) {
+  await env.DB.prepare('DELETE FROM login_throttle WHERE key = ?').bind(key).run();
+}

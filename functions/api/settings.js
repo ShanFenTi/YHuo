@@ -13,8 +13,9 @@ export async function onRequestGet({ env }) {
       ok: true,
       accent: map.accent || null,
       background: map.bg ? '/media/' + map.bg : null,
+      quote: map.quote || null,
     }, 200, { 'Cache-Control': 'public, max-age=60' });
   } catch {
-    return json({ ok: true, accent: null, background: null }, 200, { 'Cache-Control': 'no-store' });
+    return json({ ok: true, accent: null, background: null, quote: null }, 200, { 'Cache-Control': 'no-store' });
   }
 }

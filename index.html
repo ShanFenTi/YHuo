@@ -2713,7 +2713,8 @@
     }
 
     // =========================
-    // 每日一言（当天缓存，加载失败自动隐藏）
+    // 时钟下方的寄语：管理员在后台设置过"主页寄语"就优先显示；
+    // 否则用每日一言（当天缓存，加载失败自动隐藏）
     // =========================
     var heroQuote = document.getElementById('heroQuote');
     if (heroQuote) {
@@ -2729,9 +2730,11 @@
           heroQuote.classList.add('loaded');
         });
       };
-      if (cachedQuote && cachedQuote.date === todayKey && cachedQuote.text) {
-        showQuote(cachedQuote.text);
-      } else {
+      var loadDailyQuote = function () {
+        if (cachedQuote && cachedQuote.date === todayKey && cachedQuote.text) {
+          showQuote(cachedQuote.text);
+          return;
+        }
         fetch('https://v1.hitokoto.cn/?c=i&encode=json')
           .then(function (res) { return res.json(); })
           .then(function (data) {
@@ -2742,7 +2745,14 @@
             } catch (e) {}
           })
           .catch(function () { heroQuote.hidden = true; });
-      }
+      };
+      fetch('/api/settings', { credentials: 'same-origin' })
+        .then(function (res) { return res.ok ? res.json() : Promise.reject(new Error('无接口')); })
+        .then(function (s) {
+          if (s && s.ok && s.quote) showQuote(s.quote);
+          else loadDailyQuote();
+        })
+        .catch(loadDailyQuote);
     }
 
     // =========================
@@ -2970,6 +2980,7 @@
         apiPart.forEach(function (m, i) {
           var img = new Image();
           img.alt = m.name;
+          img.dataset.album = m.album || ''; // 相册归属，相册界面分组用
           img.onload = function () {
             addGalleryImg(img, i + 1);
           };
@@ -3037,10 +3048,32 @@
 
       // =========================
       // 相册三层结构：牌堆封面 → 点击展开照片墙 → 灯箱
-      // 分组目前只有一个"全部照片"；以后 images/ 子文件夹可在 albumGroups() 里拆分成多个
+      // 按 img.dataset.album 分组（后台里配置的相册），未分组的归入第一组；
+      // 没有任何相册时整站只有一个"全部照片"
       // =========================
       function albumGroups() {
-        return [{ title: '全部照片', imgs: loadedImgs }];
+        var groups = [];
+        var byName = {};
+        var ungrouped = null;
+        loadedImgs.forEach(function (img) {
+          var a = (img.dataset && img.dataset.album) ? img.dataset.album : '';
+          if (!a) {
+            if (!ungrouped) {
+              ungrouped = { title: '', imgs: [] };
+              groups.unshift(ungrouped); // 未分组的排最前（与后台清单优先的口径一致）
+            }
+            ungrouped.imgs.push(img);
+          } else {
+            if (!byName[a]) {
+              byName[a] = { title: a, imgs: [] };
+              groups.push(byName[a]);
+            }
+            byName[a].imgs.push(img);
+          }
+        });
+        if (!groups.length) groups.push({ title: '全部照片', imgs: loadedImgs });
+        if (ungrouped) ungrouped.title = groups.length > 1 ? '未分组' : '全部照片';
+        return groups;
       }
 
       function wallCols(w) {

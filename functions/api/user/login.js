@@ -5,6 +5,7 @@ import {
   verifyPassword, hashPassword, randomHex,
   createUserSession, userCookie,
   createSession, sessionCookie,
+  loginKey, loginLockedFor, recordLoginFail, clearLoginFails,
 } from '../../lib/auth.js';
 import { ensureSchema } from '../../lib/migrate.js';
 
@@ -45,10 +46,21 @@ export async function onRequestPost({ request, env }) {
     .prepare('SELECT id, username, password_hash, salt FROM admin_users WHERE username = ?')
     .bind(username)
     .first();
-  if (admin && (await verifyPassword(password, admin.salt, admin.password_hash))) {
-    await env.DB.prepare('DELETE FROM sessions WHERE expires_at < ?').bind(new Date().toISOString()).run();
-    const token = await createSession(env);
-    return json({ ok: true, admin: true, username: admin.username }, 200, { 'Set-Cookie': sessionCookie(token) });
+  if (admin) {
+    // 管理员分支同样限速（这里是从主页进后台的入口）
+    const throttleKey = loginKey(request, 'admin', username);
+    const lockedMin = await loginLockedFor(env, throttleKey);
+    if (lockedMin > 0) {
+      return json({ ok: false, error: '尝试次数过多已锁定，请约 ' + lockedMin + ' 分钟后再试' }, 429);
+    }
+    if (await verifyPassword(password, admin.salt, admin.password_hash)) {
+      await clearLoginFails(env, throttleKey);
+      await env.DB.prepare('DELETE FROM sessions WHERE expires_at < ?').bind(new Date().toISOString()).run();
+      const token = await createSession(env);
+      return json({ ok: true, admin: true, username: admin.username }, 200, { 'Set-Cookie': sessionCookie(token) });
+    }
+    await recordLoginFail(env, throttleKey);
+    return json({ ok: false, error: '用户名或密码错误' }, 401);
   }
 
   // 用户不存在：跑一次哈希，避免响应时间暴露"有没有这个用户名"

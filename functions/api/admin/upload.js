@@ -45,6 +45,7 @@ export async function onRequestPost({ request, env }) {
 
   const title = String(form.get('title') || '').trim().slice(0, 200) ||
     (dot > -1 ? name.slice(0, dot) : name);
+  const album = String(form.get('album') || '').trim().slice(0, 50);
   const key = `${type}/${crypto.randomUUID()}.${ext}`;
   const mime = MIME[ext] || file.type || 'application/octet-stream';
 
@@ -56,12 +57,12 @@ export async function onRequestPost({ request, env }) {
     .bind(type)
     .first();
   const result = await env.DB
-    .prepare('INSERT INTO media (type, title, r2_key, mime, size, sort_order) VALUES (?, ?, ?, ?, ?, ?)')
-    .bind(type, title, key, mime, file.size, next.v)
+    .prepare('INSERT INTO media (type, title, r2_key, mime, size, sort_order, album) VALUES (?, ?, ?, ?, ?, ?, ?)')
+    .bind(type, title, key, mime, file.size, next.v, album)
     .run();
 
   return json({
     ok: true,
-    item: { id: result.meta.last_row_id, type, title, mime, size: file.size, sort_order: next.v },
+    item: { id: result.meta.last_row_id, type, title, mime, size: file.size, sort_order: next.v, album },
   });
 }

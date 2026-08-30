@@ -1,6 +1,6 @@
 // POST /api/auth/login { username, password }
 import { json, getCookie, SESSION_COOKIE } from '../../lib/util.js';
-import { verifyPassword, hashPassword, randomHex, createSession, sessionCookie } from '../../lib/auth.js';
+import { verifyPassword, hashPassword, randomHex, createSession, sessionCookie, loginKey, loginLockedFor, recordLoginFail, clearLoginFails } from '../../lib/auth.js';
 import { ensureSchema } from '../../lib/migrate.js';
 
 export async function onRequestPost({ request, env }) {
@@ -15,6 +15,13 @@ export async function onRequestPost({ request, env }) {
   const password = String(body.password || '');
   if (!username || !password) return json({ ok: false, error: '请输入用户名和密码' }, 400);
 
+  // 登录限速：同一 IP+用户名 连续失败 5 次锁 10 分钟
+  const throttleKey = loginKey(request, 'admin', username);
+  const lockedMin = await loginLockedFor(env, throttleKey);
+  if (lockedMin > 0) {
+    return json({ ok: false, error: '尝试次数过多已锁定，请约 ' + lockedMin + ' 分钟后再试' }, 429);
+  }
+
   const row = await env.DB
     .prepare('SELECT id, username, password_hash, salt FROM admin_users WHERE username = ?')
     .bind(username)
@@ -23,12 +30,16 @@ export async function onRequestPost({ request, env }) {
   // 用户不存在也跑一次哈希，避免响应时间暴露"有没有这个用户名"
   if (!row) {
     await hashPassword(password, randomHex(32));
+    await recordLoginFail(env, throttleKey);
     return json({ ok: false, error: '用户名或密码错误' }, 401);
   }
 
   if (!(await verifyPassword(password, row.salt, row.password_hash))) {
+    await recordLoginFail(env, throttleKey);
     return json({ ok: false, error: '用户名或密码错误' }, 401);
   }
+
+  await clearLoginFails(env, throttleKey);
 
   // 顺手清理过期会话
   await env.DB.prepare('DELETE FROM sessions WHERE expires_at < ?').bind(new Date().toISOString()).run();

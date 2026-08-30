@@ -49,6 +49,13 @@ const DDL = [
     day   TEXT PRIMARY KEY,
     count INTEGER NOT NULL DEFAULT 0
   )`,
+  // 管理员登录限速：同一 IP+用户名 连续失败 5 次锁 10 分钟
+  `CREATE TABLE IF NOT EXISTS login_throttle (
+    key          TEXT PRIMARY KEY,
+    fails        INTEGER NOT NULL DEFAULT 0,
+    last_fail    TEXT,
+    locked_until TEXT
+  )`,
 ];
 
 // 同一个隔离实例里只跑一次
@@ -65,6 +72,9 @@ export async function ensureSchema(env) {
   } catch {}
   try {
     await env.DB.prepare("ALTER TABLE users ADD COLUMN last_seen_at TEXT").run();
+  } catch {}
+  try {
+    await env.DB.prepare("ALTER TABLE media ADD COLUMN album TEXT NOT NULL DEFAULT ''").run();
   } catch {}
   migrated = true;
 }

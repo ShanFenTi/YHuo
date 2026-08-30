@@ -163,6 +163,14 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
   #visitChart .gt { fill: var(--muted); font-size: 10px; font-family: inherit; }
   #visitChart .bar { fill: var(--fg); opacity: .82; }
   #visitChart .bar:hover { opacity: 1; }
+  /* 相册管理 */
+  select {
+    padding: 8px 10px; border: 1px solid var(--border); border-radius: 10px;
+    background: var(--input-bg); color: var(--fg); font-size: 13px; max-width: 180px;
+  }
+  .album-tools { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-top: 18px; font-size: 13px; }
+  .album-tools .grow { flex: 1; }
+  ul.list li select.row-album { padding: 4px 6px; font-size: 12px; border-radius: 8px; max-width: 110px; }
   .avatar {
     width: 34px; height: 34px; border-radius: 50%; flex: none;
     background: var(--fg); color: var(--bg);
@@ -260,6 +268,17 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
     <div class="progress" id="progress"><i id="progressBar"></i></div>
     <div class="queue-info" id="queueInfo"></div>
     <div class="msg" id="mainMsg"></div>
+    <div class="album-tools" id="albumTools" hidden>
+      <span class="meta2">相册：</span>
+      <select id="albumFilter"></select>
+      <button class="ghost" id="albumNewBtn">＋ 新建</button>
+      <button class="ghost" id="albumRenameBtn" hidden>重命名</button>
+      <button class="danger" id="albumDelBtn" hidden>删除相册</button>
+      <span class="grow"></span>
+      <span class="meta2">把所选移入：</span>
+      <select id="albumMoveSel"></select>
+      <button class="ghost" id="albumMoveBtn">应用</button>
+    </div>
     <div class="storage-line">
       <span id="storageText">存储用量统计中…</span>
       <div class="storage-bar" id="storageBar"><i></i></div>
@@ -297,6 +316,14 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
       <button id="bgClearBtn2" class="danger">清除</button>
     </div>
     <div class="msg" id="appearMsg"></div>
+    <p class="appear-label2">主页寄语</p>
+    <input type="text" id="quoteInput" maxlength="100" placeholder="显示在时钟下方；留空则用每日一言">
+    <button id="quoteSaveBtn" class="ghost">保存寄语</button>
+    <p class="appear-label2">备份</p>
+    <div class="bgset-row">
+      <button id="exportBtn" class="ghost">导出媒体清单备份（JSON）</button>
+      <span class="meta2">含全部媒体条目与访问地址；KV 里的文件本体请自行下载保存。</span>
+    </div>
   </div>
 </div>
 
@@ -539,6 +566,50 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
   // ---------- 批量选择 / 搜索 ----------
   var selected = {}; // id → true，切标签页时清空
 
+  // ---------- 相册管理（仅图片类型） ----------
+  var albumFilter = ''; // '' 全部图片，'__none__' 未分组，其他 = 相册名
+  var extraAlbums = []; // 本次会话里新建过的空相册（相册由 media.album 派生，空相册得靠这里记住）
+  function albumNames() {
+    var set = [];
+    (items.image || []).forEach(function (it) {
+      var a = (it.album || '').trim();
+      if (a && set.indexOf(a) === -1) set.push(a);
+    });
+    extraAlbums.forEach(function (a) {
+      if (set.indexOf(a) === -1) set.push(a);
+    });
+    return set;
+  }
+
+  function albumOption(sel, value, label) {
+    var el = document.createElement('option');
+    el.value = value;
+    el.textContent = label;
+    sel.appendChild(el);
+  }
+
+  function rebuildAlbumControls() {
+    var names = albumNames();
+    // 刚新建还没移入图片的相册也要留在列表里（extraAlbums 已在 albumNames 里合并）
+    if (albumFilter && albumFilter !== '__none__' && names.indexOf(albumFilter) === -1) {
+      names = [albumFilter].concat(names);
+    }
+    var f = $('albumFilter');
+    f.innerHTML = '';
+    albumOption(f, '', '全部图片');
+    albumOption(f, '__none__', '未分组');
+    names.forEach(function (nm) { albumOption(f, nm, nm); });
+    f.value = albumFilter;
+    if (f.value !== albumFilter) { albumFilter = ''; f.value = ''; } // 相册被删后的兜底
+    $('albumRenameBtn').hidden = albumFilter === '' || albumFilter === '__none__';
+    $('albumDelBtn').hidden = albumFilter === '' || albumFilter === '__none__';
+
+    var m = $('albumMoveSel');
+    m.innerHTML = '';
+    albumOption(m, '__none__', '未分组');
+    names.forEach(function (nm) { albumOption(m, nm, nm); });
+  }
+
   function selectedCount() {
     var n = 0;
     (items[currentType] || []).forEach(function (it) { if (selected[it.id]) n++; });
@@ -558,7 +629,13 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
     var showArr = arr.filter(function (it) {
       return !q || (it.title || '').toLowerCase().indexOf(q) > -1;
     });
-    var filtering = !!q; // 搜索时是只读视图，隐藏排序控件避免顺序错乱
+    // 相册筛选（仅图片页）
+    if (currentType === 'image' && albumFilter === '__none__') {
+      showArr = showArr.filter(function (it) { return !(it.album || '').trim(); });
+    } else if (currentType === 'image' && albumFilter) {
+      showArr = showArr.filter(function (it) { return (it.album || '').trim() === albumFilter; });
+    }
+    var filtering = !!q || (currentType === 'image' && !!albumFilter); // 筛选视图只读，不排不拖
     list.innerHTML = '';
     $('empty').hidden = showArr.length > 0;
     $('empty').textContent = arr.length ? '没有匹配「' + q + '」的文件。' : '还没有内容，先上传一个文件吧。也可以拖动条目调整顺序。';
@@ -608,6 +685,33 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
       li.appendChild(title);
       li.appendChild(meta);
 
+      // 图片：行内相册归属下拉
+      if (currentType === 'image') {
+        var asel = document.createElement('select');
+        asel.className = 'row-album';
+        var cur = (it.album || '').trim();
+        albumOption(asel, '', '未分组');
+        var anames = albumNames();
+        if (cur && anames.indexOf(cur) === -1) albumOption(asel, cur, cur); // 刚被别人改名的兜底
+        anames.forEach(function (nm) { albumOption(asel, nm, nm); });
+        asel.value = cur;
+        if (asel.value !== cur) asel.value = '';
+        asel.addEventListener('change', function () {
+          api('/api/admin/media/' + it.id, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ album: asel.value })
+          }).then(function (d) {
+            if (d.ok) {
+              it.album = asel.value;
+              rebuildAlbumControls();
+              showMsg($('mainMsg'), '已移入「' + (asel.value || '未分组') + '」', 'ok');
+            } else showMsg($('mainMsg'), d.error || '操作失败', 'err');
+          });
+        });
+        li.appendChild(asel);
+      }
+
       var renameBtn = document.createElement('button');
       renameBtn.className = 'ghost';
       renameBtn.textContent = '✏️';
@@ -644,6 +748,7 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
     syncSelAll(showArr);
     updateBatchBtn();
     renderStorage();
+    if (currentType === 'image') rebuildAlbumControls();
   }
 
   function syncSelAll(showArr) {
@@ -914,11 +1019,40 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
         currentAccent = d.accent;
         renderAccents();
         renderBgPreview(d.bg);
+        $('quoteInput').value = d.quote || '';
       } else if (d._status === 401) {
         show('login');
       }
     }).catch(function () {});
   }
+
+  $('quoteSaveBtn').addEventListener('click', function () {
+    api('/api/admin/appearance', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ quote: $('quoteInput').value })
+    }).then(function (d) {
+      if (d.ok) showMsg($('appearMsg'), d.quote ? '寄语已保存，前台即刻生效' : '已清除寄语，前台恢复每日一言', 'ok');
+      else showMsg($('appearMsg'), d.error || '保存失败', 'err');
+    }).catch(function () { showMsg($('appearMsg'), '网络错误', 'err'); });
+  });
+
+  // 备份导出：媒体清单 + 站点设置 + 访问统计，打包成 JSON 下载
+  $('exportBtn').addEventListener('click', function () {
+    var payload = {
+      exported_at: new Date().toISOString(),
+      media: items,
+      settings: { accent: currentAccent, quote: $('quoteInput').value || null },
+      visits: visitData,
+    };
+    var blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'yhuo-backup-' + new Date().toISOString().slice(0, 10) + '.json';
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 500);
+  });
 
   $('bgUploadBtn2').addEventListener('click', function () { $('bgFileInput').click(); });
   $('bgFileInput').addEventListener('change', function () {
@@ -962,6 +1096,7 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
       $('mediaPanel').hidden = isUsers || isAppear;
       $('userPanel').hidden = !isUsers;
       $('appearancePanel').hidden = !isAppear;
+      $('albumTools').hidden = currentType !== 'image'; // 相册管理只在图片页
       if (isAppear) {
         loadAppearance();
       }
@@ -976,6 +1111,7 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
         $('searchInput').value = '';
         $('selAll').checked = false;
         $('batchDelBtn').hidden = true;
+        if (currentType !== 'image') albumFilter = '';
         renderList();
       }
     });
@@ -992,6 +1128,86 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
     renderList();
   });
   $('batchDelBtn').addEventListener('click', deleteSelected);
+
+  // ---------- 相册工具行事件 ----------
+  $('albumFilter').addEventListener('change', function () {
+    albumFilter = this.value;
+    renderList();
+  });
+
+  $('albumNewBtn').addEventListener('click', function () {
+    var name = prompt('新相册名称（50 字以内）：');
+    if (name === null) return;
+    name = name.trim().slice(0, 50);
+    if (!name) return;
+    if (albumNames().indexOf(name) > -1) { showMsg($('mainMsg'), '相册「' + name + '」已存在', 'err'); return; }
+    extraAlbums.push(name); // 空相册不用落库，移入第一张图时自然生成
+    albumFilter = name;
+    rebuildAlbumControls();
+    renderList();
+    showMsg($('mainMsg'), '已创建「' + name + '」，勾选图片后点"把所选移入"即可归组', 'ok');
+  });
+
+  $('albumRenameBtn').addEventListener('click', function () {
+    var to = prompt('把相册「' + albumFilter + '」重命名为：', albumFilter);
+    if (to === null) return;
+    to = to.trim().slice(0, 50);
+    if (!to || to === albumFilter) return;
+    api('/api/admin/albums', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'rename', from: albumFilter, to: to })
+    }).then(function (d) {
+      if (d.ok) {
+        var idx = extraAlbums.indexOf(albumFilter);
+        if (idx > -1) extraAlbums[idx] = to; // 空相册重命名：同步会话名单
+        albumFilter = to;
+        loadList();
+        showMsg($('mainMsg'), '已重命名为「' + to + '」', 'ok');
+      }
+      else showMsg($('mainMsg'), d.error || '操作失败', 'err');
+    });
+  });
+
+  $('albumDelBtn').addEventListener('click', function () {
+    if (!confirm('删除相册「' + albumFilter + '」？里面的图片会回到"未分组"，文件本体不受影响。')) return;
+    api('/api/admin/albums', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'delete', name: albumFilter })
+    }).then(function (d) {
+      if (d.ok) {
+        var idx = extraAlbums.indexOf(albumFilter);
+        if (idx > -1) extraAlbums.splice(idx, 1);
+        albumFilter = '';
+        loadList();
+        showMsg($('mainMsg'), '相册已删除，图片回到未分组', 'ok');
+      }
+      else showMsg($('mainMsg'), d.error || '操作失败', 'err');
+    });
+  });
+
+  $('albumMoveBtn').addEventListener('click', function () {
+    var ids = (items.image || []).filter(function (it) { return selected[it.id]; });
+    if (!ids.length) { showMsg($('mainMsg'), '先勾选要移动的图片', 'err'); return; }
+    var target = $('albumMoveSel').value;
+    var left = ids.length;
+    ids.forEach(function (it) {
+      api('/api/admin/media/' + it.id, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ album: target })
+      }).then(function (d) {
+        if (d.ok) it.album = target;
+        if (--left === 0) {
+          loadList();
+          showMsg($('mainMsg'), '已把 ' + ids.length + ' 张图片移入「' + (target === '__none__' ? '未分组' : target) + '」', 'ok');
+        }
+      }).catch(function () {
+        if (--left === 0) { loadList(); showMsg($('mainMsg'), '部分移动失败，请重试', 'err'); }
+      });
+    });
+  });
 
   // 访问趋势：14/30 天切换
   document.querySelectorAll('.range-btn').forEach(function (btn) {
@@ -1128,6 +1344,8 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
       var form = new FormData();
       form.append('type', currentType);
       if (queue.length === 1 && $('titleInput').value.trim()) form.append('title', $('titleInput').value.trim());
+      // 图片页选中了具体相册时，新上传直接归入该相册
+      if (currentType === 'image' && albumFilter && albumFilter !== '__none__') form.append('album', albumFilter);
       form.append('file', f);
 
       var xhr = new XMLHttpRequest();

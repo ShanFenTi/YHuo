@@ -10,28 +10,54 @@ export const PROTOCOL_BASES = {
   anthropic: 'https://api.anthropic.com/v1',
 };
 
-async function readSettings(env) {
+// ---------- 多模型档案 ----------
+// 存 site_settings：ai_models = JSON 数组 [{name,protocol,base_url,api_key,model,system_prompt}]，
+// ai_default = 默认档案名，ai_enabled = 全局开关。老的单配置（ai_api_key/ai_model 等键）自动包装成一个档案
+export async function getAiProfiles(env) {
   await ensureSchema(env);
-  const { results } = await env.DB.prepare('SELECT key, value FROM site_settings WHERE key LIKE ?').bind('ai_%').all();
+  const { results } = await env.DB.prepare(
+    "SELECT key, value FROM site_settings WHERE key IN ('ai_models','ai_enabled','ai_default','ai_protocol','ai_base_url','ai_api_key','ai_model','ai_system_prompt')"
+  ).all();
   const map = {};
   for (const r of results) map[r.key] = r.value;
-  const protocol = AI_PROTOCOLS.includes(map.ai_protocol) ? map.ai_protocol : 'openai';
-  const baseUrl = (map.ai_base_url || '').trim() || PROTOCOL_BASES[protocol];
-  return {
-    protocol,
-    baseUrl,
-    apiKey: (map.ai_api_key || '').trim(),
-    model: (map.ai_model || '').trim(),
-    systemPrompt: (map.ai_system_prompt || '').trim(),
-    enabled: map.ai_enabled !== '0',
-  };
+  const enabled = map.ai_enabled !== '0';
+  let profiles = [];
+  try {
+    profiles = JSON.parse(map.ai_models || '[]');
+  } catch {
+    profiles = [];
+  }
+  if (!Array.isArray(profiles)) profiles = [];
+  profiles = profiles.filter((p) => p && typeof p === 'object' && p.name && p.model);
+  if (!profiles.length && map.ai_api_key && map.ai_model) {
+    // 老配置迁移（只读不改写；首次在后台保存时才落到 ai_models）
+    profiles = [{
+      name: '默认模型',
+      protocol: AI_PROTOCOLS.includes(map.ai_protocol) ? map.ai_protocol : 'openai',
+      base_url: (map.ai_base_url || '').trim(),
+      api_key: (map.ai_api_key || '').trim(),
+      model: (map.ai_model || '').trim(),
+      system_prompt: (map.ai_system_prompt || '').trim(),
+    }];
+  }
+  const defaultName = profiles.some((p) => p.name === map.ai_default) ? map.ai_default : (profiles[0] ? profiles[0].name : null);
+  return { enabled, profiles, defaultName };
 }
 
-// 是否已配置到可以发起对话（开关打开 + key + 模型名）
-export async function getAiStatus(env) {
-  const s = await readSettings(env);
-  const usable = s.enabled && !!s.apiKey && !!s.model;
-  return { ...s, usable };
+// 按名字取档案（找不到或被停用则回落到第一个可用的）；统一补全默认值供上游调用
+export function pickProfile(profiles, name) {
+  const list = Array.isArray(profiles) ? profiles : [];
+  const p = (name ? list.find((x) => x.name === name) : null) || list[0] || null;
+  if (!p) return null;
+  const protocol = AI_PROTOCOLS.includes(p.protocol) ? p.protocol : 'openai';
+  return {
+    name: p.name,
+    protocol,
+    baseUrl: (p.base_url || '').trim() || PROTOCOL_BASES[protocol],
+    apiKey: (p.api_key || '').trim(),
+    model: (p.model || '').trim(),
+    systemPrompt: (p.system_prompt || '').trim(),
+  };
 }
 
 // ---------- 上游请求构造 ----------

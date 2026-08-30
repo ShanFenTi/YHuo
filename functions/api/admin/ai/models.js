@@ -1,8 +1,8 @@
-// POST /api/admin/ai/models → 用（草稿或已保存的）配置拉取服务商模型列表
-// 入参 {protocol?, base_url?, api_key?} 可只传草稿值，缺省回落到已保存配置；不做任何保存
+// POST /api/admin/ai/models → 用（草稿值或指定档案的）配置拉取服务商模型列表
+// 入参 {name?, protocol?, base_url?, api_key?}：草稿值优先，api_key 留空时回落到 name 指定档案的已存 Key；不落库
 // OpenAI 兼容：GET {base}/models（Bearer）；Anthropic：GET {base}/models（x-api-key）。两者都返回 {data:[{id}]}
 import { json } from '../../../lib/util.js';
-import { getAiStatus, AI_PROTOCOLS, PROTOCOL_BASES } from '../../../lib/ai.js';
+import { getAiProfiles, AI_PROTOCOLS, PROTOCOL_BASES } from '../../../lib/ai.js';
 
 export async function onRequestPost({ request, env }) {
   let body = {};
@@ -10,11 +10,16 @@ export async function onRequestPost({ request, env }) {
     body = await request.json();
   } catch {}
 
-  const s = await getAiStatus(env);
-  const protocol = AI_PROTOCOLS.includes(body.protocol) ? body.protocol : s.protocol;
-  const baseUrl = String(body.base_url || '').trim() || PROTOCOL_BASES[protocol];
-  const apiKey = String(body.api_key || '').trim() || s.apiKey;
-  if (!apiKey) return json({ ok: false, error: '先填 API Key（或使用后台已保存的 Key）' });
+  const { profiles } = await getAiProfiles(env);
+  const wanted = typeof body.name === 'string' ? body.name.slice(0, 30) : null;
+  const saved = wanted ? profiles.find((p) => p.name === wanted) : null;
+
+  const protocol = AI_PROTOCOLS.includes(body.protocol) ? body.protocol : (saved ? saved.protocol : 'openai');
+  const baseUrl = String(body.base_url || '').trim()
+    || (saved ? (saved.base_url || '').trim() : '')
+    || PROTOCOL_BASES[protocol];
+  const apiKey = String(body.api_key || '').trim() || (saved ? (saved.api_key || '').trim() : '');
+  if (!apiKey) return json({ ok: false, error: '先填 API Key（或使用该档案已保存的 Key）' });
 
   const url = baseUrl.replace(/\/+$/, '') + '/models';
   const headers = protocol === 'anthropic'

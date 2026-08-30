@@ -3,7 +3,7 @@
 // 响应：text/event-stream，统一格式 data: {"delta":"..."} / {"error":"..."} / [DONE]
 import { json, getCookie, SESSION_COOKIE } from '../../lib/util.js';
 import { USER_COOKIE, getUserSession, isValidSession } from '../../lib/auth.js';
-import { getAiStatus, buildUpstreamRequest, sseNormalizer } from '../../lib/ai.js';
+import { getAiProfiles, pickProfile, buildUpstreamRequest, sseNormalizer } from '../../lib/ai.js';
 
 const MAX_MESSAGES = 20;   // 最多携带最近 20 条
 const MAX_CHARS = 4000;    // 单条消息最长字符
@@ -68,15 +68,21 @@ export async function onRequestPost({ request, env }) {
   const messages = sanitize(body && body.messages);
   if (!messages) return json({ ok: false, error: '没有有效的消息内容' }, 400);
 
-  let s;
+  const wantedModel = typeof (body && body.model) === 'string' ? body.model.slice(0, 100) : null;
+
+  let pick;
   try {
-    s = await getAiStatus(env);
+    const { enabled, profiles } = await getAiProfiles(env);
+    if (!enabled) return json({ ok: false, error: 'AI 对话还没有配置好，请等待站长在后台接入' }, 503);
+    pick = pickProfile(profiles, wantedModel); // 指定档案不存在/不可用时回落默认
   } catch {
     return json({ ok: false, error: 'AI 配置读取失败，请稍后再试' }, 500);
   }
-  if (!s.usable) return json({ ok: false, error: 'AI 对话还没有配置好，请等待站长在后台接入' }, 503);
+  if (!pick || !pick.apiKey || !pick.model) {
+    return json({ ok: false, error: wantedModel ? '所选模型暂不可用' : 'AI 对话还没有配置好，请等待站长在后台接入' }, 503);
+  }
 
-  const { url, init } = buildUpstreamRequest(s, messages, true);
+  const { url, init } = buildUpstreamRequest(pick, messages, true);
   let upstream;
   try {
     upstream = await fetch(url, init);
@@ -97,7 +103,7 @@ export async function onRequestPost({ request, env }) {
     return json({ ok: false, error: friendly, detail }, 502);
   }
 
-  return new Response(upstream.body.pipeThrough(sseNormalizer(s.protocol)), {
+  return new Response(upstream.body.pipeThrough(sseNormalizer(pick.protocol)), {
     headers: {
       'Content-Type': 'text/event-stream; charset=utf-8',
       'Cache-Control': 'no-store',

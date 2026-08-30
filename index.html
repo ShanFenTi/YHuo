@@ -1153,23 +1153,21 @@
     .ai-input-bar button:hover { transform: scale(1.06); }
     .ai-input-bar button:disabled { opacity: 0.5; cursor: default; transform: none; }
 
-    /* AI 界面顶栏：模型名徽标 + 新对话/关闭按钮组 */
+    /* AI 界面顶栏：模型切换下拉 + 新对话/关闭按钮组 */
     .ai-bar-actions { display: flex; align-items: center; gap: 8px; }
-    .ai-model-badge {
-      display: inline-block;
+    .ai-model-switch {
       margin-left: 10px;
-      padding: 2px 10px;
+      padding: 3px 8px;
       font-size: 11px;
       font-weight: 600;
       letter-spacing: 0.04em;
+      border: 1px solid var(--apple-border);
       border-radius: 999px;
       background: color-mix(in srgb, var(--apple-primary) 12%, transparent);
       color: var(--apple-primary);
       max-width: 240px;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-      vertical-align: 2px;
+      cursor: pointer;
+      font-family: inherit;
     }
 
     /* AI 回复里的 Markdown（复用文档区渲染器，先转义再解析） */
@@ -3760,7 +3758,7 @@
   <!-- AI 界面：顶栏"AI"进入，对话走 /api/ai/chat（服务端代理，key 在后台配置） -->
   <div class="ai-view" id="aiView" hidden role="dialog" aria-modal="true" aria-label="AI 助手">
     <header class="album-bar">
-      <p class="album-title">AI 助手<span class="ai-model-badge" id="aiModelBadge" hidden></span></p>
+      <p class="album-title">AI 助手<select class="ai-model-switch" id="aiModelSwitch" hidden aria-label="切换模型"></select></p>
       <div class="ai-bar-actions">
         <button class="album-close" id="aiNewChatBtn" type="button" aria-label="新对话" title="新对话（清空当前聊天）">
           <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg>
@@ -7129,8 +7127,9 @@
     var aiForm = document.getElementById('aiForm');
     var aiInput = document.getElementById('aiInput');
     var aiMessages = document.getElementById('aiMessages');
-    var aiHistory = [];   // 本次对话 {role, content} 列表
-    var aiConfig = null;  // {enabled, model}，来自 /api/ai/config
+    var aiHistory = [];      // 本次对话 {role, content} 列表
+    var aiConfig = null;     // {enabled, models:[{name,model}], model(默认档案名)}，来自 /api/ai/config
+    var aiCurrentModel = null; // 当前选中的档案名
     var aiBusy = false;
     var aiAbort = null;
 
@@ -7163,17 +7162,33 @@
     function fetchAiConfig(force) {
       if (aiConfig && !force) return Promise.resolve(aiConfig);
       return fetch('/api/ai/config', { credentials: 'same-origin' })
-        .then(function (r) { return r.ok ? r.json() : { enabled: false, model: null }; })
-        .catch(function () { return { enabled: false, model: null }; })
+        .then(function (r) { return r.ok ? r.json() : { enabled: false, models: [], model: null }; })
+        .catch(function () { return { enabled: false, models: [], model: null }; })
         .then(function (d) {
-          aiConfig = { enabled: !!(d && d.enabled), model: (d && d.model) || null };
-          var badge = document.getElementById('aiModelBadge');
-          if (badge) {
-            if (aiConfig.enabled && aiConfig.model) {
-              badge.textContent = aiConfig.model;
-              badge.hidden = false;
+          aiConfig = { enabled: !!(d && d.enabled), models: (d && d.models) || [], model: (d && d.model) || null };
+          // 顶栏模型切换下拉：保留本次会话已选的模型（若仍在列表里）
+          var sw = document.getElementById('aiModelSwitch');
+          if (sw) {
+            if (aiConfig.enabled && aiConfig.models.length) {
+              var prev = sw.value;
+              sw.innerHTML = '';
+              aiConfig.models.forEach(function (m) {
+                var o = document.createElement('option');
+                o.value = m.name;
+                o.textContent = m.name;
+                sw.appendChild(o);
+              });
+              if (prev && aiConfig.models.some(function (m) { return m.name === prev; })) {
+                sw.value = prev;
+              } else if (aiConfig.model && aiConfig.models.some(function (m) { return m.name === aiConfig.model; })) {
+                sw.value = aiConfig.model;
+              }
+              aiCurrentModel = sw.value;
+              sw.hidden = false;
             } else {
-              badge.hidden = true;
+              sw.hidden = true;
+              sw.innerHTML = '';
+              aiCurrentModel = null;
             }
           }
           return aiConfig;
@@ -7287,7 +7302,7 @@
         method: 'POST',
         credentials: 'same-origin',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ messages: messages.slice(-20) }),
+        body: JSON.stringify({ messages: messages.slice(-20), model: aiCurrentModel }),
         signal: ctl ? ctl.signal : undefined
       }).then(function (res) {
         if (res.status === 401) throw { aiAuth: true };
@@ -7345,6 +7360,15 @@
       aiNewChatBtn.addEventListener('click', function () {
         aiResetChat();
         fetchAiConfig(false).then(aiGreetIfEmpty);
+      });
+    }
+    // 顶栏切换模型：只影响之后的回复，当前对话历史延续
+    var aiModelSwitch = document.getElementById('aiModelSwitch');
+    if (aiModelSwitch) {
+      aiModelSwitch.addEventListener('change', function () {
+        if (!aiModelSwitch.value || aiModelSwitch.value === aiCurrentModel) return;
+        aiCurrentModel = aiModelSwitch.value;
+        addAiMsg('bot', '已切换到「' + aiCurrentModel + '」～');
       });
     }
     document.addEventListener('keydown', function (e) {

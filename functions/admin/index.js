@@ -500,35 +500,47 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
   </div>
 
   <div id="aiPanel" hidden>
-    <p class="hint">配置前台「AI」界面的对话能力。API Key 只存在站点数据库里，不会下发给浏览器；对话统一走服务端代理转发。两种协议可覆盖主流服务商（GLM / DeepSeek / Kimi / Gemini 兼容端点等都是 OpenAI 兼容格式），换服务商只需改协议、地址、模型名。</p>
+    <p class="hint">配置前台「AI」界面的对话能力。可添加多个模型档案（各自的协议/地址/Key/模型/人设），前台对话界面可随时切换；指定一个默认档案。API Key 只存在站点数据库，不会下发给浏览器，对话统一走服务端代理转发。两种协议可覆盖主流服务商（GLM / DeepSeek / Kimi / Gemini 兼容端点等都是 OpenAI 兼容格式）。</p>
     <p class="appear-label2">启用开关</p>
     <div class="bgset-row">
       <button id="aiToggleBtn" class="ghost">停用 AI</button>
       <span class="meta2" id="aiStateText">状态读取中…</span>
     </div>
-    <p class="appear-label2">接口协议</p>
-    <select id="aiProtocol">
-      <option value="openai">OpenAI 兼容（OpenAI / GLM / DeepSeek / Kimi 等）</option>
-      <option value="anthropic">Anthropic（Claude 原生）</option>
-    </select>
-    <p class="appear-label2">接口地址 Base URL（留空用所选协议的官方默认）</p>
-    <input type="text" id="aiBaseUrl" placeholder="https://api.openai.com/v1">
-    <p class="appear-label2">API Key</p>
-    <input type="password" id="aiApiKey" autocomplete="new-password" placeholder="sk-…">
-    <span class="meta2" id="aiKeyHint">未设置</span>
-    <p class="appear-label2">模型名（填好接口地址和 Key 后可自动获取列表）</p>
-    <input type="text" id="aiModel" list="aiModelList" placeholder="如 glm-4.7 / deepseek-chat / claude-sonnet-4-5">
-    <datalist id="aiModelList"></datalist>
-    <div class="bgset-row">
-      <button id="aiModelsBtn" class="ghost">↻ 获取模型列表</button>
-      <span class="meta2" id="aiModelHint">改协议/地址/Key 后会自动获取，点模型输入框下拉选择</span>
+    <p class="appear-label2">模型档案（前台可切换）</p>
+    <ul class="list" id="aiProfileList"></ul>
+    <div class="bgset-row" style="margin:10px 0 4px">
+      <button id="aiAddBtn">＋ 添加模型</button>
+      <span class="meta2" id="aiListHint"></span>
     </div>
-    <p class="appear-label2">系统提示词（AI 人设，可选，≤2000 字）</p>
-    <textarea id="aiPrompt" rows="4" maxlength="2000" placeholder="例如：你是 YHuo 个人主页的 AI 助手，回答简洁友好，默认用中文。"></textarea>
-    <div class="bgset-row" style="margin-top:18px">
-      <button id="aiSaveBtn">保存设置</button>
-      <button id="aiTestBtn" class="ghost">测试连接</button>
-      <span class="meta2" id="aiTestResult"></span>
+
+    <div id="aiEditForm" hidden>
+      <p class="appear-label2" id="aiEditTitle">添加模型</p>
+      <input type="text" id="aiName" maxlength="30" placeholder="名称（前台切换按钮上显示，如 GLM / DeepSeek）">
+      <p class="appear-label2">接口协议</p>
+      <select id="aiProtocol">
+        <option value="openai">OpenAI 兼容（OpenAI / GLM / DeepSeek / Kimi 等）</option>
+        <option value="anthropic">Anthropic（Claude 原生）</option>
+      </select>
+      <p class="appear-label2">接口地址 Base URL（留空用所选协议的官方默认）</p>
+      <input type="text" id="aiBaseUrl" placeholder="https://api.openai.com/v1">
+      <p class="appear-label2">API Key</p>
+      <input type="password" id="aiApiKey" autocomplete="new-password" placeholder="sk-…">
+      <span class="meta2" id="aiKeyHint">未设置</span>
+      <p class="appear-label2">模型名（填好地址和 Key 后可自动获取列表）</p>
+      <input type="text" id="aiModel" list="aiModelList" placeholder="如 glm-4.7 / deepseek-chat / claude-sonnet-4-5">
+      <datalist id="aiModelList"></datalist>
+      <div class="bgset-row">
+        <button id="aiModelsBtn" class="ghost">↻ 获取模型列表</button>
+        <span class="meta2" id="aiModelHint">改协议/地址/Key 后会自动获取，点模型输入框下拉选择</span>
+      </div>
+      <p class="appear-label2">系统提示词（AI 人设，可选，≤2000 字）</p>
+      <textarea id="aiPrompt" rows="4" maxlength="2000" placeholder="例如：你是 YHuo 个人主页的 AI 助手，回答简洁友好，默认用中文。"></textarea>
+      <div class="bgset-row" style="margin-top:18px">
+        <button id="aiSaveBtn">保存模型</button>
+        <button id="aiTestBtn" class="ghost">测试连接</button>
+        <button id="aiCancelBtn" class="ghost">取消</button>
+        <span class="meta2" id="aiTestResult"></span>
+      </div>
     </div>
   </div>
     </main>
@@ -1633,14 +1645,17 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
     });
   });
 
-  // ---------- AI 设置 ----------
+  // ---------- AI 设置（多模型档案，前台对话界面可切换） ----------
   var currentAiEnabled = false;
+  var aiProfiles = [];
+  var aiDefaultName = null;
+  var aiEditingName = null; // 编辑中的档案名；null = 新增
 
   function updateAiToggle(enabled, usable) {
     currentAiEnabled = !!enabled;
     $('aiToggleBtn').textContent = enabled ? '停用 AI' : '启用 AI';
     $('aiStateText').textContent = enabled
-      ? (usable ? '启用中，前台 AI 界面可正常对话' : '启用中，但还缺 API Key 或模型名，前台暂不可用')
+      ? (usable ? '启用中，前台 AI 界面可正常对话' : '启用中，但还没有配好 Key 和模型名的档案，前台暂不可用')
       : '已停用，前台显示"接入中"';
   }
 
@@ -1652,42 +1667,123 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
   function loadAiSettings() {
     api('/api/admin/ai').then(function (d) {
       if (!d.ok) { toast(d.error || '读取 AI 配置失败', 'err'); return; }
-      $('aiProtocol').value = d.protocol;
-      $('aiBaseUrl').value = d.base_url || '';
-      $('aiModel').value = d.model || '';
-      $('aiPrompt').value = d.system_prompt || '';
-      $('aiApiKey').value = '';
-      aiKeyHint(d.has_key, d.key_hint);
       updateAiToggle(d.enabled, d.usable);
-      $('aiTestResult').textContent = '';
-      aiModelsSig = null; // 进标签页用已保存配置自动拉一次模型列表
-      fetchAiModels(false);
+      aiProfiles = d.profiles || [];
+      aiDefaultName = d.default;
+      $('aiEditForm').hidden = true;
+      renderAiProfiles();
     }).catch(function () { toast('网络错误', 'err'); });
   }
 
-  // 保存表单字段（不含启用开关；Key 留空即不改）。测试前也会先走一遍保存。
+  function renderAiProfiles() {
+    var ul = $('aiProfileList');
+    ul.innerHTML = '';
+    $('aiAddBtn').disabled = aiProfiles.length >= 10;
+    if (!aiProfiles.length) {
+      $('aiListHint').textContent = '还没有模型档案，点"添加模型"配置第一个。';
+      return;
+    }
+    $('aiListHint').textContent = '共 ' + aiProfiles.length + ' 个档案，前台对话界面可切换；默认档案是「' + (aiDefaultName || '未设置') + '」。';
+    aiProfiles.forEach(function (p) {
+      var li = document.createElement('li');
+      var t = document.createElement('span');
+      t.className = 'title';
+      t.textContent = (p.name === aiDefaultName ? '★ ' : '') + p.name;
+      var meta = document.createElement('span');
+      meta.className = 'meta';
+      meta.textContent = p.protocol_label + ' · ' + p.model + (p.has_key ? '' : ' · ⚠️ 未填 Key');
+      var acts = document.createElement('span');
+      acts.className = 'row-actions';
+      function mkBtn(text, cls, fn) {
+        var b = document.createElement('button');
+        b.className = cls;
+        b.textContent = text;
+        b.addEventListener('click', fn);
+        return b;
+      }
+      if (p.name !== aiDefaultName) {
+        acts.appendChild(mkBtn('设为默认', 'ghost', function () {
+          api('/api/admin/ai', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'default', name: p.name }) })
+            .then(function (d) {
+              if (d.ok) { aiDefaultName = d.default; renderAiProfiles(); toast('默认模型已设为「' + p.name + '」，前台新对话即刻生效', 'ok'); }
+              else toast(d.error || '操作失败', 'err');
+            }).catch(function () { toast('网络错误', 'err'); });
+        }));
+      }
+      acts.appendChild(mkBtn('编辑', 'ghost', function () { openAiEdit(p); }));
+      acts.appendChild(mkBtn('删除', 'danger', function () {
+        ask({
+          title: '删除模型档案',
+          msg: '删除「' + p.name + '」？前台将不再显示该选项（不影响其他档案）。',
+          okText: '删除', danger: true,
+          cb: function (ok) {
+            if (!ok) return;
+            api('/api/admin/ai', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'delete', name: p.name }) })
+              .then(function (d) {
+                if (d.ok) { loadAiSettings(); toast('已删除「' + p.name + '」', 'ok'); }
+                else toast(d.error || '操作失败', 'err');
+              }).catch(function () { toast('网络错误', 'err'); });
+          }
+        });
+      }));
+      li.appendChild(t);
+      li.appendChild(meta);
+      li.appendChild(acts);
+      ul.appendChild(li);
+    });
+  }
+
+  function openAiEdit(profile) {
+    aiEditingName = profile ? profile.name : null;
+    $('aiEditTitle').textContent = profile ? '编辑模型：' + profile.name : '添加模型';
+    $('aiName').value = profile ? profile.name : '';
+    $('aiName').disabled = !!profile; // 名称是档案主键，编辑时不可改（改名=删掉重建）
+    $('aiProtocol').value = profile ? profile.protocol : 'openai';
+    $('aiBaseUrl').value = profile ? (profile.base_url || '') : '';
+    $('aiModel').value = profile ? (profile.model || '') : '';
+    $('aiPrompt').value = profile ? (profile.system_prompt || '') : '';
+    $('aiApiKey').value = '';
+    aiKeyHint(profile ? profile.has_key : false, profile ? profile.key_hint : '');
+    $('aiTestResult').textContent = '';
+    $('aiModelList').innerHTML = '';
+    aiModelsSig = null;
+    $('aiEditForm').hidden = false;
+    $('aiEditForm').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
+
+  function closeAiEdit() {
+    $('aiEditForm').hidden = true;
+    aiEditingName = null;
+  }
+
+  // 保存编辑表单（Key 留空 = 保留该档案原 Key）。测试前也会先走一遍保存。
   function saveAiSettings(done) {
-    var body = {
+    var profile = {
+      name: $('aiName').value.trim(),
       protocol: $('aiProtocol').value,
       base_url: $('aiBaseUrl').value.trim(),
       model: $('aiModel').value.trim(),
       system_prompt: $('aiPrompt').value,
+      api_key: $('aiApiKey').value.trim(),
     };
-    var key = $('aiApiKey').value.trim();
-    if (key) body.api_key = key;
-    api('/api/admin/ai', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
-      .then(done)
-      .catch(function () { done({ ok: false, error: '网络错误' }); });
+    api('/api/admin/ai', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'save', profile: profile }),
+    }).then(done).catch(function () { done({ ok: false, error: '网络错误' }); });
   }
 
   $('aiSaveBtn').addEventListener('click', function () {
     saveAiSettings(function (d) {
       if (!d.ok) { toast(d.error || '保存失败', 'err'); return; }
-      aiKeyHint(d.has_key, d.key_hint);
-      updateAiToggle(d.enabled, d.usable);
-      toast(d.usable ? 'AI 设置已保存，前台即刻生效' : '已保存，但还缺 API Key 或模型名，前台暂不可用', 'ok');
+      toast('模型「' + d.name + '」已保存，前台即刻生效', 'ok');
+      loadAiSettings();
     });
   });
+
+  $('aiCancelBtn').addEventListener('click', closeAiEdit);
+
+  $('aiAddBtn').addEventListener('click', function () { openAiEdit(null); });
 
   $('aiToggleBtn').addEventListener('click', function () {
     api('/api/admin/ai', {
@@ -1696,8 +1792,8 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
       body: JSON.stringify({ enabled: !currentAiEnabled }),
     }).then(function (d) {
       if (!d.ok) { toast(d.error || '操作失败', 'err'); return; }
-      updateAiToggle(d.enabled, d.usable);
       toast(d.enabled ? 'AI 已启用' : 'AI 已停用，前台恢复"接入中"文案', 'ok');
+      loadAiSettings();
     }).catch(function () { toast('网络错误', 'err'); });
   });
 
@@ -1705,13 +1801,15 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
     $('aiTestResult').textContent = '测试中…（先保存再用当前配置实测）';
     saveAiSettings(function (d) {
       if (!d.ok) { $('aiTestResult').textContent = '保存失败：' + (d.error || '未知错误'); return; }
-      aiKeyHint(d.has_key, d.key_hint);
-      updateAiToggle(d.enabled, d.usable);
-      api('/api/admin/ai/test', { method: 'POST' }).then(function (t) {
-        $('aiTestResult').textContent = t.ok
-          ? '✓ 连接成功（' + t.ms + 'ms）：' + t.reply
-          : '✕ ' + (t.error || '未知错误');
-      }).catch(function () { $('aiTestResult').textContent = '✕ 网络错误'; });
+      aiEditingName = d.name;
+      var editing = aiProfiles.filter(function (p) { return p.name === d.name; })[0];
+      if (editing) { aiKeyHint(true, d.key_hint); } else { aiKeyHint(false, ''); }
+      api('/api/admin/ai/test', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: d.name }) })
+        .then(function (t) {
+          $('aiTestResult').textContent = t.ok
+            ? '✓ 「' + t.name + '」连接成功（' + t.ms + 'ms）：' + t.reply
+            : '✕ ' + (t.error || '未知错误');
+        }).catch(function () { $('aiTestResult').textContent = '✕ 网络错误'; });
     });
   });
 
@@ -1721,7 +1819,7 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
   function fetchAiModels(manual) {
     var key = $('aiApiKey').value.trim();
     // 指纹里 Key 只取尾 4 位：不完整输入不打到服务端
-    var sig = $('aiProtocol').value + '|' + $('aiBaseUrl').value.trim() + '|' + (key ? key.length + ':' + key.slice(-4) : 'saved');
+    var sig = aiEditingName + '|' + $('aiProtocol').value + '|' + $('aiBaseUrl').value.trim() + '|' + (key ? key.length + ':' + key.slice(-4) : (aiEditingName ? 'profile' : 'none'));
     if (!manual && sig === aiModelsSig) return;
     aiModelsSig = sig;
     $('aiModelHint').textContent = '获取模型列表中…';
@@ -1729,9 +1827,10 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
+        name: aiEditingName, // 编辑已有档案时，Key 留空可回落到该档案已保存的 Key
         protocol: $('aiProtocol').value,
         base_url: $('aiBaseUrl').value.trim(),
-        api_key: key, // 留空 = 服务端用已保存的 Key
+        api_key: key,
       }),
     }).then(function (d) {
       if (d.ok) {

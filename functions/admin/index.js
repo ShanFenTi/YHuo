@@ -412,7 +412,8 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
     .album-side-list { flex-direction: row; flex-wrap: wrap; }
     .album-side-item { border: 1px solid var(--border); border-radius: 999px; padding: 5px 10px; }
   }
-  ul.list li select.row-album { padding: 4px 6px; font-size: 12px; border-radius: 8px; max-width: 110px; }
+  ul.list li .ai-drop.row-album .ai-drop-btn { padding: 4px 8px; font-size: 12px; border-radius: 8px; }
+  ul.list li .ai-drop.row-album .ai-drop-lbl { max-width: 96px; }
   .avatar {
     width: 34px; height: 34px; border-radius: 50%; flex: none;
     background: var(--fg); color: var(--bg);
@@ -1111,13 +1112,6 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
     return set;
   }
 
-  function albumOption(sel, value, label) {
-    var el = document.createElement('option');
-    el.value = value;
-    el.textContent = label;
-    sel.appendChild(el);
-  }
-
   // 批量把图片移入某相册（target：'__none__'=未分组，其他值=相册名）
   function moveImagesToAlbum(ids, target) {
     if (!ids || !ids.length) return;
@@ -1411,31 +1405,36 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
       li.appendChild(title);
       li.appendChild(meta);
 
-      // 图片：行内相册归属下拉
+      // 图片：行内相册归属下拉（自定义组件，带展开动画；与 AI 面板同款 makeAiDrop）
       if (currentType === 'image') {
-        var asel = document.createElement('select');
-        asel.className = 'row-album';
         var cur = (it.album || '').trim();
-        albumOption(asel, '', '未分组');
         var anames = albumNames();
-        if (cur && anames.indexOf(cur) === -1) albumOption(asel, cur, cur); // 刚被别人改名的兜底
-        anames.forEach(function (nm) { albumOption(asel, nm, nm); });
-        asel.value = cur;
-        if (asel.value !== cur) asel.value = '';
-        asel.addEventListener('change', function () {
-          api('/api/admin/media/' + it.id, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ album: asel.value })
-          }).then(function (d) {
-            if (d.ok) {
-              it.album = asel.value;
-              rebuildAlbumControls();
-              toast('已移入「' + (asel.value || '未分组') + '」', 'ok');
-            } else toast(d.error || '操作失败', 'err');
-          });
+        var aopts = [{ value: '', label: '未分组' }];
+        if (cur && anames.indexOf(cur) === -1) aopts.push({ value: cur, label: cur }); // 刚被别人改名的兜底
+        anames.forEach(function (nm) { aopts.push({ value: nm, label: nm }); });
+        var ainit = '';
+        aopts.forEach(function (o) { if (o.value === cur) ainit = cur; });
+        var ahost = document.createElement('span');
+        makeAiDrop(ahost, {
+          className: 'row-album',
+          title: '归属相册（拖到左侧相册名也可归类）',
+          value: ainit,
+          options: aopts,
+          onChange: function (val) {
+            api('/api/admin/media/' + it.id, {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ album: val })
+            }).then(function (d) {
+              if (d.ok) {
+                it.album = val;
+                rebuildAlbumControls();
+                toast('已移入「' + (val || '未分组') + '」', 'ok');
+              } else toast(d.error || '操作失败', 'err');
+            });
+          },
         });
-        li.appendChild(asel);
+        li.appendChild(ahost);
       }
 
       // 图片行可拖到左侧相册栏归类（勾选状态下拖任意已选行 = 整批移动）；
@@ -2131,11 +2130,18 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
   function closeAllAiDrops(except) {
     aiDrops.forEach(function (d) { if (d !== except) d.close(); });
   }
+  // 媒体列表/AI 模型列表会频繁重绘，宿主已断连的实例顺手从注册表摘掉，避免无限增长
+  function pruneAiDrops() {
+    for (var i = aiDrops.length - 1; i >= 0; i--) {
+      if (!aiDrops[i].host.isConnected) aiDrops.splice(i, 1);
+    }
+  }
   document.addEventListener('pointerdown', function (e) {
+    pruneAiDrops();
     aiDrops.forEach(function (d) { if (!d.host.contains(e.target)) d.close(); });
   });
   document.addEventListener('keydown', function (e) {
-    if (e.key === 'Escape') closeAllAiDrops();
+    if (e.key === 'Escape') { pruneAiDrops(); closeAllAiDrops(); }
   });
 
   makeAiDrop($('aiProtocol'), {

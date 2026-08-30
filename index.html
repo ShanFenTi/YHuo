@@ -7558,7 +7558,9 @@
     if (aiNewChatBtn) {
       aiNewChatBtn.addEventListener('click', function () {
         aiResetChat();
-        fetchAiConfig(false).then(aiGreetIfEmpty);
+        // 无论之前有没有聊天记录，都给出可见反馈（否则只有欢迎语时点击像"没反应"）
+        addAiMsg('bot', '🆕 已开启新对话，有什么想问的～');
+        if (aiInput) aiInput.focus();
       });
     }
     // 顶栏切换模型：只影响之后的回复，当前对话历史延续（菜单逻辑见 aiSyncModelSwitcher）

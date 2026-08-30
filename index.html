@@ -686,6 +686,100 @@
       transform: translateY(0);
     }
 
+    /* ===== 歌词横条（hero 末尾，播放时同步显示当前句，打字机逐字打出） ===== */
+    .lyric-bar {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      width: 100%;
+      max-width: 860px;
+      margin-top: 18px;
+      padding: 18px 22px;
+      border-radius: 18px;
+      background: rgba(24, 24, 28, 0.78);
+      color: #f5f5f7;
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      box-shadow: 0 8px 28px rgba(0, 0, 0, 0.18);
+      opacity: 0;
+      transform: translateY(6px);
+      transition: opacity 600ms var(--ease-out), transform 600ms var(--ease-out);
+      overflow: hidden;
+    }
+
+    .lyric-bar.show {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    .lyric-dots {
+      flex: none;
+      display: inline-flex;
+      gap: 5px;
+      opacity: 0;
+      transition: opacity 400ms var(--ease-out);
+    }
+
+    .lyric-bar.waiting .lyric-dots { opacity: 0.55; }
+
+    .lyric-dots i {
+      width: 5px;
+      height: 5px;
+      border-radius: 50%;
+      background: currentColor;
+    }
+
+    .lyric-line {
+      flex: 1;
+      min-width: 0;
+      text-align: center;
+      font-size: 17px;
+      font-weight: 600;
+      letter-spacing: 0.02em;
+      line-height: 1.5;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .lyric-cursor {
+      display: none;
+      width: 2px;
+      height: 1.05em;
+      margin-left: 2px;
+      background: currentColor;
+      vertical-align: text-bottom;
+      animation: lyricBlink 900ms steps(1) infinite;
+    }
+
+    .lyric-bar.typing .lyric-cursor { display: inline-block; }
+
+    @keyframes lyricBlink { 50% { opacity: 0; } }
+
+    .lyric-note {
+      flex: none;
+      display: inline-flex;
+      opacity: 0.55;
+    }
+
+    /* 歌词条占位文案（歌名/待机提示）样式弱化 */
+    .lyric-bar.placeholder .lyric-line {
+      font-weight: 500;
+      opacity: 0.75;
+      font-size: 15px;
+    }
+
+    @media (max-width: 640px) {
+      .lyric-bar { padding: 14px 16px; gap: 10px; }
+      .lyric-line { font-size: 14.5px; }
+      .lyric-bar.placeholder .lyric-line { font-size: 13.5px; }
+      .lyric-note { display: none; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .lyric-cursor { animation: none; }
+    }
+
     /* ===== 天气胶囊（首页日期下方，点击换城市） ===== */
     .weather-chip {
       display: inline-flex;
@@ -3567,6 +3661,13 @@
           <span class="weather-text" id="weatherText">--</span>
         </button>
         <p class="hero-quote" id="heroQuote" hidden></p>
+        <!-- 歌词横条：播放 music/ 曲库的歌时显示同步歌词（同名 .lrc），打字机逐字打出当前句；
+             无歌词/未播放时降级显示歌名占位或待机提示 -->
+        <div class="lyric-bar" id="lyricBar" hidden role="status" aria-live="polite">
+          <span class="lyric-dots" id="lyricDots" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></span>
+          <span class="lyric-line"><span id="lyricText"></span><i class="lyric-cursor" id="lyricCursor" aria-hidden="true"></i></span>
+          <span class="lyric-note" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg></span>
+        </div>
       </section>
 
     <!-- 图片画廊（首页） -->
@@ -5063,6 +5164,7 @@
       audio.src = tracks[i].src;
       audio.play().catch(function () {});
       if (miniTitle) miniTitle.textContent = tracks[i].name;
+      musicLyricsLoad(tracks[i].name, tracks[i].src); // 歌词横条跟随切歌
       renderPlaylist();
       saveMeta();
     }
@@ -5123,6 +5225,7 @@
     });
     audio.addEventListener('pause', function () {
       updatePlayIcon(false);
+      lyricFinishTyping(); // 歌词横条：暂停时当前句立即补完
       saveMeta();
     });
     audio.addEventListener('ended', function () {
@@ -5138,6 +5241,7 @@
 
     var lastMetaSave = 0;
     audio.addEventListener('timeupdate', function () {
+      musicLyricsTick(); // 歌词横条：跟随播放进度同步当前句
       if (audio.duration) {
         if (miniProgressFill) {
           miniProgressFill.style.width = (audio.currentTime / audio.duration) * 100 + '%';
@@ -5149,6 +5253,157 @@
         }
       }
     });
+
+    // =========================
+    // 歌词横条（hero 末尾）：music/ 曲库同名 .lrc，打字机逐字同步当前句。
+    // 无歌词/后台曲库（KV 媒体）→ ♪ 歌名占位；从未播放 → 待机提示。
+    // 防坑 2：Cloudflare 对不存在路径返回 200+首页，响应以 '<' 开头一律视为无歌词。
+    // =========================
+    var lyricBar = document.getElementById('lyricBar');
+    var lyricText = document.getElementById('lyricText');
+    var lyricLines = null;     // [{t, text}] 按时间排序（有时间戳的 lrc）
+    var lyricPlain = null;     // [text] 纯文本歌词降级（无时间戳，按时长均分）
+    var lyricIdx = -1;         // 当前句下标
+    var lyricFull = '';        // 当前句完整文本（暂停时补完用）
+    var lyricTypeTimer = null; // 打字机定时器
+    var lyricFetchSeq = 0;     // 切歌取消上一次未完成的加载
+
+    function lyricShowPlaceholder(text, waiting) {
+      if (!lyricBar) return;
+      clearInterval(lyricTypeTimer);
+      lyricTypeTimer = null;
+      lyricFull = '';
+      lyricIdx = -1;
+      lyricBar.hidden = false;
+      lyricBar.classList.add('placeholder');
+      lyricBar.classList.remove('typing');
+      lyricBar.classList.toggle('waiting', !!waiting);
+      lyricText.textContent = text;
+      if (!lyricBar.classList.contains('show')) {
+        void lyricBar.offsetWidth;
+        lyricBar.classList.add('show');
+      }
+    }
+
+    function lyricParseLrc(raw) {
+      var rows = String(raw || '').split(/\r\n|\n|\r/);
+      var timed = [], plain = [];
+      var timeRe = /\[(\d{1,3}):(\d{1,2})(?:[.:](\d{1,3}))?\]/g;
+      rows.forEach(function (line) {
+        var m, times = [], consumed = 0;
+        timeRe.lastIndex = 0;
+        while ((m = timeRe.exec(line))) {
+          var frac = m[3] ? parseInt(m[3], 10) / Math.pow(10, m[3].length) : 0;
+          times.push(parseInt(m[1], 10) * 60 + parseInt(m[2], 10) + frac);
+          consumed = timeRe.lastIndex;
+        }
+        var text = line.slice(consumed).trim();
+        if (!times.length) {
+          if (/^\s*\[[a-zA-Z]+:/.test(line)) return; // [ti:/[ar: 等元数据行忽略
+          if (text) plain.push(text);
+          return;
+        }
+        if (text) times.forEach(function (t) { timed.push({ t: t, text: text }); }); // 一行多时间标签
+      });
+      if (timed.length) {
+        timed.sort(function (a, b) { return a.t - b.t; });
+        return { timed: timed, plain: null };
+      }
+      return plain.length ? { timed: null, plain: plain } : null;
+    }
+
+    // 曲目切换时调用：加载同名 .lrc（仅静态 music/ 曲库；KV 媒体直接占位）
+    function lyricDisplayName(name) {
+      return String(name || '').replace(/\.(mp3|wav|m4a|flac|ogg|aac|opus|aiff|aif|weba)$/i, '');
+    }
+    function musicLyricsLoad(name, src) {
+      lyricLines = null;
+      lyricPlain = null;
+      lyricIdx = -1;
+      var seq = ++lyricFetchSeq;
+      if (!lyricBar) return;
+      var display = lyricDisplayName(name);
+      if (!/music\//.test(src || '')) { lyricShowPlaceholder('♪ ' + display); return; } // KV 媒体/本地 blob 无同名 lrc 可取
+      lyricShowPlaceholder('♪ ' + display, true); // 加载期间显示歌名 + 待机点
+      fetch('music/' + encodeURIComponent(display) + '.lrc', { credentials: 'same-origin' })
+        .then(function (r) { return r.ok ? r.text() : ''; })
+        .then(function (txt) {
+          if (seq !== lyricFetchSeq) return;
+          if (!txt || /^\s*</.test(txt)) { lyricShowPlaceholder('♪ ' + display); return; } // 404/伪 200 HTML
+          var parsed = lyricParseLrc(txt);
+          if (!parsed) { lyricShowPlaceholder('♪ ' + display); return; }
+          lyricLines = parsed.timed;
+          lyricPlain = parsed.plain;
+          lyricIdx = -1;
+          musicLyricsTick();
+        })
+        .catch(function () {
+          if (seq === lyricFetchSeq) lyricShowPlaceholder('♪ ' + display);
+        });
+    }
+
+    function lyricStartTyping(text, lineDurMs) {
+      clearInterval(lyricTypeTimer);
+      lyricTypeTimer = null;
+      lyricFull = text;
+      lyricBar.classList.remove('placeholder', 'waiting');
+      lyricBar.classList.add('typing');
+      var per = Math.max(15, Math.min(40, (lineDurMs || 4000) / Math.max(text.length, 1)));
+      var shown = 0;
+      lyricText.textContent = '';
+      lyricTypeTimer = setInterval(function () {
+        shown++;
+        lyricText.textContent = text.slice(0, shown);
+        if (shown >= text.length) clearInterval(lyricTypeTimer);
+      }, per);
+      if (!lyricBar.classList.contains('show')) {
+        void lyricBar.offsetWidth;
+        lyricBar.classList.add('show');
+      }
+    }
+
+    // 暂停时当前句立即补完，不留半截
+    function lyricFinishTyping() {
+      if (lyricTypeTimer) {
+        clearInterval(lyricTypeTimer);
+        lyricTypeTimer = null;
+        lyricText.textContent = lyricFull;
+      }
+    }
+
+    // 播放进度 → 当前句（每次重算，句数少开销可忽略，seek 回退天然正确）
+    function musicLyricsTick() {
+      if (!lyricBar || lyricBar.hidden || (!lyricLines && !lyricPlain)) return;
+      var sec = audio.currentTime || 0;
+      var idx = -1, text = '', nextT = Infinity;
+      if (lyricLines) {
+        for (var i = 0; i < lyricLines.length; i++) {
+          if (sec >= lyricLines[i].t) { idx = i; } else { nextT = lyricLines[i].t; break; }
+        }
+        text = idx >= 0 ? lyricLines[idx].text : '';
+      } else {
+        var dur = audio.duration || 240;
+        var per = dur / lyricPlain.length;
+        idx = Math.min(lyricPlain.length - 1, Math.floor(sec / per));
+        nextT = (idx + 1) * per;
+        text = lyricPlain[idx];
+      }
+      if (idx === lyricIdx) return;
+      lyricIdx = idx;
+      if (!text) { // 句前间隙/纯间奏：待机点 + 空文案
+        clearInterval(lyricTypeTimer);
+        lyricTypeTimer = null;
+        lyricFull = '';
+        lyricText.textContent = '';
+        lyricBar.classList.remove('typing', 'placeholder');
+        lyricBar.classList.add('waiting');
+        return;
+      }
+      lyricStartTyping(text, Math.max(600, Math.min(8000, (nextT - sec) * 1000)));
+    }
+
+    // 从未播放过：显示待机提示（占位行为由用户配置选定）
+    if (lyricBar) lyricShowPlaceholder('♪ 打开底部播放器，歌词会在这里滚动');
 
     // =========================
     // 底部悬浮迷你播放器
@@ -5194,6 +5449,7 @@
       current = idx;
       currentName = tracks[idx].name;
       if (miniTitle) miniTitle.textContent = tracks[idx].name;
+      musicLyricsLoad(tracks[idx].name, tracks[idx].src); // 歌词横条跟随切歌
       audio.src = tracks[idx].src;
       audio.addEventListener('loadedmetadata', function () {
         audio.currentTime = meta.time || 0;
@@ -5420,6 +5676,7 @@
         current = 0;
         syncCurrentByName();
         if (miniTitle) miniTitle.textContent = tracks[current].name;
+        musicLyricsLoad(tracks[current].name, tracks[current].src); // 歌词横条跟随切歌
         audio.src = tracks[current].src;
 
         // 曲库加载期间用户点过播放：直接开始

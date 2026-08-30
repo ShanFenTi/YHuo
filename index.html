@@ -952,14 +952,14 @@
     .doc-card-desc { font-size: 12px; color: var(--apple-muted-foreground); margin-top: 6px; line-height: 1.6; }
     .doc-card-meta { font-size: 11px; color: var(--apple-muted-foreground); margin-top: 10px; opacity: 0.8; }
 
-    /* 文档阅读层（结构沿用相册/个人主页的全屏模式） */
+    /* 文档阅读层（结构沿用相册/个人主页的全屏模式）；z 高于文档界面，阅读时文档界面垫底 */
     .doc-viewer {
       position: fixed;
       top: 52px;
       left: 0;
       right: 0;
       bottom: 0;
-      z-index: 150;
+      z-index: 175;
       display: flex;
       flex-direction: column;
       background: color-mix(in srgb, var(--apple-background) 88%, transparent);
@@ -1025,8 +1025,9 @@
     .doc-article hr { border: none; border-top: 1px solid var(--apple-border); margin: 18px 0; }
     .doc-article img { max-width: 100%; border-radius: 10px; }
 
-    /* ===== AI 界面（聊天骨架，对话功能待接入） ===== */
-    .ai-view {
+    /* ===== AI 界面（聊天骨架，对话功能待接入）===== */
+    /* 工具合集/文档界面复用同一套全屏层样式 */
+    .ai-view, .tools-view, .docs-view {
       position: fixed;
       top: 52px;
       left: 0;
@@ -1043,8 +1044,23 @@
       transition: opacity 250ms var(--ease-out), visibility 250ms var(--ease-out);
     }
 
-    .ai-view.show { opacity: 1; visibility: visible; }
-    .ai-view.show .album-bar { transform: none; opacity: 1; }
+    .ai-view.show, .tools-view.show, .docs-view.show { opacity: 1; visibility: visible; }
+    .ai-view.show .album-bar, .tools-view.show .album-bar, .docs-view.show .album-bar { transform: none; opacity: 1; }
+
+    .tools-scroll, .docs-scroll {
+      flex: 1;
+      overflow-y: auto;
+      padding: 24px 6vw 48px;
+      transform: translateY(28px);
+      opacity: 0;
+      transition: transform 400ms var(--ease-out) 60ms, opacity 300ms var(--ease-out) 60ms;
+    }
+
+    .tools-view.show .tools-scroll, .docs-view.show .docs-scroll { transform: none; opacity: 1; }
+
+    .tools-view .tool-block { max-width: 940px; margin: 0 auto 18px; }
+    .tools-view .apple-card { width: 100%; }
+    .docs-view .tool-block { max-width: 940px; margin: 0 auto; }
 
     .ai-chat {
       flex: 1;
@@ -3263,8 +3279,8 @@
     <a class="logo" href="#home" aria-label="回到首页">YHuo</a>
     <nav class="site-nav" aria-label="主导航">
       <a href="#home" class="nav-link active" data-target="home">首页</a>
-      <a href="#tools" class="nav-link" data-target="tools">工具</a>
-      <a href="#docs" class="nav-link" data-target="docs">文档</a>
+      <button class="nav-link" id="toolsBtn" type="button" aria-haspopup="dialog" aria-controls="toolsView">工具</button>
+      <button class="nav-link" id="docsBtn" type="button" aria-haspopup="dialog" aria-controls="docsView">文档</button>
       <button class="nav-link ai-entry" id="aiBtn" type="button" aria-haspopup="dialog" aria-controls="aiView">AI</button>
       <button class="nav-link album-entry" id="albumBtn" type="button" aria-haspopup="dialog" aria-controls="albumView">相册</button>
     </nav>
@@ -3315,8 +3331,15 @@
         <p class="hero-quote" id="heroQuote" hidden></p>
       </section>
 
-    <!-- 小工具板块（顶栏"工具"滚动到这里） -->
-    <section id="tools" class="content-section">
+    <!-- 工具合集界面：顶栏"工具"进入（相册同款全屏层） -->
+    <div id="toolsView" class="tools-view" hidden role="dialog" aria-modal="true" aria-label="工具合集">
+    <header class="album-bar">
+      <p class="album-title">工具合集 · TOOLS</p>
+      <button class="album-close" id="toolsViewClose" type="button" aria-label="关闭工具合集">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>
+      </button>
+    </header>
+    <div class="tools-scroll">
       <!-- 图片画廊 -->
       <div class="tool-block">
         <div class="apple-card gallery-card">
@@ -3414,10 +3437,18 @@
       </div>
 
       <!-- 外观设置已移至右侧抽屉（appear-dock） -->
-    </section>
+    </div>
+    </div>
 
-    <!-- 文档板块（顶栏"文档"滚动到这里）：docs/docs.json 清单 + docs/*.md -->
-    <section id="docs" class="content-section">
+    <!-- 文档界面：顶栏"文档"进入；点卡片在阅读层打开（阅读层叠在其上） -->
+    <div id="docsView" class="docs-view" hidden role="dialog" aria-modal="true" aria-label="文档">
+    <header class="album-bar">
+      <p class="album-title">文档 · DOCS</p>
+      <button class="album-close" id="docsViewClose" type="button" aria-label="关闭文档界面">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>
+      </button>
+    </header>
+    <div class="docs-scroll">
       <div class="tool-block">
         <div class="apple-card">
           <div class="card-padding">
@@ -3427,7 +3458,8 @@
           </div>
         </div>
       </div>
-    </section>
+    </div>
+    </div>
   </main>
 
   <!-- 外观设置抽屉：默认靠右隐藏，点击箭头弹出 -->
@@ -3852,8 +3884,11 @@
         if (sec.offsetTop <= pos) current = sec;
       });
       var id = current ? current.id : '';
-      // 相册/AI 界面打开期间高亮由各自的 open 函数接管，滚动监听不抢回
-      if ((albumView && !albumView.hidden) || (aiView && !aiView.hidden)) return;
+      // 全屏界面打开期间高亮由各自的 open 函数接管，滚动监听不抢回
+      if (
+        (albumView && !albumView.hidden) || (aiView && !aiView.hidden) ||
+        (toolsView && !toolsView.hidden) || (docsView && !docsView.hidden)
+      ) return;
       navLinks.forEach(function (a) {
         a.classList.toggle('active', a.getAttribute('data-target') === id);
       });
@@ -4519,6 +4554,14 @@
       }
 
       function openAlbum() {
+        // 与其他全屏界面互斥：进相册前先收起已打开的
+        ['aiView', 'profileView', 'docViewer', 'toolsView', 'docsView'].forEach(function (id) {
+          var el = document.getElementById(id);
+          if (el && !el.hidden) {
+            var cb = el.querySelector('.album-close');
+            if (cb) cb.click();
+          }
+        });
         if (albumEmpty) albumEmpty.hidden = loadedImgs.length > 0;
         renderAlbums();
         albumView.hidden = false;
@@ -4547,6 +4590,14 @@
       sectionLinks.forEach(function (a) {
         a.addEventListener('click', function () {
           if (!albumView.hidden) closeAlbum();
+          // 其他全屏界面也一并收起（首页是唯一滚动锚点）
+          ['aiView', 'toolsView', 'docsView', 'docViewer', 'profileView'].forEach(function (id) {
+            var el = document.getElementById(id);
+            if (el && !el.hidden) {
+              var cb = el.querySelector('.album-close');
+              if (cb) cb.click();
+            }
+          });
         });
       });
       // Esc 逐层退出：灯箱先关（见上方处理器），灯箱关完再按 Esc 才退出相册
@@ -7041,8 +7092,8 @@
 
     function openAiView() {
       if (!aiView) return;
-      // 和相册/主页/文档互斥：全屏层之间不叠放
-      ['albumView', 'profileView', 'docViewer'].forEach(function (id) {
+      // 和相册/主页/文档/工具互斥：全屏层之间不叠放
+      ['albumView', 'profileView', 'docViewer', 'toolsView', 'docsView'].forEach(function (id) {
         var el = document.getElementById(id);
         if (el && !el.hidden) {
           var closeBtn = el.querySelector('.album-close');
@@ -7100,6 +7151,86 @@
         }, 700);
       });
     }
+
+    // =========================
+    // 工具合集 / 文档界面：与 AI 同款的全屏层（相册同款接管高亮 + 锁背景滚动）
+    // =========================
+    var toolsView = document.getElementById('toolsView');
+    var toolsBtn = document.getElementById('toolsBtn');
+    var docsView = document.getElementById('docsView');
+    var docsBtn = document.getElementById('docsBtn');
+
+    function closeFullscreenOf(id) {
+      var el = document.getElementById(id);
+      if (el && !el.hidden) {
+        var cb = el.querySelector('.album-close');
+        if (cb) cb.click();
+      }
+    }
+
+    function takeNavHighlight(btn) {
+      navLinks.forEach(function (a) { a.classList.remove('active'); });
+      if (btn) btn.classList.add('active');
+    }
+
+    function openToolsView() {
+      if (!toolsView) return;
+      ['albumView', 'aiView', 'profileView', 'docsView', 'docViewer'].forEach(closeFullscreenOf);
+      setProfileOpen(false);
+      toolsView.hidden = false;
+      void toolsView.offsetWidth;
+      toolsView.classList.add('show');
+      document.body.style.overflow = 'hidden';
+      takeNavHighlight(toolsBtn);
+    }
+
+    function closeToolsView() {
+      if (!toolsView || toolsView.hidden) return;
+      toolsView.classList.remove('show');
+      document.body.style.overflow = '';
+      if (toolsBtn) toolsBtn.classList.remove('active');
+      setTimeout(function () {
+        toolsView.hidden = true;
+        onScroll();
+      }, 250);
+    }
+
+    function openDocsView() {
+      if (!docsView) return;
+      ['albumView', 'aiView', 'profileView', 'toolsView', 'docViewer'].forEach(closeFullscreenOf);
+      setProfileOpen(false);
+      docsView.hidden = false;
+      void docsView.offsetWidth;
+      docsView.classList.add('show');
+      document.body.style.overflow = 'hidden';
+      takeNavHighlight(docsBtn);
+    }
+
+    function closeDocsView() {
+      if (!docsView || docsView.hidden) return;
+      docsView.classList.remove('show');
+      document.body.style.overflow = '';
+      if (docsBtn) docsBtn.classList.remove('active');
+      setTimeout(function () {
+        docsView.hidden = true;
+        onScroll();
+      }, 250);
+    }
+
+    if (toolsBtn) toolsBtn.addEventListener('click', openToolsView);
+    var toolsViewClose = document.getElementById('toolsViewClose');
+    if (toolsViewClose) toolsViewClose.addEventListener('click', closeToolsView);
+    if (docsBtn) docsBtn.addEventListener('click', openDocsView);
+    var docsViewClose = document.getElementById('docsViewClose');
+    if (docsViewClose) docsViewClose.addEventListener('click', closeDocsView);
+
+    document.addEventListener('keydown', function (e) {
+      if (e.key !== 'Escape') return;
+      // 阅读层叠在文档界面上：Esc 只关阅读层，不关文档界面
+      if (docViewer && !docViewer.hidden) return;
+      if (toolsView && !toolsView.hidden) closeToolsView();
+      if (docsView && !docsView.hidden) closeDocsView();
+    });
   })();
   </script>
 </body>

@@ -524,6 +524,13 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
           <div id="visitChart"></div>
           <p class="hint" id="visitHint" style="margin:10px 0 0" hidden>按天明细从上线开始积累，之前累积的总访问量没有逐日记录。</p>
         </div>
+        <div class="card" id="aiUsageCard">
+          <div class="visit-head">
+            <strong>AI 用量</strong>
+            <span class="meta2" id="aiUsageSumm"></span>
+          </div>
+          <div id="aiUsageBody"><p class="hint" style="margin:0">加载中…</p></div>
+        </div>
       </div>
 
       <div id="mediaPanel" hidden>
@@ -895,6 +902,7 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
     loadList().then(function () { syncStaticMedia(); });
     loadUsers();
     loadVisits();
+    loadAiUsage();
   }
 
   function refreshStats() {
@@ -929,6 +937,39 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
   // ---------- 访问统计：今日卡 + 近 N 天柱状趋势图（纯 SVG，无依赖） ----------
   var visitData = { visits: 0, today: 0, yesterday: 0, daily: [] };
   var visitRange = 14;
+
+  // ---------- AI token 用量（概览卡片） ----------
+  function loadAiUsage() {
+    api('/api/admin/ai/usage').then(function (d) {
+      if (!d.ok) return;
+      var body = $('aiUsageBody');
+      if (!d.total || !d.total.calls) {
+        body.innerHTML = '<p class="hint" style="margin:0">还没有 AI 对话数据，去前台聊几句就有了。</p>';
+        $('aiUsageSumm').textContent = '';
+        return;
+      }
+      function fmt(r) {
+        var t = (r.prompt || 0) + (r.completion || 0);
+        return t.toLocaleString() + ' tokens / ' + r.calls + ' 次';
+      }
+      $('aiUsageSumm').textContent = '今日 ' + fmt(d.today) + ' · 近 14 天 ' + fmt(d.d14) + ' · 近 30 天 ' + fmt(d.d30);
+      var html = '<table style="width:100%;border-collapse:collapse;font-size:13px">';
+      html += '<tr style="color:var(--muted)">' +
+        '<th style="text-align:left;padding:4px 6px;font-weight:600">模型</th>' +
+        '<th style="text-align:right;padding:4px 6px;font-weight:600">调用</th>' +
+        '<th style="text-align:right;padding:4px 6px;font-weight:600">输入 tokens</th>' +
+        '<th style="text-align:right;padding:4px 6px;font-weight:600">输出 tokens</th></tr>';
+      d.byModel.forEach(function (m) {
+        html += '<tr>' +
+          '<td style="padding:5px 6px;border-top:1px solid var(--row-line);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:0">' + escapeHtml(m.provider + ' / ' + m.model) + '</td>' +
+          '<td style="padding:5px 6px;border-top:1px solid var(--row-line);text-align:right;white-space:nowrap">' + m.calls + '</td>' +
+          '<td style="padding:5px 6px;border-top:1px solid var(--row-line);text-align:right;white-space:nowrap">' + Number(m.prompt).toLocaleString() + '</td>' +
+          '<td style="padding:5px 6px;border-top:1px solid var(--row-line);text-align:right;white-space:nowrap">' + Number(m.completion).toLocaleString() + '</td></tr>';
+      });
+      html += '</table>';
+      body.innerHTML = html;
+    }).catch(function () {});
+  }
 
   function loadVisits() {
     api('/api/admin/visits').then(function (d) {
@@ -2275,6 +2316,9 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
     var albumSideEl = document.querySelector('.album-side');
     if (albumSideEl) albumSideEl.hidden = type !== 'image';
     document.body.classList.remove('nav-open'); // 窄屏选完即收起菜单
+    if (isOverview) {
+      loadAiUsage(); // 每次切回概览刷新 AI 用量
+    }
     if (isAppear) {
       loadAppearance();
     }

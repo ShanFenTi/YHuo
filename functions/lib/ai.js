@@ -203,12 +203,15 @@ export function buildUpstreamRequest(s, messages, stream) {
   const msgs = [];
   if (s.systemPrompt) msgs.push({ role: 'system', content: s.systemPrompt });
   for (const m of messages) msgs.push({ role: m.role === 'assistant' ? 'assistant' : 'user', content: m.content });
+  const body = { model: s.model, stream: !!stream, messages: msgs };
+  // 流式时请求上游回传 token 用量（主流 OpenAI 兼容服务商均支持）
+  if (stream) body.stream_options = { include_usage: true };
   return {
     url: s.baseUrl.replace(/\/+$/, '') + '/chat/completions',
     init: {
       method: 'POST',
       headers: { 'content-type': 'application/json', authorization: 'Bearer ' + s.apiKey },
-      body: JSON.stringify({ model: s.model, stream: !!stream, messages: msgs }),
+      body: JSON.stringify(body),
     },
   };
 }
@@ -243,13 +246,15 @@ export function extractError(protocol, j) {
 
 // ---------- 流式归一化 ----------
 // 把上游 SSE 转成统一格式发给前端：data: {"delta":"..."} 每行一个增量，
-// data: {"error":"..."} 上游报错，data: [DONE] 结束。前端只解析这一种格式。
+// data: {"usage":{prompt,completion}} token 用量（结束时、若有），data: {"error":"..."} 上游报错，
+// data: [DONE] 结束。前端只解析这一种格式。
 export function sseNormalizer(protocol) {
   const decoder = new TextDecoder();
   const encoder = new TextEncoder();
   let buffer = '';
   let errored = false;
   let finished = false;
+  let usage = null; // {prompt, completion}，从各协议的事件里攒出来
   return new TransformStream({
     transform(chunk, controller) {
       if (finished) return;
@@ -262,12 +267,13 @@ export function sseNormalizer(protocol) {
         if (!line.startsWith('data:')) continue;
         const data = line.slice(5).trim();
         if (!data) continue;
+        let j;
         if (data === '[DONE]') {
           finished = true;
+          if (usage) controller.enqueue(encoder.encode('data: ' + JSON.stringify({ usage }) + '\n\n'));
           controller.enqueue(encoder.encode('data: [DONE]\n\n'));
           return;
         }
-        let j;
         try {
           j = JSON.parse(data);
         } catch {
@@ -280,6 +286,21 @@ export function sseNormalizer(protocol) {
             controller.enqueue(encoder.encode('data: ' + JSON.stringify({ error: err }) + '\n\n'));
           }
           continue;
+        }
+        // token 用量采集：OpenAI 兼容在末尾块带 usage；Anthropic 在 message_start（输入）/message_delta（输出）
+        if (protocol === 'anthropic') {
+          if (j.type === 'message_start' && j.message && j.message.usage) {
+            usage = { prompt: j.message.usage.input_tokens || 0, completion: (usage && usage.completion) || 0 };
+          } else if (j.type === 'message_delta' && j.usage) {
+            usage = { prompt: (usage && usage.prompt) || 0, completion: j.usage.output_tokens || 0 };
+          } else if (j.type === 'message_stop') {
+            finished = true;
+            if (usage) controller.enqueue(encoder.encode('data: ' + JSON.stringify({ usage }) + '\n\n'));
+            controller.enqueue(encoder.encode('data: [DONE]\n\n'));
+            return;
+          }
+        } else if (j.usage && (j.usage.prompt_tokens != null || j.usage.completion_tokens != null)) {
+          usage = { prompt: j.usage.prompt_tokens || 0, completion: j.usage.completion_tokens || 0 };
         }
         const delta = extractText(protocol, j);
         if (delta) controller.enqueue(encoder.encode('data: ' + JSON.stringify({ delta }) + '\n\n'));

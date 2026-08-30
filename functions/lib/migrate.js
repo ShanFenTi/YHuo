@@ -68,6 +68,16 @@ const DDL = [
     UNIQUE (user_id, url)
   )`,
   `CREATE INDEX IF NOT EXISTS idx_fav_user ON user_favorites (user_id, created_at)`,
+  // AI 对话 token 用量（北京时间 day，按 供应商+模型 聚合累加；前端从流里拿到 usage 后上报）
+  `CREATE TABLE IF NOT EXISTS ai_usage_daily (
+    day               TEXT NOT NULL,
+    provider          TEXT NOT NULL,
+    model             TEXT NOT NULL,
+    calls             INTEGER NOT NULL DEFAULT 0,
+    prompt_tokens     INTEGER NOT NULL DEFAULT 0,
+    completion_tokens INTEGER NOT NULL DEFAULT 0,
+    PRIMARY KEY (day, provider, model)
+  )`,
 ];
 
 // 同一个隔离实例里只跑一次

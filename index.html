@@ -1114,6 +1114,15 @@
 
     .ai-msg.bot.pending { opacity: 0.65; }
 
+    /* 回复气泡下的 token 用量小字 */
+    .ai-usage {
+      margin-top: 4px;
+      font-size: 10px;
+      opacity: 0.5;
+      font-variant-numeric: tabular-nums;
+      text-align: right;
+    }
+
     /* 顶栏：新对话 + 关闭按钮组 */
     .ai-bar-actions { display: flex; align-items: center; gap: 8px; }
 
@@ -7527,6 +7536,7 @@
     function streamAiReply(messages, pending) {
       var full = '';
       var finished = false;
+      var usageInfo = null; // 流里拿到的 token 用量 {prompt, completion}
       var ctl = typeof AbortController === 'function' ? new AbortController() : null;
       aiAbort = ctl;
       var decoder = typeof TextDecoder === 'function' ? new TextDecoder() : null;
@@ -7548,6 +7558,22 @@
           addAiMsg('bot', '（模型没有返回内容，换个问法试试？）');
         }
         aiStopBusy();
+        // token 用量：小字挂在回复气泡下 + 上报统计（失败静默）
+        if (usageInfo) {
+          var lastBot = aiMessages ? aiMessages.lastElementChild : null;
+          if (lastBot && lastBot.className.indexOf('bot') !== -1) {
+            var line = document.createElement('div');
+            line.className = 'ai-usage';
+            line.textContent = '↑' + usageInfo.prompt + ' / ↓' + usageInfo.completion + ' tokens';
+            lastBot.appendChild(line);
+          }
+          fetch('/api/ai/usage', {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ key: aiCurrentModel, prompt_tokens: usageInfo.prompt, completion_tokens: usageInfo.completion }),
+          }).catch(function () {});
+        }
       }
 
       // 解析一行归一化 SSE 数据；错误对象 {aiError} / {aiAuth} 抛给外层 catch
@@ -7557,6 +7583,7 @@
         try {
           j = JSON.parse(data);
         } catch (e) { return; }
+        if (j.usage) { usageInfo = j.usage; return; }
         if (j.error) throw { aiError: j.error };
         if (j.delta) {
           full += j.delta;

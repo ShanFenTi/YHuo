@@ -2,7 +2,7 @@
 // 入参 {name?, protocol?, base_url?, api_key?}：草稿值优先，api_key 留空时回落到 name 指定档案的已存 Key；不落库
 // OpenAI 兼容：GET {base}/models（Bearer）；Anthropic：GET {base}/models（x-api-key）。两者都返回 {data:[{id}]}
 import { json } from '../../../lib/util.js';
-import { getAiProfiles, AI_PROTOCOLS, PROTOCOL_BASES } from '../../../lib/ai.js';
+import { getAiProviders, AI_PROTOCOLS, PROTOCOL_BASES } from '../../../lib/ai.js';
 
 export async function onRequestPost({ request, env }) {
   let body = {};
@@ -10,9 +10,9 @@ export async function onRequestPost({ request, env }) {
     body = await request.json();
   } catch {}
 
-  const { profiles } = await getAiProfiles(env);
+  const { providers } = await getAiProviders(env);
   const wanted = typeof body.name === 'string' ? body.name.slice(0, 30) : null;
-  const saved = wanted ? profiles.find((p) => p.name === wanted) : null;
+  const saved = wanted ? providers.find((p) => p.name === wanted) : null;
 
   const protocol = AI_PROTOCOLS.includes(body.protocol) ? body.protocol : (saved ? saved.protocol : 'openai');
   const baseUrl = String(body.base_url || '').trim()

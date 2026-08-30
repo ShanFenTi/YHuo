@@ -7297,7 +7297,7 @@
       if (aiMessages && !aiMessages.children.length) addAiMsg('bot', aiGreeting());
     }
 
-    // 输入条工具行的模型切换：纯文字 + ⌄，向上弹出分组菜单（仿桌面客户端）
+    // 输入条工具行的模型切换：纯文字 + ⌄，向上弹出分组菜单（仿桌面客户端，按供应商分组）
     function aiSyncModelSwitcher() {
       var btn = document.getElementById('aiModelBtn');
       var label = document.getElementById('aiModelLabel');
@@ -7311,45 +7311,48 @@
       }
       // 保留本次会话已选的模型（若仍在列表里），否则用后台指定的默认
       var cur = aiCurrentModel;
-      if (!cur || !aiConfig.models.some(function (m) { return m.name === cur; })) {
-        cur = (aiConfig.model && aiConfig.models.some(function (m) { return m.name === aiConfig.model; }))
+      if (!cur || !aiConfig.models.some(function (m) { return m.key === cur; })) {
+        cur = (aiConfig.model && aiConfig.models.some(function (m) { return m.key === aiConfig.model; }))
           ? aiConfig.model
-          : aiConfig.models[0].name;
+          : aiConfig.models[0].key;
       }
       aiCurrentModel = cur;
-      label.textContent = cur;
+      label.textContent = currentModelName();
       btn.hidden = false;
       menu.innerHTML = '';
-      // 按协议分组（对应客户端里的供应商分组）
-      [{ key: 'openai', label: 'OpenAI 兼容' }, { key: 'anthropic', label: 'Anthropic' }].forEach(function (g) {
-        var items = aiConfig.models.filter(function (m) { return (m.protocol || 'openai') === g.key; });
-        if (!items.length) return;
+      // 按供应商分组（对应客户端里的供应商分组）
+      var groups = [];
+      aiConfig.models.forEach(function (m) {
+        var g = groups.filter(function (x) { return x.provider === m.provider; })[0];
+        if (!g) {
+          g = { provider: m.provider, items: [] };
+          groups.push(g);
+        }
+        g.items.push(m);
+      });
+      groups.forEach(function (g) {
         var head = document.createElement('div');
         head.className = 'ai-model-group';
-        head.textContent = g.label;
+        head.textContent = g.provider;
         menu.appendChild(head);
-        items.forEach(function (m) {
+        g.items.forEach(function (m) {
           var it = document.createElement('button');
           it.type = 'button';
-          it.className = 'ai-model-item' + (m.name === aiCurrentModel ? ' active' : '');
+          it.className = 'ai-model-item' + (m.key === aiCurrentModel ? ' active' : '');
           it.setAttribute('role', 'option');
-          it.setAttribute('aria-selected', m.name === aiCurrentModel ? 'true' : 'false');
+          it.setAttribute('aria-selected', m.key === aiCurrentModel ? 'true' : 'false');
           var nm = document.createElement('span');
           nm.textContent = m.name;
-          var tag = document.createElement('span');
-          tag.className = 'tag';
-          tag.textContent = m.model;
           var chk = document.createElement('span');
           chk.className = 'chk';
           chk.textContent = '✓';
           it.appendChild(nm);
-          it.appendChild(tag);
           it.appendChild(chk);
           it.addEventListener('click', function () {
-            if (m.name !== aiCurrentModel) {
-              aiCurrentModel = m.name;
-              label.textContent = aiCurrentModel;
-              addAiMsg('bot', '已切换到「' + aiCurrentModel + '」～');
+            if (m.key !== aiCurrentModel) {
+              aiCurrentModel = m.key;
+              label.textContent = m.name;
+              addAiMsg('bot', '已切换到「' + m.name + '」（' + m.provider + '）～');
             }
             menu.hidden = true;
           });
@@ -7367,6 +7370,11 @@
       manage.textContent = '管理模型';
       foot.appendChild(manage);
       menu.appendChild(foot);
+    }
+
+    function currentModelName() {
+      var m = (aiConfig && aiConfig.models || []).filter(function (x) { return x.key === aiCurrentModel; })[0];
+      return m ? m.name : '';
     }
 
     function fetchAiConfig(force) {

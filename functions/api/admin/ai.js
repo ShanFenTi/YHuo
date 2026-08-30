@@ -1,15 +1,19 @@
-// 多模型档案管理（存 site_settings：ai_models JSON 数组 + ai_default + ai_enabled）
-// GET  /api/admin/ai → 档案列表（Key 不回传，只回 has_key + 尾 4 位）
+// 供应商管理（存 site_settings：ai_models 供应商数组 + ai_default 模型键 + ai_enabled 全局开关）
+// GET  /api/admin/ai → 供应商列表（Key 不回传，只回 has_key + 尾 4 位）
 // PUT  /api/admin/ai
-//   {enabled:true|false}                        → 全局开关
-//   {action:'save', profile:{name,protocol,base_url,api_key,model,system_prompt}} → 新增/更新（api_key 留空 = 保留原 Key）
-//   {action:'delete', name}                     → 删除档案
-//   {action:'default', name}                    → 设为默认
+//   {enabled:true|false}                          → 全局开关
+//   {action:'save', provider:{name,protocol,base_url,api_key,system_prompt,models:[id]}} → 新增/更新（api_key 留空 = 保留原 Key）
+//   {action:'rename', from, to}                   → 重命名供应商（保留全部配置）
+//   {action:'toggle', name, enabled}              → 启用/停用单个供应商
+//   {action:'delete', name}                       → 删除供应商
+//   {action:'default', key}                       → 设默认模型（"供应商/模型"）
 import { json } from '../../lib/util.js';
 import { ensureSchema } from '../../lib/migrate.js';
-import { getAiProfiles, AI_PROTOCOLS } from '../../lib/ai.js';
+import { getAiProviders, AI_PROTOCOLS, modelKey } from '../../lib/ai.js';
 
-const MAX_PROFILES = 10;
+const MAX_PROVIDERS = 10;
+const MAX_MODELS = 20;
+
 const PROTOCOL_LABELS = { openai: 'OpenAI 兼容', anthropic: 'Anthropic' };
 
 async function setSetting(env, key, value) {
@@ -23,58 +27,63 @@ async function delSetting(env, key) {
   await env.DB.prepare('DELETE FROM site_settings WHERE key = ?').bind(key).run();
 }
 
-async function saveProfiles(env, profiles, defaultName) {
-  await setSetting(env, 'ai_models', JSON.stringify(profiles));
-  // 档案落库后，老的单配置键不再有 readers（getAiProfiles 只在无档案时读），清掉避免双源混淆
+async function saveProviders(env, providers, defaultKey) {
+  await setSetting(env, 'ai_models', JSON.stringify(providers));
+  // 新格式落库后，老的单配置键不再有 readers（getAiProviders 只在无数据时读），清掉避免双源混淆
   for (const k of ['ai_api_key', 'ai_model', 'ai_protocol', 'ai_base_url', 'ai_system_prompt']) {
     await delSetting(env, k);
   }
-  if (defaultName) await setSetting(env, 'ai_default', defaultName);
+  if (defaultKey) await setSetting(env, 'ai_default', defaultKey);
 }
 
-function publicProfile(p) {
+function publicProvider(p) {
   const hasKey = !!(p.api_key || '').trim();
   return {
     name: p.name,
-    protocol: AI_PROTOCOLS.includes(p.protocol) ? p.protocol : 'openai',
-    protocol_label: PROTOCOL_LABELS[AI_PROTOCOLS.includes(p.protocol) ? p.protocol : 'openai'],
+    protocol: p.protocol,
+    protocol_label: PROTOCOL_LABELS[p.protocol],
     base_url: p.base_url || '',
-    model: p.model || '',
     system_prompt: p.system_prompt || '',
+    enabled: p.enabled !== false,
+    models: p.models || [],
     has_key: hasKey,
     key_hint: hasKey ? '····' + p.api_key.trim().slice(-4) : '',
   };
 }
 
 export async function onRequestGet({ env }) {
-  const { enabled, profiles, defaultName } = await getAiProfiles(env);
+  const { enabled, providers, defaultKey } = await getAiProviders(env);
+  const usable = providers.some((p) => p.enabled !== false && (p.api_key || '').trim() && p.models.length);
   return json({
     ok: true,
     enabled,
-    default: defaultName,
-    profiles: profiles.map(publicProfile),
-    usable: profiles.some((p) => (p.api_key || '').trim() && (p.model || '').trim()),
+    default: defaultKey,
+    providers: providers.map(publicProvider),
+    usable,
   });
 }
 
-// 校验并归一化待保存档案；失败返回 {error}，成功返回 {profile}
-function normalizeProfile(raw) {
+// 校验并归一化待保存供应商；失败返回 {error}，成功返回 {provider}
+function normalizeProvider(raw) {
   if (!raw || typeof raw !== 'object') return { error: '请求格式错误' };
   const name = String(raw.name || '').trim().slice(0, 30);
-  if (!name) return { error: '模型名称不能为空' };
-  if (!AI_PROTOCOLS.includes(raw.protocol)) return { error: '未知协议' };
+  if (!name) return { error: '供应商名称不能为空' };
+  if (!AI_PROTOCOLS.includes(raw.protocol)) return { error: '未知 API 格式' };
   const base_url = String(raw.base_url || '').trim();
   if (base_url && !/^https?:\/\//i.test(base_url)) return { error: '接口地址要以 http(s):// 开头' };
-  const model = String(raw.model || '').trim().slice(0, 100);
-  if (!model) return { error: '模型名不能为空' };
+  const models = Array.isArray(raw.models)
+    ? [...new Set(raw.models.map((m) => String(m || '').trim().slice(0, 100)).filter(Boolean))]
+    : [];
+  if (models.length > MAX_MODELS) return { error: '每个供应商最多 ' + MAX_MODELS + ' 个模型' };
   return {
-    profile: {
+    provider: {
       name,
       protocol: raw.protocol,
       base_url,
       api_key: String(raw.api_key || '').trim().slice(0, 300),
-      model,
       system_prompt: String(raw.system_prompt || '').trim().slice(0, 2000),
+      enabled: raw.enabled !== false,
+      models,
     },
   };
 }
@@ -87,48 +96,80 @@ export async function onRequestPut({ request, env }) {
   } catch {
     return json({ ok: false, error: '请求格式错误' }, 400);
   }
-  const state = await getAiProfiles(env);
-  let profiles = state.profiles;
+  const state = await getAiProviders(env);
+  let providers = state.providers;
 
-  // 全局开关（和档案操作可同请求出现，开关在前）
-  if (body.enabled !== undefined) {
+  // 全局开关（仅当请求不带 action 时生效，避免误读 toggle 等动作里的 enabled 字段）
+  if (body.enabled !== undefined && !body.action) {
     await setSetting(env, 'ai_enabled', body.enabled ? '1' : '0');
     state.enabled = !!body.enabled;
   }
 
   if (body.action === 'save') {
-    const norm = normalizeProfile(body.profile);
+    const norm = normalizeProvider(body.provider);
     if (norm.error) return json({ ok: false, error: norm.error }, 400);
-    const np = norm.profile;
-    const idx = profiles.findIndex((p) => p.name === np.name);
+    const np = norm.provider;
+    if (!np.models.length) return json({ ok: false, error: '至少要有一个模型' }, 400);
+    const idx = providers.findIndex((p) => p.name === np.name);
     if (idx >= 0) {
-      if (!np.api_key) np.api_key = profiles[idx].api_key || ''; // 留空 = 保留原 Key
-      profiles[idx] = np;
+      if (!np.api_key) np.api_key = providers[idx].api_key || ''; // 留空 = 保留原 Key
+      providers[idx] = np;
     } else {
       if (!np.api_key) return json({ ok: false, error: '请填写 API Key' }, 400);
-      if (profiles.length >= MAX_PROFILES) return json({ ok: false, error: '最多 ' + MAX_PROFILES + ' 个模型档案' }, 400);
-      profiles.push(np);
+      if (providers.length >= MAX_PROVIDERS) return json({ ok: false, error: '最多 ' + MAX_PROVIDERS + ' 个供应商' }, 400);
+      providers.push(np);
     }
-    await saveProfiles(env, profiles, state.defaultName || np.name);
-    return json({ ok: true, name: np.name, default: state.defaultName || np.name, key_hint: '····' + np.api_key.slice(-4) });
+    // 默认键失效（供应商被改没了原模型）时回落到它的第一个模型
+    const allKeys = [];
+    for (const p of providers) for (const m of p.models) allKeys.push(modelKey(p.name, m));
+    const defaultKey = allKeys.includes(state.defaultKey) ? state.defaultKey : modelKey(np.name, np.models[0]);
+    await saveProviders(env, providers, defaultKey);
+    return json({ ok: true, name: np.name, default: defaultKey, key_hint: '····' + np.api_key.slice(-4) });
+  }
+
+  if (body.action === 'rename') {
+    const from = String(body.from || '').trim().slice(0, 30);
+    const to = String(body.to || '').trim().slice(0, 30);
+    if (!to) return json({ ok: false, error: '新名称不能为空' }, 400);
+    const p = providers.find((x) => x.name === from);
+    if (!p) return json({ ok: false, error: '供应商不存在' }, 404);
+    if (providers.some((x) => x.name === to)) return json({ ok: false, error: '名称已存在' }, 400);
+    p.name = to;
+    const defaultKey = state.defaultKey.startsWith(from + '/')
+      ? to + state.defaultKey.slice(from.length)
+      : state.defaultKey;
+    await saveProviders(env, providers, defaultKey);
+    return json({ ok: true, name: to, default: defaultKey });
+  }
+
+  if (body.action === 'toggle') {
+    const name = String(body.name || '').trim().slice(0, 30);
+    const p = providers.find((x) => x.name === name);
+    if (!p) return json({ ok: false, error: '供应商不存在' }, 404);
+    p.enabled = body.enabled !== false;
+    await saveProviders(env, providers, state.defaultKey);
+    return json({ ok: true, name, enabled: p.enabled });
   }
 
   if (body.action === 'delete') {
-    const name = String(body.name || '').slice(0, 30);
-    const next = profiles.filter((p) => p.name !== name);
-    if (next.length === profiles.length) return json({ ok: false, error: '档案不存在' }, 404);
-    const defaultName = state.defaultName === name ? (next[0] ? next[0].name : null) : state.defaultName;
-    await saveProfiles(env, next, defaultName);
-    return json({ ok: true, default: defaultName });
+    const name = String(body.name || '').trim().slice(0, 30);
+    const next = providers.filter((p) => p.name !== name);
+    if (next.length === providers.length) return json({ ok: false, error: '供应商不存在' }, 404);
+    let defaultKey = state.defaultKey;
+    const allKeys = [];
+    for (const p of next) for (const m of p.models) allKeys.push(modelKey(p.name, m));
+    if (!allKeys.includes(defaultKey)) defaultKey = allKeys[0] || '';
+    await saveProviders(env, next, defaultKey);
+    return json({ ok: true, default: defaultKey });
   }
 
   if (body.action === 'default') {
-    const name = String(body.name || '').slice(0, 30);
-    if (!profiles.some((p) => p.name === name)) return json({ ok: false, error: '档案不存在' }, 404);
-    await setSetting(env, 'ai_default', name);
-    return json({ ok: true, default: name });
+    const key = String(body.key || '').slice(0, 140);
+    const ok = providers.some((p) => p.models.includes(key.slice(p.name.length + 1)) && key.startsWith(p.name + '/'));
+    if (!ok) return json({ ok: false, error: '模型不存在' }, 404);
+    await setSetting(env, 'ai_default', key);
+    return json({ ok: true, default: key });
   }
 
-  const { enabled } = await getAiProfiles(env);
-  return json({ ok: true, enabled });
+  return json({ ok: true, enabled: state.enabled });
 }

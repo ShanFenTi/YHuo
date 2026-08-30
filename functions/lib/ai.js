@@ -1,5 +1,8 @@
-// AI 对话：配置读取 + 上游协议适配（OpenAI 兼容 / Anthropic）+ 流式归一化
-// 配置存在 site_settings 表（后台"AI"标签页维护），key 永不下发给前端
+// AI 对话：供应商配置读取 + 上游协议适配（OpenAI 兼容 / Anthropic）+ 流式归一化
+// 配置存 site_settings（后台"AI"标签页维护），key 永不下发给前端
+// 数据模型：ai_models = 供应商数组 [{name, protocol, base_url, api_key, enabled, system_prompt, models:[模型id]}]
+//          ai_default = 默认模型键 "供应商名/模型id"，ai_enabled = 全局开关
+// 旧版单配置键、旧版扁平档案（每档案一个模型）读取时自动迁移，首次保存后落为新格式
 import { ensureSchema } from './migrate.js';
 
 export const AI_PROTOCOLS = ['openai', 'anthropic'];
@@ -10,10 +13,11 @@ export const PROTOCOL_BASES = {
   anthropic: 'https://api.anthropic.com/v1',
 };
 
-// ---------- 多模型档案 ----------
-// 存 site_settings：ai_models = JSON 数组 [{name,protocol,base_url,api_key,model,system_prompt}]，
-// ai_default = 默认档案名，ai_enabled = 全局开关。老的单配置（ai_api_key/ai_model 等键）自动包装成一个档案
-export async function getAiProfiles(env) {
+export function modelKey(providerName, modelId) {
+  return providerName + '/' + modelId;
+}
+
+export async function getAiProviders(env) {
   await ensureSchema(env);
   const { results } = await env.DB.prepare(
     "SELECT key, value FROM site_settings WHERE key IN ('ai_models','ai_enabled','ai_default','ai_protocol','ai_base_url','ai_api_key','ai_model','ai_system_prompt')"
@@ -21,47 +25,107 @@ export async function getAiProfiles(env) {
   const map = {};
   for (const r of results) map[r.key] = r.value;
   const enabled = map.ai_enabled !== '0';
-  let profiles = [];
+
+  let providers = [];
   try {
-    profiles = JSON.parse(map.ai_models || '[]');
+    providers = JSON.parse(map.ai_models || '[]');
   } catch {
-    profiles = [];
+    providers = [];
   }
-  if (!Array.isArray(profiles)) profiles = [];
-  profiles = profiles.filter((p) => p && typeof p === 'object' && p.name && p.model);
-  if (!profiles.length && map.ai_api_key && map.ai_model) {
-    // 老配置迁移（只读不改写；首次在后台保存时才落到 ai_models）
-    profiles = [{
-      name: '默认模型',
+  if (!Array.isArray(providers)) providers = [];
+  providers = providers.filter((p) => p && typeof p === 'object' && p.name);
+
+  if (providers.length && !providers.some((p) => Array.isArray(p.models))) {
+    // 旧版扁平档案（name/protocol/base_url/api_key/model/system_prompt，每档案一个模型）
+    providers = providers
+      .filter((p) => (p.model || '').trim())
+      .map((p) => ({
+        name: p.name,
+        protocol: p.protocol,
+        base_url: p.base_url || '',
+        api_key: p.api_key || '',
+        enabled: p.enabled !== false,
+        system_prompt: p.system_prompt || '',
+        models: [(p.model || '').trim()],
+      }));
+  }
+  if (!providers.length && map.ai_api_key && map.ai_model) {
+    // 最早的行业单配置键
+    providers = [{
+      name: '默认供应商',
       protocol: AI_PROTOCOLS.includes(map.ai_protocol) ? map.ai_protocol : 'openai',
       base_url: (map.ai_base_url || '').trim(),
       api_key: (map.ai_api_key || '').trim(),
-      model: (map.ai_model || '').trim(),
+      enabled: true,
       system_prompt: (map.ai_system_prompt || '').trim(),
+      models: [(map.ai_model || '').trim()],
     }];
   }
-  const defaultName = profiles.some((p) => p.name === map.ai_default) ? map.ai_default : (profiles[0] ? profiles[0].name : null);
-  return { enabled, profiles, defaultName };
+  // 规整字段
+  providers = providers.map((p) => ({
+    name: String(p.name).slice(0, 30),
+    protocol: AI_PROTOCOLS.includes(p.protocol) ? p.protocol : 'openai',
+    base_url: (p.base_url || '').trim(),
+    api_key: (p.api_key || '').trim(),
+    enabled: p.enabled !== false,
+    system_prompt: (p.system_prompt || '').trim(),
+    models: Array.isArray(p.models) ? p.models.map((m) => String(m).trim()).filter(Boolean).slice(0, 20) : [],
+  })).filter((p) => p.models.length);
+
+  // 默认模型键：兼容旧值（纯档案名 → 该档案第一个模型）
+  let defaultKey = map.ai_default || '';
+  const keys = [];
+  for (const p of providers) for (const m of p.models) keys.push(modelKey(p.name, m));
+  if (keys.length && !keys.includes(defaultKey)) {
+    const byName = providers.find((p) => p.name === defaultKey);
+    defaultKey = byName ? modelKey(byName.name, byName.models[0]) : (keys.includes(defaultKey) ? defaultKey : keys[0]);
+  }
+  if (!keys.length) defaultKey = '';
+  return { enabled, providers, defaultKey };
 }
 
-// 按名字取档案（找不到或被停用则回落到第一个可用的）；统一补全默认值供上游调用
-export function pickProfile(profiles, name) {
-  const list = Array.isArray(profiles) ? profiles : [];
-  const p = (name ? list.find((x) => x.name === name) : null) || list[0] || null;
-  if (!p) return null;
+// 供应商统一补全默认值，供上游调用
+function normalizeUpstream(p, modelId) {
   const protocol = AI_PROTOCOLS.includes(p.protocol) ? p.protocol : 'openai';
   return {
     name: p.name,
     protocol,
     baseUrl: (p.base_url || '').trim() || PROTOCOL_BASES[protocol],
     apiKey: (p.api_key || '').trim(),
-    model: (p.model || '').trim(),
+    model: modelId,
     systemPrompt: (p.system_prompt || '').trim(),
   };
 }
 
+// 按键 "供应商/模型" 取上游配置；key 为空取第一个可用模型；
+// key 指定了但不存在/不可用时返回 null（不静默回落，由调用方决定回退顺序）
+export function pickModel(providers, key) {
+  const list = Array.isArray(providers) ? providers : [];
+  const usable = list.filter((p) => p.enabled !== false && (p.api_key || '').trim() && (p.models || []).length);
+  if (!usable.length) return null;
+  if (key && typeof key === 'string' && key.includes('/')) {
+    const idx = key.indexOf('/');
+    const p = usable.find((x) => x.name === key.slice(0, idx));
+    const mi = key.slice(idx + 1);
+    if (p && p.models.includes(mi)) return normalizeUpstream(p, mi);
+    return null;
+  }
+  return normalizeUpstream(usable[0], usable[0].models[0]);
+}
+
+// 可切换的模型清单（前台菜单用，不含敏感信息）：{provider, name, key}
+export function listProviderModels(providers) {
+  const list = Array.isArray(providers) ? providers : [];
+  const out = [];
+  for (const p of list) {
+    if (p.enabled === false || !(p.api_key || '').trim()) continue;
+    for (const m of p.models || []) out.push({ provider: p.name, name: m, key: modelKey(p.name, m) });
+  }
+  return out;
+}
+
 // ---------- 上游请求构造 ----------
-// messages: [{role:'user'|'assistant', content}]，调用方已做条数/长度截断
+// upstream: {protocol, baseUrl, apiKey, model, systemPrompt}；messages: [{role, content}]
 export function buildUpstreamRequest(s, messages, stream) {
   if (s.protocol === 'anthropic') {
     // Anthropic 原生：system 提示词是独立字段；消息必须 user 开头、严格交替

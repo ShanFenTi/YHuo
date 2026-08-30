@@ -3,7 +3,7 @@
 // 响应：text/event-stream，统一格式 data: {"delta":"..."} / {"error":"..."} / [DONE]
 import { json, getCookie, SESSION_COOKIE } from '../../lib/util.js';
 import { USER_COOKIE, getUserSession, isValidSession } from '../../lib/auth.js';
-import { getAiProfiles, pickProfile, buildUpstreamRequest, sseNormalizer } from '../../lib/ai.js';
+import { getAiProviders, pickModel, buildUpstreamRequest, sseNormalizer } from '../../lib/ai.js';
 
 const MAX_MESSAGES = 20;   // 最多携带最近 20 条
 const MAX_CHARS = 4000;    // 单条消息最长字符
@@ -68,13 +68,14 @@ export async function onRequestPost({ request, env }) {
   const messages = sanitize(body && body.messages);
   if (!messages) return json({ ok: false, error: '没有有效的消息内容' }, 400);
 
-  const wantedModel = typeof (body && body.model) === 'string' ? body.model.slice(0, 100) : null;
+  const wantedModel = typeof (body && body.model) === 'string' ? body.model.slice(0, 140) : null;
 
   let pick;
   try {
-    const { enabled, profiles } = await getAiProfiles(env);
+    const { enabled, providers, defaultKey } = await getAiProviders(env);
     if (!enabled) return json({ ok: false, error: 'AI 对话还没有配置好，请等待站长在后台接入' }, 503);
-    pick = pickProfile(profiles, wantedModel); // 指定档案不存在/不可用时回落默认
+    // 回落顺序：指定模型 → 后台默认模型 → 第一个可用
+    pick = pickModel(providers, wantedModel) || pickModel(providers, defaultKey) || pickModel(providers, null);
   } catch {
     return json({ ok: false, error: 'AI 配置读取失败，请稍后再试' }, 500);
   }

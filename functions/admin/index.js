@@ -134,6 +134,55 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
   .bgset-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
   .bg-preview { width: 160px; height: 90px; object-fit: cover; border-radius: 10px; border: 1px solid var(--border); }
   .meta2 { color: var(--muted); font-size: 13px; }
+  /* AI 供应商管理：左侧列表 + 右侧详情（仿客户端模型设置页） */
+  .ai-mgr { display: flex; border: 1px solid var(--border); border-radius: 14px; overflow: hidden; background: var(--card); min-height: 420px; }
+  .ai-mgr-side { width: 220px; flex: none; border-right: 1px solid var(--border); padding: 10px 8px; display: flex; flex-direction: column; gap: 2px; }
+  .ai-mgr-group { font-size: 12px; color: var(--muted); padding: 6px 10px; }
+  .ai-mgr-item {
+    display: flex; align-items: center; gap: 8px; width: 100%;
+    padding: 9px 10px; border-radius: 10px; border: 1px solid transparent;
+    background: none; cursor: pointer; font-size: 14px; color: var(--fg);
+    text-align: left; font-family: inherit;
+  }
+  .ai-mgr-item:hover { background: var(--hover); }
+  .ai-mgr-item.active { border-color: var(--border); background: var(--chip); }
+  .ai-mgr-item.off { color: var(--muted); }
+  .ai-mgr-item .ai-mgr-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .ai-mgr-dot { flex: none; width: 8px; height: 8px; border-radius: 50%; background: #16a34a; }
+  .ai-mgr-item.off .ai-mgr-dot { background: transparent; border: 1px solid var(--muted); }
+  .ai-mgr-ico { flex: none; display: inline-flex; opacity: 0.7; }
+  .ai-mgr-add { margin-top: 8px; background: none; border: none; color: var(--fg); text-align: left; padding: 9px 10px; font-size: 14px; font-family: inherit; border-radius: 10px; cursor: pointer; }
+  .ai-mgr-add:hover { background: var(--hover); }
+  .ai-mgr-add:disabled { opacity: 0.5; cursor: default; }
+  .ai-mgr-main { flex: 1; padding: 18px 20px 20px; min-width: 0; }
+  .ai-mgr-empty { flex: 1; display: flex; align-items: center; justify-content: center; color: var(--muted); font-size: 13px; }
+  .ai-mgr-head { display: flex; align-items: center; gap: 10px; margin-bottom: 4px; }
+  .ai-mgr-head strong { font-size: 17px; }
+  .ai-mgr-flex { flex: 1; }
+  .ai-pill-on { font-size: 12px; font-weight: 700; color: #16a34a; background: rgba(22, 163, 74, 0.12); border-radius: 999px; padding: 3px 12px; }
+  .ai-pill-off { font-size: 12px; font-weight: 700; color: var(--muted); background: var(--chip); border-radius: 999px; padding: 3px 12px; }
+  .icon-mini {
+    flex: none; display: inline-flex; align-items: center; justify-content: center;
+    background: none; border: none; padding: 5px; border-radius: 8px; cursor: pointer;
+    color: var(--fg); opacity: 0.65; font-size: 14px; font-family: inherit;
+  }
+  .icon-mini:hover { background: var(--hover); opacity: 1; }
+  .ai-mgr-label { font-size: 13px; font-weight: 600; margin: 14px 0 4px; }
+  .ai-key-wrap { display: flex; align-items: center; gap: 6px; }
+  .ai-key-wrap input { flex: 1; margin: 0; }
+  .ai-model-row {
+    display: flex; align-items: center; gap: 6px;
+    border: 1px solid var(--border); border-radius: 10px;
+    padding: 6px 6px 6px 12px; margin-bottom: 6px;
+  }
+  .ai-model-row .ai-mr-name {
+    flex: 1; min-width: 0; font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+    font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .ai-model-row .ai-mr-def { flex: none; font-size: 11px; font-weight: 700; color: var(--bg); background: var(--fg); border-radius: 999px; padding: 1px 8px; }
+  .ai-model-row .star-def.on { color: #f59e0b; opacity: 1; }
+  .ai-mgr-addmodel { display: flex; gap: 6px; margin-top: 8px; }
+  .ai-mgr-addmodel input { flex: 1; margin: 0; }
   .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-bottom: 22px; }
   .stat {
     background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 16px 18px;
@@ -500,47 +549,64 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
   </div>
 
   <div id="aiPanel" hidden>
-    <p class="hint">配置前台「AI」界面的对话能力。可添加多个模型档案（各自的协议/地址/Key/模型/人设），前台对话界面可随时切换；指定一个默认档案。API Key 只存在站点数据库，不会下发给浏览器，对话统一走服务端代理转发。两种协议可覆盖主流服务商（GLM / DeepSeek / Kimi / Gemini 兼容端点等都是 OpenAI 兼容格式）。</p>
-    <p class="appear-label2">启用开关</p>
+    <p class="hint">管理模型供应商：配置后前台「AI」对话界面可切换使用；每个供应商可挂多个模型，其中一个是默认。API Key 只存在站点数据库，不下发浏览器，对话统一走服务端代理转发。"Chat Completions" 是 OpenAI 兼容格式，可覆盖 GLM / DeepSeek / Kimi / Gemini 兼容端点等主流服务商。</p>
+    <p class="appear-label2">全局开关</p>
     <div class="bgset-row">
       <button id="aiToggleBtn" class="ghost">停用 AI</button>
       <span class="meta2" id="aiStateText">状态读取中…</span>
     </div>
-    <p class="appear-label2">模型档案（前台可切换）</p>
-    <ul class="list" id="aiProfileList"></ul>
-    <div class="bgset-row" style="margin:10px 0 4px">
-      <button id="aiAddBtn">＋ 添加模型</button>
-      <span class="meta2" id="aiListHint"></span>
-    </div>
-
-    <div id="aiEditForm" hidden>
-      <p class="appear-label2" id="aiEditTitle">添加模型</p>
-      <input type="text" id="aiName" maxlength="30" placeholder="名称（前台切换按钮上显示，如 GLM / DeepSeek）">
-      <p class="appear-label2">接口协议</p>
-      <select id="aiProtocol">
-        <option value="openai">OpenAI 兼容（OpenAI / GLM / DeepSeek / Kimi 等）</option>
-        <option value="anthropic">Anthropic（Claude 原生）</option>
-      </select>
-      <p class="appear-label2">接口地址 Base URL（留空用所选协议的官方默认）</p>
-      <input type="text" id="aiBaseUrl" placeholder="https://api.openai.com/v1">
-      <p class="appear-label2">API Key</p>
-      <input type="password" id="aiApiKey" autocomplete="new-password" placeholder="sk-…">
-      <span class="meta2" id="aiKeyHint">未设置</span>
-      <p class="appear-label2">模型名（填好地址和 Key 后可自动获取列表）</p>
-      <input type="text" id="aiModel" list="aiModelList" placeholder="如 glm-4.7 / deepseek-chat / claude-sonnet-4-5">
-      <datalist id="aiModelList"></datalist>
-      <div class="bgset-row">
-        <button id="aiModelsBtn" class="ghost">↻ 获取模型列表</button>
-        <span class="meta2" id="aiModelHint">改协议/地址/Key 后会自动获取，点模型输入框下拉选择</span>
+    <p class="appear-label2">模型供应商</p>
+    <div class="ai-mgr">
+      <aside class="ai-mgr-side">
+        <div class="ai-mgr-group">自定义供应商</div>
+        <div id="aiProvList"></div>
+        <button id="aiAddBtn" class="ai-mgr-add" type="button">＋ 添加供应商</button>
+      </aside>
+      <div class="ai-mgr-main" id="aiProvDetail" hidden>
+        <div class="ai-mgr-head">
+          <strong id="aiProvName" hidden></strong>
+          <input type="text" id="aiProvNameInput" hidden maxlength="30" placeholder="供应商名称（如 deepseek）" style="max-width:240px;margin:0">
+          <button id="aiRenameBtn" class="icon-mini" type="button" title="重命名"></button>
+          <span id="aiProvState" class="ai-pill-on">已启用</span>
+          <button id="aiToggleProvBtn" class="ghost" type="button">禁用</button>
+          <span class="ai-mgr-flex"></span>
+          <button id="aiDelProvBtn" class="icon-mini" type="button" title="删除供应商"></button>
+        </div>
+        <p class="ai-mgr-label">Base URL</p>
+        <input type="text" id="aiBaseUrl" placeholder="https://api.deepseek.com（留空用所选格式的官方默认）">
+        <p class="ai-mgr-label">API 格式</p>
+        <select id="aiProtocol">
+          <option value="openai">Chat Completions（/chat/completions，OpenAI 兼容）</option>
+          <option value="anthropic">Anthropic Messages（/messages）</option>
+        </select>
+        <p class="ai-mgr-label">API Key</p>
+        <div class="ai-key-wrap">
+          <input type="password" id="aiApiKey" autocomplete="new-password" placeholder="sk-…">
+          <button id="aiKeyEye" class="icon-mini" type="button" title="显示/隐藏"></button>
+        </div>
+        <p class="meta2" id="aiKeyHint" style="margin-top:6px">未设置</p>
+        <p class="ai-mgr-label">系统提示词（AI 人设，可选，≤2000 字）</p>
+        <textarea id="aiPrompt" rows="3" maxlength="2000" placeholder="例如：回答简洁友好，默认用中文。"></textarea>
+        <p class="ai-mgr-label">模型列表</p>
+        <div id="aiModelRows"></div>
+        <div class="ai-mgr-addmodel" id="aiAddModelWrap" hidden>
+          <input type="text" id="aiNewModelInput" list="aiModelList" maxlength="100" placeholder="输入模型名（如 deepseek-v4-flash）">
+          <datalist id="aiModelList"></datalist>
+          <button id="aiAddModelOk" class="ghost" type="button">确定</button>
+          <button id="aiAddModelCancel" class="ghost" type="button">取消</button>
+        </div>
+        <div class="bgset-row" style="margin-top:10px">
+          <button id="aiAddModelBtn" class="ghost" type="button">＋ 添加模型</button>
+          <button id="aiFetchModelsBtn" class="ghost" type="button">↻ 自动获取</button>
+          <span class="meta2" id="aiModelHint">自动获取会请求该供应商的 /models 接口</span>
+        </div>
+        <div class="bgset-row" style="margin-top:18px">
+          <button id="aiSaveBtn" type="button">保存供应商</button>
+          <button id="aiTestBtn" class="ghost" type="button">测试连接</button>
+          <span class="meta2" id="aiTestResult"></span>
+        </div>
       </div>
-      <p class="appear-label2">系统提示词（AI 人设，可选，≤2000 字）</p>
-      <textarea id="aiPrompt" rows="4" maxlength="2000" placeholder="例如：你是 YHuo 个人主页的 AI 助手，回答简洁友好，默认用中文。"></textarea>
-      <div class="bgset-row" style="margin-top:18px">
-        <button id="aiSaveBtn">保存模型</button>
-        <button id="aiTestBtn" class="ghost">测试连接</button>
-        <button id="aiCancelBtn" class="ghost">取消</button>
-        <span class="meta2" id="aiTestResult"></span>
-      </div>
+      <div class="ai-mgr-empty" id="aiProvEmpty">从左侧选择一个供应商，或点"添加供应商"。</div>
     </div>
   </div>
     </main>
@@ -1645,17 +1711,27 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
     });
   });
 
-  // ---------- AI 设置（多模型档案，前台对话界面可切换） ----------
+  // ---------- AI 供应商管理（左侧列表 + 右侧详情，仿客户端模型设置） ----------
   var currentAiEnabled = false;
-  var aiProfiles = [];
-  var aiDefaultName = null;
-  var aiEditingName = null; // 编辑中的档案名；null = 新增
+  var aiProviders = [];
+  var aiDefaultKey = '';
+  var aiSelected = null;   // 当前选中的供应商名；'__new__' = 新增模式
+  var aiNewModels = [];    // 新增模式下的模型列表
+  var aiModelsSig = null;
+
+  var PENCIL_SVG = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>';
+  var TRASH_SVG = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="m19 6-1 14H6L5 6"/></svg>';
+  var EYE_SVG = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg>';
+  var BOX_SVG = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/></svg>';
+  $('aiRenameBtn').innerHTML = PENCIL_SVG;
+  $('aiDelProvBtn').innerHTML = TRASH_SVG;
+  $('aiKeyEye').innerHTML = EYE_SVG;
 
   function updateAiToggle(enabled, usable) {
     currentAiEnabled = !!enabled;
     $('aiToggleBtn').textContent = enabled ? '停用 AI' : '启用 AI';
     $('aiStateText').textContent = enabled
-      ? (usable ? '启用中，前台 AI 界面可正常对话' : '启用中，但还没有配好 Key 和模型名的档案，前台暂不可用')
+      ? (usable ? '启用中，前台 AI 界面可正常对话' : '启用中，但还没有可用的供应商（缺 Key 或模型），前台暂不可用')
       : '已停用，前台显示"接入中"';
   }
 
@@ -1664,126 +1740,289 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
     $('aiApiKey').placeholder = hasKey ? '留空保持不变' : 'sk-…';
   }
 
-  function loadAiSettings() {
+  function loadAiSettings(keepSelection) {
     api('/api/admin/ai').then(function (d) {
       if (!d.ok) { toast(d.error || '读取 AI 配置失败', 'err'); return; }
       updateAiToggle(d.enabled, d.usable);
-      aiProfiles = d.profiles || [];
-      aiDefaultName = d.default;
-      $('aiEditForm').hidden = true;
-      renderAiProfiles();
+      aiProviders = d.providers || [];
+      aiDefaultKey = d.default || '';
+      if (!keepSelection || aiSelected === '__new__' || !aiProviders.some(function (p) { return p.name === aiSelected; })) {
+        aiSelected = aiProviders.length ? aiProviders[0].name : null;
+      }
+      renderAiManager();
     }).catch(function () { toast('网络错误', 'err'); });
   }
 
-  function renderAiProfiles() {
-    var ul = $('aiProfileList');
-    ul.innerHTML = '';
-    $('aiAddBtn').disabled = aiProfiles.length >= 10;
-    if (!aiProfiles.length) {
-      $('aiListHint').textContent = '还没有模型档案，点"添加模型"配置第一个。';
+  function isNewMode() { return aiSelected === '__new__'; }
+
+  function selectedProvider() {
+    return aiProviders.filter(function (p) { return p.name === aiSelected; })[0] || null;
+  }
+
+  function renderAiManager() {
+    // 左侧供应商列表
+    var list = $('aiProvList');
+    list.innerHTML = '';
+    $('aiAddBtn').disabled = aiProviders.length >= 10;
+    aiProviders.forEach(function (p) {
+      var b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'ai-mgr-item' + (p.name === aiSelected ? ' active' : '') + (p.enabled ? '' : ' off');
+      var ic = document.createElement('span');
+      ic.className = 'ai-mgr-ico';
+      ic.innerHTML = BOX_SVG;
+      var nm = document.createElement('span');
+      nm.className = 'ai-mgr-name';
+      nm.textContent = p.name;
+      var dot = document.createElement('span');
+      dot.className = 'ai-mgr-dot';
+      dot.title = p.enabled ? '启用中' : '已停用';
+      b.appendChild(ic);
+      b.appendChild(nm);
+      b.appendChild(dot);
+      b.addEventListener('click', function () { aiSelected = p.name; renderAiManager(); });
+      list.appendChild(b);
+    });
+
+    // 右侧详情
+    var p = isNewMode() ? null : selectedProvider();
+    var showDetail = isNewMode() || !!p;
+    $('aiProvDetail').hidden = !showDetail;
+    $('aiProvEmpty').hidden = showDetail;
+    if (!showDetail) return;
+    $('aiTestResult').textContent = '';
+    $('aiAddModelWrap').hidden = true;
+    aiModelsSig = null;
+
+    if (isNewMode()) {
+      $('aiProvName').hidden = true;
+      $('aiProvNameInput').hidden = false;
+      $('aiProvNameInput').value = '';
+      $('aiRenameBtn').hidden = true;
+      $('aiDelProvBtn').hidden = true;
+      $('aiProvState').hidden = true;
+      $('aiToggleProvBtn').hidden = true;
+      $('aiBaseUrl').value = '';
+      $('aiProtocol').value = 'openai';
+      $('aiPrompt').value = '';
+      $('aiApiKey').value = '';
+      aiKeyHint(false, '');
+      renderModelRows(null, aiNewModels);
       return;
     }
-    $('aiListHint').textContent = '共 ' + aiProfiles.length + ' 个档案，前台对话界面可切换；默认档案是「' + (aiDefaultName || '未设置') + '」。';
-    aiProfiles.forEach(function (p) {
-      var li = document.createElement('li');
-      var t = document.createElement('span');
-      t.className = 'title';
-      t.textContent = (p.name === aiDefaultName ? '★ ' : '') + p.name;
-      var meta = document.createElement('span');
-      meta.className = 'meta';
-      meta.textContent = p.protocol_label + ' · ' + p.model + (p.has_key ? '' : ' · ⚠️ 未填 Key');
-      var acts = document.createElement('span');
-      acts.className = 'row-actions';
-      function mkBtn(text, cls, fn) {
-        var b = document.createElement('button');
-        b.className = cls;
-        b.textContent = text;
-        b.addEventListener('click', fn);
-        return b;
-      }
-      if (p.name !== aiDefaultName) {
-        acts.appendChild(mkBtn('设为默认', 'ghost', function () {
-          api('/api/admin/ai', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'default', name: p.name }) })
-            .then(function (d) {
-              if (d.ok) { aiDefaultName = d.default; renderAiProfiles(); toast('默认模型已设为「' + p.name + '」，前台新对话即刻生效', 'ok'); }
-              else toast(d.error || '操作失败', 'err');
-            }).catch(function () { toast('网络错误', 'err'); });
-        }));
-      }
-      acts.appendChild(mkBtn('编辑', 'ghost', function () { openAiEdit(p); }));
-      acts.appendChild(mkBtn('删除', 'danger', function () {
-        ask({
-          title: '删除模型档案',
-          msg: '删除「' + p.name + '」？前台将不再显示该选项（不影响其他档案）。',
-          okText: '删除', danger: true,
-          cb: function (ok) {
-            if (!ok) return;
-            api('/api/admin/ai', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'delete', name: p.name }) })
-              .then(function (d) {
-                if (d.ok) { loadAiSettings(); toast('已删除「' + p.name + '」', 'ok'); }
-                else toast(d.error || '操作失败', 'err');
-              }).catch(function () { toast('网络错误', 'err'); });
-          }
-        });
-      }));
-      li.appendChild(t);
-      li.appendChild(meta);
-      li.appendChild(acts);
-      ul.appendChild(li);
-    });
-  }
 
-  function openAiEdit(profile) {
-    aiEditingName = profile ? profile.name : null;
-    $('aiEditTitle').textContent = profile ? '编辑模型：' + profile.name : '添加模型';
-    $('aiName').value = profile ? profile.name : '';
-    $('aiName').disabled = !!profile; // 名称是档案主键，编辑时不可改（改名=删掉重建）
-    $('aiProtocol').value = profile ? profile.protocol : 'openai';
-    $('aiBaseUrl').value = profile ? (profile.base_url || '') : '';
-    $('aiModel').value = profile ? (profile.model || '') : '';
-    $('aiPrompt').value = profile ? (profile.system_prompt || '') : '';
+    $('aiProvName').hidden = false;
+    $('aiProvNameInput').hidden = true;
+    $('aiRenameBtn').hidden = false;
+    $('aiDelProvBtn').hidden = false;
+    $('aiProvState').hidden = false;
+    $('aiToggleProvBtn').hidden = false;
+    $('aiProvName').textContent = p.name;
+    updateProvStateUi(p);
+    $('aiBaseUrl').value = p.base_url || '';
+    $('aiProtocol').value = p.protocol;
+    $('aiPrompt').value = p.system_prompt || '';
     $('aiApiKey').value = '';
-    aiKeyHint(profile ? profile.has_key : false, profile ? profile.key_hint : '');
-    $('aiTestResult').textContent = '';
-    $('aiModelList').innerHTML = '';
-    aiModelsSig = null;
-    $('aiEditForm').hidden = false;
-    $('aiEditForm').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    setEye(false);
+    aiKeyHint(p.has_key, p.key_hint);
+    renderModelRows(p, p.models);
   }
 
-  function closeAiEdit() {
-    $('aiEditForm').hidden = true;
-    aiEditingName = null;
+  function updateProvStateUi(p) {
+    var pill = $('aiProvState');
+    var tbtn = $('aiToggleProvBtn');
+    if (p.enabled) {
+      pill.textContent = '已启用';
+      pill.className = 'ai-pill-on';
+      tbtn.textContent = '禁用';
+    } else {
+      pill.textContent = '已停用';
+      pill.className = 'ai-pill-off';
+      tbtn.textContent = '启用';
+    }
   }
 
-  // 保存编辑表单（Key 留空 = 保留该档案原 Key）。测试前也会先走一遍保存。
-  function saveAiSettings(done) {
-    var profile = {
-      name: $('aiName').value.trim(),
+  function modelKeyOf(pn, m) { return pn + '/' + m; }
+
+  function renderModelRows(p, models) {
+    var wrap = $('aiModelRows');
+    wrap.innerHTML = '';
+    models.forEach(function (m) {
+      var row = document.createElement('div');
+      row.className = 'ai-model-row';
+      var nm = document.createElement('span');
+      nm.className = 'ai-mr-name';
+      nm.textContent = m;
+      row.appendChild(nm);
+      var isDef = !!p && modelKeyOf(p.name, m) === aiDefaultKey;
+      if (isDef) {
+        var def = document.createElement('span');
+        def.className = 'ai-mr-def';
+        def.textContent = '默认';
+        row.appendChild(def);
+      }
+      if (p) {
+        var star = document.createElement('button');
+        star.type = 'button';
+        star.className = 'icon-mini star-def' + (isDef ? ' on' : '');
+        star.title = isDef ? '当前默认模型' : '设为默认';
+        star.textContent = isDef ? '★' : '☆';
+        star.addEventListener('click', function () {
+          api('/api/admin/ai', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'default', key: modelKeyOf(p.name, m) }),
+          }).then(function (d) {
+            if (d.ok) { aiDefaultKey = d.default; renderAiManager(); toast('默认模型已设为 ' + d.default, 'ok'); }
+            else toast(d.error || '操作失败', 'err');
+          }).catch(function () { toast('网络错误', 'err'); });
+        });
+        row.appendChild(star);
+
+        var edit = document.createElement('button');
+        edit.type = 'button';
+        edit.className = 'icon-mini';
+        edit.title = '重命名模型';
+        edit.innerHTML = PENCIL_SVG;
+        edit.addEventListener('click', function () {
+          ask({
+            title: '重命名模型',
+            msg: '「' + p.name + '」里的模型 ' + m + ' 改名为：',
+            input: true, value: m, max: 100, okText: '确定',
+            cb: function (ok, val) {
+              if (!ok || !val || !val.trim() || val.trim() === m) return;
+              var np = currentProviderDraft();
+              if (!np) return;
+              np.models = np.models.map(function (x) { return x === m ? val.trim() : x; });
+              saveProviderDraft(np);
+            }
+          });
+        });
+        row.appendChild(edit);
+
+        var del = document.createElement('button');
+        del.type = 'button';
+        del.className = 'icon-mini';
+        del.title = '删除模型';
+        del.innerHTML = TRASH_SVG;
+        del.addEventListener('click', function () {
+          if (models.length <= 1) { toast('至少保留一个模型；不要这个供应商可用右上角删除', 'err'); return; }
+          ask({
+            title: '删除模型',
+            msg: '从「' + p.name + '」删除模型 ' + m + '？',
+            okText: '删除', danger: true,
+            cb: function (ok) {
+              if (!ok) return;
+              var np = currentProviderDraft();
+              if (!np) return;
+              np.models = np.models.filter(function (x) { return x !== m; });
+              saveProviderDraft(np);
+            }
+          });
+        });
+        row.appendChild(del);
+      }
+      wrap.appendChild(row);
+    });
+    if (!models.length) {
+      var empty = document.createElement('p');
+      empty.className = 'meta2';
+      empty.textContent = '还没有模型，点下方"＋ 添加模型"。';
+      wrap.appendChild(empty);
+    }
+  }
+
+  // 从表单收集供应商草稿（models 用内存最新列表；api_key 留空 = 保留原 Key）
+  function currentProviderDraft() {
+    var models = isNewMode() ? aiNewModels.slice() : (selectedProvider() ? selectedProvider().models.slice() : []);
+    return {
+      name: isNewMode() ? $('aiProvNameInput').value.trim() : aiSelected,
       protocol: $('aiProtocol').value,
       base_url: $('aiBaseUrl').value.trim(),
-      model: $('aiModel').value.trim(),
-      system_prompt: $('aiPrompt').value,
       api_key: $('aiApiKey').value.trim(),
+      system_prompt: $('aiPrompt').value,
+      models: models,
     };
+  }
+
+  function saveProviderDraft(np, done) {
     api('/api/admin/ai', {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action: 'save', profile: profile }),
-    }).then(done).catch(function () { done({ ok: false, error: '网络错误' }); });
+      body: JSON.stringify({ action: 'save', provider: np }),
+    }).then(function (d) {
+      if (!d.ok) { toast(d.error || '保存失败', 'err'); if (done) done(d); return; }
+      toast('已保存「' + d.name + '」，前台即刻生效', 'ok');
+      aiSelected = d.name;
+      loadAiSettings(true);
+      if (done) done(d);
+    }).catch(function () { toast('网络错误', 'err'); });
   }
 
   $('aiSaveBtn').addEventListener('click', function () {
-    saveAiSettings(function (d) {
-      if (!d.ok) { toast(d.error || '保存失败', 'err'); return; }
-      toast('模型「' + d.name + '」已保存，前台即刻生效', 'ok');
-      loadAiSettings();
+    var np = currentProviderDraft();
+    if (isNewMode() && !np.name) { toast('先填写供应商名称', 'err'); $('aiProvNameInput').focus(); return; }
+    if (!np.models.length) { toast('至少添加一个模型', 'err'); return; }
+    saveProviderDraft(np);
+  });
+
+  $('aiAddBtn').addEventListener('click', function () {
+    aiSelected = '__new__';
+    aiNewModels = [];
+    renderAiManager();
+    $('aiProvNameInput').focus();
+  });
+
+  $('aiRenameBtn').addEventListener('click', function () {
+    ask({
+      title: '重命名供应商',
+      msg: '「' + aiSelected + '」改名为：',
+      input: true, value: aiSelected, max: 30, okText: '确定',
+      cb: function (ok, val) {
+        if (!ok || !val || !val.trim() || val.trim() === aiSelected) return;
+        api('/api/admin/ai', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'rename', from: aiSelected, to: val.trim() }),
+        }).then(function (d) {
+          if (d.ok) { aiSelected = d.name; loadAiSettings(true); toast('已重命名为「' + d.name + '」', 'ok'); }
+          else toast(d.error || '操作失败', 'err');
+        }).catch(function () { toast('网络错误', 'err'); });
+      }
     });
   });
 
-  $('aiCancelBtn').addEventListener('click', closeAiEdit);
+  $('aiToggleProvBtn').addEventListener('click', function () {
+    var p = selectedProvider();
+    if (!p) return;
+    api('/api/admin/ai', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'toggle', name: p.name, enabled: !p.enabled }),
+    }).then(function (d) {
+      if (d.ok) { loadAiSettings(true); toast(d.enabled ? '「' + d.name + '」已启用' : '「' + d.name + '」已停用，前台切换列表里不再显示', 'ok'); }
+      else toast(d.error || '操作失败', 'err');
+    }).catch(function () { toast('网络错误', 'err'); });
+  });
 
-  $('aiAddBtn').addEventListener('click', function () { openAiEdit(null); });
+  $('aiDelProvBtn').addEventListener('click', function () {
+    ask({
+      title: '删除供应商',
+      msg: '删除「' + aiSelected + '」及其全部模型？前台将不再显示该供应商下的选项。此操作不可恢复。',
+      okText: '删除', danger: true,
+      cb: function (ok) {
+        if (!ok) return;
+        api('/api/admin/ai', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'delete', name: aiSelected }),
+        }).then(function (d) {
+          if (d.ok) { aiSelected = null; loadAiSettings(false); toast('已删除', 'ok'); }
+          else toast(d.error || '操作失败', 'err');
+        }).catch(function () { toast('网络错误', 'err'); });
+      }
+    });
+  });
 
   $('aiToggleBtn').addEventListener('click', function () {
     api('/api/admin/ai', {
@@ -1793,33 +2032,70 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
     }).then(function (d) {
       if (!d.ok) { toast(d.error || '操作失败', 'err'); return; }
       toast(d.enabled ? 'AI 已启用' : 'AI 已停用，前台恢复"接入中"文案', 'ok');
-      loadAiSettings();
+      loadAiSettings(true);
     }).catch(function () { toast('网络错误', 'err'); });
   });
 
   $('aiTestBtn').addEventListener('click', function () {
     $('aiTestResult').textContent = '测试中…（先保存再用当前配置实测）';
-    saveAiSettings(function (d) {
+    var np = currentProviderDraft();
+    if (isNewMode() && !np.name) { $('aiTestResult').textContent = '✕ 先填写供应商名称'; return; }
+    if (!np.models.length) { $('aiTestResult').textContent = '✕ 至少添加一个模型'; return; }
+    saveProviderDraft(np, function (d) {
       if (!d.ok) { $('aiTestResult').textContent = '保存失败：' + (d.error || '未知错误'); return; }
-      aiEditingName = d.name;
-      var editing = aiProfiles.filter(function (p) { return p.name === d.name; })[0];
-      if (editing) { aiKeyHint(true, d.key_hint); } else { aiKeyHint(false, ''); }
-      api('/api/admin/ai/test', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: d.name }) })
-        .then(function (t) {
-          $('aiTestResult').textContent = t.ok
-            ? '✓ 「' + t.name + '」连接成功（' + t.ms + 'ms）：' + t.reply
-            : '✕ ' + (t.error || '未知错误');
-        }).catch(function () { $('aiTestResult').textContent = '✕ 网络错误'; });
+      api('/api/admin/ai/test', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ key: d.name + '/' + np.models[0] }),
+      }).then(function (t) {
+        $('aiTestResult').textContent = t.ok
+          ? '✓ 「' + t.name + '」连接成功（' + t.ms + 'ms）：' + t.reply
+          : '✕ ' + (t.error || '未知错误');
+      }).catch(function () { $('aiTestResult').textContent = '✕ 网络错误'; });
     });
   });
 
-  // ---------- AI 模型列表自动获取（服务端代理 GET {base}/models，key 不出后端） ----------
-  var aiModelsSig = null; // 上次获取时的配置指纹，防重复拉取
+  // ---------- API Key 显示/隐藏 ----------
+  function setEye(on) {
+    $('aiApiKey').type = on ? 'text' : 'password';
+  }
+  $('aiKeyEye').addEventListener('click', function () {
+    setEye($('aiApiKey').type === 'password');
+  });
+
+  // ---------- 模型的增删改 + 模型列表自动获取（服务端代理 /models，key 不出后端） ----------
+  $('aiAddModelBtn').addEventListener('click', function () {
+    $('aiAddModelWrap').hidden = false;
+    $('aiNewModelInput').value = '';
+    $('aiNewModelInput').focus();
+  });
+  $('aiAddModelCancel').addEventListener('click', function () {
+    $('aiAddModelWrap').hidden = true;
+  });
+  function commitAddModel() {
+    var val = $('aiNewModelInput').value.trim();
+    if (!val) { $('aiNewModelInput').focus(); return; }
+    var models = isNewMode() ? aiNewModels : (selectedProvider() ? selectedProvider().models : []);
+    if (!models) return;
+    if (models.indexOf(val) !== -1) { toast('模型已存在', 'err'); return; }
+    if (isNewMode()) {
+      aiNewModels.push(val);
+      renderAiManager();
+    } else {
+      var np = currentProviderDraft();
+      np.models.push(val);
+      saveProviderDraft(np);
+    }
+  }
+  $('aiAddModelOk').addEventListener('click', commitAddModel);
+  $('aiNewModelInput').addEventListener('keydown', function (e) {
+    if (e.key === 'Enter') { e.preventDefault(); commitAddModel(); }
+  });
 
   function fetchAiModels(manual) {
     var key = $('aiApiKey').value.trim();
     // 指纹里 Key 只取尾 4 位：不完整输入不打到服务端
-    var sig = aiEditingName + '|' + $('aiProtocol').value + '|' + $('aiBaseUrl').value.trim() + '|' + (key ? key.length + ':' + key.slice(-4) : (aiEditingName ? 'profile' : 'none'));
+    var sig = aiSelected + '|' + $('aiProtocol').value + '|' + $('aiBaseUrl').value.trim() + '|' + (key ? key.length + ':' + key.slice(-4) : (isNewMode() ? 'none' : 'profile'));
     if (!manual && sig === aiModelsSig) return;
     aiModelsSig = sig;
     $('aiModelHint').textContent = '获取模型列表中…';
@@ -1827,7 +2103,7 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        name: aiEditingName, // 编辑已有档案时，Key 留空可回落到该档案已保存的 Key
+        name: isNewMode() ? null : aiSelected, // 编辑已有供应商时，Key 留空可回落到已保存的 Key
         protocol: $('aiProtocol').value,
         base_url: $('aiBaseUrl').value.trim(),
         api_key: key,
@@ -1841,17 +2117,16 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
           o.value = m;
           dl.appendChild(o);
         });
-        $('aiModelHint').textContent = '已获取 ' + d.models.length + ' 个模型，点模型输入框下拉选择';
-        if (!$('aiModel').value.trim() && d.models.length === 1) $('aiModel').value = d.models[0];
+        $('aiModelHint').textContent = '已获取 ' + d.models.length + ' 个模型，添加时输入框可下拉选择';
       } else {
         $('aiModelHint').textContent = '获取失败：' + (d.error || '未知错误');
       }
     }).catch(function () {
-      $('aiModelHint').textContent = '获取失败：网络错误，可手动填写模型名';
+      $('aiModelHint').textContent = '获取失败：网络错误，可手动输入模型名';
     });
   }
 
-  $('aiModelsBtn').addEventListener('click', function () { fetchAiModels(true); });
+  $('aiFetchModelsBtn').addEventListener('click', function () { fetchAiModels(true); });
   $('aiBaseUrl').addEventListener('change', function () { fetchAiModels(false); });
   $('aiApiKey').addEventListener('change', function () { fetchAiModels(false); });
   $('aiProtocol').addEventListener('change', function () { fetchAiModels(false); });

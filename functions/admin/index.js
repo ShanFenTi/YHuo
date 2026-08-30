@@ -204,6 +204,9 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
     background: color-mix(in srgb, var(--ok) 13%, transparent);
     border-radius: 999px; padding: 2px 9px;
   }
+  .ai-model-row select.ai-mr-tag {
+    flex: none; max-width: none; padding: 4px 6px; font-size: 12px; border-radius: 8px; margin: 0;
+  }
   .ai-model-row .star-def.on { color: var(--warn); opacity: 1; }
   .ai-model-row .star-def svg { display: block; }
   .ai-mgr-addmodel { display: flex; gap: 6px; margin-top: 8px; }
@@ -629,6 +632,12 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
         <div class="ai-mgr-addmodel" id="aiAddModelWrap" hidden>
           <input type="text" id="aiNewModelInput" list="aiModelList" maxlength="100" placeholder="输入模型名（如 deepseek-v4-flash）">
           <datalist id="aiModelList"></datalist>
+          <select id="aiNewModelTag" class="ai-mr-tag" title="模型类型标签（前台菜单里显示）">
+            <option value="">无标签</option>
+            <option value="文本">文本</option>
+            <option value="视觉">视觉</option>
+            <option value="推理">推理</option>
+          </select>
           <button id="aiAddModelOk" class="ghost" type="button">确定</button>
           <button id="aiAddModelCancel" class="ghost" type="button">取消</button>
         </div>
@@ -1914,6 +1923,22 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
 
   function modelKeyOf(pn, m) { return pn + '/' + m; }
 
+  var MODEL_TAGS = ['', '文本', '视觉', '推理'];
+  function tagSelect(value, onchange) {
+    var sel = document.createElement('select');
+    sel.className = 'ai-mr-tag';
+    sel.title = '模型类型标签（前台切换菜单里显示）';
+    MODEL_TAGS.forEach(function (t) {
+      var o = document.createElement('option');
+      o.value = t;
+      o.textContent = t === '' ? '无标签' : t;
+      sel.appendChild(o);
+    });
+    sel.value = value || '';
+    sel.addEventListener('change', function () { onchange(sel.value); });
+    return sel;
+  }
+
   function renderModelRows(p, models) {
     var wrap = $('aiModelRows');
     wrap.innerHTML = '';
@@ -1922,9 +1947,15 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
       row.className = 'ai-model-row';
       var nm = document.createElement('span');
       nm.className = 'ai-mr-name';
-      nm.textContent = m;
+      nm.textContent = m.id;
       row.appendChild(nm);
-      var isDef = !!p && modelKeyOf(p.name, m) === aiDefaultKey;
+      row.appendChild(tagSelect(m.tag, function (val) {
+        var np = currentProviderDraft();
+        if (!np) return;
+        np.models = np.models.map(function (x) { return x.id === m.id ? { id: x.id, tag: val } : x; });
+        saveProviderDraft(np);
+      }));
+      var isDef = !!p && modelKeyOf(p.name, m.id) === aiDefaultKey;
       if (isDef) {
         var def = document.createElement('span');
         def.className = 'ai-mr-def';
@@ -1932,16 +1963,16 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
         row.appendChild(def);
       }
       if (p) {
-      var star = document.createElement('button');
-      star.type = 'button';
-      star.className = 'icon-mini star-def' + (isDef ? ' on' : '');
-      star.title = isDef ? '当前默认模型' : '设为默认';
-      star.innerHTML = isDef ? ICO.starOn : ICO.starOff;
+        var star = document.createElement('button');
+        star.type = 'button';
+        star.className = 'icon-mini star-def' + (isDef ? ' on' : '');
+        star.title = isDef ? '当前默认模型' : '设为默认';
+        star.innerHTML = isDef ? ICO.starOn : ICO.starOff;
         star.addEventListener('click', function () {
           api('/api/admin/ai', {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ action: 'default', key: modelKeyOf(p.name, m) }),
+            body: JSON.stringify({ action: 'default', key: modelKeyOf(p.name, m.id) }),
           }).then(function (d) {
             if (d.ok) { aiDefaultKey = d.default; renderAiManager(); toast('默认模型已设为 ' + d.default, 'ok'); }
             else toast(d.error || '操作失败', 'err');
@@ -1957,13 +1988,13 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
         edit.addEventListener('click', function () {
           ask({
             title: '重命名模型',
-            msg: '「' + p.name + '」里的模型 ' + m + ' 改名为：',
-            input: true, value: m, max: 100, okText: '确定',
+            msg: '「' + p.name + '」里的模型 ' + m.id + ' 改名为：',
+            input: true, value: m.id, max: 100, okText: '确定',
             cb: function (ok, val) {
-              if (!ok || !val || !val.trim() || val.trim() === m) return;
+              if (!ok || !val || !val.trim() || val.trim() === m.id) return;
               var np = currentProviderDraft();
               if (!np) return;
-              np.models = np.models.map(function (x) { return x === m ? val.trim() : x; });
+              np.models = np.models.map(function (x) { return x.id === m.id ? { id: val.trim(), tag: x.tag } : x; });
               saveProviderDraft(np);
             }
           });
@@ -1979,13 +2010,13 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
           if (models.length <= 1) { toast('至少保留一个模型；不要这个供应商可用右上角删除', 'err'); return; }
           ask({
             title: '删除模型',
-            msg: '从「' + p.name + '」删除模型 ' + m + '？',
+            msg: '从「' + p.name + '」删除模型 ' + m.id + '？',
             okText: '删除', danger: true,
             cb: function (ok) {
               if (!ok) return;
               var np = currentProviderDraft();
               if (!np) return;
-              np.models = np.models.filter(function (x) { return x !== m; });
+              np.models = np.models.filter(function (x) { return x.id !== m.id; });
               saveProviderDraft(np);
             }
           });
@@ -2116,7 +2147,7 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
       api('/api/admin/ai/test', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ key: d.name + '/' + np.models[0] }),
+        body: JSON.stringify({ key: d.name + '/' + np.models[0].id }),
       }).then(function (t) {
         setTestResult(t.ok
           ? '✓ 「' + t.name + '」连接成功（' + t.ms + 'ms）：' + t.reply
@@ -2148,13 +2179,14 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
     if (!val) { $('aiNewModelInput').focus(); return; }
     var models = isNewMode() ? aiNewModels : (selectedProvider() ? selectedProvider().models : []);
     if (!models) return;
-    if (models.indexOf(val) !== -1) { toast('模型已存在', 'err'); return; }
+    if (models.some(function (x) { return x.id === val; })) { toast('模型已存在', 'err'); return; }
+    var entry = { id: val, tag: $('aiNewModelTag').value || '' };
     if (isNewMode()) {
-      aiNewModels.push(val);
+      aiNewModels.push(entry);
       renderAiManager();
     } else {
       var np = currentProviderDraft();
-      np.models.push(val);
+      np.models.push(entry);
       saveProviderDraft(np);
     }
   }

@@ -17,6 +17,27 @@ export function modelKey(providerName, modelId) {
   return providerName + '/' + modelId;
 }
 
+// 模型列表规整：兼容字符串（旧格式，无标签）和 {id, tag} 对象；按 id 去重，标签 ≤8 字
+export function normalizeModelList(raw) {
+  if (!Array.isArray(raw)) return [];
+  const out = [];
+  const seen = new Set();
+  for (const m of raw) {
+    let id = '';
+    let tag = '';
+    if (typeof m === 'string') {
+      id = m.trim();
+    } else if (m && typeof m === 'object') {
+      id = typeof m.id === 'string' ? m.id.trim() : '';
+      tag = typeof m.tag === 'string' ? m.tag.trim().slice(0, 8) : '';
+    }
+    if (!id || seen.has(id)) continue;
+    seen.add(id);
+    out.push({ id: id.slice(0, 100), tag });
+  }
+  return out.slice(0, 20);
+}
+
 export async function getAiProviders(env) {
   await ensureSchema(env);
   const { results } = await env.DB.prepare(
@@ -61,7 +82,7 @@ export async function getAiProviders(env) {
       models: [(map.ai_model || '').trim()],
     }];
   }
-  // 规整字段
+  // 规整字段（models 统一为 [{id, tag}]，旧字符串格式自动迁移）
   providers = providers.map((p) => ({
     name: String(p.name).slice(0, 30),
     protocol: AI_PROTOCOLS.includes(p.protocol) ? p.protocol : 'openai',
@@ -69,13 +90,13 @@ export async function getAiProviders(env) {
     api_key: (p.api_key || '').trim(),
     enabled: p.enabled !== false,
     system_prompt: (p.system_prompt || '').trim(),
-    models: Array.isArray(p.models) ? p.models.map((m) => String(m).trim()).filter(Boolean).slice(0, 20) : [],
+    models: normalizeModelList(p.models),
   })).filter((p) => p.models.length);
 
   // 默认模型键：兼容旧值（纯档案名 → 该档案第一个模型）
   let defaultKey = map.ai_default || '';
   const keys = [];
-  for (const p of providers) for (const m of p.models) keys.push(modelKey(p.name, m));
+  for (const p of providers) for (const m of p.models) keys.push(modelKey(p.name, m.id));
   if (keys.length && !keys.includes(defaultKey)) {
     const byName = providers.find((p) => p.name === defaultKey);
     defaultKey = byName ? modelKey(byName.name, byName.models[0]) : (keys.includes(defaultKey) ? defaultKey : keys[0]);
@@ -107,19 +128,22 @@ export function pickModel(providers, key) {
     const idx = key.indexOf('/');
     const p = usable.find((x) => x.name === key.slice(0, idx));
     const mi = key.slice(idx + 1);
-    if (p && p.models.includes(mi)) return normalizeUpstream(p, mi);
+    const m = p && p.models.find((x) => x.id === mi);
+    if (m) return normalizeUpstream(p, m.id);
     return null;
   }
-  return normalizeUpstream(usable[0], usable[0].models[0]);
+  return normalizeUpstream(usable[0], usable[0].models[0].id);
 }
 
-// 可切换的模型清单（前台菜单用，不含敏感信息）：{provider, name, key}
+// 可切换的模型清单（前台菜单用，不含敏感信息）：{provider, name, key, tag}
 export function listProviderModels(providers) {
   const list = Array.isArray(providers) ? providers : [];
   const out = [];
   for (const p of list) {
     if (p.enabled === false || !(p.api_key || '').trim()) continue;
-    for (const m of p.models || []) out.push({ provider: p.name, name: m, key: modelKey(p.name, m) });
+    for (const m of p.models || []) {
+      out.push({ provider: p.name, name: m.id, key: modelKey(p.name, m.id), tag: m.tag || '' });
+    }
   }
   return out;
 }

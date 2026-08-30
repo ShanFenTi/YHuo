@@ -9,7 +9,7 @@
 //   {action:'default', key}                       → 设默认模型（"供应商/模型"）
 import { json } from '../../lib/util.js';
 import { ensureSchema } from '../../lib/migrate.js';
-import { getAiProviders, AI_PROTOCOLS, modelKey } from '../../lib/ai.js';
+import { getAiProviders, AI_PROTOCOLS, modelKey, normalizeModelList } from '../../lib/ai.js';
 
 const MAX_PROVIDERS = 10;
 const MAX_MODELS = 20;
@@ -71,9 +71,7 @@ function normalizeProvider(raw) {
   if (!AI_PROTOCOLS.includes(raw.protocol)) return { error: '未知 API 格式' };
   const base_url = String(raw.base_url || '').trim();
   if (base_url && !/^https?:\/\//i.test(base_url)) return { error: '接口地址要以 http(s):// 开头' };
-  const models = Array.isArray(raw.models)
-    ? [...new Set(raw.models.map((m) => String(m || '').trim().slice(0, 100)).filter(Boolean))]
-    : [];
+  const models = normalizeModelList(raw.models);
   if (models.length > MAX_MODELS) return { error: '每个供应商最多 ' + MAX_MODELS + ' 个模型' };
   return {
     provider: {
@@ -121,7 +119,7 @@ export async function onRequestPut({ request, env }) {
     }
     // 默认键失效（供应商被改没了原模型）时回落到它的第一个模型
     const allKeys = [];
-    for (const p of providers) for (const m of p.models) allKeys.push(modelKey(p.name, m));
+    for (const p of providers) for (const m of p.models) allKeys.push(modelKey(p.name, m.id));
     const defaultKey = allKeys.includes(state.defaultKey) ? state.defaultKey : modelKey(np.name, np.models[0]);
     await saveProviders(env, providers, defaultKey);
     return json({ ok: true, name: np.name, default: defaultKey, key_hint: '····' + np.api_key.slice(-4) });
@@ -157,7 +155,7 @@ export async function onRequestPut({ request, env }) {
     if (next.length === providers.length) return json({ ok: false, error: '供应商不存在' }, 404);
     let defaultKey = state.defaultKey;
     const allKeys = [];
-    for (const p of next) for (const m of p.models) allKeys.push(modelKey(p.name, m));
+    for (const p of next) for (const m of p.models) allKeys.push(modelKey(p.name, m.id));
     if (!allKeys.includes(defaultKey)) defaultKey = allKeys[0] || '';
     await saveProviders(env, next, defaultKey);
     return json({ ok: true, default: defaultKey });

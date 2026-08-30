@@ -1269,9 +1269,7 @@
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
-    }
-
-    .ai-model-item .chk {
+    }    .ai-model-item .chk {
       flex: none;
       margin-left: auto;
       color: var(--apple-primary);
@@ -7343,10 +7341,17 @@
           it.setAttribute('aria-selected', m.key === aiCurrentModel ? 'true' : 'false');
           var nm = document.createElement('span');
           nm.textContent = m.name;
+          it.appendChild(nm);
+          // 类型标签（后台设置：文本/视觉/推理）
+          if (m.tag) {
+            var tag = document.createElement('span');
+            tag.className = 'tag';
+            tag.textContent = m.tag;
+            it.appendChild(tag);
+          }
           var chk = document.createElement('span');
           chk.className = 'chk';
           chk.textContent = '✓';
-          it.appendChild(nm);
           it.appendChild(chk);
           it.addEventListener('click', function () {
             if (m.key !== aiCurrentModel) {

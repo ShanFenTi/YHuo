@@ -446,6 +446,32 @@
       border-color: var(--apple-primary);
     }
 
+    /* 顶栏头像三态：默认人形图标 / 已登录首字徽章 / 有头像显示圆图 */
+    .login-toggle .avatar-letter {
+      display: none;
+      font-size: 15px;
+      font-weight: 600;
+      line-height: 1;
+    }
+
+    .login-toggle.logged-in .avatar-letter { display: block; }
+    .login-toggle.logged-in .login-default-icon { display: none; }
+
+    .login-toggle .avatar-img { display: none; }
+
+    .login-toggle.has-avatar .avatar-img {
+      display: block;
+      width: calc(100% + 2px);
+      height: calc(100% + 2px);
+      margin: -1px;
+      object-fit: cover;
+      border-radius: 999px;
+    }
+
+    .login-toggle.has-avatar .avatar-letter,
+    .login-toggle.has-avatar .login-default-icon { display: none; }
+    .login-toggle.has-avatar { overflow: hidden; }
+
     .theme-toggle:hover {
       background: var(--apple-secondary);
       transform: scale(1.06);
@@ -721,6 +747,127 @@
     .apple-card.appear-panel:hover {
       transform: none;
     }
+
+    /* ===== 个人中心抽屉（头像/资料/退出）：交互与外观抽屉一致 ===== */
+    .profile-dock {
+      position: fixed;
+      bottom: 76px; /* 叠在外观抽屉上方，两个抽屉的把手不重叠 */
+      right: 0;
+      z-index: 61;
+      transition: transform 350ms var(--ease-out);
+    }
+
+    body:not(.profile-open) .profile-dock {
+      transform: translateX(100%);
+    }
+
+    .profile-panel .card-eyebrow { margin-bottom: 18px; }
+
+    .profile-head {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      margin-bottom: 14px;
+    }
+
+    .profile-avatar {
+      position: relative;
+      width: 72px;
+      height: 72px;
+      flex: none;
+      border-radius: 999px;
+      overflow: hidden;
+      background: var(--apple-secondary, var(--apple-card));
+      border: 1px solid var(--apple-border);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--apple-muted-foreground);
+      cursor: pointer;
+    }
+
+    .profile-avatar-img {
+      display: none;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .profile-avatar.has-img .profile-avatar-img { display: block; }
+
+    .profile-avatar-letter {
+      font-size: 26px;
+      font-weight: 600;
+      line-height: 1;
+    }
+
+    .profile-avatar.has-img .profile-avatar-letter { display: none; }
+
+    .profile-avatar-mask {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(0, 0, 0, 0.45);
+      color: #fff;
+      font-size: 12px;
+      letter-spacing: 0.05em;
+      opacity: 0;
+      transition: opacity 200ms var(--ease-out);
+      pointer-events: none;
+    }
+
+    .profile-avatar:hover .profile-avatar-mask,
+    .profile-avatar:focus-visible .profile-avatar-mask { opacity: 1; }
+    .profile-avatar.member-only-hidden { cursor: default; }
+
+    .profile-info { min-width: 0; }
+    .profile-name {
+      font-size: 15px;
+      font-weight: 700;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .profile-status {
+      font-size: 12px;
+      color: var(--apple-muted-foreground);
+      margin-top: 4px;
+    }
+
+    .profile-hint {
+      font-size: 12px;
+      color: var(--apple-muted-foreground);
+      line-height: 1.6;
+      margin-bottom: 10px;
+    }
+
+    .profile-msg {
+      min-height: 18px;
+      font-size: 12px;
+      color: var(--apple-muted-foreground);
+      margin-bottom: 6px;
+    }
+    .profile-msg.err { color: #ef4444; }
+
+    .profile-actions {
+      display: flex;
+      gap: 8px;
+      margin-top: 8px;
+    }
+    .profile-actions .appear-btn { flex: 1; }
+
+    .danger-btn {
+      color: #ef4444;
+      border-color: color-mix(in srgb, #ef4444 40%, transparent);
+    }
+
+    /* 游客/未登录：隐藏仅登录可见的操作 */
+    body:not(.profile-member) .member-only { display: none !important; }
+    body:not(.profile-member) #profileLogoutBtn { display: none !important; }
+    body:not(.profile-member) #profileAvatar { cursor: default; }
+    body:not(.profile-member) .profile-avatar-mask { display: none; }
 
     .appear-tab {
       position: absolute;
@@ -2306,7 +2453,9 @@
     </nav>
     <div class="header-actions">
       <button class="login-toggle" id="loginToggle" type="button" aria-label="登录选项" title="登录选项">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+        <svg class="login-default-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+        <span class="avatar-letter" id="avatarLetter" aria-hidden="true"></span>
+        <img class="avatar-img" id="avatarImg" alt="">
       </button>
       <button class="theme-toggle" id="themeToggle" type="button" aria-label="切换深色模式">
       <span id="iconMoon" class="svg-icon" width="18" height="18" aria-hidden="true">
@@ -2410,6 +2559,42 @@
     </div>
     <button class="appear-tab" id="appearTab" type="button" aria-label="外观设置" title="外观设置" aria-expanded="false">
       <svg class="svg-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg>
+    </button>
+  </div>
+
+  <!-- 个人中心抽屉：头像/资料/退出，交互与外观抽屉一致（body.profile-open 控制） -->
+  <div class="profile-dock" id="profileDock">
+    <div class="apple-card appear-panel profile-panel" id="profilePanel" role="region" aria-label="个人中心">
+      <div class="card-padding">
+        <p class="card-eyebrow">个人中心 · PROFILE</p>
+
+        <div class="profile-head">
+          <div class="profile-avatar" id="profileAvatar" role="button" tabindex="0" title="更换头像">
+            <img class="profile-avatar-img" id="profileAvatarImg" alt="头像">
+            <span class="profile-avatar-letter" id="profileAvatarLetter" aria-hidden="true"></span>
+            <span class="profile-avatar-mask" aria-hidden="true">更换</span>
+          </div>
+          <div class="profile-info">
+            <p class="profile-name" id="profileName">未登录</p>
+            <p class="profile-status" id="profileStatus">点右上角人像登录</p>
+          </div>
+        </div>
+
+        <p class="profile-hint" id="profileHint">游客模式下无法设置头像，登录后即可上传。</p>
+        <p class="profile-msg" id="profileMsg"></p>
+
+        <div class="profile-actions member-only">
+          <button class="appear-btn" id="avatarChangeBtn" type="button">更换头像</button>
+          <button class="appear-btn" id="avatarRemoveBtn" type="button">移除头像</button>
+        </div>
+        <div class="profile-actions">
+          <button class="appear-btn danger-btn" id="profileLogoutBtn" type="button">退出登录</button>
+        </div>
+        <input type="file" id="avatarInput" accept=".jpg,.jpeg,.png,.gif,.webp,image/jpeg,image/png,image/gif,image/webp" hidden>
+      </div>
+    </div>
+    <button class="appear-tab" id="profileTab" type="button" aria-label="个人中心" title="个人中心" aria-expanded="false">
+      <svg class="svg-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
     </button>
   </div>
 
@@ -4359,6 +4544,16 @@
     var loginGuest = document.getElementById('loginGuest');
     var LOGIN_KEY = 'demoLogin';
     var LOGIN_NAME_KEY = 'demoLoginName';
+    var LOGIN_AVATAR_KEY = 'demoLoginAvatar';
+    function getLoginAvatar() {
+      try { return sessionStorage.getItem(LOGIN_AVATAR_KEY); } catch (e) { return null; }
+    }
+    function setLoginAvatar(key) {
+      try {
+        if (key) sessionStorage.setItem(LOGIN_AVATAR_KEY, key);
+        else sessionStorage.removeItem(LOGIN_AVATAR_KEY);
+      } catch (e) {}
+    }
 
     // 有记录即放行：'1' 为已登录，'guest' 为游客身份
     function gatePassed() {
@@ -4430,8 +4625,12 @@
       // role: 用户名（真实登录/注册）| 'guest' | '1'（历史遗留）
       try {
         sessionStorage.setItem(LOGIN_KEY, role === 'guest' ? 'guest' : '1');
-        if (role === 'guest') sessionStorage.removeItem(LOGIN_NAME_KEY);
-        else sessionStorage.setItem(LOGIN_NAME_KEY, role);
+        if (role === 'guest') {
+          sessionStorage.removeItem(LOGIN_NAME_KEY);
+          setLoginAvatar(null); // 游客无头像
+        } else {
+          sessionStorage.setItem(LOGIN_NAME_KEY, role);
+        }
       } catch (e) {}
       if (loginError) loginError.hidden = true;
       clearLoginDraft();
@@ -4450,8 +4649,11 @@
       document.body.classList.remove('login-lock');
       setTimeout(function () { loginGate.hidden = true; }, 450);
     }
-    // 顶栏登录按钮：悬停提示当前身份；真实登录显示主题色描边
+    // 顶栏登录按钮：悬停提示当前身份；真实登录显示主题色描边；
+    // 有头像时显示圆形头像图，否则已登录显示首字徽章，未登录/游客显示人形图标
     var loginToggle = document.getElementById('loginToggle');
+    var avatarImg = document.getElementById('avatarImg');
+    var avatarLetter = document.getElementById('avatarLetter');
     function refreshLoginBadge() {
       if (!loginToggle) return;
       var role = null;
@@ -4460,14 +4662,25 @@
         role = sessionStorage.getItem(LOGIN_KEY);
         name = sessionStorage.getItem(LOGIN_NAME_KEY);
       } catch (e) {}
+      var av = getLoginAvatar();
       if (role === '1') {
         loginToggle.classList.add('logged-in');
         loginToggle.title = '登录选项（当前：' + (name || '已登录') + '）';
+        if (av && avatarImg) {
+          avatarImg.src = '/media/' + av;
+          loginToggle.classList.add('has-avatar');
+        } else {
+          loginToggle.classList.remove('has-avatar');
+          if (avatarImg) avatarImg.removeAttribute('src');
+          if (avatarLetter) avatarLetter.textContent = (name || '?').slice(0, 1).toUpperCase();
+        }
       } else if (role === 'guest') {
-        loginToggle.classList.remove('logged-in');
+        loginToggle.classList.remove('logged-in', 'has-avatar');
+        if (avatarImg) avatarImg.removeAttribute('src');
         loginToggle.title = '登录选项（当前：游客）';
       } else {
-        loginToggle.classList.remove('logged-in');
+        loginToggle.classList.remove('logged-in', 'has-avatar');
+        if (avatarImg) avatarImg.removeAttribute('src');
         loginToggle.title = '登录选项（未登录）';
       }
     }
@@ -4493,8 +4706,10 @@
         fetch('/api/user/me', { credentials: 'same-origin' })
           .then(function (r) { return r.ok ? r.json() : null; })
           .then(function (d) {
-            if (d && d.ok && d.authenticated && d.username) passGate(d.username);
-            else showGateLater();
+            if (d && d.ok && d.authenticated && d.username) {
+              setLoginAvatar(d.avatar || null); // 恢复登录态时同步头像
+              passGate(d.username);
+            } else showGateLater();
           })
           .catch(showGateLater);
       }
@@ -4515,6 +4730,7 @@
           authPost('/api/user/login', u, p, function (d) {
             if (d.ok) {
               showLoginMsg('');
+              setLoginAvatar(d.avatar || null); // 登录响应带头像键
               // 双保险：凭服务端会话再核实一次身份，管理员则直通后台
               // （直接信任响应可能因页面缓存旧版脚本而漏跳）
               fetch('/api/auth/status', { credentials: 'same-origin' })
@@ -4540,9 +4756,13 @@
           if (!u || !p) { showLoginMsg('请填写账号和密码'); return; }
           if (p.length < 6) { showLoginMsg('密码至少 6 位'); return; }
           showLoginMsg('注册中…');
-          authPost('/api/user/register', u, p, function (ok, msg) {
-            if (ok) { showLoginMsg(''); passGate(u); }
-            else showLoginMsg(msg);
+          authPost('/api/user/register', u, p, function (d) {
+            // 注意 authPost 的 done 回调传对象 {ok, error}，不是 (ok, msg) 布尔签名
+            if (d.ok) {
+              showLoginMsg('');
+              setLoginAvatar(null); // 新注册没有头像
+              passGate(u);
+            } else showLoginMsg(d.error);
           }, loginButtons);
         });
       }
@@ -4551,6 +4771,150 @@
           passGate('guest');
         });
       }
+
+      // =========================
+      // 个人中心抽屉：头像上传/移除 + 退出登录
+      // 注意：本项目全局 CSS 里 [hidden] 等于永久隐藏，动态显隐一律用 class 切换
+      // =========================
+      var profileDock = document.getElementById('profileDock');
+      var profileTab = document.getElementById('profileTab');
+      var profilePanel = document.getElementById('profilePanel');
+      var profileAvatar = document.getElementById('profileAvatar');
+      var profileAvatarImg = document.getElementById('profileAvatarImg');
+      var profileAvatarLetter = document.getElementById('profileAvatarLetter');
+      var profileName = document.getElementById('profileName');
+      var profileStatus = document.getElementById('profileStatus');
+      var profileHint = document.getElementById('profileHint');
+      var profileMsg = document.getElementById('profileMsg');
+      var avatarInput = document.getElementById('avatarInput');
+      var avatarChangeBtn = document.getElementById('avatarChangeBtn');
+      var avatarRemoveBtn = document.getElementById('avatarRemoveBtn');
+      var profileLogoutBtn = document.getElementById('profileLogoutBtn');
+
+      function setProfileOpen(open) {
+        document.body.classList.toggle('profile-open', open);
+        if (profileTab) profileTab.setAttribute('aria-expanded', open ? 'true' : 'false');
+        if (open) updateProfilePanel();
+      }
+
+      function showProfileMsg(text, err) {
+        if (!profileMsg) return;
+        profileMsg.textContent = text || '';
+        profileMsg.classList.toggle('err', !!err);
+      }
+
+      // 依据 sessionStorage 三键刷新面板内容与状态类
+      function updateProfilePanel() {
+        var role = null;
+        var name = null;
+        var av = getLoginAvatar();
+        try {
+          role = sessionStorage.getItem(LOGIN_KEY);
+          name = sessionStorage.getItem(LOGIN_NAME_KEY);
+        } catch (e) {}
+        var isMember = role === '1';
+        document.body.classList.toggle('profile-member', isMember);
+        if (profileName) profileName.textContent = isMember ? (name || '已登录') : (role === 'guest' ? '游客' : '未登录');
+        if (profileStatus) profileStatus.textContent = isMember
+          ? (av ? '已登录 · 已设置头像' : '已登录')
+          : (role === 'guest' ? '游客模式' : '点右上角人像登录');
+        if (profileHint) profileHint.hidden = isMember;
+        if (profileAvatar) {
+          profileAvatar.classList.toggle('has-img', !!(isMember && av));
+          if (isMember && av && profileAvatarImg) profileAvatarImg.src = '/media/' + av;
+          if (profileAvatarLetter) profileAvatarLetter.textContent = isMember ? (name || '?').slice(0, 1).toUpperCase() : '';
+        }
+      }
+
+      if (profileTab) {
+        profileTab.addEventListener('click', function (e) {
+          e.stopPropagation();
+          setProfileOpen(!document.body.classList.contains('profile-open'));
+        });
+      }
+      document.addEventListener('click', function (e) {
+        if (!document.body.classList.contains('profile-open')) return;
+        if (profileDock && profileDock.contains(e.target)) return;
+        setProfileOpen(false);
+      });
+      document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape') setProfileOpen(false);
+      });
+
+      function openAvatarPicker() {
+        if (document.body.classList.contains('profile-member') && avatarInput) avatarInput.click();
+      }
+      if (profileAvatar) {
+        profileAvatar.addEventListener('click', openAvatarPicker);
+        profileAvatar.addEventListener('keydown', function (e) {
+          if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openAvatarPicker(); }
+        });
+      }
+      if (avatarChangeBtn) avatarChangeBtn.addEventListener('click', openAvatarPicker);
+
+      if (avatarInput) {
+        avatarInput.addEventListener('change', function () {
+          var f = this.files && this.files[0];
+          this.value = '';
+          if (!f) return;
+          // 前端预校验：格式 + 大小
+          var okType = /image\/(jpeg|png|gif|webp)/.test(f.type) ||
+            /\.(jpe?g|png|gif|webp)$/i.test(f.name);
+          if (!okType) { showProfileMsg('仅支持 JPG/PNG/GIF/WebP 图片', true); return; }
+          if (f.size > 2 * 1024 * 1024) { showProfileMsg('头像图片不能超过 2MB', true); return; }
+
+          showProfileMsg('上传中…');
+          var form = new FormData();
+          form.append('file', f);
+          fetch('/api/user/avatar', { method: 'POST', credentials: 'same-origin', body: form })
+            .then(function (res) { return res.json().catch(function () { return { ok: false, error: '响应异常' }; }); })
+            .then(function (d) {
+              if (d.ok) {
+                setLoginAvatar(d.avatar);
+                refreshLoginBadge();
+                updateProfilePanel();
+                showProfileMsg('头像已更新');
+              } else showProfileMsg(d.error || '上传失败', true);
+            })
+            .catch(function () { showProfileMsg('网络错误，上传失败', true); });
+        });
+      }
+
+      if (avatarRemoveBtn) {
+        avatarRemoveBtn.addEventListener('click', function () {
+          showProfileMsg('移除中…');
+          fetch('/api/user/avatar', { method: 'DELETE', credentials: 'same-origin' })
+            .then(function (res) { return res.json().catch(function () { return { ok: false, error: '响应异常' }; }); })
+            .then(function (d) {
+              if (d.ok) {
+                setLoginAvatar(null);
+                refreshLoginBadge();
+                updateProfilePanel();
+                showProfileMsg('已移除头像');
+              } else showProfileMsg(d.error || '移除失败', true);
+            })
+            .catch(function () { showProfileMsg('网络错误', true); });
+        });
+      }
+
+      if (profileLogoutBtn) {
+        profileLogoutBtn.addEventListener('click', function () {
+          fetch('/api/user/logout', { method: 'POST', credentials: 'same-origin' })
+            .catch(function () {})
+            .then(function () {
+              try {
+                sessionStorage.removeItem(LOGIN_KEY);
+                sessionStorage.removeItem(LOGIN_NAME_KEY);
+              } catch (e) {}
+              setLoginAvatar(null); // 退出清空三键
+              refreshLoginBadge();
+              updateProfilePanel();
+              showProfileMsg('已退出登录');
+            });
+        });
+      }
+
+      updateProfilePanel();
     }
   })();
   </script>

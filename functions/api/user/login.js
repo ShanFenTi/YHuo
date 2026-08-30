@@ -36,7 +36,8 @@ export async function onRequestPost({ request, env }) {
         env.DB.prepare("UPDATE users SET last_seen_at = datetime('now') WHERE id = ?").bind(row.id),
       ]);
       const token = await createUserSession(env, row.id);
-      return json({ ok: true, username }, 200, { 'Set-Cookie': userCookie(token) });
+      const av = await env.DB.prepare('SELECT avatar_key FROM users WHERE id = ?').bind(row.id).first();
+      return json({ ok: true, username, avatar: (av && av.avatar_key) || null }, 200, { 'Set-Cookie': userCookie(token) });
     }
     return json({ ok: false, error: '用户名或密码错误' }, 401);
   }

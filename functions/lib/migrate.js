@@ -76,5 +76,8 @@ export async function ensureSchema(env) {
   try {
     await env.DB.prepare("ALTER TABLE media ADD COLUMN album TEXT NOT NULL DEFAULT ''").run();
   } catch {}
+  try {
+    await env.DB.prepare("ALTER TABLE users ADD COLUMN avatar_key TEXT").run();
+  } catch {}
   migrated = true;
 }

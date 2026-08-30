@@ -3852,8 +3852,8 @@
         if (sec.offsetTop <= pos) current = sec;
       });
       var id = current ? current.id : '';
-      // 相册界面打开期间高亮由 openAlbum 接管，滚动监听不抢回
-      if (albumView && !albumView.hidden) return;
+      // 相册/AI 界面打开期间高亮由各自的 open 函数接管，滚动监听不抢回
+      if ((albumView && !albumView.hidden) || (aiView && !aiView.hidden)) return;
       navLinks.forEach(function (a) {
         a.classList.toggle('active', a.getAttribute('data-target') === id);
       });
@@ -7053,6 +7053,10 @@
       aiView.hidden = false;
       void aiView.offsetWidth;
       aiView.classList.add('show');
+      document.body.style.overflow = 'hidden';
+      // 顶栏高亮切到"AI"（与相册同款接管，滚动监听在 aiView 打开期间不抢回）
+      navLinks.forEach(function (a) { a.classList.remove('active'); });
+      if (aiBtn) aiBtn.classList.add('active');
       if (!aiOpened) {
         aiOpened = true;
         addAiMsg('bot', '你好，我是 YHuo 的 AI 助手 🤖\n对话功能还在接入中，先和我打个招呼吧～');
@@ -7063,7 +7067,12 @@
     function closeAiView() {
       if (!aiView || aiView.hidden) return;
       aiView.classList.remove('show');
-      setTimeout(function () { aiView.hidden = true; }, 260);
+      document.body.style.overflow = '';
+      if (aiBtn) aiBtn.classList.remove('active');
+      setTimeout(function () {
+        aiView.hidden = true;
+        onScroll(); // 关闭后恢复按滚动位置的导航高亮
+      }, 250);
     }
 
     if (aiBtn) aiBtn.addEventListener('click', openAiView);

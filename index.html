@@ -748,18 +748,39 @@
       transform: none;
     }
 
-    /* ===== 个人中心抽屉（头像/资料/退出）：交互与外观抽屉一致 ===== */
+    /* ===== 个人中心面板（头像/资料/退出）：点击顶栏头像展开，从头像下方滑出 ===== */
     .profile-dock {
       position: fixed;
-      bottom: 76px; /* 叠在外观抽屉上方，两个抽屉的把手不重叠 */
+      top: 64px; /* 顶栏(52px)下方，与头像对齐 */
       right: 0;
-      z-index: 61;
-      transition: transform 350ms var(--ease-out);
+      z-index: 160; /* 高于相册界面(150)：相册里也能点头像打开 */
+      transition: transform 350ms var(--ease-out), opacity 250ms var(--ease-out), visibility 250ms var(--ease-out);
     }
 
     body:not(.profile-open) .profile-dock {
-      transform: translateX(100%);
+      transform: translateX(110%);
+      visibility: hidden;
     }
+
+    .profile-close {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      z-index: 2;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 28px;
+      height: 28px;
+      padding: 0;
+      border: none;
+      border-radius: 999px;
+      background: var(--apple-secondary, var(--apple-card));
+      color: var(--apple-foreground);
+      cursor: pointer;
+    }
+
+    .profile-close:hover { background: var(--apple-chip, var(--apple-secondary)); }
 
     .profile-panel .card-eyebrow { margin-bottom: 18px; }
 
@@ -2562,9 +2583,12 @@
     </button>
   </div>
 
-  <!-- 个人中心抽屉：头像/资料/退出，交互与外观抽屉一致（body.profile-open 控制） -->
+  <!-- 个人中心面板：点击顶栏头像展开（body.profile-open 控制），未登录点头像走登录卡片 -->
   <div class="profile-dock" id="profileDock">
     <div class="apple-card appear-panel profile-panel" id="profilePanel" role="region" aria-label="个人中心">
+      <button class="profile-close" id="profileCloseBtn" type="button" aria-label="关闭个人中心">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>
+      </button>
       <div class="card-padding">
         <p class="card-eyebrow">个人中心 · PROFILE</p>
 
@@ -2593,9 +2617,6 @@
         <input type="file" id="avatarInput" accept=".jpg,.jpeg,.png,.gif,.webp,image/jpeg,image/png,image/gif,image/webp" hidden>
       </div>
     </div>
-    <button class="appear-tab" id="profileTab" type="button" aria-label="个人中心" title="个人中心" aria-expanded="false">
-      <svg class="svg-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-    </button>
   </div>
 
   <!-- 页脚 -->
@@ -4665,7 +4686,8 @@
       var av = getLoginAvatar();
       if (role === '1') {
         loginToggle.classList.add('logged-in');
-        loginToggle.title = '登录选项（当前：' + (name || '已登录') + '）';
+        loginToggle.title = '个人中心（当前：' + (name || '已登录') + '）';
+        loginToggle.setAttribute('aria-haspopup', 'dialog');
         if (av && avatarImg) {
           avatarImg.src = '/media/' + av;
           loginToggle.classList.add('has-avatar');
@@ -4686,9 +4708,18 @@
     }
     if (loginToggle) {
       refreshLoginBadge();
-      loginToggle.addEventListener('click', function () {
-        document.body.classList.add('login-lock');
-        openGate();
+      loginToggle.addEventListener('click', function (e) {
+        e.stopPropagation();
+        var role = null;
+        try { role = sessionStorage.getItem(LOGIN_KEY); } catch (err) {}
+        if (role === '1') {
+          // 已登录：点头像展开/收起个人中心
+          setProfileOpen(!document.body.classList.contains('profile-open'));
+        } else {
+          // 未登录/游客：走登录卡片
+          document.body.classList.add('login-lock');
+          openGate();
+        }
       });
     }
     if (loginGate) {
@@ -4771,13 +4802,16 @@
           passGate('guest');
         });
       }
+    }
 
-      // =========================
-      // 个人中心抽屉：头像上传/移除 + 退出登录
-      // 注意：本项目全局 CSS 里 [hidden] 等于永久隐藏，动态显隐一律用 class 切换
-      // =========================
-      var profileDock = document.getElementById('profileDock');
-      var profileTab = document.getElementById('profileTab');
+    // =========================
+    // 个人中心面板：头像上传/移除 + 退出登录（点击顶栏头像展开）
+    // 注意：本项目全局 CSS 里 [hidden] 等于永久隐藏，动态显隐一律用 class 切换
+    // 注意：本 IIFE 是严格模式，此块必须放在 if(loginGate) 块外，
+    //       否则块内函数声明不外提，顶栏监听里调 setProfileOpen 会 ReferenceError
+    // =========================
+    var profileDock = document.getElementById('profileDock');
+      var profileCloseBtn = document.getElementById('profileCloseBtn');
       var profilePanel = document.getElementById('profilePanel');
       var profileAvatar = document.getElementById('profileAvatar');
       var profileAvatarImg = document.getElementById('profileAvatarImg');
@@ -4793,7 +4827,7 @@
 
       function setProfileOpen(open) {
         document.body.classList.toggle('profile-open', open);
-        if (profileTab) profileTab.setAttribute('aria-expanded', open ? 'true' : 'false');
+        if (loginToggle) loginToggle.setAttribute('aria-expanded', open ? 'true' : 'false');
         if (open) updateProfilePanel();
       }
 
@@ -4826,15 +4860,15 @@
         }
       }
 
-      if (profileTab) {
-        profileTab.addEventListener('click', function (e) {
-          e.stopPropagation();
-          setProfileOpen(!document.body.classList.contains('profile-open'));
+      if (profileCloseBtn) {
+        profileCloseBtn.addEventListener('click', function () {
+          setProfileOpen(false);
         });
       }
       document.addEventListener('click', function (e) {
         if (!document.body.classList.contains('profile-open')) return;
         if (profileDock && profileDock.contains(e.target)) return;
+        if (loginToggle && loginToggle.contains(e.target)) return; // 头像按钮自己管开合
         setProfileOpen(false);
       });
       document.addEventListener('keydown', function (e) {
@@ -4908,6 +4942,7 @@
               } catch (e) {}
               setLoginAvatar(null); // 退出清空三键
               refreshLoginBadge();
+              setProfileOpen(false); // 回到未登录态并收起面板
               updateProfilePanel();
               showProfileMsg('已退出登录');
             });
@@ -4915,7 +4950,6 @@
       }
 
       updateProfilePanel();
-    }
   })();
   </script>
 </body>

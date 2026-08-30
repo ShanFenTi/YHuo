@@ -1114,6 +1114,9 @@
 
     .ai-msg.bot.pending { opacity: 0.65; }
 
+    /* 顶栏：新对话 + 关闭按钮组 */
+    .ai-bar-actions { display: flex; align-items: center; gap: 8px; }
+
     /* 输入条：上下两行（输入 / 工具行），仿桌面客户端输入框 */
     .ai-input-bar {
       display: flex;
@@ -1125,6 +1128,62 @@
       padding: 14px 10px 8px 16px;
       box-shadow: 0 8px 28px rgba(0, 0, 0, 0.06);
     }
+
+    /* 附件 chips 行 */
+    .ai-attach-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      padding: 2px 4px 0;
+    }
+
+    .ai-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      max-width: 240px;
+      padding: 4px 6px 4px 10px;
+      border: 1px solid var(--apple-border);
+      border-radius: 999px;
+      background: color-mix(in srgb, var(--apple-foreground) 5%, transparent);
+      font-size: 12px;
+      color: var(--apple-foreground);
+    }
+
+    .ai-chip .chip-name {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .ai-chip .chip-tag {
+      flex: none;
+      font-size: 10px;
+      color: var(--apple-primary);
+      background: color-mix(in srgb, var(--apple-primary) 12%, transparent);
+      border-radius: 6px;
+      padding: 1px 5px;
+    }
+
+    .ai-chip .chip-x {
+      flex: none;
+      width: 18px;
+      height: 18px;
+      border: none;
+      border-radius: 50%;
+      background: none;
+      color: var(--apple-foreground);
+      opacity: 0.55;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      line-height: 1;
+      padding: 0;
+    }
+
+    .ai-chip .chip-x:hover { opacity: 1; background: color-mix(in srgb, var(--apple-foreground) 10%, transparent); }
 
     .ai-input-bar input {
       width: 100%;
@@ -3887,18 +3946,26 @@
   <div class="ai-view" id="aiView" hidden role="dialog" aria-modal="true" aria-label="AI 助手">
     <header class="album-bar">
       <p class="album-title">AI 助手</p>
-      <button class="album-close" id="aiViewClose" type="button" aria-label="关闭 AI 界面">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>
-      </button>
+      <div class="ai-bar-actions">
+        <button class="album-close" id="aiNewChatBtn" type="button" aria-label="新对话" title="新对话（清空当前聊天）">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg>
+        </button>
+        <button class="album-close" id="aiViewClose" type="button" aria-label="关闭 AI 界面">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>
+        </button>
+      </div>
     </header>
     <div class="ai-chat">
       <div class="ai-messages" id="aiMessages"></div>
       <form class="ai-input-bar" id="aiForm">
+        <div class="ai-attach-row" id="aiAttachRow" hidden></div>
         <input type="text" id="aiInput" placeholder="给 AI 发消息…" autocomplete="off" maxlength="500">
         <div class="ai-input-tools">
-          <button type="button" class="ai-tool-icon" id="aiNewChatBtn" title="新对话（清空当前聊天）" aria-label="新对话">
+          <button type="button" class="ai-tool-icon" id="aiFileBtn" title="上传附件（图片发给视觉模型，文本文件作为上下文）" aria-label="上传附件">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
           </button>
+          <input type="file" id="aiFileInput" multiple hidden
+            accept="image/*,.txt,.md,.markdown,.json,.csv,.log,.js,.ts,.mjs,.py,.html,.css,.xml,.yml,.yaml,.sh,.sql,.ini,.conf">
           <span class="ai-tools-spacer"></span>
           <div class="ai-model-switch" id="aiModelSwitch">
             <button type="button" class="ai-model-btn" id="aiModelBtn" hidden aria-haspopup="listbox" aria-label="切换模型">
@@ -7266,6 +7333,7 @@
     var aiHistory = [];      // 本次对话 {role, content} 列表
     var aiConfig = null;     // {enabled, models:[{name,model}], model(默认档案名)}，来自 /api/ai/config
     var aiCurrentModel = null; // 当前选中的档案名
+    var aiAttach = [];         // 待发送附件 [{name, size, kind:'image'|'text', data}]
     var aiBusy = false;
     var aiAbort = null;
 
@@ -7407,6 +7475,8 @@
         aiAbort = null;
       }
       aiHistory = [];
+      aiAttach = [];
+      aiRenderAttach();
       if (aiMessages) aiMessages.innerHTML = '';
       aiStopBusy();
     }
@@ -7582,11 +7652,94 @@
       }
     });
 
+    // ---------- 附件：＋上传文件（图片→视觉模型 base64；文本文件→上下文注入，不存服务器） ----------
+    var IMAGE_MAX = 4 * 1024 * 1024;   // 单图 4MB
+    var TEXT_MAX = 200 * 1024;         // 文本文件 200KB
+    var ATTACH_MAX = 4;                // 单条消息最多 4 个附件
+    var TEXT_EXT = /\.(txt|md|markdown|json|csv|log|js|ts|mjs|py|html|css|xml|yml|yaml|sh|sql|ini|conf)$/i;
+
+    function aiRenderAttach() {
+      var row = document.getElementById('aiAttachRow');
+      if (!row) return;
+      row.innerHTML = '';
+      row.hidden = !aiAttach.length;
+      aiAttach.forEach(function (f, idx) {
+        var chip = document.createElement('span');
+        chip.className = 'ai-chip';
+        var nm = document.createElement('span');
+        nm.className = 'chip-name';
+        nm.textContent = f.name;
+        var tg = document.createElement('span');
+        tg.className = 'chip-tag';
+        tg.textContent = f.kind === 'image' ? '图片' : '文本';
+        var x = document.createElement('button');
+        x.type = 'button';
+        x.className = 'chip-x';
+        x.textContent = '✕';
+        x.setAttribute('aria-label', '移除附件 ' + f.name);
+        x.addEventListener('click', function () {
+          aiAttach.splice(idx, 1);
+          aiRenderAttach();
+        });
+        chip.appendChild(nm);
+        chip.appendChild(tg);
+        chip.appendChild(x);
+        row.appendChild(chip);
+      });
+    }
+
+    function aiAddFiles(files) {
+      Array.prototype.forEach.call(files || [], function (f) {
+        if (aiAttach.length >= ATTACH_MAX) {
+          addAiMsg('bot', '⚠️ 一次最多带 ' + ATTACH_MAX + ' 个附件');
+          return;
+        }
+        var isImage = /^image\//.test(f.type);
+        var isText = /^text\//.test(f.type) || TEXT_EXT.test(f.name);
+        if (isImage && f.size <= IMAGE_MAX) {
+          var reader = new FileReader();
+          reader.onload = function () {
+            aiAttach.push({ name: f.name, size: f.size, kind: 'image', data: String(reader.result) });
+            aiRenderAttach();
+            aiHintVisionModel();
+          };
+          reader.readAsDataURL(f);
+        } else if (!isImage && isText && f.size <= TEXT_MAX) {
+          var tr = new FileReader();
+          tr.onload = function () {
+            aiAttach.push({ name: f.name, size: f.size, kind: 'text', data: String(tr.result) });
+            aiRenderAttach();
+          };
+          tr.readAsText(f);
+        } else {
+          addAiMsg('bot', '⚠️ 仅支持图片（≤4MB）和文本类文件（≤200KB）');
+        }
+      });
+    }
+
+    // 附了图片但当前模型没打"视觉"标签时提醒一句（不拦着发）
+    function aiHintVisionModel() {
+      var cur = ((aiConfig && aiConfig.models) || []).filter(function (x) { return x.key === aiCurrentModel; })[0];
+      if (cur && cur.tag && cur.tag !== '视觉') {
+        addAiMsg('bot', '提示：当前模型「' + cur.name + '」未打「视觉」标签，可能看不了图片，可在下方切换模型。');
+      }
+    }
+
+    var aiFileBtn = document.getElementById('aiFileBtn');
+    var aiFileInput = document.getElementById('aiFileInput');
+    if (aiFileBtn && aiFileInput) {
+      aiFileBtn.addEventListener('click', function () { aiFileInput.click(); });
+      aiFileInput.addEventListener('change', function () {
+        aiAddFiles(this.files);
+        this.value = '';
+      });
+    }
+
     if (aiForm) {
       aiForm.addEventListener('submit', function (e) {
         e.preventDefault();
         var text = aiInput ? aiInput.value.trim() : '';
-        if (!text || aiBusy) return;
+        if ((!text && !aiAttach.length) || aiBusy) return;
         if (!isMember()) {
           addAiMsg('bot', '要和我聊天，请先登录或注册一个账号哦～（右上角头像进入登录）');
           openGate();
@@ -7601,8 +7754,28 @@
             aiStopBusy();
             return;
           }
-          addAiMsg('user', text);
-          aiHistory.push({ role: 'user', content: text });
+          // 组装消息：文本附件注入上下文；有图片时升级为多模态 parts（发给视觉模型）
+          var content = text;
+          var attachNote = '';
+          aiAttach.forEach(function (f) {
+            if (f.kind === 'text') {
+              content += (content ? '\n\n' : '') + '【附件 ' + f.name + '】\n' + f.data;
+              attachNote += ' 📄' + f.name;
+            }
+          });
+          var images = aiAttach.filter(function (f) { return f.kind === 'image'; });
+          if (images.length) {
+            var parts = [{ type: 'text', text: content || '请看这些图片' }];
+            images.forEach(function (f) {
+              parts.push({ type: 'image_url', image_url: { url: f.data } });
+              attachNote += ' 🖼' + f.name;
+            });
+            content = parts;
+          }
+          addAiMsg('user', text + attachNote);
+          aiHistory.push({ role: 'user', content: content });
+          aiAttach = [];
+          aiRenderAttach();
           if (aiInput) aiInput.value = '';
           var pending = addAiMsg('bot', '思考中…', true);
           streamAiReply(aiHistory, pending);

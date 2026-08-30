@@ -23,15 +23,36 @@ function overRate(key) {
   return false;
 }
 
+// 单条消息 content 校验：字符串（≤4000 字）或 OpenAI 风格多模态 parts（text + dataURL 图片）
+const IMAGE_URL_MAX = 9000000; // dataURL 字符上限（约 6.7MB 原图）
+function sanitizeContent(c) {
+  if (typeof c === 'string') return c.slice(0, MAX_CHARS);
+  if (!Array.isArray(c)) return null;
+  const parts = [];
+  for (const p of c) {
+    if (!p || typeof p !== 'object') continue;
+    if (p.type === 'text' && typeof p.text === 'string' && p.text.trim()) {
+      parts.push({ type: 'text', text: p.text.slice(0, MAX_CHARS) });
+    } else if (
+      p.type === 'image_url' && p.image_url && typeof p.image_url.url === 'string' &&
+      /^data:image\/(png|jpe?g|webp|gif);base64,/.test(p.image_url.url) &&
+      p.image_url.url.length <= IMAGE_URL_MAX
+    ) {
+      parts.push({ type: 'image_url', image_url: { url: p.image_url.url } });
+    }
+  }
+  return parts.length ? parts : null;
+}
+
 function sanitize(messages) {
   if (!Array.isArray(messages)) return null;
   const out = [];
   for (const m of messages) {
     if (!m || typeof m !== 'object') continue;
     const role = m.role === 'assistant' ? 'assistant' : 'user';
-    const content = String(m.content || '').trim();
-    if (!content) continue;
-    out.push({ role, content: content.slice(0, MAX_CHARS) });
+    const content = sanitizeContent(m.content);
+    if (!content || (typeof content === 'string' && !content.trim())) continue;
+    out.push({ role, content });
     if (out.length >= MAX_MESSAGES) break;
   }
   // 对话必须以用户消息收尾，否则截掉尾巴上的 assistant 消息

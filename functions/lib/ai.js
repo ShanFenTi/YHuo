@@ -149,17 +149,38 @@ export function listProviderModels(providers) {
 }
 
 // ---------- 上游请求构造 ----------
+// Anthropic 的 content：OpenAI 风格 parts（text / image_url dataURL）转 Anthropic 格式；字符串原样
+function toAnthropicContent(content) {
+  if (typeof content === 'string') return content;
+  const parts = [];
+  for (const p of Array.isArray(content) ? content : []) {
+    if (p && p.type === 'text' && typeof p.text === 'string') {
+      parts.push({ type: 'text', text: p.text });
+    } else if (p && p.type === 'image_url' && p.image_url && typeof p.image_url.url === 'string') {
+      const m = p.image_url.url.match(/^data:(image\/[a-zA-Z0-9.+-]+);base64,([A-Za-z0-9+/=]+)$/);
+      if (m) parts.push({ type: 'image', source: { type: 'base64', media_type: m[1], data: m[2] } });
+    }
+  }
+  return parts;
+}
+
 // upstream: {protocol, baseUrl, apiKey, model, systemPrompt}；messages: [{role, content}]
+// content 可以是字符串（纯文本）或 OpenAI 风格 parts 数组（多模态：text / image_url dataURL）
 export function buildUpstreamRequest(s, messages, stream) {
   if (s.protocol === 'anthropic') {
     // Anthropic 原生：system 提示词是独立字段；消息必须 user 开头、严格交替
     const msgs = [];
     for (const m of messages) {
       const role = m.role === 'assistant' ? 'assistant' : 'user';
+      const c = toAnthropicContent(m.content);
       if (msgs.length && msgs[msgs.length - 1].role === role) {
-        msgs[msgs.length - 1].content += '\n\n' + m.content;
+        // 同角色相邻：合并（字符串与 parts 混存时统一成 parts 再拼）
+        const prev = msgs[msgs.length - 1].content;
+        const prevArr = Array.isArray(prev) ? prev : [prev && { type: 'text', text: prev }].filter(Boolean);
+        const curArr = Array.isArray(c) ? c : [c && { type: 'text', text: c }].filter(Boolean);
+        msgs[msgs.length - 1].content = prevArr.concat(curArr);
       } else {
-        msgs.push({ role, content: m.content });
+        msgs.push({ role, content: c });
       }
     }
     while (msgs.length && msgs[0].role !== 'user') msgs.shift();

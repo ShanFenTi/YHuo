@@ -61,7 +61,11 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
     background: var(--fg); color: var(--bg);
     font-weight: 700; font-size: 14px; letter-spacing: .05em;
     display: flex; align-items: center; justify-content: center; flex: none;
+    cursor: pointer; position: relative; overflow: hidden;
+    transition: transform .15s, box-shadow .15s;
   }
+  .brand .mark:hover { transform: scale(1.06); box-shadow: 0 0 0 3px color-mix(in srgb, var(--fg) 18%, transparent); }
+  .brand .mark img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
   .brand h1 { font-size: 16px; font-weight: 700; line-height: 1.2; }
   .brand p { font-size: 11px; color: var(--muted); margin-top: 2px; }
   nav.sidenav-links { display: flex; flex-direction: column; gap: 4px; }
@@ -254,6 +258,21 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
   .ai-test-err { color: var(--danger); font-weight: 600; }
   @keyframes aiFadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
   .ai-mgr-main.ai-enter { animation: aiFadeIn .2s ease; }
+  /* 我的（管理员资料 + 头像） */
+  .me-card { display: flex; gap: 24px; align-items: center; max-width: 620px; }
+  .me-left { flex: none; text-align: center; }
+  .me-avatar {
+    width: 88px; height: 88px; border-radius: 50%; margin: 0 auto;
+    background: var(--fg); color: var(--bg);
+    font-weight: 700; font-size: 26px; letter-spacing: .05em;
+    display: flex; align-items: center; justify-content: center;
+    position: relative; overflow: hidden;
+  }
+  .me-avatar img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+  .me-avatar-btns { display: flex; gap: 8px; margin-top: 12px; justify-content: center; }
+  .me-info { min-width: 0; }
+  .me-name { font-size: 18px; font-weight: 700; margin-bottom: 4px; }
+  .me-info .meta2 { margin-top: 2px; }
   .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-bottom: 22px; }
   .stat {
     background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 16px 18px;
@@ -503,7 +522,7 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
 <div class="shell" id="appShell" hidden>
   <aside class="sidenav">
     <div class="brand">
-      <div class="mark">YH</div>
+      <div class="mark" id="brandMark" title="我的"><span id="brandMono">YH</span><img id="brandAvatarImg" hidden alt=""></div>
       <div>
         <h1>YHuo 管理后台</h1>
         <p>内容与用户一站式管理</p>
@@ -517,6 +536,7 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
       <button data-type="users" title="用户"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg><span>用户</span></button>
       <button data-type="appearance" title="外观"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 2a10 10 0 0 0 0 20z" fill="currentColor" stroke="none"/></svg><span>外观</span></button>
       <button data-type="ai" title="AI 设置"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="8" width="16" height="12" rx="2"/><path d="M12 8V4"/><path d="M9 4h6"/><circle cx="9" cy="13" r="1" fill="currentColor" stroke="none"/><circle cx="15" cy="13" r="1" fill="currentColor" stroke="none"/><path d="M9 17h6"/></svg><span>AI</span></button>
+      <button data-type="me" title="我的"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg><span>我的</span></button>
     </nav>
     <div class="sidenav-foot">
       <button id="themeBtn" class="ghost icon-btn" title="切换浅色/深色">
@@ -692,6 +712,24 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
     <div class="bgset-row">
       <button id="aiToggleBtn" class="ghost">停用 AI</button>
       <span class="meta2" id="aiStateText">状态读取中…</span>
+    </div>
+  </div>
+
+  <div id="mePanel" hidden>
+    <div class="card me-card">
+      <div class="me-left">
+        <div class="me-avatar" id="meAvatar"><span id="meAvatarMono">YH</span><img id="meAvatarImg" hidden alt="管理员头像"></div>
+        <div class="me-avatar-btns">
+          <button id="meAvatarUploadBtn" class="ghost">更换头像</button>
+          <button id="meAvatarRemoveBtn" class="danger" hidden>移除头像</button>
+        </div>
+      </div>
+      <div class="me-info">
+        <p class="me-name" id="meName">—</p>
+        <p class="meta2" id="meMeta"></p>
+        <p class="meta2">头像显示在侧边栏左上角；JPG/PNG/GIF/WebP，≤2MB，保存在站点 KV。</p>
+      </div>
+      <input type="file" id="meAvatarInput" accept=".jpg,.jpeg,.png,.gif,.webp" hidden>
     </div>
   </div>
     </main>
@@ -933,6 +971,7 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
     loadUsers();
     loadVisits();
     loadAiUsage();
+    loadMe(); // 侧边栏左上角头像
   }
 
   function refreshStats() {
@@ -2451,8 +2490,64 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
   $('aiProtocol').addEventListener('change', function () { fetchAiModels(false); });
 
   // ---------- 侧边栏导航 ----------
-  var PAGE_TITLES = { overview: '概览', music: '音乐', video: '视频', image: '图片', users: '用户', appearance: '外观', ai: 'AI 设置' };
+  var PAGE_TITLES = { overview: '概览', music: '音乐', video: '视频', image: '图片', users: '用户', appearance: '外观', ai: 'AI 设置', me: '我的' };
   var navBtns = document.querySelectorAll('#sideNav button');
+  // ---------- 我的（管理员资料 + 头像；头像 KV 键存 site_settings 'admin_avatar'） ----------
+  function applyAdminAvatar(key) {
+    var has = !!key;
+    var url = has ? '/media/' + key : '';
+    var brandImg = $('brandAvatarImg'), meImg = $('meAvatarImg');
+    $('brandMono').style.display = has ? 'none' : '';
+    $('meAvatarMono').style.display = has ? 'none' : '';
+    if (has) { brandImg.src = url; meImg.src = url; }
+    brandImg.hidden = !has;
+    meImg.hidden = !has;
+    $('meAvatarRemoveBtn').hidden = !has;
+  }
+  function loadMe() {
+    api('/api/admin/me').then(function (d) {
+      if (!d.ok) return;
+      $('meName').textContent = d.username || '管理员';
+      $('meMeta').textContent = d.created_at ? '管理员账号 · ' + fmtDate(d.created_at) + ' 创建' : '管理员账号';
+      applyAdminAvatar(d.avatar);
+    }).catch(function () {});
+  }
+  $('brandMark').addEventListener('click', function () { switchPage('me'); });
+  $('meAvatarUploadBtn').addEventListener('click', function () { $('meAvatarInput').click(); });
+  $('meAvatarInput').addEventListener('change', function () {
+    var f = this.files && this.files[0];
+    this.value = '';
+    if (!f) return;
+    if (f.size > 2 * 1024 * 1024) { toast('头像图片不能超过 2MB', 'err'); return; }
+    var btn = $('meAvatarUploadBtn');
+    btn.disabled = true;
+    var fd = new FormData();
+    fd.append('file', f);
+    fetch('/api/admin/me', { method: 'POST', body: fd, credentials: 'same-origin' })
+      .then(function (r) { return r.json().catch(function () { return { ok: false, error: '响应异常' }; }); })
+      .then(function (d) {
+        btn.disabled = false;
+        if (d.ok) { applyAdminAvatar(d.avatar); toast('头像已更新', 'ok'); }
+        else toast(d.error || '上传失败', 'err');
+      })
+      .catch(function () { btn.disabled = false; toast('网络错误', 'err'); });
+  });
+  $('meAvatarRemoveBtn').addEventListener('click', function () {
+    ask({
+      title: '移除头像',
+      msg: '确定移除管理员头像？侧边栏左上角会恢复显示字母徽标。',
+      okText: '移除',
+      danger: true,
+      cb: function (okVal) {
+        if (!okVal) return;
+        api('/api/admin/me', { method: 'DELETE' }).then(function (d) {
+          if (d.ok) { applyAdminAvatar(null); toast('头像已移除', 'ok'); }
+          else toast(d.error || '操作失败', 'err');
+        }).catch(function () { toast('网络错误', 'err'); });
+      },
+    });
+  });
+
   function switchPage(type) {
     currentType = type;
     navBtns.forEach(function (b) { b.classList.toggle('active', b.getAttribute('data-type') === type); });
@@ -2461,11 +2556,13 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
     var isUsers = type === 'users';
     var isAppear = type === 'appearance';
     var isAi = type === 'ai';
+    var isMe = type === 'me';
     $('overviewPanel').hidden = !isOverview;
-    $('mediaPanel').hidden = isOverview || isUsers || isAppear || isAi;
+    $('mediaPanel').hidden = isOverview || isUsers || isAppear || isAi || isMe;
     $('userPanel').hidden = !isUsers;
     $('appearancePanel').hidden = !isAppear;
     $('aiPanel').hidden = !isAi;
+    $('mePanel').hidden = !isMe;
     // 列表对所有媒体类型常显（列表/工具/存储条都在 image-shell 里，隐藏它会连列表一起藏掉）；
     // 只收起左侧相册侧栏
     $('imageShell').hidden = false;
@@ -2481,11 +2578,14 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
     if (isAi) {
       loadAiSettings();
     }
+    if (isMe) {
+      loadMe();
+    }
     if (isUsers) {
       $('userSearch').value = ''; // 换进来重置搜索
       loadUsers();
     }
-    if (!isOverview && !isUsers && !isAppear && !isAi) {
+    if (!isOverview && !isUsers && !isAppear && !isAi && !isMe) {
       $('fileInput').accept = TYPE_EXT[type];
       $('titleInput').value = '';
       selected = {}; // 换标签页清空勾选和搜索

@@ -1952,6 +1952,7 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
       nm.textContent = m.id;
       row.appendChild(nm);
       row.appendChild(tagSelect(m.tag, function (val) {
+        if (isNewMode()) { m.tag = val; return; } // 新增模式：models 就是 aiNewModels，直接改内存
         var np = currentProviderDraft();
         if (!np) return;
         np.models = np.models.map(function (x) { return x.id === m.id ? { id: x.id, tag: val } : x; });
@@ -1981,50 +1982,63 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
           }).catch(function () { toast('网络错误', 'err'); });
         });
         row.appendChild(star);
-
-        var edit = document.createElement('button');
-        edit.type = 'button';
-        edit.className = 'icon-mini';
-        edit.title = '重命名模型';
-        edit.innerHTML = PENCIL_SVG;
-        edit.addEventListener('click', function () {
-          ask({
-            title: '重命名模型',
-            msg: '「' + p.name + '」里的模型 ' + m.id + ' 改名为：',
-            input: true, value: m.id, max: 100, okText: '确定',
-            cb: function (ok, val) {
-              if (!ok || !val || !val.trim() || val.trim() === m.id) return;
-              var np = currentProviderDraft();
-              if (!np) return;
-              np.models = np.models.map(function (x) { return x.id === m.id ? { id: val.trim(), tag: x.tag } : x; });
-              saveProviderDraft(np);
-            }
-          });
-        });
-        row.appendChild(edit);
-
-        var del = document.createElement('button');
-        del.type = 'button';
-        del.className = 'icon-mini danger-hover';
-        del.title = '删除模型';
-        del.innerHTML = TRASH_SVG;
-        del.addEventListener('click', function () {
-          if (models.length <= 1) { toast('至少保留一个模型；不要这个供应商可用右上角删除', 'err'); return; }
-          ask({
-            title: '删除模型',
-            msg: '从「' + p.name + '」删除模型 ' + m.id + '？',
-            okText: '删除', danger: true,
-            cb: function (ok) {
-              if (!ok) return;
-              var np = currentProviderDraft();
-              if (!np) return;
-              np.models = np.models.filter(function (x) { return x.id !== m.id; });
-              saveProviderDraft(np);
-            }
-          });
-        });
-        row.appendChild(del);
       }
+
+      var edit = document.createElement('button');
+      edit.type = 'button';
+      edit.className = 'icon-mini';
+      edit.title = '重命名模型';
+      edit.innerHTML = PENCIL_SVG;
+      edit.addEventListener('click', function () {
+        ask({
+          title: '重命名模型',
+          msg: '模型 ' + m.id + ' 改名为：',
+          input: true, value: m.id, max: 100, okText: '确定',
+          cb: function (ok, val) {
+            if (!ok || !val || !val.trim() || val.trim() === m.id) return;
+            var id = val.trim();
+            if (isNewMode()) {
+              if (aiNewModels.some(function (x) { return x.id === id; })) { toast('模型已存在', 'err'); return; }
+              m.id = id;
+              renderModelRows(null, aiNewModels);
+              return;
+            }
+            var np = currentProviderDraft();
+            if (!np) return;
+            np.models = np.models.map(function (x) { return x.id === m.id ? { id: id, tag: x.tag } : x; });
+            saveProviderDraft(np);
+          }
+        });
+      });
+      row.appendChild(edit);
+
+      var del = document.createElement('button');
+      del.type = 'button';
+      del.className = 'icon-mini danger-hover';
+      del.title = '删除模型';
+      del.innerHTML = TRASH_SVG;
+      del.addEventListener('click', function () {
+        ask({
+          title: '删除模型',
+          msg: (p ? '从「' + p.name + '」' : '') + '删除模型 ' + m.id + '？',
+          okText: '删除', danger: true,
+          cb: function (ok) {
+            if (!ok) return;
+            if (isNewMode()) {
+              aiNewModels = aiNewModels.filter(function (x) { return x.id !== m.id; });
+              renderModelRows(null, aiNewModels);
+              return;
+            }
+            if (models.length <= 1) { toast('至少保留一个模型；不要这个供应商可用右上角删除', 'err'); return; }
+            var np = currentProviderDraft();
+            if (!np) return;
+            np.models = np.models.filter(function (x) { return x.id !== m.id; });
+            saveProviderDraft(np);
+          }
+        });
+      });
+      row.appendChild(del);
+
       wrap.appendChild(row);
     });
     if (!models.length) {
@@ -2171,6 +2185,7 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
   $('aiAddModelBtn').addEventListener('click', function () {
     $('aiAddModelWrap').hidden = false;
     $('aiNewModelInput').value = '';
+    $('aiNewModelTag').value = '';
     $('aiNewModelInput').focus();
   });
   $('aiAddModelCancel').addEventListener('click', function () {
@@ -2184,8 +2199,10 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
     if (models.some(function (x) { return x.id === val; })) { toast('模型已存在', 'err'); return; }
     var entry = { id: val, tag: $('aiNewModelTag').value || '' };
     if (isNewMode()) {
+      // 新增模式：只重绘模型列表，绝不能重绘整个表单（会把已填的名称/URL/Key 清空）
       aiNewModels.push(entry);
-      renderAiManager();
+      renderModelRows(null, aiNewModels);
+      $('aiAddModelWrap').hidden = true;
     } else {
       var np = currentProviderDraft();
       np.models.push(entry);

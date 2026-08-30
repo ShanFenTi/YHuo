@@ -28,33 +28,74 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
   * { box-sizing: border-box; margin: 0; }
   body {
     min-height: 100vh;
-    display: flex; flex-direction: column; align-items: flex-start;
-    padding: 36px 24px 60px 4vw;
     background: var(--bg); color: var(--fg);
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
     transition: background .25s, color .25s;
   }
-  header { width: 100%; max-width: 860px; display: flex; align-items: center; justify-content: space-between; margin-bottom: 22px; }
-  .brand { display: flex; align-items: center; gap: 12px; }
-  .brand .mark {
-    width: 42px; height: 42px; border-radius: 12px;
-    background: var(--fg); color: var(--bg);
-    font-weight: 700; font-size: 15px; letter-spacing: .05em;
-    display: flex; align-items: center; justify-content: center;
+  /* ---------- 侧边栏 + 顶栏框架 ---------- */
+  .shell { display: flex; min-height: 100vh; }
+  aside.sidenav {
+    width: 220px; flex: none;
+    background: var(--card); border-right: 1px solid var(--border);
+    display: flex; flex-direction: column;
+    padding: 18px 12px;
+    position: sticky; top: 0; height: 100vh;
+    transition: width .2s;
+    overflow: hidden;
   }
-  .brand h1 { font-size: 19px; font-weight: 700; }
-  .brand p { font-size: 12px; color: var(--muted); margin-top: 2px; }
-  .header-btns { display: flex; gap: 8px; }
+  /* 收起态：只剩图标列 */
+  body.nav-collapsed aside.sidenav { width: 64px; }
+  body.nav-collapsed .brand { padding-left: 4px; padding-right: 4px; }
+  body.nav-collapsed .brand h1, body.nav-collapsed .brand p { display: none; }
+  body.nav-collapsed nav.sidenav-links button { justify-content: center; padding: 10px 0; }
+  body.nav-collapsed nav.sidenav-links button span { display: none; }
+  body.nav-collapsed .sidenav-foot .icon-btn { justify-content: center; padding: 10px 0; }
+  body.nav-collapsed .sidenav-foot .icon-btn span { display: none; }
+  #navCollapseBtn svg { transition: transform .2s; }
+  body.nav-collapsed #navCollapseBtn svg { transform: rotate(180deg); }
+  .brand { display: flex; align-items: center; gap: 10px; padding: 4px 10px 18px; position: relative; }
+  .brand .mark {
+    width: 38px; height: 38px; border-radius: 11px;
+    background: var(--fg); color: var(--bg);
+    font-weight: 700; font-size: 14px; letter-spacing: .05em;
+    display: flex; align-items: center; justify-content: center; flex: none;
+  }
+  .brand h1 { font-size: 16px; font-weight: 700; line-height: 1.2; }
+  .brand p { font-size: 11px; color: var(--muted); margin-top: 2px; }
+  nav.sidenav-links { display: flex; flex-direction: column; gap: 4px; }
+  nav.sidenav-links button {
+    display: flex; align-items: center; gap: 10px;
+    background: transparent; color: var(--fg);
+    padding: 10px 12px; border-radius: 10px; font-size: 14px;
+    text-align: left; border: none; cursor: pointer;
+  }
+  nav.sidenav-links button:hover { background: var(--hover); opacity: 1; }
+  nav.sidenav-links button.active { background: var(--fg); color: var(--bg); font-weight: 600; }
+  nav.sidenav-links button svg { width: 17px; height: 17px; flex: none; }
+  .sidenav-foot { margin-top: auto; padding-top: 12px; border-top: 1px solid var(--row-line); display: flex; flex-direction: column; gap: 4px; }
+  .sidenav-foot .icon-btn { justify-content: flex-start; }
+  .main-col { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+  header.topbar {
+    position: sticky; top: 0; z-index: 50;
+    display: flex; align-items: center; gap: 12px;
+    padding: 12px 28px;
+    background: var(--card); border-bottom: 1px solid var(--border);
+  }
+  header.topbar h2 { font-size: 17px; font-weight: 700; flex: 1; }
+  .menu-btn { display: none; padding: 8px 10px; }
+  .menu-btn svg { width: 18px; height: 18px; display: block; }
+  .topbar-btns { display: flex; gap: 8px; }
   .icon-btn {
     display: flex; align-items: center; gap: 6px;
     padding: 8px 14px; border-radius: 10px; font-size: 13px;
   }
   .icon-btn svg { width: 15px; height: 15px; }
+  main.content { padding: 24px 28px 48px; flex: 1; }
   .card {
-    width: 100%; max-width: 860px;
     background: var(--card); border-radius: 18px; padding: 24px;
     border: 1px solid var(--border);
     box-shadow: var(--shadow);
+    margin-bottom: 20px;
   }
   .hint { color: var(--muted); font-size: 13px; line-height: 1.6; margin-bottom: 16px; }
   input[type=text], input[type=password] {
@@ -80,9 +121,6 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
   .msg.err::before { content: "✕ "; }
   .msg.ok { color: var(--muted); }
   .msg.ok::before { content: "✓ "; }
-  .tabs { display: flex; gap: 6px; margin-bottom: 20px; background: var(--chip); padding: 4px; border-radius: 12px; width: fit-content; }
-  .tabs button { background: transparent; color: var(--fg); padding: 8px 18px; border-radius: 9px; }
-  .tabs button.active { background: var(--card); color: var(--fg); font-weight: 600; box-shadow: 0 1px 4px rgba(0,0,0,.18); }
   .appear-label2 { font-size: 13px; font-weight: 600; margin: 18px 0 10px; }
   .accent-row { display: flex; gap: 10px; }
   .accent-dot { width: 34px; height: 34px; border-radius: 50%; border: 3px solid transparent; padding: 0; }
@@ -90,7 +128,7 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
   .bgset-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
   .bg-preview { width: 160px; height: 90px; object-fit: cover; border-radius: 10px; border: 1px solid var(--border); }
   .meta2 { color: var(--muted); font-size: 13px; }
-  .stats { width: 100%; max-width: 860px; display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-bottom: 22px; }
+  .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-bottom: 22px; }
   .stat {
     background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 16px 18px;
     box-shadow: var(--shadow);
@@ -181,84 +219,167 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
   .badge.ok { color: var(--muted); }
   .badge.banned { background: var(--fg); color: var(--bg); border-color: var(--fg); font-weight: 700; }
   [hidden] { display: none !important; }
+  /* 行内操作按钮组：桌面悬停/聚焦浮现，触屏设备常显 */
+  .row-actions { display: flex; gap: 6px; margin-left: auto; flex: none; }
+  @media (hover: hover) and (pointer: fine) {
+    .row-actions { opacity: 0; pointer-events: none; transition: opacity .15s; }
+    ul.list li:hover .row-actions, ul.list li:focus-within .row-actions { opacity: 1; pointer-events: auto; }
+  }
+  /* 行内改名输入框 */
+  .inline-edit {
+    flex: 1; min-width: 0; margin: 0; padding: 5px 9px;
+    border: 1px solid var(--fg); border-radius: 8px;
+    background: var(--input-bg); color: var(--fg); font-size: 14px;
+  }
+  /* 全局 toast 轻提示（底部浮现，自动消失） */
+  .toast {
+    position: fixed; left: 50%; bottom: 30px; z-index: 1001;
+    transform: translate(-50%, 16px);
+    background: var(--fg); color: var(--bg);
+    padding: 10px 20px; border-radius: 12px; font-size: 14px;
+    box-shadow: 0 6px 24px rgba(0,0,0,.22);
+    opacity: 0; pointer-events: none; max-width: 86vw;
+    transition: opacity .22s, transform .22s;
+  }
+  .toast.show { opacity: 1; transform: translate(-50%, 0); }
+  .toast.err { font-weight: 700; }
+  .toast.err::before { content: "✕ "; }
+  .toast.ok::before { content: "✓ "; }
+  /* 询问弹窗（替代原生 prompt/confirm） */
+  .ask-modal-body { width: min(420px, 92vw); }
+  .ask-msg { font-size: 14px; line-height: 1.65; margin-bottom: 16px; }
+  .ask-btns { display: flex; justify-content: flex-end; gap: 8px; }
+  #askOk.danger-ok { background: #d64545; color: #fff; }
+  #askOk.danger-ok:hover { opacity: .88; }
+  /* 登录/初始化/网络错误：独立居中卡，不套框架 */
+  .gate-wrap { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 24px; }
+  .gate-wrap .card { width: min(420px, 100%); margin-bottom: 0; }
+  /* 移动端适配 */
+  @media (max-width: 900px) {
+    aside.sidenav {
+      position: fixed; left: 0; top: 0; z-index: 200;
+      transform: translateX(-100%); transition: transform .22s;
+      box-shadow: none; height: 100vh;
+    }
+    body.nav-open aside.sidenav { transform: translateX(0); box-shadow: 0 0 0 100vmax rgba(0,0,0,.45); }
+    body.nav-open aside.sidenav .brand { pointer-events: auto; }
+    .menu-btn { display: flex; align-items: center; }
+    /* 窄屏抽屉永远显示完整侧边栏：覆盖桌面端收起态的图标模式 */
+    body.nav-collapsed aside.sidenav { width: 220px; }
+    body.nav-collapsed .brand { padding: 4px 10px 18px; }
+    body.nav-collapsed .brand h1, body.nav-collapsed .brand p { display: block; }
+    body.nav-collapsed nav.sidenav-links button { justify-content: flex-start; padding: 10px 12px; }
+    body.nav-collapsed nav.sidenav-links button span { display: inline; }
+    body.nav-collapsed .sidenav-foot .icon-btn { justify-content: flex-start; padding: 8px 14px; }
+    body.nav-collapsed .sidenav-foot .icon-btn span { display: inline; }
+    header.topbar { padding: 10px 16px; }
+    main.content { padding: 16px 16px 40px; }
+    .card { padding: 16px; border-radius: 14px; }
+    ul.list li { flex-wrap: wrap; row-gap: 8px; padding: 10px 2px; }
+    ul.list li .title { flex: 1 1 40%; }
+    ul.list li .meta { margin-left: auto; }
+    .row-actions { flex-basis: 100%; margin-left: 0; }
+    .album-tools, .list-tools { gap: 8px; }
+    .stat { padding: 12px 14px; }
+  }
+  /* 触屏没有 HTML5 拖拽：隐藏拖拽柄，排序用 ↑↓ */
+  @media (hover: none) {
+    ul.list li .handle { display: none; }
+  }
   footer { margin-top: 24px; font-size: 12px; color: var(--muted); }
 </style>
 </head>
 <body>
-<header>
-  <div class="brand">
-    <div class="mark">YH</div>
-    <div>
-      <h1>YHuo 管理后台</h1>
-      <p>内容与用户一站式管理</p>
+<div class="gate-wrap" id="gateWrap">
+  <div class="card" id="setupCard" hidden>
+    <p class="hint">首次使用：创建超级管理员账号。这个账号只创建这一次，请记好用户名和密码。</p>
+    <input type="text" id="setupUser" placeholder="用户名" autocomplete="username">
+    <input type="password" id="setupPass" placeholder="密码（至少 6 位）" autocomplete="new-password">
+    <input type="password" id="setupPass2" placeholder="再输入一遍密码" autocomplete="new-password">
+    <button id="setupBtn">创建并进入后台</button>
+    <div class="msg" id="setupMsg"></div>
+  </div>
+
+  <div class="card" id="loginCard" hidden>
+    <p class="hint">请登录管理后台。</p>
+    <input type="text" id="loginUser" placeholder="用户名" autocomplete="username">
+    <input type="password" id="loginPass" placeholder="密码" autocomplete="current-password">
+    <button id="loginBtn">登录</button>
+    <div class="msg" id="loginMsg"></div>
+  </div>
+
+  <div class="card" id="neterrCard" hidden>
+    <p class="hint">无法连接服务器。你的网络访问 Cloudflare 可能不稳定，请稍候点击重试（或检查代理/VPN）。</p>
+    <button id="retryBtn">重试</button>
+    <div class="msg" id="netMsg"></div>
+  </div>
+</div>
+
+<div class="shell" id="appShell" hidden>
+  <aside class="sidenav">
+    <div class="brand">
+      <div class="mark">YH</div>
+      <div>
+        <h1>YHuo 管理后台</h1>
+        <p>内容与用户一站式管理</p>
+      </div>
     </div>
-  </div>
-  <div class="header-btns">
-    <button id="themeBtn" class="ghost icon-btn" title="切换浅色/深色">
-      <svg id="themeIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></svg>
-      <span id="themeLabel">深色</span>
-    </button>
-    <button id="logoutBtn" class="ghost icon-btn" hidden>
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="m16 17 5-5-5-5"/><path d="M21 12H9"/></svg>
-      <span>退出</span>
-    </button>
-  </div>
-</header>
+    <nav class="sidenav-links" id="sideNav">
+      <button data-type="overview" title="概览"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9"/><rect x="14" y="3" width="7" height="5"/><rect x="14" y="12" width="7" height="9"/><rect x="3" y="16" width="7" height="5"/></svg><span>概览</span></button>
+      <button data-type="music" title="音乐"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg><span>音乐</span></button>
+      <button data-type="video" title="视频"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M2 8h20M2 16h20M8 4v16M16 4v16"/></svg><span>视频</span></button>
+      <button data-type="image" title="图片"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m21 15-5-5L5 21"/></svg><span>图片</span></button>
+      <button data-type="users" title="用户"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg><span>用户</span></button>
+      <button data-type="appearance" title="外观"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 2a10 10 0 0 0 0 20z" fill="currentColor" stroke="none"/></svg><span>外观</span></button>
+    </nav>
+    <div class="sidenav-foot">
+      <button id="themeBtn" class="ghost icon-btn" title="切换浅色/深色">
+        <svg id="themeIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></svg>
+        <span id="themeLabel">深色</span>
+      </button>
+      <button id="logoutBtn" class="ghost icon-btn" title="退出">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="m16 17 5-5-5-5"/><path d="M21 12H9"/></svg>
+        <span>退出</span>
+      </button>
+      <button id="navCollapseBtn" class="ghost icon-btn" title="收起/展开侧边栏">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+        <span id="navCollapseLabel">收起侧边栏</span>
+      </button>
+    </div>
+  </aside>
 
-<div class="card" id="setupCard" hidden>
-  <p class="hint">首次使用：创建超级管理员账号。这个账号只创建这一次，请记好用户名和密码。</p>
-  <input type="text" id="setupUser" placeholder="用户名" autocomplete="username">
-  <input type="password" id="setupPass" placeholder="密码（至少 6 位）" autocomplete="new-password">
-  <input type="password" id="setupPass2" placeholder="再输入一遍密码" autocomplete="new-password">
-  <button id="setupBtn">创建并进入后台</button>
-  <div class="msg" id="setupMsg"></div>
-</div>
+  <div class="main-col">
+    <header class="topbar">
+      <button id="menuBtn" class="ghost menu-btn" title="菜单">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
+      </button>
+      <h2 id="pageTitle">概览</h2>
+    </header>
 
-<div class="card" id="loginCard" hidden>
-  <p class="hint">请登录管理后台。</p>
-  <input type="text" id="loginUser" placeholder="用户名" autocomplete="username">
-  <input type="password" id="loginPass" placeholder="密码" autocomplete="current-password">
-  <button id="loginBtn">登录</button>
-  <div class="msg" id="loginMsg"></div>
-</div>
+    <main class="content">
+      <div id="overviewPanel">
+        <div class="stats" id="stats">
+          <div class="stat"><div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg></div><div><div class="num" id="statMusic">0</div><div class="lbl">音乐</div></div></div>
+          <div class="stat"><div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M2 8h20M2 16h20M8 4v16M16 4v16"/></svg></div><div><div class="num" id="statVideo">0</div><div class="lbl">视频</div></div></div>
+          <div class="stat"><div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m21 15-5-5L5 21"/></svg></div><div><div class="num" id="statImage">0</div><div class="lbl">图片</div></div></div>
+          <div class="stat"><div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></div><div><div class="num" id="statUsers">0</div><div class="lbl">注册用户</div></div></div>
+          <div class="stat"><div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg></div><div><div class="num" id="statVisits">0</div><div class="lbl">访问量</div></div></div>
+          <div class="stat"><div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg></div><div><div class="num" id="statToday">0</div><div class="lbl">今日访问</div></div></div>
+        </div>
+        <div class="card" id="visitCard">
+          <div class="visit-head">
+            <strong>访问趋势</strong>
+            <span class="meta2" id="visitSumm"></span>
+            <span class="spacer"></span>
+            <button class="ghost range-btn active" data-range="14">近 14 天</button>
+            <button class="ghost range-btn" data-range="30">近 30 天</button>
+          </div>
+          <div id="visitChart"></div>
+          <p class="hint" id="visitHint" style="margin:10px 0 0" hidden>按天明细从上线开始积累，之前累积的总访问量没有逐日记录。</p>
+        </div>
+      </div>
 
-<div class="card" id="neterrCard" hidden>
-  <p class="hint">无法连接服务器。你的网络访问 Cloudflare 可能不稳定，请稍候点击重试（或检查代理/VPN）。</p>
-  <button id="retryBtn">重试</button>
-  <div class="msg" id="netMsg"></div>
-</div>
-
-<div class="stats" id="stats" hidden>
-  <div class="stat"><div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg></div><div><div class="num" id="statMusic">0</div><div class="lbl">音乐</div></div></div>
-  <div class="stat"><div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M2 8h20M2 16h20M8 4v16M16 4v16"/></svg></div><div><div class="num" id="statVideo">0</div><div class="lbl">视频</div></div></div>
-  <div class="stat"><div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m21 15-5-5L5 21"/></svg></div><div><div class="num" id="statImage">0</div><div class="lbl">图片</div></div></div>
-  <div class="stat"><div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></div><div><div class="num" id="statUsers">0</div><div class="lbl">注册用户</div></div></div>
-  <div class="stat"><div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg></div><div><div class="num" id="statVisits">0</div><div class="lbl">访问量</div></div></div>
-  <div class="stat"><div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg></div><div><div class="num" id="statToday">0</div><div class="lbl">今日访问</div></div></div>
-</div>
-
-<div class="card" id="visitCard" hidden>
-  <div class="visit-head">
-    <strong>访问趋势</strong>
-    <span class="meta2" id="visitSumm"></span>
-    <span class="spacer"></span>
-    <button class="ghost range-btn active" data-range="14">近 14 天</button>
-    <button class="ghost range-btn" data-range="30">近 30 天</button>
-  </div>
-  <div id="visitChart"></div>
-  <p class="hint" id="visitHint" style="margin:10px 0 0" hidden>按天明细从上线开始积累，之前累积的总访问量没有逐日记录。</p>
-</div>
-
-<div class="card" id="mainCard" hidden>
-  <div class="tabs">
-    <button data-type="music" class="active">音乐</button>
-    <button data-type="video">视频</button>
-    <button data-type="image">图片</button>
-    <button data-type="users">用户</button>
-    <button data-type="appearance">外观</button>
-  </div>
-
-  <div id="mediaPanel">
+      <div id="mediaPanel" hidden>
     <div class="upload-row" id="uploadRow">
       <input type="file" id="fileInput" multiple>
       <input type="text" id="titleInput" placeholder="显示名称（可选，仅单个文件时生效）">
@@ -267,7 +388,6 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
     <p class="upload-hint">支持一次选多个文件，也可以把文件或整个文件夹拖进来；与已有内容同名的自动跳过；单文件上限 24MB。</p>
     <div class="progress" id="progress"><i id="progressBar"></i></div>
     <div class="queue-info" id="queueInfo"></div>
-    <div class="msg" id="mainMsg"></div>
     <div class="album-tools" id="albumTools" hidden>
       <span class="meta2">相册：</span>
       <select id="albumFilter"></select>
@@ -298,7 +418,6 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
       <input type="text" id="userSearch" placeholder="搜索用户名…">
       <button class="ghost" id="userSortBtn" title="切换排序">注册时间：新→旧</button>
     </div>
-    <div class="msg" id="userMsg"></div>
     <ul class="list" id="userList"></ul>
     <div class="empty" id="userEmpty" hidden>还没有用户注册。</div>
   </div>
@@ -315,7 +434,6 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
       <button id="bgUploadBtn2" class="ghost">上传背景图</button>
       <button id="bgClearBtn2" class="danger">清除</button>
     </div>
-    <div class="msg" id="appearMsg"></div>
     <p class="appear-label2">主页寄语</p>
     <input type="text" id="quoteInput" maxlength="100" placeholder="显示在时钟下方；留空则用每日一言">
     <button id="quoteSaveBtn" class="ghost">保存寄语</button>
@@ -323,6 +441,25 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
     <div class="bgset-row">
       <button id="exportBtn" class="ghost">导出媒体清单备份（JSON）</button>
       <span class="meta2">含全部媒体条目与访问地址；KV 里的文件本体请自行下载保存。</span>
+    </div>
+  </div>
+    </main>
+  </div>
+</div>
+
+<footer>文件存放在 Cloudflare KV（单文件上限 24MB）；删除与禁用操作即时生效，请谨慎确认。</footer>
+
+<div class="toast" id="toast"></div>
+
+<div class="modal" id="askModal" hidden>
+  <div class="modal-backdrop" id="askBackdrop"></div>
+  <div class="modal-body ask-modal-body">
+    <div class="modal-head"><strong id="askTitle"></strong></div>
+    <p class="ask-msg" id="askMsg"></p>
+    <input type="text" id="askInput" hidden>
+    <div class="ask-btns">
+      <button id="askCancel" class="ghost">取消</button>
+      <button id="askOk">确定</button>
     </div>
   </div>
 </div>
@@ -337,8 +474,6 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
     <div id="previewContent"></div>
   </div>
 </div>
-
-<footer>文件存放在 Cloudflare KV（单文件上限 24MB）；删除与禁用操作即时生效，请谨慎确认。</footer>
 
 <script>
 (function () {
@@ -389,6 +524,54 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
     el.className = 'msg' + (cls ? ' ' + cls : '');
   }
 
+  // ---------- toast 轻提示（底部浮现，自动消失；sticky=true 时常驻直到下一条） ----------
+  var toastTimer = null;
+  function toast(text, cls, sticky) {
+    var t = $('toast');
+    t.textContent = text || '';
+    t.className = 'toast show' + (cls ? ' ' + cls : '');
+    clearTimeout(toastTimer);
+    if (!sticky) toastTimer = setTimeout(function () { t.className = 'toast' + (cls ? ' ' + cls : ''); }, 2600);
+  }
+
+  // ---------- 询问弹窗（替代原生 prompt / confirm） ----------
+  var askCb = null;
+  function ask(opts) {
+    $('askTitle').textContent = opts.title || '请确认';
+    var msg = $('askMsg');
+    msg.textContent = opts.msg || '';
+    msg.hidden = !opts.msg;
+    var input = $('askInput');
+    if (opts.input) {
+      input.hidden = false;
+      input.value = opts.value || '';
+      input.maxLength = opts.max || 200;
+      input.placeholder = opts.placeholder || '';
+    } else {
+      input.hidden = true;
+    }
+    var ok = $('askOk');
+    ok.textContent = opts.okText || '确定';
+    ok.className = opts.danger ? 'danger-ok' : '';
+    $('askModal').hidden = false;
+    askCb = opts.cb || null;
+    if (opts.input) { input.focus(); input.select(); }
+    else ok.focus();
+  }
+  function askClose(okVal) {
+    if ($('askModal').hidden) return;
+    $('askModal').hidden = true;
+    var cb = askCb, val = $('askInput').value;
+    askCb = null;
+    if (cb) cb(okVal, val);
+  }
+  $('askOk').addEventListener('click', function () { askClose(true); });
+  $('askCancel').addEventListener('click', function () { askClose(false); });
+  $('askBackdrop').addEventListener('click', function () { askClose(false); });
+  $('askInput').addEventListener('keydown', function (e) {
+    if (e.key === 'Enter') { e.preventDefault(); askClose(true); }
+  });
+
   function api(path, opts) {
     opts = opts || {};
     opts.credentials = 'same-origin';
@@ -405,13 +588,11 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
 
   // ---------- 状态切换 ----------
   function show(name) {
+    $('gateWrap').hidden = name === 'main';
+    $('appShell').hidden = name !== 'main';
     $('setupCard').hidden = name !== 'setup';
     $('loginCard').hidden = name !== 'login';
     $('neterrCard').hidden = name !== 'neterr';
-    $('mainCard').hidden = name !== 'main';
-    $('stats').hidden = name !== 'main';
-    $('visitCard').hidden = name !== 'main';
-    $('logoutBtn').hidden = name !== 'main';
   }
 
   // 自动重试 3 次：网络抖动时误显示登录表单会让人误以为账号丢了
@@ -472,6 +653,7 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
   // ---------- 主界面 ----------
   function enterMain() {
     show('main');
+    switchPage('overview'); // 默认落在概览页
     loadList().then(function () { syncStaticMedia(); });
     loadUsers();
     loadVisits();
@@ -677,6 +859,7 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
       title.className = 'title';
       title.textContent = it.title;
       title.title = it.title;
+      title.addEventListener('click', function () { startRename(it, title); });
 
       var meta = document.createElement('span');
       meta.className = 'meta';
@@ -705,43 +888,51 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
             if (d.ok) {
               it.album = asel.value;
               rebuildAlbumControls();
-              showMsg($('mainMsg'), '已移入「' + (asel.value || '未分组') + '」', 'ok');
-            } else showMsg($('mainMsg'), d.error || '操作失败', 'err');
+              toast('已移入「' + (asel.value || '未分组') + '」', 'ok');
+            } else toast(d.error || '操作失败', 'err');
           });
         });
         li.appendChild(asel);
       }
 
+      // 行内操作按钮组（桌面悬停/聚焦浮现，触屏常显，窄屏换行到第二行）
+      var actions = document.createElement('div');
+      actions.className = 'row-actions';
+
       var renameBtn = document.createElement('button');
       renameBtn.className = 'ghost';
       renameBtn.textContent = '✏️';
       renameBtn.title = '修改显示名称';
-      renameBtn.addEventListener('click', function () { rename(it); });
-      li.appendChild(renameBtn);
+      renameBtn.addEventListener('click', function () { startRename(it, title); });
+      actions.appendChild(renameBtn);
 
       var playBtn = document.createElement('button');
       playBtn.className = 'ghost';
       playBtn.textContent = currentType === 'music' ? '▶ 试听' : (currentType === 'video' ? '▶ 预览' : '👁 查看');
       playBtn.addEventListener('click', function () { openPreview(it); });
-      li.appendChild(playBtn);
+      actions.appendChild(playBtn);
 
       if (!filtering) {
         var up = document.createElement('button');
         up.className = 'ghost'; up.textContent = '↑'; up.disabled = i === 0;
+        up.title = '上移';
         up.addEventListener('click', function () { move(currentType, i, -1); });
 
         var down = document.createElement('button');
         down.className = 'ghost'; down.textContent = '↓'; down.disabled = i === arr.length - 1;
+        down.title = '下移';
         down.addEventListener('click', function () { move(currentType, i, 1); });
 
-        li.appendChild(up); li.appendChild(down);
+        actions.appendChild(up); actions.appendChild(down);
         addDragHandlers(li, currentType, i);
       }
 
       var del = document.createElement('button');
       del.className = 'danger'; del.textContent = '删除';
       del.addEventListener('click', function () { removeItem(it); });
-      li.appendChild(del);
+      actions.appendChild(del);
+
+      li.appendChild(actions);
 
       list.appendChild(li);
     });
@@ -804,49 +995,81 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ type: type, ids: ids })
     }).then(function (data) {
-      if (data.ok) { loadList(); showMsg($('mainMsg'), '顺序已更新', 'ok'); }
-      else showMsg($('mainMsg'), data.error || '操作失败', 'err');
+      if (data.ok) { loadList(); toast('顺序已更新', 'ok'); }
+      else toast(data.error || '操作失败', 'err');
     });
   }
 
-  function rename(it) {
-    var t = prompt('修改显示名称：', it.title);
-    if (t === null) return;
-    t = t.trim();
-    if (!t || t === it.title) return;
-    api('/api/admin/media/' + it.id, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ title: t })
-    }).then(function (data) {
-      if (data.ok) { it.title = t; renderList(); showMsg($('mainMsg'), '已改名', 'ok'); }
-      else showMsg($('mainMsg'), data.error || '操作失败', 'err');
+  // 行内改名：标题位直接变输入框，Enter 保存 / Esc 取消 / 失焦保存
+  function startRename(it, titleEl) {
+    var input = document.createElement('input');
+    input.type = 'text';
+    input.className = 'inline-edit';
+    input.value = it.title;
+    input.maxLength = 200;
+    titleEl.replaceWith(input);
+    input.focus();
+    input.select();
+    var done = false;
+    function finish(save) {
+      if (done) return;
+      done = true;
+      var t = input.value.trim();
+      if (!save || !t || t === it.title) { renderList(); return; }
+      api('/api/admin/media/' + it.id, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title: t })
+      }).then(function (data) {
+        if (data.ok) { it.title = t; toast('已改名', 'ok'); }
+        else toast(data.error || '操作失败', 'err');
+        renderList();
+      }).catch(function () { renderList(); toast('网络错误', 'err'); });
+    }
+    input.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter') { e.preventDefault(); finish(true); }
+      else if (e.key === 'Escape') { e.stopPropagation(); finish(false); }
     });
+    input.addEventListener('blur', function () { finish(true); });
   }
 
   function removeItem(it) {
-    if (!confirm('确定删除「' + it.title + '」吗？文件会一并从存储里删除，不可恢复。')) return;
-    api('/api/admin/media/' + it.id, { method: 'DELETE' }).then(function (data) {
-      if (data.ok) { loadList(); showMsg($('mainMsg'), '已删除', 'ok'); }
-      else showMsg($('mainMsg'), data.error || '删除失败', 'err');
+    ask({
+      title: '删除文件',
+      msg: '确定删除「' + it.title + '」吗？文件会一并从存储里删除，不可恢复。',
+      okText: '删除', danger: true,
+      cb: function (ok) {
+        if (!ok) return;
+        api('/api/admin/media/' + it.id, { method: 'DELETE' }).then(function (data) {
+          if (data.ok) { loadList(); toast('已删除', 'ok'); }
+          else toast(data.error || '删除失败', 'err');
+        });
+      }
     });
   }
 
   function deleteSelected() {
     var ids = (items[currentType] || []).filter(function (it) { return selected[it.id]; });
     if (!ids.length) return;
-    if (!confirm('确定删除所选 ' + ids.length + ' 项吗？文件会一并从存储里删除，不可恢复。')) return;
-    var left = ids.length;
-    ids.forEach(function (it) {
-      api('/api/admin/media/' + it.id, { method: 'DELETE' }).then(function (data) {
-        if (data.ok) delete selected[it.id];
-        if (--left === 0) {
-          loadList();
-          showMsg($('mainMsg'), '批量删除完成', 'ok');
-        }
-      }).catch(function () {
-        if (--left === 0) { loadList(); showMsg($('mainMsg'), '部分删除失败，请重试', 'err'); }
-      });
+    ask({
+      title: '批量删除',
+      msg: '确定删除所选 ' + ids.length + ' 项吗？文件会一并从存储里删除，不可恢复。',
+      okText: '全部删除', danger: true,
+      cb: function (ok) {
+        if (!ok) return;
+        var left = ids.length;
+        ids.forEach(function (it) {
+          api('/api/admin/media/' + it.id, { method: 'DELETE' }).then(function (data) {
+            if (data.ok) delete selected[it.id];
+            if (--left === 0) {
+              loadList();
+              toast('批量删除完成', 'ok');
+            }
+          }).catch(function () {
+            if (--left === 0) { loadList(); toast('部分删除失败，请重试', 'err'); }
+          });
+        });
+      }
     });
   }
 
@@ -879,7 +1102,9 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
   $('previewClose').addEventListener('click', closePreview);
   $('previewBackdrop').addEventListener('click', closePreview);
   document.addEventListener('keydown', function (e) {
-    if (e.key === 'Escape' && !$('previewModal').hidden) closePreview();
+    if (e.key !== 'Escape') return;
+    if (!$('previewModal').hidden) closePreview();
+    else if (!$('askModal').hidden) askClose(false);
   });
 
   function move(type, index, delta) {
@@ -955,22 +1180,37 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
   }
 
   function setBanned(u, banned) {
-    if (banned && !confirm('禁用「' + u.username + '」？该用户会立即被踢下线且无法再登录。')) return;
+    if (!banned) { doSetBanned(u, false); return; }
+    ask({
+      title: '禁用用户',
+      msg: '禁用「' + u.username + '」？该用户会立即被踢下线且无法再登录。',
+      okText: '禁用', danger: true,
+      cb: function (ok) { if (ok) doSetBanned(u, true); }
+    });
+  }
+  function doSetBanned(u, banned) {
     api('/api/admin/users/' + u.id, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ banned: banned })
     }).then(function (data) {
-      if (data.ok) { loadUsers(); showMsg($('userMsg'), banned ? '已禁用' : '已解封', 'ok'); }
-      else showMsg($('userMsg'), data.error || '操作失败', 'err');
+      if (data.ok) { loadUsers(); toast(banned ? '已禁用' : '已解封', 'ok'); }
+      else toast(data.error || '操作失败', 'err');
     });
   }
 
   function removeUser(u) {
-    if (!confirm('彻底删除账号「' + u.username + '」？此操作不可恢复。')) return;
-    api('/api/admin/users/' + u.id, { method: 'DELETE' }).then(function (data) {
-      if (data.ok) { loadUsers(); showMsg($('userMsg'), '账号已删除', 'ok'); }
-      else showMsg($('userMsg'), data.error || '删除失败', 'err');
+    ask({
+      title: '删除账号',
+      msg: '彻底删除账号「' + u.username + '」？此操作不可恢复。',
+      okText: '删除', danger: true,
+      cb: function (ok) {
+        if (!ok) return;
+        api('/api/admin/users/' + u.id, { method: 'DELETE' }).then(function (data) {
+          if (data.ok) { loadUsers(); toast('账号已删除', 'ok'); }
+          else toast(data.error || '删除失败', 'err');
+        });
+      }
     });
   }
 
@@ -998,9 +1238,9 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ accent: a.name })
         }).then(function (d) {
-          if (d.ok) { currentAccent = d.accent; renderAccents(); showMsg($('appearMsg'), '默认主题色已保存，前台即刻生效', 'ok'); }
-          else showMsg($('appearMsg'), d.error || '保存失败', 'err');
-        }).catch(function () { showMsg($('appearMsg'), '网络错误', 'err'); });
+          if (d.ok) { currentAccent = d.accent; renderAccents(); toast('默认主题色已保存，前台即刻生效', 'ok'); }
+          else toast(d.error || '保存失败', 'err');
+        }).catch(function () { toast('网络错误', 'err'); });
       });
       row.appendChild(b);
     });
@@ -1032,9 +1272,9 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ quote: $('quoteInput').value })
     }).then(function (d) {
-      if (d.ok) showMsg($('appearMsg'), d.quote ? '寄语已保存，前台即刻生效' : '已清除寄语，前台恢复每日一言', 'ok');
-      else showMsg($('appearMsg'), d.error || '保存失败', 'err');
-    }).catch(function () { showMsg($('appearMsg'), '网络错误', 'err'); });
+      if (d.ok) toast(d.quote ? '寄语已保存，前台即刻生效' : '已清除寄语，前台恢复每日一言', 'ok');
+      else toast(d.error || '保存失败', 'err');
+    }).catch(function () { toast('网络错误', 'err'); });
   });
 
   // 备份导出：媒体清单 + 站点设置 + 访问统计，打包成 JSON 下载
@@ -1059,7 +1299,7 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
     var f = this.files[0];
     this.value = '';
     if (!f) return;
-    showMsg($('appearMsg'), '正在上传背景图…');
+    toast('正在上传背景图…', '', true);
     var form = new FormData();
     form.append('file', f);
     var opts = { method: 'POST', credentials: 'same-origin', body: form };
@@ -1071,50 +1311,87 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
     fetch('/api/admin/appearance/background', opts)
       .then(function (res) { return res.json().catch(function () { return { ok: false, error: '响应异常' }; }); })
       .then(function (d) {
-        if (d.ok) { renderBgPreview(d.bg); showMsg($('appearMsg'), '默认背景图已更新', 'ok'); }
-        else showMsg($('appearMsg'), d.error || '上传失败', 'err');
+        if (d.ok) { renderBgPreview(d.bg); toast('默认背景图已更新', 'ok'); }
+        else toast(d.error || '上传失败', 'err');
       })
-      .catch(function () { showMsg($('appearMsg'), '网络错误，上传失败', 'err'); });
+      .catch(function () { toast('网络错误，上传失败', 'err'); });
   });
   $('bgClearBtn2').addEventListener('click', function () {
-    if (!confirm('清除默认背景图？访客将回到网站自带背景。')) return;
-    api('/api/admin/appearance/background', { method: 'DELETE' }).then(function (d) {
-      if (d.ok) { renderBgPreview(null); showMsg($('appearMsg'), '已清除', 'ok'); }
-      else showMsg($('userMsg'), d.error || '操作失败', 'err');
+    ask({
+      title: '清除背景图',
+      msg: '清除默认背景图？访客将回到网站自带背景。',
+      okText: '清除', danger: true,
+      cb: function (ok) {
+        if (!ok) return;
+        api('/api/admin/appearance/background', { method: 'DELETE' }).then(function (d) {
+          if (d.ok) { renderBgPreview(null); toast('已清除', 'ok'); }
+          else toast(d.error || '操作失败', 'err');
+        });
+      }
     });
   });
 
-  // ---------- 标签页 ----------
-  var tabs = document.querySelectorAll('.tabs button');
-  tabs.forEach(function (btn) {
+  // ---------- 侧边栏导航 ----------
+  var PAGE_TITLES = { overview: '概览', music: '音乐', video: '视频', image: '图片', users: '用户', appearance: '外观' };
+  var navBtns = document.querySelectorAll('#sideNav button');
+  function switchPage(type) {
+    currentType = type;
+    navBtns.forEach(function (b) { b.classList.toggle('active', b.getAttribute('data-type') === type); });
+    $('pageTitle').textContent = PAGE_TITLES[type] || type;
+    var isOverview = type === 'overview';
+    var isUsers = type === 'users';
+    var isAppear = type === 'appearance';
+    $('overviewPanel').hidden = !isOverview;
+    $('mediaPanel').hidden = isOverview || isUsers || isAppear;
+    $('userPanel').hidden = !isUsers;
+    $('appearancePanel').hidden = !isAppear;
+    $('albumTools').hidden = type !== 'image'; // 相册管理只在图片页
+    document.body.classList.remove('nav-open'); // 窄屏选完即收起菜单
+    if (isAppear) {
+      loadAppearance();
+    }
+    if (isUsers) {
+      $('userSearch').value = ''; // 换进来重置搜索
+      loadUsers();
+    }
+    if (!isOverview && !isUsers && !isAppear) {
+      $('fileInput').accept = TYPE_EXT[type];
+      $('titleInput').value = '';
+      selected = {}; // 换标签页清空勾选和搜索
+      $('searchInput').value = '';
+      $('selAll').checked = false;
+      $('batchDelBtn').hidden = true;
+      if (type !== 'image') albumFilter = '';
+      renderList();
+    }
+  }
+  navBtns.forEach(function (btn) {
     btn.addEventListener('click', function () {
-      tabs.forEach(function (b) { b.classList.remove('active'); });
-      btn.classList.add('active');
-      currentType = btn.getAttribute('data-type');
-      var isUsers = currentType === 'users';
-      var isAppear = currentType === 'appearance';
-      $('mediaPanel').hidden = isUsers || isAppear;
-      $('userPanel').hidden = !isUsers;
-      $('appearancePanel').hidden = !isAppear;
-      $('albumTools').hidden = currentType !== 'image'; // 相册管理只在图片页
-      if (isAppear) {
-        loadAppearance();
-      }
-      if (isUsers) {
-        $('userSearch').value = ''; // 换进来重置搜索
-        loadUsers();
-      }
-      if (!isUsers && !isAppear) {
-        $('fileInput').accept = TYPE_EXT[currentType];
-        $('titleInput').value = '';
-        selected = {}; // 换标签页清空勾选和搜索
-        $('searchInput').value = '';
-        $('selAll').checked = false;
-        $('batchDelBtn').hidden = true;
-        if (currentType !== 'image') albumFilter = '';
-        renderList();
-      }
+      switchPage(btn.getAttribute('data-type'));
     });
+  });
+  // 侧边栏收起/展开（桌面端，localStorage 记住）
+  try {
+    if (localStorage.getItem('adminNavCollapsed') === '1') {
+      document.body.classList.add('nav-collapsed');
+      $('navCollapseLabel').textContent = '展开侧边栏';
+      $('navCollapseBtn').title = '展开侧边栏';
+    }
+  } catch (e) {}
+  $('navCollapseBtn').addEventListener('click', function () {
+    var collapsed = document.body.classList.toggle('nav-collapsed');
+    $('navCollapseLabel').textContent = collapsed ? '展开侧边栏' : '收起侧边栏';
+    this.title = collapsed ? '展开侧边栏' : '收起侧边栏';
+    try { localStorage.setItem('adminNavCollapsed', collapsed ? '1' : '0'); } catch (e) {}
+  });
+  // 窄屏汉堡菜单：点遮罩收起
+  $('menuBtn').addEventListener('click', function () {
+    document.body.classList.toggle('nav-open');
+  });
+  document.addEventListener('click', function (e) {
+    if (!document.body.classList.contains('nav-open')) return;
+    if (e.target.closest('aside.sidenav') || e.target.closest('#menuBtn')) return;
+    document.body.classList.remove('nav-open');
   });
   $('fileInput').accept = TYPE_EXT.music;
   $('searchInput').addEventListener('input', renderList);
@@ -1136,60 +1413,78 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
   });
 
   $('albumNewBtn').addEventListener('click', function () {
-    var name = prompt('新相册名称（50 字以内）：');
-    if (name === null) return;
-    name = name.trim().slice(0, 50);
-    if (!name) return;
-    if (albumNames().indexOf(name) > -1) { showMsg($('mainMsg'), '相册「' + name + '」已存在', 'err'); return; }
-    extraAlbums.push(name); // 空相册不用落库，移入第一张图时自然生成
-    albumFilter = name;
-    rebuildAlbumControls();
-    renderList();
-    showMsg($('mainMsg'), '已创建「' + name + '」，勾选图片后点"把所选移入"即可归组', 'ok');
+    ask({
+      title: '新建相册',
+      input: true, placeholder: '相册名称（50 字以内）', max: 50,
+      okText: '创建',
+      cb: function (ok, val) {
+        var name = (val || '').trim().slice(0, 50);
+        if (!ok || !name) return;
+        if (albumNames().indexOf(name) > -1) { toast('相册「' + name + '」已存在', 'err'); return; }
+        extraAlbums.push(name); // 空相册不用落库，移入第一张图时自然生成
+        albumFilter = name;
+        rebuildAlbumControls();
+        renderList();
+        toast('已创建「' + name + '」，勾选图片后点"把所选移入"即可归组', 'ok');
+      }
+    });
   });
 
   $('albumRenameBtn').addEventListener('click', function () {
-    var to = prompt('把相册「' + albumFilter + '」重命名为：', albumFilter);
-    if (to === null) return;
-    to = to.trim().slice(0, 50);
-    if (!to || to === albumFilter) return;
-    api('/api/admin/albums', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action: 'rename', from: albumFilter, to: to })
-    }).then(function (d) {
-      if (d.ok) {
-        var idx = extraAlbums.indexOf(albumFilter);
-        if (idx > -1) extraAlbums[idx] = to; // 空相册重命名：同步会话名单
-        albumFilter = to;
-        loadList();
-        showMsg($('mainMsg'), '已重命名为「' + to + '」', 'ok');
+    ask({
+      title: '重命名相册',
+      msg: '把相册「' + albumFilter + '」重命名为：',
+      input: true, value: albumFilter, max: 50,
+      okText: '重命名',
+      cb: function (ok, val) {
+        var to = (val || '').trim().slice(0, 50);
+        if (!ok || !to || to === albumFilter) return;
+        api('/api/admin/albums', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'rename', from: albumFilter, to: to })
+        }).then(function (d) {
+          if (d.ok) {
+            var idx = extraAlbums.indexOf(albumFilter);
+            if (idx > -1) extraAlbums[idx] = to; // 空相册重命名：同步会话名单
+            albumFilter = to;
+            loadList();
+            toast('已重命名为「' + to + '」', 'ok');
+          }
+          else toast(d.error || '操作失败', 'err');
+        });
       }
-      else showMsg($('mainMsg'), d.error || '操作失败', 'err');
     });
   });
 
   $('albumDelBtn').addEventListener('click', function () {
-    if (!confirm('删除相册「' + albumFilter + '」？里面的图片会回到"未分组"，文件本体不受影响。')) return;
-    api('/api/admin/albums', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action: 'delete', name: albumFilter })
-    }).then(function (d) {
-      if (d.ok) {
-        var idx = extraAlbums.indexOf(albumFilter);
-        if (idx > -1) extraAlbums.splice(idx, 1);
-        albumFilter = '';
-        loadList();
-        showMsg($('mainMsg'), '相册已删除，图片回到未分组', 'ok');
+    ask({
+      title: '删除相册',
+      msg: '删除相册「' + albumFilter + '」？里面的图片会回到"未分组"，文件本体不受影响。',
+      okText: '删除相册', danger: true,
+      cb: function (ok) {
+        if (!ok) return;
+        api('/api/admin/albums', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'delete', name: albumFilter })
+        }).then(function (d) {
+          if (d.ok) {
+            var idx = extraAlbums.indexOf(albumFilter);
+            if (idx > -1) extraAlbums.splice(idx, 1);
+            albumFilter = '';
+            loadList();
+            toast('相册已删除，图片回到未分组', 'ok');
+          }
+          else toast(d.error || '操作失败', 'err');
+        });
       }
-      else showMsg($('mainMsg'), d.error || '操作失败', 'err');
     });
   });
 
   $('albumMoveBtn').addEventListener('click', function () {
     var ids = (items.image || []).filter(function (it) { return selected[it.id]; });
-    if (!ids.length) { showMsg($('mainMsg'), '先勾选要移动的图片', 'err'); return; }
+    if (!ids.length) { toast('先勾选要移动的图片', 'err'); return; }
     var target = $('albumMoveSel').value;
     var left = ids.length;
     ids.forEach(function (it) {
@@ -1201,10 +1496,10 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
         if (d.ok) it.album = target;
         if (--left === 0) {
           loadList();
-          showMsg($('mainMsg'), '已把 ' + ids.length + ' 张图片移入「' + (target === '__none__' ? '未分组' : target) + '」', 'ok');
+          toast('已把 ' + ids.length + ' 张图片移入「' + (target === '__none__' ? '未分组' : target) + '」', 'ok');
         }
       }).catch(function () {
-        if (--left === 0) { loadList(); showMsg($('mainMsg'), '部分移动失败，请重试', 'err'); }
+        if (--left === 0) { loadList(); toast('部分移动失败，请重试', 'err'); }
       });
     });
   });
@@ -1244,6 +1539,8 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
     ];
     var pending = [];
     var done = 0;
+    var synced = 0;
+    var fail = false;
     jobs.forEach(function (job) {
       api(job.url).then(function (m) {
         var existing = {};
@@ -1258,8 +1555,11 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
     });
 
     function runImport() {
-      if (!pending.length) return; // 没有缺的，静默结束
-      showMsg($('mainMsg'), '正在同步静态媒体… 剩余 ' + pending.length + ' 个');
+      if (!pending.length) {
+        if (synced && !fail) toast('已同步 ' + synced + ' 个静态媒体', 'ok');
+        return; // 没有缺的，静默结束
+      }
+      toast('正在同步静态媒体… 剩余 ' + pending.length + ' 个', '', true);
       var type = pending[0].type;
       var batch = [];
       while (batch.length < 12 && pending.length && pending[0].type === type) batch.push(pending.shift());
@@ -1268,10 +1568,12 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ type: type, files: batch })
       }).then(function (d) {
-        if (!d.ok) { showMsg($('mainMsg'), d.error || '同步失败', 'err'); pending = []; }
+        if (!d.ok) { fail = true; toast(d.error || '同步失败', 'err'); pending = []; return; }
+        synced += batch.length;
         loadList().then(runImport);
       }).catch(function () {
-        showMsg($('mainMsg'), '网络错误，同步中断（重新打开后台会自动续传）', 'err');
+        fail = true;
+        toast('网络错误，同步中断（重新打开后台会自动续传）', 'err');
       });
     }
   }
@@ -1313,7 +1615,7 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
       if (skipped.length) m += '（跳过同名 ' + skipped.length + ' 个）';
       if (oversize.length) m += '（' + oversize.length + ' 个超过 24MB）';
       if (wrongType) m += '（' + wrongType + ' 个格式不符）';
-      showMsg($('mainMsg'), m, 'err');
+      toast(m, 'err');
       return;
     }
 
@@ -1335,7 +1637,7 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
         if (skipped.length) msg += '，跳过同名 ' + skipped.length + ' 个';
         if (oversize.length) msg += '，' + oversize.length + ' 个超过 24MB';
         if (wrongType) msg += '，' + wrongType + ' 个格式不符';
-        showMsg($('mainMsg'), msg, failCount ? 'err' : 'ok');
+        toast(msg, failCount ? 'err' : 'ok');
         loadList();
         return;
       }
@@ -1414,7 +1716,7 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
   $('uploadBtn').addEventListener('click', function () {
     var fileEl = $('fileInput');
     if (!fileEl.files || !fileEl.files.length) {
-      showMsg($('mainMsg'), '请先选择文件', 'err'); return;
+      toast('请先选择文件', 'err'); return;
     }
     uploadFiles(fileEl.files);
   });

@@ -1116,15 +1116,21 @@
 
     .ai-input-bar {
       display: flex;
-      gap: 8px;
-      align-items: center;
+      flex-direction: column;
+      gap: 4px;
       border: 1px solid var(--apple-border);
-      border-radius: 999px;
+      border-radius: 22px;
       background: var(--apple-card);
-      padding: 6px 6px 6px 18px;
+      padding: 10px 12px 6px 18px;
     }
 
-    .ai-input-bar input {
+    .ai-input-row {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .ai-input-row input {
       flex: 1;
       min-width: 0;
       border: none;
@@ -1135,7 +1141,7 @@
       font-family: inherit;
     }
 
-    .ai-input-bar button {
+    .ai-input-row button {
       flex: none;
       display: inline-flex;
       align-items: center;
@@ -1150,25 +1156,126 @@
       transition: transform 150ms var(--ease-out), opacity 150ms;
     }
 
-    .ai-input-bar button:hover { transform: scale(1.06); }
-    .ai-input-bar button:disabled { opacity: 0.5; cursor: default; transform: none; }
+    .ai-input-row button:hover { transform: scale(1.06); }
+    .ai-input-row button:disabled { opacity: 0.5; cursor: default; transform: none; }
 
-    /* AI 界面顶栏：模型切换下拉 + 新对话/关闭按钮组 */
-    .ai-bar-actions { display: flex; align-items: center; gap: 8px; }
-    .ai-model-switch {
-      margin-left: 10px;
-      padding: 3px 8px;
-      font-size: 11px;
-      font-weight: 600;
-      letter-spacing: 0.04em;
-      border: 1px solid var(--apple-border);
-      border-radius: 999px;
-      background: color-mix(in srgb, var(--apple-primary) 12%, transparent);
-      color: var(--apple-primary);
-      max-width: 240px;
-      cursor: pointer;
-      font-family: inherit;
+    /* 输入条底部工具行：模型切换 + 新对话（参照桌面客户端输入框的布局） */
+    .ai-input-tools {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 0 4px 4px 0;
     }
+
+    .ai-tools-spacer { flex: 1; }
+
+    .ai-model-switch { position: relative; }
+
+    .ai-model-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      border: none;
+      background: none;
+      padding: 4px 8px;
+      border-radius: 9px;
+      font-size: 12px;
+      font-weight: 600;
+      font-family: inherit;
+      color: var(--apple-foreground);
+      opacity: 0.78;
+      cursor: pointer;
+      max-width: 260px;
+      transition: background-color 150ms var(--ease-out), opacity 150ms;
+    }
+
+    .ai-model-btn:hover { background: color-mix(in srgb, var(--apple-foreground) 7%, transparent); opacity: 1; }
+
+    .ai-model-btn #aiModelLabel {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .ai-model-dot {
+      flex: none;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--apple-primary);
+    }
+
+    .ai-model-btn .chev { flex: none; opacity: 0.45; }
+
+    .ai-model-menu {
+      position: absolute;
+      left: 0;
+      bottom: calc(100% + 10px);
+      min-width: 230px;
+      max-width: 320px;
+      background: var(--apple-card);
+      border: 1px solid var(--apple-border);
+      border-radius: 14px;
+      box-shadow: 0 14px 38px rgba(0, 0, 0, 0.16);
+      padding: 6px;
+      z-index: 30;
+    }
+
+    .ai-model-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      width: 100%;
+      padding: 8px 10px;
+      border: none;
+      border-radius: 9px;
+      background: none;
+      font-size: 13px;
+      font-family: inherit;
+      color: var(--apple-foreground);
+      text-align: left;
+      cursor: pointer;
+    }
+
+    .ai-model-item:hover { background: color-mix(in srgb, var(--apple-foreground) 7%, transparent); }
+
+    .ai-model-item .sub {
+      margin-left: auto;
+      font-size: 11px;
+      color: var(--apple-muted-foreground, var(--apple-foreground));
+      opacity: 0.55;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      max-width: 140px;
+    }
+
+    .ai-model-item .chk {
+      flex: none;
+      color: var(--apple-primary);
+      font-weight: 700;
+      visibility: hidden;
+    }
+
+    .ai-model-item.active .chk { visibility: visible; }
+
+    .ai-tool-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      border: none;
+      background: none;
+      padding: 4px 8px;
+      border-radius: 9px;
+      font-size: 12px;
+      font-family: inherit;
+      color: var(--apple-foreground);
+      opacity: 0.7;
+      cursor: pointer;
+      transition: background-color 150ms var(--ease-out), opacity 150ms;
+    }
+
+    .ai-tool-btn:hover { background: color-mix(in srgb, var(--apple-foreground) 7%, transparent); opacity: 1; }
 
     /* AI 回复里的 Markdown（复用文档区渲染器，先转义再解析） */
     .ai-msg.bot p { margin: 0; }
@@ -3758,23 +3865,35 @@
   <!-- AI 界面：顶栏"AI"进入，对话走 /api/ai/chat（服务端代理，key 在后台配置） -->
   <div class="ai-view" id="aiView" hidden role="dialog" aria-modal="true" aria-label="AI 助手">
     <header class="album-bar">
-      <p class="album-title">AI 助手<select class="ai-model-switch" id="aiModelSwitch" hidden aria-label="切换模型"></select></p>
-      <div class="ai-bar-actions">
-        <button class="album-close" id="aiNewChatBtn" type="button" aria-label="新对话" title="新对话（清空当前聊天）">
-          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg>
-        </button>
-        <button class="album-close" id="aiViewClose" type="button" aria-label="关闭 AI 界面">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>
-        </button>
-      </div>
+      <p class="album-title">AI 助手</p>
+      <button class="album-close" id="aiViewClose" type="button" aria-label="关闭 AI 界面">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>
+      </button>
     </header>
     <div class="ai-chat">
       <div class="ai-messages" id="aiMessages"></div>
       <form class="ai-input-bar" id="aiForm">
-        <input type="text" id="aiInput" placeholder="给 AI 发消息…" autocomplete="off" maxlength="500">
-        <button type="submit" id="aiSendBtn" aria-label="发送">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m22 2-7 20-4-9-9-4z"/><path d="M22 2 11 13"/></svg>
-        </button>
+        <div class="ai-input-row">
+          <input type="text" id="aiInput" placeholder="给 AI 发消息…" autocomplete="off" maxlength="500">
+          <button type="submit" id="aiSendBtn" aria-label="发送">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m22 2-7 20-4-9-9-4z"/><path d="M22 2 11 13"/></svg>
+          </button>
+        </div>
+        <div class="ai-input-tools">
+          <div class="ai-model-switch" id="aiModelSwitch">
+            <button type="button" class="ai-model-btn" id="aiModelBtn" hidden aria-haspopup="listbox" aria-label="切换模型">
+              <i class="ai-model-dot" aria-hidden="true"></i>
+              <span id="aiModelLabel"></span>
+              <svg class="chev" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+            </button>
+            <div class="ai-model-menu" id="aiModelMenu" hidden role="listbox" aria-label="模型列表"></div>
+          </div>
+          <span class="ai-tools-spacer"></span>
+          <button type="button" class="ai-tool-btn" id="aiNewChatBtn" title="新对话（清空当前聊天）">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg>
+            <span>新对话</span>
+          </button>
+        </div>
       </form>
     </div>
   </div>
@@ -7159,6 +7278,58 @@
       if (aiMessages && !aiMessages.children.length) addAiMsg('bot', aiGreeting());
     }
 
+    // 输入条底部的模型切换按钮 + 向上弹出的菜单（参照桌面客户端输入框的样式）
+    function aiSyncModelSwitcher() {
+      var btn = document.getElementById('aiModelBtn');
+      var label = document.getElementById('aiModelLabel');
+      var menu = document.getElementById('aiModelMenu');
+      if (!btn || !label || !menu) return;
+      if (!(aiConfig && aiConfig.enabled && aiConfig.models.length)) {
+        btn.hidden = true;
+        menu.hidden = true;
+        aiCurrentModel = null;
+        return;
+      }
+      // 保留本次会话已选的模型（若仍在列表里），否则用后台指定的默认
+      var cur = aiCurrentModel;
+      if (!cur || !aiConfig.models.some(function (m) { return m.name === cur; })) {
+        cur = (aiConfig.model && aiConfig.models.some(function (m) { return m.name === aiConfig.model; }))
+          ? aiConfig.model
+          : aiConfig.models[0].name;
+      }
+      aiCurrentModel = cur;
+      label.textContent = cur;
+      btn.hidden = false;
+      menu.innerHTML = '';
+      aiConfig.models.forEach(function (m) {
+        var it = document.createElement('button');
+        it.type = 'button';
+        it.className = 'ai-model-item' + (m.name === aiCurrentModel ? ' active' : '');
+        it.setAttribute('role', 'option');
+        it.setAttribute('aria-selected', m.name === aiCurrentModel ? 'true' : 'false');
+        var nm = document.createElement('span');
+        nm.textContent = m.name;
+        var sub = document.createElement('span');
+        sub.className = 'sub';
+        sub.textContent = m.model;
+        var chk = document.createElement('span');
+        chk.className = 'chk';
+        chk.textContent = '✓';
+        it.appendChild(nm);
+        it.appendChild(sub);
+        it.appendChild(chk);
+        it.addEventListener('click', function () {
+          if (m.name !== aiCurrentModel) {
+            aiCurrentModel = m.name;
+            label.textContent = aiCurrentModel;
+            addAiMsg('bot', '已切换到「' + aiCurrentModel + '」～');
+          }
+          menu.hidden = true;
+        });
+        menu.appendChild(it);
+      });
+    }
+
     function fetchAiConfig(force) {
       if (aiConfig && !force) return Promise.resolve(aiConfig);
       return fetch('/api/ai/config', { credentials: 'same-origin' })
@@ -7166,31 +7337,7 @@
         .catch(function () { return { enabled: false, models: [], model: null }; })
         .then(function (d) {
           aiConfig = { enabled: !!(d && d.enabled), models: (d && d.models) || [], model: (d && d.model) || null };
-          // 顶栏模型切换下拉：保留本次会话已选的模型（若仍在列表里）
-          var sw = document.getElementById('aiModelSwitch');
-          if (sw) {
-            if (aiConfig.enabled && aiConfig.models.length) {
-              var prev = sw.value;
-              sw.innerHTML = '';
-              aiConfig.models.forEach(function (m) {
-                var o = document.createElement('option');
-                o.value = m.name;
-                o.textContent = m.name;
-                sw.appendChild(o);
-              });
-              if (prev && aiConfig.models.some(function (m) { return m.name === prev; })) {
-                sw.value = prev;
-              } else if (aiConfig.model && aiConfig.models.some(function (m) { return m.name === aiConfig.model; })) {
-                sw.value = aiConfig.model;
-              }
-              aiCurrentModel = sw.value;
-              sw.hidden = false;
-            } else {
-              sw.hidden = true;
-              sw.innerHTML = '';
-              aiCurrentModel = null;
-            }
-          }
+          aiSyncModelSwitcher();
           return aiConfig;
         });
     }
@@ -7362,17 +7509,23 @@
         fetchAiConfig(false).then(aiGreetIfEmpty);
       });
     }
-    // 顶栏切换模型：只影响之后的回复，当前对话历史延续
-    var aiModelSwitch = document.getElementById('aiModelSwitch');
-    if (aiModelSwitch) {
-      aiModelSwitch.addEventListener('change', function () {
-        if (!aiModelSwitch.value || aiModelSwitch.value === aiCurrentModel) return;
-        aiCurrentModel = aiModelSwitch.value;
-        addAiMsg('bot', '已切换到「' + aiCurrentModel + '」～');
+    // 顶栏切换模型：只影响之后的回复，当前对话历史延续（菜单逻辑见 aiSyncModelSwitcher）
+    var aiModelBtn = document.getElementById('aiModelBtn');
+    var aiModelMenu = document.getElementById('aiModelMenu');
+    if (aiModelBtn && aiModelMenu) {
+      aiModelBtn.addEventListener('click', function (e) {
+        e.stopPropagation();
+        aiModelMenu.hidden = !aiModelMenu.hidden;
+      });
+      document.addEventListener('click', function (e) {
+        if (!aiModelMenu.hidden && !e.target.closest('#aiModelSwitch')) aiModelMenu.hidden = true;
       });
     }
     document.addEventListener('keydown', function (e) {
-      if (e.key === 'Escape' && aiView && !aiView.hidden && lightbox.hidden) closeAiView();
+      if (e.key === 'Escape' && aiView && !aiView.hidden && lightbox.hidden) {
+        if (aiModelMenu && !aiModelMenu.hidden) { aiModelMenu.hidden = true; return; } // Esc 先收模型菜单
+        closeAiView();
+      }
     });
 
     if (aiForm) {

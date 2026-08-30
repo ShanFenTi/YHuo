@@ -4816,13 +4816,7 @@
 
       function openAlbum() {
         // 与其他全屏界面互斥：进相册前先收起已打开的
-        ['aiView', 'profileView', 'docViewer', 'toolsView', 'docsView'].forEach(function (id) {
-          var el = document.getElementById(id);
-          if (el && !el.hidden) {
-            var cb = el.querySelector('.album-close');
-            if (cb) cb.click();
-          }
-        });
+        ['aiView', 'profileView', 'docViewer', 'toolsView', 'docsView'].forEach(closeFullscreenOf);
         if (albumEmpty) albumEmpty.hidden = loadedImgs.length > 0;
         renderAlbums();
         albumView.hidden = false;
@@ -4852,13 +4846,7 @@
         a.addEventListener('click', function () {
           if (!albumView.hidden) closeAlbum();
           // 其他全屏界面也一并收起（首页是唯一滚动锚点）
-          ['aiView', 'toolsView', 'docsView', 'docViewer', 'profileView'].forEach(function (id) {
-            var el = document.getElementById(id);
-            if (el && !el.hidden) {
-              var cb = el.querySelector('.album-close');
-              if (cb) cb.click();
-            }
-          });
+          ['aiView', 'toolsView', 'docsView', 'docViewer', 'profileView'].forEach(closeFullscreenOf);
         });
       });
       // Esc 逐层退出：灯箱先关（见上方处理器），灯箱关完再按 Esc 才退出相册
@@ -7493,13 +7481,7 @@
     function openAiView() {
       if (!aiView) return;
       // 和相册/主页/文档/工具互斥：全屏层之间不叠放
-      ['albumView', 'profileView', 'docViewer', 'toolsView', 'docsView'].forEach(function (id) {
-        var el = document.getElementById(id);
-        if (el && !el.hidden) {
-          var closeBtn = el.querySelector('.album-close');
-          if (closeBtn) closeBtn.click();
-        }
-      });
+      ['albumView', 'profileView', 'docViewer', 'toolsView', 'docsView'].forEach(closeFullscreenOf);
       setProfileOpen(false);
       aiView.hidden = false;
       void aiView.offsetWidth;
@@ -7818,10 +7800,20 @@
     var docsView = document.getElementById('docsView');
     var docsBtn = document.getElementById('docsBtn');
 
+    // 各全屏层真正的关闭按钮 id（不能靠 .album-close 类找：AI 顶栏的"新对话"按钮
+    // 也用了这个样式类且排在关闭按钮前面，querySelector 会取到它导致互斥失效）
+    var FULLSCREEN_CLOSE_IDS = {
+      albumView: 'albumCloseBtn',
+      profileView: 'profileViewClose',
+      docViewer: 'docViewerClose',
+      toolsView: 'toolsViewClose',
+      docsView: 'docsViewClose',
+      aiView: 'aiViewClose',
+    };
     function closeFullscreenOf(id) {
       var el = document.getElementById(id);
       if (el && !el.hidden) {
-        var cb = el.querySelector('.album-close');
+        var cb = document.getElementById(FULLSCREEN_CLOSE_IDS[id] || '') || el.querySelector('.album-close');
         if (cb) cb.click();
       }
     }

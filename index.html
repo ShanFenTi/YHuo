@@ -4799,19 +4799,11 @@
             if (d.ok) {
               showLoginMsg('');
               setLoginAvatar(d.avatar || null); // 登录响应带头像键
-              // 双保险：凭服务端会话再核实一次身份，管理员则直通后台
-              // （直接信任响应可能因页面缓存旧版脚本而漏跳）
-              fetch('/api/auth/status', { credentials: 'same-origin' })
-                .then(function (r) { return r.ok ? r.json() : null; })
-                .then(function (s) {
-                  if (s && s.authenticated) {
-                    passGate(u);
-                    location.href = '/admin';
-                  } else {
-                    passGate(u);
-                  }
-                })
-                .catch(function () { passGate(u); });
+              // 管理员账密验证通过时响应才带 admin:true，据此直通后台；
+              // 不能查 /api/auth/status 判断——它只看浏览器有无管理员会话 Cookie，
+              // 浏览器残留后台登录态时普通账号登录也会被误跳 /admin（2026-08-30 踩过）
+              passGate(u);
+              if (d.admin) location.href = '/admin';
             }
             else showLoginMsg(d.error);
           }, loginButtons);

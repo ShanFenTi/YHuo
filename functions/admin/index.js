@@ -2857,6 +2857,7 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
     }
   }
   var meEmailCountdown = null;
+  var meEmailSentTo = ''; // 发送成功后暂存邮箱：验证时输入框若被清空/改动，仍用发码的那个地址
   function startMeEmailCountdown() {
     var left = 60;
     var btn = $('meEmailSendBtn');
@@ -2881,14 +2882,24 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ action: 'email-send', email: email })
     }).then(function (d) {
-      if (d.ok) { meEmailMsg('验证码已发送，注意查收（含垃圾箱）'); startMeEmailCountdown(); }
+      if (d.ok) {
+        meEmailSentTo = email;
+        meEmailMsg('验证码已发送，注意查收（含垃圾箱）');
+        startMeEmailCountdown();
+      }
       else meEmailMsg(d.error || '发送失败', true);
     }).catch(function () { meEmailMsg('网络错误', true); });
   });
   $('meEmailVerifyBtn').addEventListener('click', function () {
-    var email = $('meEmailInput').value.trim();
+    // 优先取输入框的邮箱；为空则回落到发码时暂存的地址
+    var email = $('meEmailInput').value.trim() || meEmailSentTo;
     var code = $('meEmailCode').value.trim();
-    if (!email || !/^\d{6}$/.test(code)) { meEmailMsg('请填写邮箱和 6 位验证码', true); return; }
+    if (!email) { meEmailMsg('请填写邮箱地址', true); return; }
+    if (!/^\d{6}$/.test(code)) { meEmailMsg('请填写 6 位验证码', true); return; }
+    if (meEmailSentTo && email !== meEmailSentTo) {
+      meEmailMsg('邮箱与发送验证码的地址不一致，请改回 ' + meEmailSentTo + ' 或重新发送', true);
+      return;
+    }
     api('/api/admin/me', {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },

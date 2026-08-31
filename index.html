@@ -6843,30 +6843,150 @@
       var loginSubEl = document.getElementById('loginSub');
       var loginSubmitBtn = document.getElementById('loginSubmitBtn');
 
+      // ---------- 模式切换的平滑动画（登录/注册/找回/验证码互相过渡不生硬） ----------
+      var gateMotionOK = !(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+      function gateClearAnim(el) {
+        if (el._gateT) { clearTimeout(el._gateT); el._gateT = 0; }
+        el.style.transition = '';
+        el.style.height = '';
+        el.style.opacity = '';
+        el.style.overflow = '';
+        el.style.marginBottom = '';
+        el.style.transform = '';
+        el.style.flex = '';
+        el.style.minWidth = '';
+        el.style.whiteSpace = '';
+      }
+      // 输入行：高度+透明度+下边距一起过渡，卡片高度随内容平滑伸缩
+      function gateSlide(el, show) {
+        if (!el) return;
+        var isHidden = el.style.display === 'none';
+        if (show === !isHidden) return; // 显隐状态没变，不重复动画
+        gateClearAnim(el);
+        if (!gateMotionOK) { el.style.display = show ? '' : 'none'; return; }
+        if (show) {
+          el.style.display = '';
+          var h = el.offsetHeight; // 先量自然高度再从 0 展开
+          if (!h) return;
+          el.style.overflow = 'hidden';
+          el.style.height = '0px';
+          el.style.opacity = '0';
+          el.style.marginBottom = '0';
+          el.style.transform = 'translateY(-6px)';
+          void el.offsetWidth; // 强制回流让起始态生效
+          el.style.transition = 'height 300ms var(--ease-out), opacity 240ms var(--ease-out), margin-bottom 300ms var(--ease-out), transform 300ms var(--ease-out)';
+          el.style.height = h + 'px';
+          el.style.opacity = '1';
+          el.style.marginBottom = '';
+          el.style.transform = '';
+          el._gateT = setTimeout(function () { gateClearAnim(el); }, 340);
+        } else {
+          var h0 = el.offsetHeight;
+          if (!h0) { el.style.display = 'none'; return; }
+          el.style.overflow = 'hidden';
+          el.style.height = h0 + 'px';
+          void el.offsetWidth;
+          el.style.transition = 'height 300ms var(--ease-out), opacity 200ms var(--ease-out), margin-bottom 300ms var(--ease-out), transform 300ms var(--ease-out)';
+          el.style.height = '0px';
+          el.style.opacity = '0';
+          el.style.marginBottom = '0';
+          el.style.transform = 'translateY(-6px)';
+          el._gateT = setTimeout(function () {
+            el.style.display = 'none';
+            gateClearAnim(el);
+          }, 320);
+        }
+      }
+      // 小链接/发送按钮：淡入淡出
+      function gateFade(el, show) {
+        if (!el) return;
+        var isHidden = el.style.display === 'none';
+        if (show === !isHidden) return;
+        gateClearAnim(el);
+        if (!gateMotionOK) { el.style.display = show ? '' : 'none'; return; }
+        if (show) {
+          el.style.display = '';
+          el.style.opacity = '0';
+          void el.offsetWidth;
+          el.style.transition = 'opacity 240ms var(--ease-out)';
+          el.style.opacity = '1';
+          el._gateT = setTimeout(function () { gateClearAnim(el); }, 280);
+        } else {
+          el.style.transition = 'opacity 180ms var(--ease-out)';
+          el.style.opacity = '0';
+          el._gateT = setTimeout(function () {
+            el.style.display = 'none';
+            gateClearAnim(el);
+          }, 200);
+        }
+      }
+      // 并排的注册按钮：flex 宽度+透明度过渡，避免整行布局突跳
+      function gateFlex(el, show) {
+        if (!el) return;
+        var isHidden = el.style.display === 'none';
+        if (show === !isHidden) return;
+        gateClearAnim(el);
+        if (!gateMotionOK) { el.style.display = show ? '' : 'none'; return; }
+        el.style.minWidth = '0';
+        el.style.whiteSpace = 'nowrap';
+        if (show) {
+          el.style.display = '';
+          el.style.overflow = 'hidden';
+          el.style.flex = '0 1 0%';
+          el.style.opacity = '0';
+          void el.offsetWidth;
+          el.style.transition = 'flex 300ms var(--ease-out), opacity 240ms var(--ease-out)';
+          el.style.flex = '1 1 0%';
+          el.style.opacity = '1';
+          el._gateT = setTimeout(function () { gateClearAnim(el); }, 340);
+        } else {
+          el.style.overflow = 'hidden';
+          el.style.transition = 'flex 300ms var(--ease-out), opacity 200ms var(--ease-out)';
+          el.style.flex = '0 1 0%';
+          el.style.opacity = '0';
+          el._gateT = setTimeout(function () {
+            el.style.display = 'none';
+            gateClearAnim(el);
+          }, 320);
+        }
+      }
+      // 文案切换（副标题/提交按钮）：先淡出换字再淡入
+      function gateText(el, text) {
+        if (!el || el.textContent === text) return;
+        if (!gateMotionOK) { el.textContent = text; return; }
+        if (el._gateT) { clearTimeout(el._gateT); el._gateT = 0; }
+        el.style.transition = 'opacity 140ms var(--ease-out)';
+        el.style.opacity = '0';
+        el._gateT = setTimeout(function () {
+          el.textContent = text;
+          el.style.opacity = '1';
+          el._gateT = setTimeout(function () {
+            el.style.transition = '';
+            el.style.opacity = '';
+            el._gateT = 0;
+          }, 180);
+        }, 150);
+      }
+
       function setGateMode(mode) {
         gateMode = mode;
-        var show = function (id, on, disp) {
-          var el = document.getElementById(id);
-          if (el) el.style.display = on ? (disp || '') : 'none';
-        };
         var emailOn = (gateEmailRegister && mode === 'register') || (gateEmailEnabled && mode === 'reset');
         var codeOn = emailOn || mode === 'code';
-        show('emailField', emailOn);
-        show('codeField', codeOn);
-        show('newPassField', mode === 'reset');
-        show('loginUserField', mode === 'login' || mode === 'register');
-        show('loginPassField', mode === 'login' || mode === 'register');
         // code 模式：验证码由服务器在密码验证通过时已发送，隐藏手动发送按钮
-        if (gateSendCodeBtn) gateSendCodeBtn.style.display = (codeOn && mode !== 'code') ? '' : 'none';
-        if (loginRegister) loginRegister.style.display = mode === 'login' ? '' : 'none';
-        if (loginSubmitBtn) loginSubmitBtn.textContent = mode === 'register' ? '注 册' : mode === 'reset' ? '重置密码' : mode === 'code' ? '验 证' : '登 录';
-        if (forgotBtn) forgotBtn.style.display = (mode === 'login' && gateEmailEnabled) ? '' : 'none';
-        if (backLoginBtn) backLoginBtn.style.display = mode === 'login' ? 'none' : '';
-        if (loginSubEl) {
-          loginSubEl.textContent = mode === 'register' ? '创建一个新账号'
-            : mode === 'reset' ? '通过绑定邮箱找回密码'
-            : mode === 'code' ? '输入邮箱里的验证码' : '欢迎回来，请登录';
-        }
+        // （先定发送按钮显隐再展开验证码行，量出来的高度才准确）
+        gateFade(gateSendCodeBtn, codeOn && mode !== 'code');
+        gateSlide(document.getElementById('emailField'), emailOn);
+        gateSlide(document.getElementById('codeField'), codeOn);
+        gateSlide(document.getElementById('newPassField'), mode === 'reset');
+        gateSlide(document.getElementById('loginUserField'), mode === 'login' || mode === 'register');
+        gateSlide(document.getElementById('loginPassField'), mode === 'login' || mode === 'register');
+        gateFlex(loginRegister, mode === 'login');
+        gateText(loginSubmitBtn, mode === 'register' ? '注 册' : mode === 'reset' ? '重置密码' : mode === 'code' ? '验 证' : '登 录');
+        gateFade(forgotBtn, mode === 'login' && gateEmailEnabled);
+        gateFade(backLoginBtn, mode !== 'login');
+        gateText(loginSubEl, mode === 'register' ? '创建一个新账号'
+          : mode === 'reset' ? '通过绑定邮箱找回密码'
+          : mode === 'code' ? '输入邮箱里的验证码' : '欢迎回来，请登录');
         showLoginMsg('');
       }
 

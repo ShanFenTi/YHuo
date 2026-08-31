@@ -78,6 +78,16 @@ const DDL = [
     completion_tokens INTEGER NOT NULL DEFAULT 0,
     PRIMARY KEY (day, provider, model)
   )`,
+  // AI 对话历史（登录用户/管理员各存一份；owner='u{userId}' 或 'admin'）。
+  // content 存纯文本：多模态消息只存 text 部分，图片以「[图片]」占位（dataURL 太大不入库）
+  `CREATE TABLE IF NOT EXISTS ai_chat_history (
+    id         INTEGER PRIMARY KEY AUTOINCREMENT,
+    owner      TEXT NOT NULL,
+    role       TEXT NOT NULL CHECK (role IN ('user', 'assistant')),
+    content    TEXT NOT NULL,
+    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+  )`,
+  `CREATE INDEX IF NOT EXISTS idx_ai_chat_owner ON ai_chat_history (owner, id)`,
 ];
 
 // 同一个隔离实例里只跑一次

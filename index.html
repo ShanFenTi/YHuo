@@ -3722,18 +3722,11 @@
       margin-top: 14px;
     }
 
-    /* 验证码行：输入框 + 发送按钮并排 */
-    .login-code-field {
-      display: flex;
-      align-items: flex-end;
-      gap: 8px;
-    }
-    .login-code-field .login-field { flex: 1; }
+    /* 验证码：输入框整行（与其他输入框同宽），发送按钮单独一行 */
     .login-code-btn {
-      flex: none;
-      width: auto;
-      padding: 0 12px;
-      font-size: 12px;
+      width: 100%;
+      margin-top: 8px;
+      font-size: 13px;
       letter-spacing: 0;
       white-space: nowrap;
     }
@@ -4347,8 +4340,8 @@
         <span>邮箱</span>
         <input type="email" id="gateEmail" placeholder="you@example.com" autocomplete="email">
       </label>
-      <!-- 验证码（注册/找回/登录二次验证） -->
-      <div class="login-field login-code-field" id="codeField" style="display:none">
+      <!-- 验证码（注册/找回/登录二次验证）：输入框整行 + 发送按钮整行，与其他输入框等宽 -->
+      <div class="login-field" id="codeField" style="display:none">
         <label class="login-field" style="margin:0">
           <span>验证码</span>
           <input type="text" id="gateCode" inputmode="numeric" maxlength="6" placeholder="6 位数字" autocomplete="one-time-code">
@@ -6859,7 +6852,7 @@
         var emailOn = (gateEmailRegister && mode === 'register') || (gateEmailEnabled && mode === 'reset');
         var codeOn = emailOn || mode === 'code';
         show('emailField', emailOn);
-        show('codeField', codeOn, 'flex');
+        show('codeField', codeOn);
         show('newPassField', mode === 'reset');
         show('loginUserField', mode === 'login' || mode === 'register');
         show('loginPassField', mode === 'login' || mode === 'register');

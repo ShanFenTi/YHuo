@@ -15,6 +15,12 @@ export async function onRequestGet({ env }) {
     if (!Array.isArray(quotes)) quotes = [];
     quotes = quotes.filter((q) => typeof q === 'string' && q.trim()).map((q) => q.trim());
     if (!quotes.length && map.quote) quotes = [map.quote];
+    // 邮箱功能是否启用（注册验证/找回密码/2FA 的 UI 开关）
+    let emailEnabled = false;
+    try {
+      const c = JSON.parse(map.email_config || 'null');
+      emailEnabled = !!(c && c.enabled && c.api_key && c.from);
+    } catch {}
     return json({
       ok: true,
       accent: map.accent || null,
@@ -22,8 +28,9 @@ export async function onRequestGet({ env }) {
       quotes,
       quote: quotes[0] || null, // 兼容字段：第一条
       blur: map.bg_blur !== undefined && map.bg_blur !== null ? parseInt(map.bg_blur, 10) || 0 : null,
+      emailEnabled,
     }, 200, { 'Cache-Control': 'public, max-age=60' });
   } catch {
-    return json({ ok: true, accent: null, background: null, quotes: [], quote: null, blur: null }, 200, { 'Cache-Control': 'no-store' });
+    return json({ ok: true, accent: null, background: null, quotes: [], quote: null, blur: null, emailEnabled: false }, 200, { 'Cache-Control': 'no-store' });
   }
 }

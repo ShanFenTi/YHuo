@@ -86,6 +86,22 @@ const DDL = [
     updated_at TEXT NOT NULL DEFAULT (datetime('now'))
   )`,
   `CREATE INDEX IF NOT EXISTS idx_ai_conv_owner ON ai_conversations (owner, updated_at)`,
+  // 邮箱验证码：PK=email+purpose（重发覆盖旧码）；code 存哈希；attempts 限 5 次；过期懒清理
+  `CREATE TABLE IF NOT EXISTS email_codes (
+    email      TEXT NOT NULL,
+    purpose    TEXT NOT NULL,
+    code_hash  TEXT NOT NULL,
+    attempts   INTEGER NOT NULL DEFAULT 0,
+    expires_at TEXT NOT NULL,
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    PRIMARY KEY (email, purpose)
+  )`,
+  // 登录二次验证的中间票据：密码对 + 开了 2FA 时发一张，凭票+验证码换正式会话
+  `CREATE TABLE IF NOT EXISTS email_login_pending (
+    ticket     TEXT PRIMARY KEY,
+    user_id    INTEGER NOT NULL,
+    expires_at TEXT NOT NULL
+  )`,
   // AI 对话历史（登录用户/管理员各存一份；owner='u{userId}' 或 'admin'）。
   // conv_id 关联 ai_conversations（0=旧数据迁移前的孤儿消息，读取时自动归入"历史对话"）；
   // content 存纯文本：多模态消息只存 text 部分，图片以「[图片]」占位（dataURL 太大不入库）
@@ -120,6 +136,16 @@ export async function ensureSchema(env) {
   } catch {}
   try {
     await env.DB.prepare("ALTER TABLE users ADD COLUMN avatar_key TEXT").run();
+  } catch {}
+  // 邮箱体系补列：绑定邮箱 / 验证标记 / 登录二次验证开关
+  try {
+    await env.DB.prepare("ALTER TABLE users ADD COLUMN email TEXT").run();
+  } catch {}
+  try {
+    await env.DB.prepare("ALTER TABLE users ADD COLUMN email_verified INTEGER NOT NULL DEFAULT 0").run();
+  } catch {}
+  try {
+    await env.DB.prepare("ALTER TABLE users ADD COLUMN twofa_enabled INTEGER NOT NULL DEFAULT 0").run();
   } catch {}
   // 老库补列：AI 历史表加 conv_id（列已存在时报错忽略）
   try {

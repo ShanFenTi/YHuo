@@ -1180,7 +1180,7 @@
     .tools-view .apple-card { width: 100%; }
     .docs-view .tool-block { max-width: 940px; margin: 0 auto; }
 
-    /* AI 布局：左侧历史栏 + 右侧聊天区 */
+    /* AI 布局：左侧历史栏（默认收起成抽屉，点顶栏按钮唤出）+ 右侧聊天区 */
     .ai-body {
       flex: 1;
       display: flex;
@@ -1188,14 +1188,23 @@
     }
 
     .ai-history {
-      flex: none;
-      width: 200px;
+      position: fixed;
+      left: 0;
+      top: 0;
+      bottom: 0;
+      z-index: 20;
+      width: min(280px, 82vw);
       display: flex;
       flex-direction: column;
       min-height: 0;
-      padding: 14px 10px 14px 4vw;
-      border-right: none; /* 极简：不加分割线，靠间距区分 */
+      padding: 14px 14px 14px 18px;
+      background: var(--apple-background);
+      transform: translateX(-100%);
+      transition: transform 250ms var(--ease-out);
+      box-shadow: 8px 0 32px rgba(0, 0, 0, 0.12);
     }
+
+    .ai-history.open { transform: none; }
 
     .ai-history-new {
       display: flex;
@@ -1274,7 +1283,21 @@
 
     .ai-history-empty { font-size: 12px; color: var(--apple-muted-foreground); padding: 8px 10px; }
 
-    .ai-history-toggle { display: none; } /* 桌面常显侧栏，窄屏才出现 */
+    .ai-history-toggle {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 34px;
+      height: 34px;
+      margin-left: -8px;
+      border: none;
+      border-radius: 8px;
+      background: none;
+      color: var(--apple-muted-foreground);
+      cursor: pointer;
+    }
+
+    .ai-history-toggle:hover { color: var(--apple-foreground); }
 
     .ai-chat {
       flex: 1;
@@ -1291,38 +1314,6 @@
     }
 
     .ai-view.show .ai-chat { transform: none; opacity: 1; }
-
-    /* 窄屏：历史栏收成抽屉，顶栏加列表按钮唤出 */
-    @media (max-width: 760px) {
-      .ai-history {
-        position: fixed;
-        left: 0;
-        top: 0;
-        bottom: 0;
-        z-index: 20;
-        width: min(280px, 82vw);
-        padding: 14px 14px 14px 18px;
-        background: var(--apple-background);
-        transform: translateX(-100%);
-        transition: transform 250ms var(--ease-out);
-        box-shadow: 8px 0 32px rgba(0, 0, 0, 0.12);
-      }
-      .ai-history.open { transform: none; }
-      .ai-history-toggle {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        width: 34px;
-        height: 34px;
-        margin-left: -8px;
-        border: none;
-        border-radius: 8px;
-        background: none;
-        color: var(--apple-muted-foreground);
-        cursor: pointer;
-      }
-      .ai-history-toggle:hover { color: var(--apple-foreground); }
-    }
 
     .ai-messages {
       flex: 1;
@@ -3731,6 +3722,43 @@
       margin-top: 14px;
     }
 
+    /* 验证码行：输入框 + 发送按钮并排 */
+    .login-code-field {
+      display: flex;
+      align-items: flex-end;
+      gap: 8px;
+    }
+    .login-code-field .login-field { flex: 1; }
+    .login-code-btn {
+      flex: none;
+      width: auto;
+      padding: 0 12px;
+      font-size: 12px;
+      letter-spacing: 0;
+      white-space: nowrap;
+    }
+    .login-code-btn:disabled { opacity: 0.55; cursor: default; }
+
+    /* 忘记密码 / 返回登录 链接行 */
+    .login-alt-row {
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+      margin-top: 10px;
+    }
+    .login-link {
+      background: none;
+      border: none;
+      padding: 0;
+      font-size: 12px;
+      font-family: inherit;
+      color: var(--apple-muted-foreground);
+      cursor: pointer;
+      border-bottom: 1px solid transparent;
+      transition: color 180ms var(--ease-out);
+    }
+    .login-link:hover { color: var(--apple-primary); }
+
     .login-guest {
       margin: 14px auto 0;
       padding: 2px 0;
@@ -4151,6 +4179,29 @@
       </div>
 
       <div class="profilev-grid">
+        <!-- 邮箱（绑定 / 找回密码基础 / 登录二次验证） -->
+        <div class="apple-card" id="emailCard" style="display:none">
+          <div class="card-padding">
+            <p class="card-eyebrow">邮箱 · EMAIL</p>
+            <div id="emailBoundView" style="display:none">
+              <p class="profile-hint" id="emailBoundText" style="margin:0 0 10px;">已绑定</p>
+              <div class="profile-actions">
+                <button class="appear-btn" id="emailRebindBtn" type="button">换绑邮箱</button>
+                <button class="appear-btn" id="twofaToggleBtn" type="button">开启二次验证</button>
+              </div>
+              <p class="profile-hint" style="margin-top:10px;">开启二次验证后，每次登录需额外输入邮箱验证码。</p>
+            </div>
+            <div id="emailBindView" style="display:none">
+              <input class="profilev-input" id="pemailInput" type="email" placeholder="新邮箱地址">
+              <div class="pwd-out-row" style="display:flex;gap:8px;align-items:center;margin-bottom:10px;">
+                <input class="profilev-input" id="pemailCode" type="text" inputmode="numeric" maxlength="6" placeholder="验证码" style="margin-bottom:0;">
+                <button class="appear-btn" id="pemailSendBtn" type="button" style="white-space:nowrap;">发送验证码</button>
+              </div>
+              <button class="appear-btn" id="pemailVerifyBtn" type="button">验证并绑定</button>
+              <p class="profile-msg" id="pemailMsg"></p>
+            </div>
+          </div>
+        </div>
         <!-- 修改密码 -->
         <div class="apple-card">
           <div class="card-padding">
@@ -4290,19 +4341,41 @@
   <div class="login-gate" id="loginGate" role="dialog" aria-modal="true" aria-label="登录">
     <form class="login-card" id="loginForm" autocomplete="off">
       <p class="login-logo">YHUO</p>
-      <p class="login-sub">欢迎回来，请登录</p>
-      <label class="login-field">
+      <p class="login-sub" id="loginSub">欢迎回来，请登录</p>
+      <!-- 邮箱（注册/找回密码模式） -->
+      <label class="login-field" id="emailField" style="display:none">
+        <span>邮箱</span>
+        <input type="email" id="gateEmail" placeholder="you@example.com" autocomplete="email">
+      </label>
+      <!-- 验证码（注册/找回/登录二次验证） -->
+      <div class="login-field login-code-field" id="codeField" style="display:none">
+        <label class="login-field" style="margin:0">
+          <span>验证码</span>
+          <input type="text" id="gateCode" inputmode="numeric" maxlength="6" placeholder="6 位数字" autocomplete="one-time-code">
+        </label>
+        <button type="button" class="login-btn login-code-btn" id="gateSendCode">发送验证码</button>
+      </div>
+      <!-- 新密码（找回密码模式） -->
+      <label class="login-field" id="newPassField" style="display:none">
+        <span>新密码</span>
+        <input type="password" id="gateNewPass" placeholder="新密码（至少 6 位）" autocomplete="new-password">
+      </label>
+      <label class="login-field" id="loginUserField">
         <span>账号</span>
         <input type="text" id="loginUser" placeholder="用户名（2-30 字符）">
       </label>
-      <label class="login-field">
+      <label class="login-field" id="loginPassField">
         <span>密码</span>
         <input type="password" id="loginPass" placeholder="密码（至少 6 位）">
       </label>
       <p class="login-error" id="loginError" hidden>请填写账号和密码</p>
       <div class="login-actions">
-        <button class="login-btn" type="submit">登 录</button>
+        <button class="login-btn" type="submit" id="loginSubmitBtn">登 录</button>
         <button class="login-btn login-register" id="loginRegister" type="button">注 册</button>
+      </div>
+      <div class="login-alt-row">
+        <button type="button" class="login-link" id="forgotBtn" style="display:none">忘记密码？</button>
+        <button type="button" class="login-link" id="backLoginBtn" style="display:none">返回登录</button>
       </div>
       <button class="login-guest" id="loginGuest" type="button">游客进入</button>
       <p class="login-hint">账号免费注册，登录身份保存在本站；也可以游客进入</p>
@@ -6615,14 +6688,15 @@
       }
     }
     // 认证请求：20 秒超时，网络挂起时也能给用户反馈
-    function authPost(path, u, p, done, busyBtns) {
+    // authJson 通用版（任意 body）；needCode（登录二次验证）原样透传给回调
+    function authJson(path, body, done, busyBtns) {
       busyBtns = busyBtns || [];
       busyBtns.forEach(function (b) { if (b) b.disabled = true; });
       var opts = {
         method: 'POST',
         credentials: 'same-origin',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username: u, password: p })
+        body: JSON.stringify(body)
       };
       if (typeof AbortController === 'function') {
         var ctl = new AbortController();
@@ -6634,10 +6708,15 @@
           return res.json().catch(function () { return { ok: false, error: '响应异常' }; });
         })
         .then(function (d) {
-          done(d && d.ok ? d : { ok: false, error: (d && d.error) || '服务暂时不可用，请稍后重试' });
+          if (d && d.ok) done(d);
+          else if (d && d.needCode) done({ ok: false, needCode: true, ticket: d.ticket, error: d.error });
+          else done({ ok: false, error: (d && d.error) || '服务暂时不可用，请稍后重试' });
         })
         .catch(function () { done({ ok: false, error: '网络错误，请稍后重试' }); })
         .then(function () { busyBtns.forEach(function (b) { if (b) b.disabled = false; }); });
+    }
+    function authPost(path, u, p, done, busyBtns) {
+      authJson(path, { username: u, password: p }, done, busyBtns);
     }
     function openGate() {
       document.body.classList.add('login-lock');
@@ -6755,56 +6834,200 @@
       });
       if (loginUser) loginUser.addEventListener('input', saveLoginDraft);
       if (loginPass) loginPass.addEventListener('input', saveLoginDraft);
+
+      // ---------- 登录卡片多模式：login | register | reset（忘记密码）| code（二次验证码步骤） ----------
+      var gateMode = 'login';
+      var gateEmailEnabled = false; // 后台配好邮件服务才显示邮箱相关字段
+      var gateTicket = '';          // 登录二次验证的中间票据
+      var gateUser = '';            // 进入验证码步骤时暂存用户名
+      var gateEmailInput = document.getElementById('gateEmail');
+      var gateCodeInput = document.getElementById('gateCode');
+      var gateNewPassInput = document.getElementById('gateNewPass');
+      var gateSendCodeBtn = document.getElementById('gateSendCode');
+      var forgotBtn = document.getElementById('forgotBtn');
+      var backLoginBtn = document.getElementById('backLoginBtn');
+      var loginSubEl = document.getElementById('loginSub');
+      var loginSubmitBtn = document.getElementById('loginSubmitBtn');
+
+      function setGateMode(mode) {
+        gateMode = mode;
+        var show = function (id, on, disp) {
+          var el = document.getElementById(id);
+          if (el) el.style.display = on ? (disp || '') : 'none';
+        };
+        var emailOn = gateEmailEnabled && (mode === 'register' || mode === 'reset');
+        var codeOn = gateEmailEnabled && (mode === 'register' || mode === 'reset') || mode === 'code';
+        show('emailField', emailOn);
+        show('codeField', codeOn, 'flex');
+        show('newPassField', mode === 'reset');
+        show('loginUserField', mode === 'login' || mode === 'register');
+        show('loginPassField', mode === 'login' || mode === 'register');
+        // code 模式：验证码由服务器在密码验证通过时已发送，隐藏手动发送按钮
+        if (gateSendCodeBtn) gateSendCodeBtn.style.display = (codeOn && mode !== 'code') ? '' : 'none';
+        if (loginRegister) loginRegister.style.display = mode === 'login' ? '' : 'none';
+        if (loginSubmitBtn) loginSubmitBtn.textContent = mode === 'register' ? '注 册' : mode === 'reset' ? '重置密码' : mode === 'code' ? '验 证' : '登 录';
+        if (forgotBtn) forgotBtn.style.display = (mode === 'login' && gateEmailEnabled) ? '' : 'none';
+        if (backLoginBtn) backLoginBtn.style.display = mode === 'login' ? 'none' : '';
+        if (loginSubEl) {
+          loginSubEl.textContent = mode === 'register' ? '创建一个新账号'
+            : mode === 'reset' ? '通过绑定邮箱找回密码'
+            : mode === 'code' ? '输入邮箱里的验证码' : '欢迎回来，请登录';
+        }
+        showLoginMsg('');
+      }
+
+      // 邮箱功能开关：跟随站点配置（后台未配邮件服务时相关 UI 全部隐藏）
+      fetch('/api/settings', { credentials: 'same-origin' })
+        .then(function (r) { return r.ok ? r.json() : null; })
+        .then(function (d) {
+          var was = gateEmailEnabled;
+          gateEmailEnabled = !!(d && d.ok && d.emailEnabled);
+          if (was !== gateEmailEnabled) setGateMode(gateMode); // 刷新字段可见性
+        })
+        .catch(function () {});
+
+      // 登录成功统一收口（普通登录 / 二次验证通过共用）
+      function gateLoginDone(d, fallbackUser) {
+        showLoginMsg('');
+        setLoginAvatar(d.avatar || null); // 登录响应带头像键
+        // 管理员账密验证通过时响应才带 admin:true，据此弹欢迎浮窗（含"进入后台"按钮）；
+        // 不能查 /api/auth/status 判断登录身份——它只看浏览器有无管理员会话 Cookie，
+        // 浏览器残留后台登录态时普通账号也会被误判（坑 11，欢迎浮窗也曾因此误弹）
+        passGate(d.username || fallbackUser);
+        favLoad(); // 拉取该账号的收藏
+        setGateMode('login');
+        try {
+          if (d.admin) {
+            sessionStorage.setItem('adminWelcome', '1');      // 本次会话是管理员登录
+            sessionStorage.setItem('adminWelcomeShown', '1'); // 刚弹过，刷新不重复
+            showAdminWelcome(d.username || fallbackUser);
+          } else {
+            // 普通账号登录：清掉可能残留的管理员标记
+            sessionStorage.removeItem('adminWelcome');
+            sessionStorage.removeItem('adminWelcomeShown');
+          }
+        } catch (e) {}
+      }
+
+      if (forgotBtn) {
+        forgotBtn.addEventListener('click', function () { setGateMode('reset'); });
+      }
+      if (backLoginBtn) {
+        backLoginBtn.addEventListener('click', function () {
+          gateTicket = '';
+          setGateMode('login');
+        });
+      }
+
+      // 发送验证码（60 秒倒计时防连点）
+      var codeCountdown = null;
+      function startCodeCountdown() {
+        var left = 60;
+        if (gateSendCodeBtn) {
+          gateSendCodeBtn.disabled = true;
+          gateSendCodeBtn.textContent = left + 's';
+          clearInterval(codeCountdown);
+          codeCountdown = setInterval(function () {
+            left--;
+            if (left <= 0) {
+              clearInterval(codeCountdown);
+              gateSendCodeBtn.disabled = false;
+              gateSendCodeBtn.textContent = '发送验证码';
+            } else gateSendCodeBtn.textContent = left + 's';
+          }, 1000);
+        }
+      }
+      if (gateSendCodeBtn) {
+        gateSendCodeBtn.addEventListener('click', function () {
+          var email = gateEmailInput ? gateEmailInput.value.trim() : '';
+          if (!email) { showLoginMsg('请先填写邮箱'); return; }
+          var purpose = gateMode === 'reset' ? 'reset' : 'register';
+          showLoginMsg('验证码发送中…');
+          authJson('/api/email/code', { email: email, purpose: purpose }, function (d) {
+            if (d.ok) {
+              showLoginMsg('验证码已发送，注意查收（含垃圾箱）');
+              startCodeCountdown();
+            } else showLoginMsg(d.error);
+          }, [gateSendCodeBtn]);
+        });
+      }
+
       if (loginForm) {
         var loginButtons = [loginForm.querySelector('.login-btn'), loginRegister];
         loginForm.addEventListener('submit', function (e) {
           e.preventDefault();
           var u = loginUser ? loginUser.value.trim() : '';
           var p = loginPass ? loginPass.value : '';
+          var email = gateEmailInput ? gateEmailInput.value.trim() : '';
+          var code = gateCodeInput ? gateCodeInput.value.trim() : '';
+          var np = gateNewPassInput ? gateNewPassInput.value : '';
+
+          if (gateMode === 'register') {
+            if (!u || !p) { showLoginMsg('请填写账号和密码'); return; }
+            if (p.length < 6) { showLoginMsg('密码至少 6 位'); return; }
+            if (gateEmailEnabled) {
+              if (!email) { showLoginMsg('请填写邮箱'); return; }
+              if (!/^\d{6}$/.test(code)) { showLoginMsg('请填写 6 位邮箱验证码'); return; }
+            }
+            showLoginMsg('注册中…');
+            authJson('/api/user/register', {
+              username: u, password: p,
+              email: gateEmailEnabled ? email : undefined,
+              code: gateEmailEnabled ? code : undefined,
+            }, function (d) {
+              if (d.ok) {
+                setLoginAvatar(null); // 新注册没有头像
+                passGate(u);
+                favLoad(); // 新账号收藏为空，同时清掉内存里的残留
+                setGateMode('login');
+              } else showLoginMsg(d.error);
+            }, loginButtons);
+            return;
+          }
+
+          if (gateMode === 'reset') {
+            if (!email || !/^\d{6}$/.test(code)) { showLoginMsg('请填写邮箱和 6 位验证码'); return; }
+            if (np.length < 6) { showLoginMsg('新密码至少 6 位'); return; }
+            showLoginMsg('重置中…');
+            authJson('/api/user/password', { email: email, code: code, newPassword: np }, function (d) {
+              if (d.ok) {
+                setGateMode('login');
+                showLoginMsg('密码已重置，请用新密码登录');
+              } else showLoginMsg(d.error);
+            }, loginButtons);
+            return;
+          }
+
+          if (gateMode === 'code') {
+            if (!/^\d{6}$/.test(code)) { showLoginMsg('请填写 6 位验证码'); return; }
+            showLoginMsg('验证中…');
+            authJson('/api/user/login', { username: gateUser, ticket: gateTicket, code: code }, function (d) {
+              if (d.ok) gateLoginDone(d, gateUser);
+              else if (d.needCode) { gateTicket = d.ticket; showLoginMsg(d.error); } // 极少：重新触发了发码
+              else showLoginMsg(d.error);
+            }, loginButtons);
+            return;
+          }
+
+          // 常规登录
           if (!u || !p) { showLoginMsg('请填写账号和密码'); return; }
           showLoginMsg('登录中…');
           authPost('/api/user/login', u, p, function (d) {
-            if (d.ok) {
-              showLoginMsg('');
-              setLoginAvatar(d.avatar || null); // 登录响应带头像键
-              // 管理员账密验证通过时响应才带 admin:true，据此弹欢迎浮窗（含"进入后台"按钮）；
-              // 不能查 /api/auth/status 判断登录身份——它只看浏览器有无管理员会话 Cookie，
-              // 浏览器残留后台登录态时普通账号也会被误判（坑 11，欢迎浮窗也曾因此误弹）
-              passGate(u);
-              favLoad(); // 拉取该账号的收藏
-              try {
-                if (d.admin) {
-                  sessionStorage.setItem('adminWelcome', '1');      // 本次会话是管理员登录
-                  sessionStorage.setItem('adminWelcomeShown', '1'); // 刚弹过，刷新不重复
-                  showAdminWelcome(d.username || u);
-                } else {
-                  // 普通账号登录：清掉可能残留的管理员标记
-                  sessionStorage.removeItem('adminWelcome');
-                  sessionStorage.removeItem('adminWelcomeShown');
-                }
-              } catch (e) {}
+            if (d.ok) gateLoginDone(d, u);
+            else if (d.needCode) {
+              // 开了二次验证：验证码已由服务器发送到邮箱，进入验证码步骤
+              gateTicket = d.ticket;
+              gateUser = u;
+              if (gateCodeInput) gateCodeInput.value = '';
+              setGateMode('code');
+              showLoginMsg(d.error);
             }
             else showLoginMsg(d.error);
           }, loginButtons);
         });
       }
       if (loginRegister) {
-        loginRegister.addEventListener('click', function () {
-          var u = loginUser ? loginUser.value.trim() : '';
-          var p = loginPass ? loginPass.value : '';
-          if (!u || !p) { showLoginMsg('请填写账号和密码'); return; }
-          if (p.length < 6) { showLoginMsg('密码至少 6 位'); return; }
-          showLoginMsg('注册中…');
-          authPost('/api/user/register', u, p, function (d) {
-            // 注意 authPost 的 done 回调传对象 {ok, error}，不是 (ok, msg) 布尔签名
-            if (d.ok) {
-              showLoginMsg('');
-              setLoginAvatar(null); // 新注册没有头像
-              passGate(u);
-              favLoad(); // 新账号收藏为空，同时清掉内存里的残留
-            } else showLoginMsg(d.error);
-          }, loginButtons);
-        });
+        loginRegister.addEventListener('click', function () { setGateMode('register'); });
       }
       if (loginGuest) {
         loginGuest.addEventListener('click', function () {
@@ -7077,6 +7300,145 @@
       return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
     }
 
+    // ---------- 邮箱卡：绑定 / 换绑 / 登录二次验证（服务未启用时整卡隐藏） ----------
+    var emailCard = document.getElementById('emailCard');
+    var emailBoundView = document.getElementById('emailBoundView');
+    var emailBindView = document.getElementById('emailBindView');
+    var pemailInput = document.getElementById('pemailInput');
+    var pemailCode = document.getElementById('pemailCode');
+    var pemailSendBtn = document.getElementById('pemailSendBtn');
+    var pemailVerifyBtn = document.getElementById('pemailVerifyBtn');
+    var pemailMsg = document.getElementById('pemailMsg');
+    var emailBoundText = document.getElementById('emailBoundText');
+    var emailRebindBtn = document.getElementById('emailRebindBtn');
+    var twofaToggleBtn = document.getElementById('twofaToggleBtn');
+    var emailBoundEmail = null;
+    var emailTwofa = false;
+
+    function showPEmailMsg(text, err) {
+      if (!pemailMsg) return;
+      pemailMsg.textContent = text || '';
+      pemailMsg.classList.toggle('err', !!err);
+    }
+    function maskedEmail(e) {
+      var at = String(e || '').indexOf('@');
+      if (at < 1) return e || '';
+      var name = e.slice(0, at);
+      var head = name.slice(0, Math.min(2, name.length));
+      return head + '***' + e.slice(at);
+    }
+    function renderEmailCard() {
+      if (!emailCard) return;
+      if (!emailBoundEmail) {
+        emailBoundView.style.display = 'none';
+        emailBindView.style.display = '';
+      } else {
+        emailBoundView.style.display = '';
+        emailBindView.style.display = 'none';
+        emailBoundText.textContent = '已绑定 ' + maskedEmail(emailBoundEmail) + '（可用于找回密码）';
+        if (twofaToggleBtn) twofaToggleBtn.textContent = emailTwofa ? '关闭二次验证' : '开启二次验证';
+      }
+    }
+    function loadEmailCard() {
+      if (!emailCard) return;
+      fetch('/api/user/email', { credentials: 'same-origin' })
+        .then(function (r) { return r.ok ? r.json() : null; })
+        .then(function (d) {
+          if (!d || !d.ok) { emailCard.style.display = 'none'; return; } // 未登录/接口不可用
+          emailCard.style.display = d.enabled ? '' : 'none'; // 邮件服务未配置整卡隐藏
+          emailBoundEmail = d.verified ? d.email : null;
+          emailTwofa = !!d.twofa;
+          renderEmailCard();
+        })
+        .catch(function () { if (emailCard) emailCard.style.display = 'none'; });
+    }
+    if (emailRebindBtn) {
+      emailRebindBtn.addEventListener('click', function () {
+        emailBoundEmail = null; // 临时进入绑定视图（不影响已存数据）
+        if (pemailInput) pemailInput.value = '';
+        if (pemailCode) pemailCode.value = '';
+        showPEmailMsg('');
+        renderEmailCard();
+      });
+    }
+    // 发送绑定验证码（60 秒倒计时）
+    var peCountdown = null;
+    if (pemailSendBtn) {
+      pemailSendBtn.addEventListener('click', function () {
+        var email = pemailInput ? pemailInput.value.trim() : '';
+        if (!email) { showPEmailMsg('请先填写邮箱地址', true); return; }
+        showPEmailMsg('验证码发送中…');
+        fetch('/api/user/email', {
+          method: 'POST',
+          credentials: 'same-origin',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'bind-send', email: email }),
+        })
+          .then(function (r) { return r.json().catch(function () { return { ok: false, error: '响应异常' }; }); })
+          .then(function (d) {
+            if (d.ok) {
+              showPEmailMsg('验证码已发送，注意查收（含垃圾箱）');
+              var left = 60;
+              pemailSendBtn.disabled = true;
+              pemailSendBtn.textContent = left + 's';
+              clearInterval(peCountdown);
+              peCountdown = setInterval(function () {
+                left--;
+                if (left <= 0) {
+                  clearInterval(peCountdown);
+                  pemailSendBtn.disabled = false;
+                  pemailSendBtn.textContent = '发送验证码';
+                } else pemailSendBtn.textContent = left + 's';
+              }, 1000);
+            } else showPEmailMsg(d.error || '发送失败', true);
+          })
+          .catch(function () { showPEmailMsg('网络错误', true); });
+      });
+    }
+    if (pemailVerifyBtn) {
+      pemailVerifyBtn.addEventListener('click', function () {
+        var email = pemailInput ? pemailInput.value.trim() : '';
+        var code = pemailCode ? pemailCode.value.trim() : '';
+        if (!email || !/^\d{6}$/.test(code)) { showPEmailMsg('请填写邮箱和 6 位验证码', true); return; }
+        fetch('/api/user/email', {
+          method: 'POST',
+          credentials: 'same-origin',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'bind-verify', email: email, code: code }),
+        })
+          .then(function (r) { return r.json().catch(function () { return { ok: false, error: '响应异常' }; }); })
+          .then(function (d) {
+            if (d.ok) {
+              emailBoundEmail = d.email || email;
+              emailTwofa = false; // 换绑后 2FA 保持关闭，避免旧邮箱验证状态误开
+              renderEmailCard();
+              showPEmailMsg('邮箱绑定成功');
+            } else showPEmailMsg(d.error || '绑定失败', true);
+          })
+          .catch(function () { showPEmailMsg('网络错误', true); });
+      });
+    }
+    if (twofaToggleBtn) {
+      twofaToggleBtn.addEventListener('click', function () {
+        var next = !emailTwofa;
+        fetch('/api/user/email', {
+          method: 'POST',
+          credentials: 'same-origin',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'toggle2fa', enabled: next }),
+        })
+          .then(function (r) { return r.json().catch(function () { return { ok: false, error: '响应异常' }; }); })
+          .then(function (d) {
+            if (d.ok) {
+              emailTwofa = !!d.twofa;
+              renderEmailCard();
+              showPEmailMsg(emailTwofa ? '二次验证已开启，下次登录将要求邮箱验证码' : '二次验证已关闭');
+            } else showPEmailMsg(d.error || '操作失败', true);
+          })
+          .catch(function () { showPEmailMsg('网络错误', true); });
+      });
+    }
+
     function loadProfileData() {
       fetch('/api/user/profile', { credentials: 'same-origin' })
         .then(function (r) { return r.json().catch(function () { return { ok: false }; }); })
@@ -7202,6 +7564,7 @@
       fsOpen('profileView'); // 互斥收起其他全屏层（个人主页不接管高亮/不锁滚动，保持原行为）
       setProfileOpen(false);
       loadProfileData();
+      loadEmailCard();
       renderFavorites();
       profileView.hidden = false;
       void profileView.offsetWidth;
@@ -8320,6 +8683,7 @@
       if (!aiView || aiView.hidden) return;
       fsClose('aiView'); // 解锁滚动 + 摘高亮（统一管理器）
       aiView.classList.remove('show');
+      aiCloseHistoryDrawer(); // 关界面顺手收起历史抽屉
       // 关闭保留对话：只中断进行中的流式请求（历史在内存 + 服务端，重开可继续）
       if (aiAbort) {
         try { aiAbort.abort(); } catch (e) {}

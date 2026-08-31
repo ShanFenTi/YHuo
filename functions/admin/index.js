@@ -556,6 +556,7 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
       <button data-type="users" title="用户"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg><span>用户</span></button>
       <button data-type="appearance" title="外观"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 2a10 10 0 0 0 0 20z" fill="currentColor" stroke="none"/></svg><span>外观</span></button>
       <button data-type="ai" title="AI 设置"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="8" width="16" height="12" rx="2"/><path d="M12 8V4"/><path d="M9 4h6"/><circle cx="9" cy="13" r="1" fill="currentColor" stroke="none"/><circle cx="15" cy="13" r="1" fill="currentColor" stroke="none"/><path d="M9 17h6"/></svg><span>AI</span></button>
+      <button data-type="email" title="邮件"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg><span>邮件</span></button>
       <button data-type="me" title="我的"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg><span>我的</span></button>
     </nav>
     <div class="sidenav-foot">
@@ -741,6 +742,30 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
     <div class="bgset-row">
       <button id="aiToggleBtn" class="ghost">停用 AI</button>
       <span class="meta2" id="aiStateText">状态读取中…</span>
+    </div>
+  </div>
+
+  <div id="emailPanel" hidden>
+    <p class="appear-label2">邮件服务（用于注册邮箱验证 / 找回密码 / 登录二次验证）</p>
+    <p class="ai-mgr-label">服务商（都走 HTTP API，Workers 原生支持）</p>
+    <span id="emailProviderDrop" class="ai-drop-full"></span>
+    <p class="ai-mgr-label">发件地址（需在服务商侧完成发件人验证）</p>
+    <input type="text" id="emailFrom" placeholder="noreply@yourdomain.com" style="max-width:320px">
+    <p class="ai-mgr-label">API Key</p>
+    <div class="ai-key-wrap">
+      <input type="password" id="emailApiKey" autocomplete="new-password" placeholder="re_…（Resend）/ xkeysib-…（Brevo）">
+      <button id="emailKeyEye" class="icon-mini ai-key-eye" type="button" title="显示/隐藏"></button>
+    </div>
+    <p class="meta2" id="emailKeyHint" style="margin-top:6px">未设置</p>
+    <div class="bgset-row" style="margin-top:18px">
+      <button id="emailSaveBtn" type="button">保存配置</button>
+      <button id="emailToggleBtn" class="ghost" type="button">停用</button>
+      <span class="meta2" id="emailStateText">状态读取中…</span>
+    </div>
+    <p class="appear-label2" style="margin-top:22px">测试发送</p>
+    <div class="bgset-row">
+      <input type="text" id="emailTestTo" placeholder="收件邮箱" style="max-width:260px">
+      <button id="emailTestBtn" class="ghost" type="button">发送测试邮件</button>
     </div>
   </div>
 
@@ -1760,7 +1785,8 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
 
       var meta = document.createElement('span');
       meta.className = 'meta';
-      meta.textContent = '注册于 ' + fmtDate(u.created_at) + ' · ' + fmtRel(u.last_seen_at);
+      meta.textContent = '注册于 ' + fmtDate(u.created_at) + ' · ' + fmtRel(u.last_seen_at)
+        + (u.email ? ' · ' + u.email + (u.twofa_enabled ? '（2FA）' : '') : '');
 
       var ban = document.createElement('button');
       ban.className = 'ghost';
@@ -2259,6 +2285,84 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
     options: tagOptions(),
   });
 
+  // ---------- 邮件服务配置 ----------
+  var emailEnabledNow = false;
+  makeAiDrop($('emailProviderDrop'), {
+    fullWidth: true,
+    value: 'resend',
+    options: [
+      { value: 'resend', label: 'Resend（免费 100 封/天，推荐）' },
+      { value: 'brevo', label: 'Brevo（免费 300 封/天）' },
+    ],
+  });
+  $('emailKeyEye').innerHTML = ICO.eye;
+  var emailKeyShown = false;
+  $('emailKeyEye').addEventListener('click', function () {
+    emailKeyShown = !emailKeyShown;
+    $('emailApiKey').type = emailKeyShown ? 'text' : 'password';
+    $('emailKeyEye').innerHTML = emailKeyShown ? ICO.eyeOff : ICO.eye;
+  });
+  function emailStateText(enabled) {
+    $('emailStateText').textContent = enabled
+      ? '已启用：前台注册需邮箱验证，找回密码/二次验证可用'
+      : '未启用：前台不显示邮箱相关功能';
+    $('emailToggleBtn').textContent = enabled ? '停用' : '启用';
+  }
+  function loadEmailSettings() {
+    api('/api/admin/email').then(function (d) {
+      if (!d.ok) { toast(d.error || '读取邮件配置失败', 'err'); return; }
+      emailEnabledNow = !!d.enabled;
+      $('emailProviderDrop').value = d.provider;
+      $('emailFrom').value = d.from || '';
+      $('emailApiKey').value = '';
+      $('emailApiKey').placeholder = d.keySet ? '留空保持不变' : 're_…（Resend）/ xkeysib-…（Brevo）';
+      $('emailKeyHint').textContent = d.keySet ? '已保存（尾 4 位 ' + d.keyTail + '）；输入框留空 = 不修改' : '未设置';
+      emailStateText(d.enabled);
+    }).catch(function () { toast('网络错误', 'err'); });
+  }
+  function saveEmailConfig(enabled, done) {
+    api('/api/admin/email', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        enabled: enabled,
+        provider: $('emailProviderDrop').value,
+        from: $('emailFrom').value.trim(),
+        api_key: $('emailApiKey').value.trim() || undefined, // 留空 = 保留原 Key
+      })
+    }).then(function (d) {
+      if (d.ok) {
+        emailEnabledNow = !!d.enabled;
+        $('emailApiKey').value = '';
+        loadEmailSettings();
+        if (done) done(d);
+      } else toast(d.error || '保存失败', 'err');
+    }).catch(function () { toast('网络错误', 'err'); });
+  }
+  $('emailSaveBtn').addEventListener('click', function () {
+    saveEmailConfig(true, function (d) {
+      toast(d.enabled ? '邮件配置已保存并启用' : '已保存；补全 API Key 和发件人后会自动启用', 'ok');
+    });
+  });
+  $('emailToggleBtn').addEventListener('click', function () {
+    saveEmailConfig(!emailEnabledNow, function (d) {
+      toast(d.enabled ? '邮件服务已启用' : '邮件服务已停用', 'ok');
+    });
+  });
+  $('emailTestBtn').addEventListener('click', function () {
+    var to = $('emailTestTo').value.trim();
+    if (!to) { toast('请填写收件邮箱', 'err'); return; }
+    toast('发送中…', '', true);
+    api('/api/admin/email', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ to: to })
+    }).then(function (d) {
+      if (d.ok) toast('测试邮件已发送，注意查收（含垃圾箱）', 'ok');
+      else toast(d.error || '发送失败', 'err');
+    }).catch(function () { toast('网络错误', 'err'); });
+  });
+
   function tagSelect(value, onchange) {
     var host = document.createElement('span');
     makeAiDrop(host, {
@@ -2597,7 +2701,7 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
   $('aiProtocol').addEventListener('change', function () { fetchAiModels(false); });
 
   // ---------- 侧边栏导航 ----------
-  var PAGE_TITLES = { overview: '概览', music: '音乐', video: '视频', image: '图片', users: '用户', appearance: '外观', ai: 'AI 设置', me: '我的' };
+  var PAGE_TITLES = { overview: '概览', music: '音乐', video: '视频', image: '图片', users: '用户', appearance: '外观', ai: 'AI 设置', email: '邮件', me: '我的' };
   var navBtns = document.querySelectorAll('#sideNav button');
   // ---------- 我的（管理员资料 + 头像；头像 KV 键存 site_settings 'admin_avatar'） ----------
   function applyAdminAvatar(key) {
@@ -2663,12 +2767,14 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
     var isUsers = type === 'users';
     var isAppear = type === 'appearance';
     var isAi = type === 'ai';
+    var isEmail = type === 'email';
     var isMe = type === 'me';
     $('overviewPanel').hidden = !isOverview;
-    $('mediaPanel').hidden = isOverview || isUsers || isAppear || isAi || isMe;
+    $('mediaPanel').hidden = isOverview || isUsers || isAppear || isAi || isEmail || isMe;
     $('userPanel').hidden = !isUsers;
     $('appearancePanel').hidden = !isAppear;
     $('aiPanel').hidden = !isAi;
+    $('emailPanel').hidden = !isEmail;
     $('mePanel').hidden = !isMe;
     // 列表对所有媒体类型常显（列表/工具/存储条都在 image-shell 里，隐藏它会连列表一起藏掉）；
     // 只收起左侧相册侧栏
@@ -2685,6 +2791,9 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
     if (isAi) {
       loadAiSettings();
     }
+    if (isEmail) {
+      loadEmailSettings();
+    }
     if (isMe) {
       loadMe();
     }
@@ -2692,7 +2801,7 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
       $('userSearch').value = ''; // 换进来重置搜索
       loadUsers();
     }
-    if (!isOverview && !isUsers && !isAppear && !isAi && !isMe) {
+    if (!isOverview && !isUsers && !isAppear && !isAi && !isEmail && !isMe) {
       $('fileInput').accept = TYPE_EXT[type];
       $('titleInput').value = '';
       selected = {}; // 换标签页清空勾选和搜索

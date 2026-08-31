@@ -3824,6 +3824,7 @@
           <button class="appear-btn" id="bgClearBtn" type="button">恢复默认</button>
           <label class="dim-row">背景变暗 <input type="range" id="bgDim" min="0" max="70" value="25"></label>
           <label class="dim-row">背景模糊 <input type="range" id="bgBlur" min="0" max="30" value="0"></label>
+          <button class="appear-btn" id="bgBlurFollow" type="button" hidden style="margin-top:8px">跟随站点默认</button>
         </div>
         <input type="file" id="bgInput" accept="image/*" hidden>
 
@@ -6017,6 +6018,8 @@
 
     // 背景模糊：blur 在全屏层边缘会露出半透明软边，配合轻微放大消除
     var bgBlurSlider = document.getElementById('bgBlur');
+    var bgBlurFollowBtn = document.getElementById('bgBlurFollow');
+    var siteDefaultBlur = null; // 管理员设置的站点默认（/api/settings 回来后填充）
     function applyBlur(v) {
       var px = isNaN(v) ? 0 : Math.max(0, Math.min(30, v));
       if (bgLayer) {
@@ -6024,6 +6027,13 @@
         bgLayer.style.transform = px > 0 ? 'scale(1.08)' : '';
       }
       if (bgBlurSlider) bgBlurSlider.value = px;
+    }
+    // 本地存档 + 站点默认都存在时，提供"恢复跟随站点默认"入口（否则拖过一次就永远回不去了）
+    function refreshBlurFollow() {
+      if (!bgBlurFollowBtn) return;
+      var hasLocal = false;
+      try { hasLocal = localStorage.getItem('bgBlur') !== null; } catch (e) {}
+      bgBlurFollowBtn.hidden = !(hasLocal && siteDefaultBlur !== null);
     }
     var savedBlur = 0;
     try { savedBlur = parseInt(localStorage.getItem('bgBlur'), 10); } catch (e) {}
@@ -6033,6 +6043,14 @@
       bgBlurSlider.addEventListener('input', function () {
         applyBlur(parseInt(bgBlurSlider.value, 10));
         try { localStorage.setItem('bgBlur', bgBlurSlider.value); } catch (e) {}
+        refreshBlurFollow();
+      });
+    }
+    if (bgBlurFollowBtn) {
+      bgBlurFollowBtn.addEventListener('click', function () {
+        try { localStorage.removeItem('bgBlur'); } catch (e) {}
+        applyBlur(siteDefaultBlur || 0);
+        refreshBlurFollow();
       });
     }
 
@@ -6133,10 +6151,12 @@
         if (d.accent && !savedAccent) applyAccent(d.accent);
         // 站点默认背景模糊：访客本地没自己调过滑杆（无 bgBlur 存档）才采用
         if (d.blur !== null && d.blur !== undefined) {
+          siteDefaultBlur = d.blur;
           var hasLocalBlur = false;
           try { hasLocalBlur = localStorage.getItem('bgBlur') !== null; } catch (e) {}
           if (!hasLocalBlur) applyBlur(parseInt(d.blur, 10) || 0);
         }
+        refreshBlurFollow();
         if (d.background) {
           idbGetAll(['customBg']).then(function (blobs) {
             var hasLocalBg = blobs && blobs[0] && blobs[0].size;

@@ -6856,8 +6856,8 @@
           var el = document.getElementById(id);
           if (el) el.style.display = on ? (disp || '') : 'none';
         };
-        var emailOn = gateEmailEnabled && mode === 'reset';
-        var codeOn = (gateEmailRegister && mode === 'register') || emailOn || mode === 'code';
+        var emailOn = (gateEmailRegister && mode === 'register') || (gateEmailEnabled && mode === 'reset');
+        var codeOn = emailOn || mode === 'code';
         show('emailField', emailOn);
         show('codeField', codeOn, 'flex');
         show('newPassField', mode === 'reset');

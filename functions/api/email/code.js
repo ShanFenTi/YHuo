@@ -17,21 +17,33 @@ export async function onRequestPost({ request, env }) {
     return json({ ok: false, error: '请求格式错误' }, 400);
   }
   const email = String(body.email || '').trim().toLowerCase();
-  const purpose = body.purpose === 'reset' ? 'reset' : body.purpose === 'register' ? 'register' : null;
+  const purpose = body.purpose === 'reset' ? 'reset'
+    : body.purpose === 'register' ? 'register'
+    : body.purpose === 'admin-reset' ? 'admin-reset'
+    : null;
   if (!purpose) return json({ ok: false, error: '无效的验证码用途' }, 400);
   if (!isEmailAddr(email)) return json({ ok: false, error: '邮箱格式不正确' }, 400);
 
-  // 仅站长模式：只有站长邮箱能收验证码（无域名邮件服务只能发注册邮箱的场景）
-  if (cfg.adminOnly && email !== cfg.ownerEmail) {
+  // 管理员重置：只发绑定的管理员邮箱（存 site_settings 'admin_email'）
+  if (purpose === 'admin-reset') {
+    const row = await env.DB.prepare("SELECT value FROM site_settings WHERE key = 'admin_email'").first();
+    const adminEmail = row ? String(row.value).toLowerCase() : '';
+    if (!adminEmail || email !== adminEmail) {
+      return json({ ok: false, error: '该邮箱未绑定管理员账号' }, 404);
+    }
+  } else if (cfg.adminOnly && email !== cfg.ownerEmail) {
+    // 仅站长模式：只有站长邮箱能收验证码（无域名邮件服务只能发注册邮箱的场景）
     return json({ ok: false, error: '当前站点邮件功能仅站长可用' }, 403);
   }
 
   // register：邮箱不能已被注册；reset：邮箱必须已绑定（个人站从简，直接告知）
-  const taken = await env.DB
-    .prepare('SELECT id FROM users WHERE email = ?')
-    .bind(email).first();
-  if (purpose === 'register' && taken) return json({ ok: false, error: '该邮箱已被注册' }, 400);
-  if (purpose === 'reset' && !taken) return json({ ok: false, error: '该邮箱未绑定任何账号' }, 400);
+  if (purpose !== 'admin-reset') {
+    const taken = await env.DB
+      .prepare('SELECT id FROM users WHERE email = ?')
+      .bind(email).first();
+    if (purpose === 'register' && taken) return json({ ok: false, error: '该邮箱已被注册' }, 400);
+    if (purpose === 'reset' && !taken) return json({ ok: false, error: '该邮箱未绑定任何账号' }, 400);
+  }
 
   try {
     await issueCode(env, email, purpose);

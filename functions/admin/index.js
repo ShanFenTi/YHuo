@@ -529,7 +529,22 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
     <input type="text" id="loginUser" placeholder="用户名" autocomplete="username">
     <input type="password" id="loginPass" placeholder="密码" autocomplete="current-password">
     <button id="loginBtn">登录</button>
+    <!-- 忘记密码：管理员邮箱验证码重置（未绑邮箱/未启用邮件服务时隐藏，由前端拉 /api/settings 判断） -->
+    <button id="adminForgotBtn" class="ghost" type="button" style="width:100%;margin-top:8px;display:none">忘记密码？</button>
     <div class="msg" id="loginMsg"></div>
+  </div>
+
+  <div class="card" id="adminResetCard" hidden>
+    <p class="hint">通过绑定的管理员邮箱重置密码。</p>
+    <input type="text" id="arEmail" placeholder="管理员邮箱" autocomplete="email">
+    <div style="display:flex;gap:8px">
+      <input type="text" id="arCode" inputmode="numeric" maxlength="6" placeholder="验证码" style="flex:1" autocomplete="one-time-code">
+      <button id="arSendBtn" class="ghost" type="button">发送验证码</button>
+    </div>
+    <input type="password" id="arNewPass" placeholder="新密码（至少 6 位）" autocomplete="new-password">
+    <button id="arSubmitBtn">重置密码</button>
+    <button id="arBackBtn" class="ghost" type="button" style="width:100%;margin-top:8px">返回登录</button>
+    <div class="msg" id="arMsg"></div>
   </div>
 
   <div class="card" id="neterrCard" hidden>
@@ -791,6 +806,24 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
       </div>
       <input type="file" id="meAvatarInput" accept=".jpg,.jpeg,.png,.gif,.webp" hidden>
     </div>
+    <div class="card" id="meEmailCard" style="margin-top:16px" hidden>
+      <p class="appear-label2" style="margin-top:0">管理员邮箱（绑定后可用邮箱验证码重置后台密码）</p>
+      <div class="bgset-row" id="meEmailBoundRow" hidden>
+        <span class="meta2" id="meEmailText"></span>
+        <button id="meEmailRemoveBtn" class="danger" type="button">解绑</button>
+      </div>
+      <div id="meEmailFormRow">
+        <div class="bgset-row">
+          <input type="text" id="meEmailInput" placeholder="you@example.com" style="max-width:280px">
+          <button id="meEmailSendBtn" class="ghost" type="button">发送验证码</button>
+        </div>
+        <div class="bgset-row" style="margin-top:8px">
+          <input type="text" id="meEmailCode" inputmode="numeric" maxlength="6" placeholder="6 位验证码" style="max-width:160px">
+          <button id="meEmailVerifyBtn" type="button">验证并绑定</button>
+        </div>
+        <p class="meta2" id="meEmailMsg" style="margin:8px 0 0"></p>
+      </div>
+    </div>
   </div>
     </main>
   </div>
@@ -965,8 +998,70 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
     $('appShell').hidden = name !== 'main';
     $('setupCard').hidden = name !== 'setup';
     $('loginCard').hidden = name !== 'login';
+    $('adminResetCard').hidden = name !== 'reset';
     $('neterrCard').hidden = name !== 'neterr';
+    // 登录页显示时顺带查邮件服务开关（决定"忘记密码"入口显隐）
+    if (name === 'login') refreshAdminForgot();
   }
+
+  // 管理员"忘记密码"入口：邮件服务启用才显示
+  var adminForgotChecked = false;
+  function refreshAdminForgot() {
+    fetch('/api/settings').then(function (r) { return r.ok ? r.json() : null; }).then(function (d) {
+      adminForgotChecked = true;
+      var on = !!(d && d.ok && d.emailEnabled);
+      $('adminForgotBtn').style.display = on ? '' : 'none';
+    }).catch(function () {});
+  }
+
+  // ---------- 管理员邮箱重置密码 ----------
+  function arMsg(text, err) { showMsg($('arMsg'), text || '', err ? 'err' : ''); }
+  $('adminForgotBtn').addEventListener('click', function () { show('reset'); });
+  $('arBackBtn').addEventListener('click', function () { show('login'); });
+  var arCountdown = null;
+  $('arSendBtn').addEventListener('click', function () {
+    var email = $('arEmail').value.trim();
+    if (!email) { arMsg('请先填写管理员邮箱', true); return; }
+    var btn = this; btn.disabled = true;
+    api('/api/email/code', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: email, purpose: 'admin-reset' })
+    }).then(function (d) {
+      btn.disabled = false;
+      if (d.ok) {
+        arMsg('验证码已发送，注意查收（含垃圾箱）');
+        var left = 60;
+        btn.disabled = true;
+        btn.textContent = left + 's';
+        clearInterval(arCountdown);
+        arCountdown = setInterval(function () {
+          left--;
+          if (left <= 0) { clearInterval(arCountdown); btn.disabled = false; btn.textContent = '发送验证码'; }
+          else btn.textContent = left + 's';
+        }, 1000);
+      } else arMsg(d.error || '发送失败', true);
+    }).catch(function () { btn.disabled = false; arMsg('网络错误', true); });
+  });
+  $('arSubmitBtn').addEventListener('click', function () {
+    var email = $('arEmail').value.trim();
+    var code = $('arCode').value.trim();
+    var np = $('arNewPass').value;
+    if (!email || !/^\d{6}$/.test(code)) { arMsg('请填写邮箱和 6 位验证码', true); return; }
+    if (np.length < 6) { arMsg('新密码至少 6 位', true); return; }
+    var btn = this; btn.disabled = true;
+    api('/api/auth/reset', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: email, code: code, newPassword: np })
+    }).then(function (d) {
+      btn.disabled = false;
+      if (d.ok) {
+        show('login');
+        showMsg($('loginMsg'), '密码已重置，请用新密码登录', '');
+      } else arMsg(d.error || '重置失败', true);
+    }).catch(function () { btn.disabled = false; arMsg('网络错误', true); });
+  });
 
   // 自动重试 3 次：网络抖动时误显示登录表单会让人误以为账号丢了
   function loadStatus(tries) {
@@ -2743,12 +2838,95 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
     meImg.hidden = !has;
     $('meAvatarRemoveBtn').hidden = !has;
   }
+  // ---------- 管理员邮箱（绑定/解绑；重置后台密码用） ----------
+  var meAdminEmail = null;
+  function meEmailMsg(text, err) {
+    var el = $('meEmailMsg');
+    el.textContent = text || '';
+    el.className = 'meta2' + (err ? ' ai-test-err' : '');
+  }
+  function renderMeEmail() {
+    var card = $('meEmailCard');
+    if (!meAdminEmail) {
+      $('meEmailBoundRow').hidden = true;
+      $('meEmailFormRow').hidden = false;
+    } else {
+      $('meEmailBoundRow').hidden = false;
+      $('meEmailFormRow').hidden = true;
+      $('meEmailText').textContent = '已绑定 ' + meAdminEmail + '（可用于重置后台密码）';
+    }
+  }
+  var meEmailCountdown = null;
+  function startMeEmailCountdown() {
+    var left = 60;
+    var btn = $('meEmailSendBtn');
+    btn.disabled = true;
+    btn.textContent = left + 's';
+    clearInterval(meEmailCountdown);
+    meEmailCountdown = setInterval(function () {
+      left--;
+      if (left <= 0) {
+        clearInterval(meEmailCountdown);
+        btn.disabled = false;
+        btn.textContent = '发送验证码';
+      } else btn.textContent = left + 's';
+    }, 1000);
+  }
+  $('meEmailSendBtn').addEventListener('click', function () {
+    var email = $('meEmailInput').value.trim();
+    if (!email) { meEmailMsg('请先填写邮箱地址', true); return; }
+    meEmailMsg('验证码发送中…');
+    api('/api/admin/me', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'email-send', email: email })
+    }).then(function (d) {
+      if (d.ok) { meEmailMsg('验证码已发送，注意查收（含垃圾箱）'); startMeEmailCountdown(); }
+      else meEmailMsg(d.error || '发送失败', true);
+    }).catch(function () { meEmailMsg('网络错误', true); });
+  });
+  $('meEmailVerifyBtn').addEventListener('click', function () {
+    var email = $('meEmailInput').value.trim();
+    var code = $('meEmailCode').value.trim();
+    if (!email || !/^\d{6}$/.test(code)) { meEmailMsg('请填写邮箱和 6 位验证码', true); return; }
+    api('/api/admin/me', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'email-verify', email: email, code: code })
+    }).then(function (d) {
+      if (d.ok) { meAdminEmail = d.email || email; renderMeEmail(); meEmailMsg('邮箱绑定成功'); }
+      else meEmailMsg(d.error || '绑定失败', true);
+    }).catch(function () { meEmailMsg('网络错误', true); });
+  });
+  $('meEmailRemoveBtn').addEventListener('click', function () {
+    ask({
+      title: '解绑邮箱',
+      msg: '解绑后将无法通过邮箱重置后台密码，确定？',
+      okText: '解绑', danger: true,
+      cb: function (okVal) {
+        if (!okVal) return;
+        api('/api/admin/me', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'email-remove' })
+        }).then(function (d) {
+          if (d.ok) { meAdminEmail = null; renderMeEmail(); meEmailMsg(''); toast('邮箱已解绑', 'ok'); }
+          else toast(d.error || '操作失败', 'err');
+        }).catch(function () { toast('网络错误', 'err'); });
+      },
+    });
+  });
+
   function loadMe() {
     api('/api/admin/me').then(function (d) {
       if (!d.ok) return;
       $('meName').textContent = d.username || '管理员';
       $('meMeta').textContent = d.created_at ? '管理员账号 · ' + fmtDate(d.created_at) + ' 创建' : '管理员账号';
       applyAdminAvatar(d.avatar);
+      // 邮箱卡：邮件服务启用才显示
+      $('meEmailCard').hidden = !d.emailEnabled;
+      meAdminEmail = d.email || null;
+      renderMeEmail();
     }).catch(function () {});
   }
   $('brandMark').addEventListener('click', function () { switchPage('me'); });

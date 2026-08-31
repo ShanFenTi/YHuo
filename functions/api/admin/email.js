@@ -19,6 +19,8 @@ export async function onRequestGet({ env }) {
     from: cfg.from || '',
     keySet: !!cfg.api_key,
     keyTail: cfg.api_key ? String(cfg.api_key).slice(-4) : '',
+    adminOnly: !!cfg.admin_only,
+    ownerEmail: cfg.owner_email || '',
   });
 }
 
@@ -38,15 +40,20 @@ export async function onRequestPut({ request, env }) {
   const from = String(body.from || '').trim();
   const apiKey = body.api_key ? String(body.api_key).trim() : old.api_key || null;
   const enabled = !!body.enabled && !!apiKey && !!from; // 缺 Key/发件人不许开
+  const ownerEmail = String(body.owner_email || old.owner_email || '').trim().toLowerCase();
+  const adminOnly = !!body.admin_only && isEmailAddr(ownerEmail); // 开"仅站长"必须有站长邮箱
 
   if (!isEmailAddr(from)) return json({ ok: false, error: '发件地址格式不正确' }, 400);
+  if (body.admin_only && !isEmailAddr(ownerEmail)) {
+    return json({ ok: false, error: '开启"仅站长使用"前请填写站长邮箱' }, 400);
+  }
 
-  const cfg = { provider, from, api_key: apiKey, enabled };
+  const cfg = { provider, from, api_key: apiKey, enabled, admin_only: adminOnly, owner_email: ownerEmail || null };
   await env.DB
     .prepare('INSERT INTO site_settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value')
     .bind(CONFIG_KEY, JSON.stringify(cfg))
     .run();
-  return json({ ok: true, enabled, provider, from, keySet: !!apiKey });
+  return json({ ok: true, enabled, provider, from, keySet: !!apiKey, adminOnly, ownerEmail });
 }
 
 export async function onRequestPost({ request, env }) {

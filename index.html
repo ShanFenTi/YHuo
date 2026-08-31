@@ -6837,7 +6837,8 @@
 
       // ---------- 登录卡片多模式：login | register | reset（忘记密码）| code（二次验证码步骤） ----------
       var gateMode = 'login';
-      var gateEmailEnabled = false; // 后台配好邮件服务才显示邮箱相关字段
+      var gateEmailEnabled = false;   // 邮箱功能可用（找回密码入口/重置表单）
+      var gateEmailRegister = false;  // 注册需邮箱验证（仅站长模式下为 false，普通用户注册不要邮箱）
       var gateTicket = '';          // 登录二次验证的中间票据
       var gateUser = '';            // 进入验证码步骤时暂存用户名
       var gateEmailInput = document.getElementById('gateEmail');
@@ -6855,8 +6856,8 @@
           var el = document.getElementById(id);
           if (el) el.style.display = on ? (disp || '') : 'none';
         };
-        var emailOn = gateEmailEnabled && (mode === 'register' || mode === 'reset');
-        var codeOn = gateEmailEnabled && (mode === 'register' || mode === 'reset') || mode === 'code';
+        var emailOn = gateEmailEnabled && mode === 'reset';
+        var codeOn = (gateEmailRegister && mode === 'register') || emailOn || mode === 'code';
         show('emailField', emailOn);
         show('codeField', codeOn, 'flex');
         show('newPassField', mode === 'reset');
@@ -6876,13 +6877,17 @@
         showLoginMsg('');
       }
 
-      // 邮箱功能开关：跟随站点配置（后台未配邮件服务时相关 UI 全部隐藏）
+      // 邮箱功能开关：跟随站点配置（后台未配邮件服务时相关 UI 全部隐藏；
+      // 仅站长模式下注册不要邮箱，但找回密码入口保留——服务端只放行站长邮箱）
       fetch('/api/settings', { credentials: 'same-origin' })
         .then(function (r) { return r.ok ? r.json() : null; })
         .then(function (d) {
           var was = gateEmailEnabled;
           gateEmailEnabled = !!(d && d.ok && d.emailEnabled);
-          if (was !== gateEmailEnabled) setGateMode(gateMode); // 刷新字段可见性
+          gateEmailRegister = !!(d && d.ok && d.emailRegister);
+          if (was !== gateEmailEnabled || (gateMode === 'register' && !gateEmailRegister)) {
+            setGateMode(gateMode); // 刷新字段可见性
+          }
         })
         .catch(function () {});
 
@@ -6965,15 +6970,15 @@
           if (gateMode === 'register') {
             if (!u || !p) { showLoginMsg('请填写账号和密码'); return; }
             if (p.length < 6) { showLoginMsg('密码至少 6 位'); return; }
-            if (gateEmailEnabled) {
+            if (gateEmailRegister) {
               if (!email) { showLoginMsg('请填写邮箱'); return; }
               if (!/^\d{6}$/.test(code)) { showLoginMsg('请填写 6 位邮箱验证码'); return; }
             }
             showLoginMsg('注册中…');
             authJson('/api/user/register', {
               username: u, password: p,
-              email: gateEmailEnabled ? email : undefined,
-              code: gateEmailEnabled ? code : undefined,
+              email: gateEmailRegister ? email : undefined,
+              code: gateEmailRegister ? code : undefined,
             }, function (d) {
               if (d.ok) {
                 setLoginAvatar(null); // 新注册没有头像
@@ -7345,7 +7350,8 @@
         .then(function (r) { return r.ok ? r.json() : null; })
         .then(function (d) {
           if (!d || !d.ok) { emailCard.style.display = 'none'; return; } // 未登录/接口不可用
-          emailCard.style.display = d.enabled ? '' : 'none'; // 邮件服务未配置整卡隐藏
+          // 邮件服务未配置，或"仅站长模式"下当前用户不是站长 → 整卡隐藏
+          emailCard.style.display = (d.enabled && d.owner) ? '' : 'none';
           emailBoundEmail = d.verified ? d.email : null;
           emailTwofa = !!d.twofa;
           renderEmailCard();

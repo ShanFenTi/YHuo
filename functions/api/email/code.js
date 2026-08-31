@@ -21,6 +21,11 @@ export async function onRequestPost({ request, env }) {
   if (!purpose) return json({ ok: false, error: '无效的验证码用途' }, 400);
   if (!isEmailAddr(email)) return json({ ok: false, error: '邮箱格式不正确' }, 400);
 
+  // 仅站长模式：只有站长邮箱能收验证码（无域名邮件服务只能发注册邮箱的场景）
+  if (cfg.adminOnly && email !== cfg.ownerEmail) {
+    return json({ ok: false, error: '当前站点邮件功能仅站长可用' }, 403);
+  }
+
   // register：邮箱不能已被注册；reset：邮箱必须已绑定（个人站从简，直接告知）
   const taken = await env.DB
     .prepare('SELECT id FROM users WHERE email = ?')

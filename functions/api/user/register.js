@@ -23,10 +23,10 @@ export async function onRequestPost({ request, env }) {
     return json({ ok: false, error: '密码需 6-100 位' }, 400);
   }
 
-  // 邮箱验证（服务启用时强制）
+  // 邮箱验证（服务启用且非"仅站长模式"时强制；仅站长模式普通用户注册不要邮箱）
   const cfg = await getEmailConfig(env);
   let email = null;
-  if (cfg.enabled) {
+  if (cfg.enabled && !cfg.adminOnly) {
     email = String(body.email || '').trim().toLowerCase();
     const code = String(body.code || '').trim();
     if (!isEmailAddr(email)) return json({ ok: false, error: '请填写正确的邮箱' }, 400);
@@ -45,13 +45,14 @@ export async function onRequestPost({ request, env }) {
 
   const salt = randomHex(32);
   const hash = await hashPassword(password, salt);
+  const withEmail = !!email; // 仅站长模式下 email 为 null（普通用户注册不带邮箱）
   let result;
   try {
     result = await env.DB
-      .prepare(cfg.enabled
+      .prepare(withEmail
         ? 'INSERT INTO users (username, password_hash, salt, email, email_verified) VALUES (?, ?, ?, ?, 1)'
         : 'INSERT INTO users (username, password_hash, salt) VALUES (?, ?, ?)')
-      .bind(...(cfg.enabled ? [username, hash, salt, email] : [username, hash, salt]))
+      .bind(...(withEmail ? [username, hash, salt, email] : [username, hash, salt]))
       .run();
   } catch {
     return json({ ok: false, error: '用户名已被占用' }, 400); // 并发注册撞 UNIQUE 的兜底

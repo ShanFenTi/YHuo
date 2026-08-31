@@ -757,6 +757,12 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
       <button id="emailKeyEye" class="icon-mini ai-key-eye" type="button" title="显示/隐藏"></button>
     </div>
     <p class="meta2" id="emailKeyHint" style="margin-top:6px">未设置</p>
+    <p class="ai-mgr-label" style="margin-top:14px">站长邮箱（"仅站长使用"模式下唯一能收验证码的地址，填你注册 Resend 的邮箱）</p>
+    <input type="text" id="emailOwnerInput" placeholder="you@example.com" style="max-width:320px">
+    <div class="bgset-row" style="margin-top:14px">
+      <button id="emailAdminOnlyBtn" class="ghost" type="button">开启"仅站长使用"</button>
+      <span class="meta2" id="emailAdminOnlyText">关闭：所有用户可用邮箱功能</span>
+    </div>
     <div class="bgset-row" style="margin-top:18px">
       <button id="emailSaveBtn" type="button">保存配置</button>
       <button id="emailToggleBtn" class="ghost" type="button">停用</button>
@@ -2302,32 +2308,44 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
     $('emailApiKey').type = emailKeyShown ? 'text' : 'password';
     $('emailKeyEye').innerHTML = emailKeyShown ? ICO.eyeOff : ICO.eye;
   });
+  var emailAdminOnlyNow = false;
   function emailStateText(enabled) {
     $('emailStateText').textContent = enabled
-      ? '已启用：前台注册需邮箱验证，找回密码/二次验证可用'
+      ? '已启用：' + (emailAdminOnlyNow ? '仅站长可用（找回密码/绑定/2FA 限站长邮箱）' : '前台注册需邮箱验证，找回密码/二次验证可用')
       : '未启用：前台不显示邮箱相关功能';
     $('emailToggleBtn').textContent = enabled ? '停用' : '启用';
+  }
+  function emailAdminOnlyText(on) {
+    $('emailAdminOnlyText').textContent = on
+      ? '已开启：普通用户不出现邮箱功能，只有站长邮箱可用（适合无域名只能发自己的场景）'
+      : '关闭：所有用户可用邮箱功能';
+    $('emailAdminOnlyBtn').textContent = on ? '关闭"仅站长使用"' : '开启"仅站长使用"';
   }
   function loadEmailSettings() {
     api('/api/admin/email').then(function (d) {
       if (!d.ok) { toast(d.error || '读取邮件配置失败', 'err'); return; }
       emailEnabledNow = !!d.enabled;
+      emailAdminOnlyNow = !!d.adminOnly;
       $('emailProviderDrop').value = d.provider;
       $('emailFrom').value = d.from || '';
       $('emailApiKey').value = '';
       $('emailApiKey').placeholder = d.keySet ? '留空保持不变' : 're_…（Resend）/ xkeysib-…（Brevo）';
       $('emailKeyHint').textContent = d.keySet ? '已保存（尾 4 位 ' + d.keyTail + '）；输入框留空 = 不修改' : '未设置';
+      $('emailOwnerInput').value = d.ownerEmail || '';
+      emailAdminOnlyText(emailAdminOnlyNow);
       emailStateText(d.enabled);
     }).catch(function () { toast('网络错误', 'err'); });
   }
-  function saveEmailConfig(enabled, done) {
+  function saveEmailConfig(opts, done) {
     api('/api/admin/email', {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        enabled: enabled,
+        enabled: opts.enabled,
+        admin_only: opts.admin_only,
         provider: $('emailProviderDrop').value,
         from: $('emailFrom').value.trim(),
+        owner_email: $('emailOwnerInput').value.trim() || undefined,
         api_key: $('emailApiKey').value.trim() || undefined, // 留空 = 保留原 Key
       })
     }).then(function (d) {
@@ -2339,13 +2357,23 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
       } else toast(d.error || '保存失败', 'err');
     }).catch(function () { toast('网络错误', 'err'); });
   }
+  $('emailAdminOnlyBtn').addEventListener('click', function () {
+    var next = !emailAdminOnlyNow;
+    if (next && !$('emailOwnerInput').value.trim()) {
+      toast('请先填写站长邮箱', 'err');
+      return;
+    }
+    saveEmailConfig({ enabled: emailEnabledNow, admin_only: next }, function (d) {
+      toast(d.adminOnly ? '已开启"仅站长使用"' : '已关闭，所有用户可用邮箱功能', 'ok');
+    });
+  });
   $('emailSaveBtn').addEventListener('click', function () {
-    saveEmailConfig(true, function (d) {
+    saveEmailConfig({ enabled: true, admin_only: emailAdminOnlyNow }, function (d) {
       toast(d.enabled ? '邮件配置已保存并启用' : '已保存；补全 API Key 和发件人后会自动启用', 'ok');
     });
   });
   $('emailToggleBtn').addEventListener('click', function () {
-    saveEmailConfig(!emailEnabledNow, function (d) {
+    saveEmailConfig({ enabled: !emailEnabledNow, admin_only: emailAdminOnlyNow }, function (d) {
       toast(d.enabled ? '邮件服务已启用' : '邮件服务已停用', 'ok');
     });
   });

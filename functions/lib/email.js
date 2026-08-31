@@ -17,13 +17,18 @@ export async function getEmailConfig(env) {
   let cfg = null;
   try { cfg = JSON.parse(row ? row.value : 'null'); } catch {}
   if (!cfg || typeof cfg !== 'object') {
-    return { enabled: false, provider: 'resend', apiKey: null, from: null };
+    return { enabled: false, provider: 'resend', apiKey: null, from: null, adminOnly: false, ownerEmail: null };
   }
+  const ownerEmail = isEmailAddr(cfg.owner_email) ? String(cfg.owner_email).trim().toLowerCase() : null;
   return {
     enabled: !!cfg.enabled && !!cfg.api_key && !!cfg.from,
     provider: cfg.provider === 'brevo' ? 'brevo' : 'resend',
     apiKey: cfg.api_key || null,
     from: cfg.from || null,
+    // 仅站长模式：无域名邮件服务（如 Resend onboarding）只能发给注册邮箱时用——
+    // 普通用户不出现邮箱 UI，只有 owner_email 这个账号能用找回密码/绑定/2FA
+    adminOnly: !!cfg.admin_only && !!ownerEmail,
+    ownerEmail,
   };
 }
 

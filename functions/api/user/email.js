@@ -18,9 +18,14 @@ export async function onRequestGet({ request, env }) {
     .bind(sess.userId).first();
   if (!row) return json({ ok: false, error: '账号不存在' }, 404);
   const cfg = await getEmailConfig(env);
+  // 仅站长模式：owner = 已绑站长邮箱，或尚未绑邮箱（给站长第一次绑定留入口）；
+  // 绑了别的邮箱实际不可能（bind 接口会拦），未绑的其他用户能看表单但绑不了（bind 接口拦）
+  const owner = !cfg.adminOnly || !row.email || row.email === cfg.ownerEmail;
   return json({
     ok: true,
     enabled: cfg.enabled,
+    adminOnly: cfg.adminOnly,
+    owner,
     email: row.email || null,
     verified: !!row.email_verified,
     twofa: !!row.twofa_enabled,
@@ -46,6 +51,9 @@ export async function onRequestPost({ request, env }) {
   if (action === 'bind-send') {
     const email = String(body.email || '').trim().toLowerCase();
     if (!isEmailAddr(email)) return json({ ok: false, error: '邮箱格式不正确' }, 400);
+    if (cfg.adminOnly && email !== cfg.ownerEmail) {
+      return json({ ok: false, error: '当前站点邮件功能仅站长可用' }, 403);
+    }
     const taken = await env.DB
       .prepare('SELECT id FROM users WHERE email = ? AND id != ?')
       .bind(email, sess.userId).first();
@@ -62,6 +70,9 @@ export async function onRequestPost({ request, env }) {
     const email = String(body.email || '').trim().toLowerCase();
     const code = String(body.code || '').trim();
     if (!isEmailAddr(email)) return json({ ok: false, error: '邮箱格式不正确' }, 400);
+    if (cfg.adminOnly && email !== cfg.ownerEmail) {
+      return json({ ok: false, error: '当前站点邮件功能仅站长可用' }, 403);
+    }
     const taken = await env.DB
       .prepare('SELECT id FROM users WHERE email = ? AND id != ?')
       .bind(email, sess.userId).first();
@@ -80,10 +91,13 @@ export async function onRequestPost({ request, env }) {
   if (action === 'toggle2fa') {
     const enabled = !!body.enabled;
     const row = await env.DB
-      .prepare('SELECT email_verified FROM users WHERE id = ?')
+      .prepare('SELECT email, email_verified FROM users WHERE id = ?')
       .bind(sess.userId).first();
     if (!row || !row.email_verified) {
       return json({ ok: false, error: '请先绑定并验证邮箱' }, 400);
+    }
+    if (cfg.adminOnly && row.email !== cfg.ownerEmail) {
+      return json({ ok: false, error: '当前站点邮件功能仅站长可用' }, 403);
     }
     await env.DB
       .prepare('UPDATE users SET twofa_enabled = ? WHERE id = ?')

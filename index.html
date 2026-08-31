@@ -674,9 +674,9 @@
       display: flex;
       align-items: center;
       gap: 14px;
-      width: 100%;
       max-width: 860px;
       box-sizing: border-box;
+      align-self: flex-start; /* hero-section 是纵向 flex，防止被拉满整行 */
       margin-top: 14px;
       padding: 12px 22px;
       border-radius: 18px;
@@ -4420,10 +4420,10 @@
       hitokotoPool = new Promise(function (resolve) {
         var cached = null;
         try { cached = JSON.parse(localStorage.getItem('dailyQuote')); } catch (e) {}
-        if (cached && cached.date === new Date().toDateString()) {
-          var t = Array.isArray(cached.texts) && cached.texts.length ? cached.texts
-            : (cached.text ? [cached.text] : []);
-          if (t.length) { resolve(t); return; }
+        // 只认新格式（texts 数组）；旧单条 text 缓存不作数，强制拉新的一批
+        if (cached && cached.date === new Date().toDateString() && Array.isArray(cached.texts) && cached.texts.length > 1) {
+          resolve(cached.texts);
+          return;
         }
         var jobs = [];
         for (var i = 0; i < 6; i++) {

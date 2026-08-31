@@ -4381,24 +4381,58 @@
     }
 
     // =========================
+    // 一言池：当日缓存（texts 数组，兼容旧 text 单条）优先，否则并行拉 6 条去重；
+    // 寄语区与歌词条待机共用一个 Promise，避免重复请求。没配寄语时用它 3 秒轮播。
+    // =========================
+    var hitokotoPool = null;
+    function getHitokotoPool() {
+      if (hitokotoPool) return hitokotoPool;
+      hitokotoPool = new Promise(function (resolve) {
+        var cached = null;
+        try { cached = JSON.parse(localStorage.getItem('dailyQuote')); } catch (e) {}
+        if (cached && cached.date === new Date().toDateString()) {
+          var t = Array.isArray(cached.texts) && cached.texts.length ? cached.texts
+            : (cached.text ? [cached.text] : []);
+          if (t.length) { resolve(t); return; }
+        }
+        var jobs = [];
+        for (var i = 0; i < 6; i++) {
+          jobs.push(fetch('https://v1.hitokoto.cn/?c=i&encode=json')
+            .then(function (res) { return res.json(); })
+            .catch(function () { return null; }));
+        }
+        Promise.all(jobs).then(function (list) {
+          var seen = {}, texts = [];
+          list.forEach(function (d) {
+            if (!d || !d.hitokoto) return;
+            var s = d.hitokoto + (d.from ? ' —— 「' + d.from + '」' : '');
+            if (!seen[s]) { seen[s] = 1; texts.push(s); }
+          });
+          if (texts.length) {
+            try {
+              localStorage.setItem('dailyQuote', JSON.stringify({ date: new Date().toDateString(), texts: texts }));
+            } catch (e) {}
+          }
+          resolve(texts);
+        });
+      });
+      return hitokotoPool;
+    }
+
+    // =========================
     // 时钟下方的寄语：管理员在后台设置过"主页寄语"就优先显示；
-    // 否则用每日一言（当天缓存，加载失败自动隐藏）。
-    // 多条内容时打字机逐字打出并轮播切换（仿歌词条效果），单条则静态显示。
+    // 否则用每日一言（多条，3 秒切一句）。打字机逐字打出并轮播切换（仿歌词条效果）。
     // =========================
     var heroQuote = document.getElementById('heroQuote');
     if (heroQuote) {
       var heroQuoteText = document.getElementById('heroQuoteText');
-      var todayKey = new Date().toDateString();
-      var cachedQuote = null;
-      try {
-        cachedQuote = JSON.parse(localStorage.getItem('dailyQuote'));
-      } catch (e) {}
       var hqList = [];            // 轮播内容池
       var hqIdx = -1;             // 当前显示条
       var hqTypeTimer = null;     // 打字机定时器
       var hqHoldTimer = null;     // 停留定时器
       var HQ_TYPE_MS = 45;        // 每字打字间隔
-      var HQ_HOLD_MS = 6000;      // 每条停留时长
+      var HQ_HOLD_MS = 6000;      // 寄语每条停留时长（一言用 3000）
+      var hqHoldMs = HQ_HOLD_MS;  // 当前生效的停留时长
       var hqStop = false;         // 页面隐藏时暂停轮播
 
       function hqTypeText(text, done) {
@@ -4420,7 +4454,7 @@
         if (hqStop || !hqList.length) return;
         hqIdx = (hqIdx + 1) % hqList.length;
         hqTypeText(hqList[hqIdx], function () {
-          hqHoldTimer = setTimeout(hqNext, HQ_HOLD_MS);
+          hqHoldTimer = setTimeout(hqNext, hqHoldMs);
         });
       }
       // 页面不可见时暂停打字/轮播，回来继续
@@ -4430,7 +4464,8 @@
         else if (hqList.length > 1) hqNext();
       });
 
-      var showQuote = function (text) {
+      var showQuote = function (text, holdMs) {
+        hqHoldMs = holdMs || HQ_HOLD_MS;
         heroQuote.hidden = false;
         requestAnimationFrame(function () {
           heroQuote.classList.add('loaded');
@@ -4444,20 +4479,11 @@
         showQuote(hqList[0]);
       };
       var loadDailyQuote = function () {
-        if (cachedQuote && cachedQuote.date === todayKey && cachedQuote.text) {
-          showQuote(cachedQuote.text);
-          return;
-        }
-        fetch('https://v1.hitokoto.cn/?c=i&encode=json')
-          .then(function (res) { return res.json(); })
-          .then(function (data) {
-            var text = data.hitokoto + (data.from ? ' —— 「' + data.from + '」' : '');
-            showQuote(text);
-            try {
-              localStorage.setItem('dailyQuote', JSON.stringify({ date: todayKey, text: text }));
-            } catch (e) {}
-          })
-          .catch(function () { heroQuote.hidden = true; });
+        getHitokotoPool().then(function (texts) {
+          if (!texts.length) { heroQuote.hidden = true; return; }
+          hqList = texts;
+          showQuote(texts[0], 3000); // 一言：3 秒切一句
+        });
       };
       fetch('/api/settings', { credentials: 'same-origin' })
         .then(function (res) { return res.ok ? res.json() : Promise.reject(new Error('无接口')); })
@@ -5463,25 +5489,27 @@
       lyricStartTyping(text, Math.max(600, Math.min(8000, (nextT - sec) * 1000)));
     }
 
-    // 从未播放过：在歌词条上显示一言（与 heroQuote 共享同一内容池；多条时打字机轮播，失败退回待机提示）
+    // 从未播放过：在歌词条上显示一言（寄语或一言池，多条轮播：寄语约 8 秒/条、一言 3 秒/句）
     if (lyricBar) {
       var lyricIdleSeq = 0;
       var lyricIdleList = [];
       var lyricIdleIdx = -1;
       var lyricIdleHold = null;
+      var lyricIdleHoldMs = 8000;
       var lyricShowIdle = function (text) { if (lyricIdleSeq === 1) lyricShowPlaceholder(text); };
       var lyricIdleNext = function () {
         if (lyricIdleSeq !== 1 || document.hidden || !lyricIdleList.length) return;
         lyricIdleIdx = (lyricIdleIdx + 1) % lyricIdleList.length;
         lyricShowPlaceholder(lyricIdleList[lyricIdleIdx]);
-        if (lyricIdleList.length > 1) lyricIdleHold = setTimeout(lyricIdleNext, 8000);
+        if (lyricIdleList.length > 1) lyricIdleHold = setTimeout(lyricIdleNext, lyricIdleHoldMs);
       };
       document.addEventListener('visibilitychange', function () {
         clearTimeout(lyricIdleHold);
         if (!document.hidden && lyricIdleList.length > 1) lyricIdleHold = setTimeout(lyricIdleNext, 1200);
       });
-      var lyricIdleStart = function (list) {
+      var lyricIdleStart = function (list, holdMs) {
         lyricIdleList = list;
+        lyricIdleHoldMs = holdMs || 8000;
         lyricIdleSeq = 1;
         lyricIdleIdx = -1;
         lyricIdleNext();
@@ -5490,17 +5518,10 @@
         .then(function (res) { return res.ok ? res.json() : Promise.reject(new Error('无接口')); })
         .then(function (s) {
           var qs = s && s.ok && Array.isArray(s.quotes) ? s.quotes : [];
-          if (qs.length) { lyricIdleStart(qs); return; }
-          var cached = null;
-          try { cached = JSON.parse(localStorage.getItem('dailyQuote')); } catch (e) {}
-          if (cached && cached.date === new Date().toDateString() && cached.text) {
-            lyricIdleStart([cached.text]); return;
-          }
-          return fetch('https://v1.hitokoto.cn/?c=i&encode=json')
-            .then(function (res) { return res.json(); })
-            .then(function (data) {
-              lyricIdleStart([data.hitokoto + (data.from ? ' —— 「' + data.from + '」' : '')]);
-            });
+          if (qs.length) { lyricIdleStart(qs, 8000); return; }
+          getHitokotoPool().then(function (texts) {
+            lyricIdleStart(texts.length ? texts : ['♪ 打开底部播放器，歌词会在这里滚动'], 3000);
+          });
         })
         .catch(function () {
           lyricIdleStart(['♪ 打开底部播放器，歌词会在这里滚动']);

@@ -3619,6 +3619,12 @@
       transform: none;
     }
 
+    /* 退场：卡片向上飘走（与入场自下方浮起方向相反，点空白/登录成功关闭时生效） */
+    .login-gate.hide .login-card {
+      opacity: 0;
+      transform: translateY(-20px) scale(0.98);
+    }
+
     .login-logo {
       font-size: 20px;
       font-weight: 700;
@@ -7018,11 +7024,14 @@
           if (d.admin) {
             sessionStorage.setItem('adminWelcome', '1');      // 本次会话是管理员登录
             sessionStorage.setItem('adminWelcomeShown', '1'); // 刚弹过，刷新不重复
-            showAdminWelcome(d.username || fallbackUser);
+            showWelcomeToast(d.username || fallbackUser, true);
           } else {
-            // 普通账号登录：清掉可能残留的管理员标记
+            // 普通账号登录：清掉可能残留的管理员标记，写自己的欢迎标记
             sessionStorage.removeItem('adminWelcome');
             sessionStorage.removeItem('adminWelcomeShown');
+            sessionStorage.setItem('userWelcome', '1');
+            sessionStorage.setItem('userWelcomeShown', '1');
+            showWelcomeToast(d.username || fallbackUser, false);
           }
         } catch (e) {}
       }
@@ -7300,6 +7309,8 @@
               sessionStorage.removeItem(LOGIN_NAME_KEY);
               sessionStorage.removeItem('adminWelcome');
               sessionStorage.removeItem('adminWelcomeShown');
+              sessionStorage.removeItem('userWelcome');
+              sessionStorage.removeItem('userWelcomeShown');
             } catch (e) {}
             setLoginAvatar(null); // 退出清空三键
             refreshLoginBadge();
@@ -7313,6 +7324,7 @@
             setProfileOpen(false); // 回到未登录态并收起面板
             updateProfilePanel();
             showProfileMsg('已退出登录');
+            showTopToast('👋 已退出登录，期待下次再见', false);
             });
         });
       }
@@ -7726,6 +7738,8 @@
               sessionStorage.removeItem(LOGIN_NAME_KEY);
               sessionStorage.removeItem('adminWelcome');
               sessionStorage.removeItem('adminWelcomeShown');
+              sessionStorage.removeItem('userWelcome');
+              sessionStorage.removeItem('userWelcomeShown');
             } catch (e) {}
             setLoginAvatar(null); // 退出清空三键
             refreshLoginBadge();
@@ -7738,6 +7752,7 @@
             aiRestored = false;
             closeProfileView();
             updateProfilePanel();
+            showTopToast('👋 已退出登录，期待下次再见', false);
           });
       });
     }
@@ -7783,21 +7798,29 @@
     if (isMember()) favLoad();
 
     // =========================
-    // 管理员欢迎浮窗：仅在管理员账密登录（响应带 admin:true）时弹出；
-    // 页面加载时只认 sessionStorage 里的 adminWelcome 标记（刷新不重复弹）。
+    // 登录欢迎浮窗：管理员/普通账号登录成功都弹出（管理员多一个"进入后台"按钮）；
+    // 页面加载时只认 sessionStorage 里的标记（刷新不重复弹）。
     // 注意：绝不能用 /api/auth/status 做"是不是管理员"的判断——它只反映
     // 浏览器有无管理员会话 Cookie，分不清当前登录的是谁（坑 11）
     // =========================
     var adminToast = document.getElementById('adminToast');
     var adminToastTimer = null;
 
-    function showAdminWelcome(name) {
+    function showTopToast(text, withAdminBtn) {
       if (!adminToast) return;
       var textEl = document.getElementById('adminToastText');
-      if (textEl) textEl.textContent = '👑 欢迎回来，管理员 ' + (name || '');
+      if (textEl) textEl.textContent = text;
+      // "进入后台"按钮只在管理员欢迎时显示，其余场景（普通登录/退出）不展示
+      if (adminToastAdminBtn) adminToastAdminBtn.style.display = withAdminBtn ? '' : 'none';
       adminToast.classList.add('show');
       if (adminToastTimer) clearTimeout(adminToastTimer);
       adminToastTimer = setTimeout(function () { adminToast.classList.remove('show'); }, 6000);
+    }
+
+    function showWelcomeToast(name, isAdmin) {
+      showTopToast(isAdmin
+        ? '👑 欢迎回来，管理员 ' + (name || '')
+        : '👋 欢迎回来，' + (name || ''), isAdmin);
     }
 
     var adminToastClose = document.getElementById('adminToastClose');
@@ -7810,18 +7833,26 @@
       location.href = '/admin';
     });
 
-    // 页面加载：仅当本会话确实发生过管理员登录（且本次刷新还没弹过）才补弹
-    (function checkAdminWelcome() {
-      var flag = null, shown = null;
+    // 页面加载：仅当本会话确实发生过登录（且本次刷新还没弹过）才补弹
+    (function checkLoginWelcome() {
+      var flag = null, shown = null, adminFlag = null;
       try {
-        flag = sessionStorage.getItem('adminWelcome');
-        shown = sessionStorage.getItem('adminWelcomeShown');
+        adminFlag = sessionStorage.getItem('adminWelcome');
+        if (adminFlag === '1') {
+          flag = 'admin';
+          shown = sessionStorage.getItem('adminWelcomeShown');
+        } else {
+          flag = sessionStorage.getItem('userWelcome') === '1' ? 'user' : null;
+          shown = sessionStorage.getItem('userWelcomeShown');
+        }
       } catch (e) {}
-      if (flag === '1' && shown !== '1') {
-        try { sessionStorage.setItem('adminWelcomeShown', '1'); } catch (e) {}
+      if (flag && shown !== '1') {
+        try {
+          sessionStorage.setItem(flag === 'admin' ? 'adminWelcomeShown' : 'userWelcomeShown', '1');
+        } catch (e) {}
         var name = null;
         try { name = sessionStorage.getItem(LOGIN_NAME_KEY); } catch (e) {}
-        showAdminWelcome(name);
+        showWelcomeToast(name, flag === 'admin');
       }
     })();
 

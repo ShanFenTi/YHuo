@@ -486,6 +486,24 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
     .row-actions { flex-basis: 100%; margin-left: 0; }
     .list-tools { gap: 8px; }
     .stat { padding: 12px 14px; }
+    /* AI 供应商管理：窄屏改上下结构，供应商列表折叠在上 */
+    .ai-mgr { flex-direction: column; min-height: 0; }
+    .ai-mgr-side {
+      width: 100%; flex: none;
+      border-right: none; border-bottom: 1px solid var(--border);
+      max-height: 36vh; overflow-y: auto;
+    }
+    .ai-mgr-main { padding: 14px 14px 16px; }
+    .ai-mgr-head { flex-wrap: wrap; row-gap: 8px; }
+    .ai-mgr-head strong { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .ai-mgr-empty { padding: 28px 16px; }
+    /* 模型行：名称占满第一行，标签+操作按钮换到第二行 */
+    .ai-model-row { flex-wrap: wrap; row-gap: 6px; padding: 8px 8px 8px 14px; }
+    .ai-model-row .ai-mr-name { flex: 1 1 100%; white-space: normal; word-break: break-all; }
+    /* 添加模型内联表单：输入框占满一行，标签+按钮换行 */
+    .ai-mgr-addmodel { flex-wrap: wrap; }
+    .ai-mgr-addmodel input { flex: 1 1 100%; }
+    .ai-mgr-addmodel.show { max-height: 140px; } /* 换行后内容变高，放开折叠动画上限 */
   }
   /* 触屏没有 HTML5 拖拽：隐藏拖拽柄，排序用 ↑↓ */
   @media (hover: none) {

@@ -415,11 +415,12 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
   ul.list li .ai-drop.row-album .ai-drop-btn { padding: 4px 8px; font-size: 12px; border-radius: 8px; }
   ul.list li .ai-drop.row-album .ai-drop-lbl { max-width: 96px; }
   .avatar {
-    width: 34px; height: 34px; border-radius: 50%; flex: none;
+    width: 34px; height: 34px; border-radius: 50%; flex: none; overflow: hidden;
     background: var(--fg); color: var(--bg);
     font-size: 15px; font-weight: 600;
     display: flex; align-items: center; justify-content: center;
   }
+  .avatar img { width: 100%; height: 100%; object-fit: cover; display: block; }
   .badge { font-size: 11px; padding: 2px 9px; border-radius: 99px; white-space: nowrap; border: 1px solid var(--border); }
   .badge.ok { color: var(--muted); }
   .badge.banned { background: var(--fg); color: var(--bg); border-color: var(--fg); font-weight: 700; }
@@ -1736,7 +1737,15 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
 
       var avatar = document.createElement('div');
       avatar.className = 'avatar';
-      avatar.textContent = (u.username || '?').slice(0, 1).toUpperCase();
+      if (u.avatar_key) {
+        var img = document.createElement('img');
+        img.src = '/media/' + u.avatar_key;
+        img.alt = '';
+        img.loading = 'lazy';
+        avatar.appendChild(img);
+      } else {
+        avatar.textContent = (u.username || '?').slice(0, 1).toUpperCase();
+      }
 
       var title = document.createElement('span');
       title.className = 'title';

@@ -415,11 +415,12 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
   ul.list li .ai-drop.row-album .ai-drop-btn { padding: 4px 8px; font-size: 12px; border-radius: 8px; }
   ul.list li .ai-drop.row-album .ai-drop-lbl { max-width: 96px; }
   .avatar {
-    width: 34px; height: 34px; border-radius: 50%; flex: none;
+    width: 34px; height: 34px; border-radius: 50%; flex: none; overflow: hidden;
     background: var(--fg); color: var(--bg);
     font-size: 15px; font-weight: 600;
     display: flex; align-items: center; justify-content: center;
   }
+  .avatar img { width: 100%; height: 100%; object-fit: cover; display: block; }
   .badge { font-size: 11px; padding: 2px 9px; border-radius: 99px; white-space: nowrap; border: 1px solid var(--border); }
   .badge.ok { color: var(--muted); }
   .badge.banned { background: var(--fg); color: var(--bg); border-color: var(--fg); font-weight: 700; }
@@ -486,6 +487,24 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
     .row-actions { flex-basis: 100%; margin-left: 0; }
     .list-tools { gap: 8px; }
     .stat { padding: 12px 14px; }
+    /* AI 供应商管理：窄屏改上下结构，供应商列表折叠在上 */
+    .ai-mgr { flex-direction: column; min-height: 0; }
+    .ai-mgr-side {
+      width: 100%; flex: none;
+      border-right: none; border-bottom: 1px solid var(--border);
+      max-height: 36vh; overflow-y: auto;
+    }
+    .ai-mgr-main { padding: 14px 14px 16px; }
+    .ai-mgr-head { flex-wrap: wrap; row-gap: 8px; }
+    .ai-mgr-head strong { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .ai-mgr-empty { padding: 28px 16px; }
+    /* 模型行：名称占满第一行，标签+操作按钮换到第二行 */
+    .ai-model-row { flex-wrap: wrap; row-gap: 6px; padding: 8px 8px 8px 14px; }
+    .ai-model-row .ai-mr-name { flex: 1 1 100%; white-space: normal; word-break: break-all; }
+    /* 添加模型内联表单：输入框占满一行，标签+按钮换行 */
+    .ai-mgr-addmodel { flex-wrap: wrap; }
+    .ai-mgr-addmodel input { flex: 1 1 100%; }
+    .ai-mgr-addmodel.show { max-height: 140px; } /* 换行后内容变高，放开折叠动画上限 */
   }
   /* 触屏没有 HTML5 拖拽：隐藏拖拽柄，排序用 ↑↓ */
   @media (hover: none) {
@@ -647,9 +666,18 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
       <button id="bgUploadBtn2" class="ghost">上传背景图</button>
       <button id="bgClearBtn2" class="danger">清除</button>
     </div>
-    <p class="appear-label2">主页寄语</p>
-    <input type="text" id="quoteInput" maxlength="100" placeholder="显示在时钟下方；留空则用每日一言">
-    <button id="quoteSaveBtn" class="ghost">保存寄语</button>
+    <p class="appear-label2">默认背景模糊</p>
+    <div class="bgset-row">
+      <input type="range" id="bgBlurAdmin" min="0" max="30" value="0" style="max-width:220px">
+      <span class="meta2" id="bgBlurAdminVal">未设置（访客不模糊）</span>
+      <button id="bgBlurSaveBtn" class="ghost">保存模糊度</button>
+    </div>
+    <p class="appear-label2">主页寄语（保存多条后前台随机显示其一，全部删除则恢复每日一言）</p>
+    <div id="quoteRows"></div>
+    <div class="bgset-row" style="margin-top:8px">
+      <button id="quoteAddBtn" class="ghost" type="button">添加一条</button>
+      <button id="quoteSaveBtn" class="ghost" type="button">保存寄语</button>
+    </div>
     <p class="appear-label2">备份</p>
     <div class="bgset-row">
       <button id="exportBtn" class="ghost">导出媒体清单备份（JSON）</button>
@@ -1712,7 +1740,15 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
 
       var avatar = document.createElement('div');
       avatar.className = 'avatar';
-      avatar.textContent = (u.username || '?').slice(0, 1).toUpperCase();
+      if (u.avatar_key) {
+        var img = document.createElement('img');
+        img.src = '/media/' + u.avatar_key;
+        img.alt = '';
+        img.loading = 'lazy';
+        avatar.appendChild(img);
+      } else {
+        avatar.textContent = (u.username || '?').slice(0, 1).toUpperCase();
+      }
 
       var title = document.createElement('span');
       title.className = 'title';
@@ -1822,21 +1858,86 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
         currentAccent = d.accent;
         renderAccents();
         renderBgPreview(d.bg);
-        $('quoteInput').value = d.quote || '';
+        quoteRows = Array.isArray(d.quotes) ? d.quotes.slice() : [];
+        renderQuoteRows();
+        var blur = d.blur === null || d.blur === undefined ? 0 : d.blur;
+        $('bgBlurAdmin').value = blur;
+        $('bgBlurAdminVal').textContent = d.blur === null || d.blur === undefined
+          ? '未设置（访客不模糊）'
+          : '当前默认 ' + blur + 'px';
       } else if (d._status === 401) {
         show('login');
       }
     }).catch(function () {});
   }
+  $('bgBlurAdmin').addEventListener('input', function () {
+    $('bgBlurAdminVal').textContent = '滑杆值 ' + this.value + 'px（保存后生效）';
+  });
+  $('bgBlurSaveBtn').addEventListener('click', function () {
+    api('/api/admin/appearance', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ blur: parseInt($('bgBlurAdmin').value, 10) || 0 })
+    }).then(function (d) {
+      if (d.ok) {
+        $('bgBlurAdminVal').textContent = d.blur === null ? '未设置（访客不模糊）' : '当前默认 ' + d.blur + 'px';
+        toast(d.blur ? '默认背景模糊已保存（' + d.blur + 'px），前台约 1 分钟内生效' : '已清除默认模糊，前台约 1 分钟内恢复不模糊', 'ok');
+      } else toast(d.error || '保存失败', 'err');
+    }).catch(function () { toast('网络错误', 'err'); });
+  });
+
+  // ---------- 主页寄语（多条） ----------
+  var quoteRows = [];
+
+  function renderQuoteRows() {
+    var box = $('quoteRows');
+    box.innerHTML = '';
+    quoteRows.forEach(function (q, i) {
+      var row = document.createElement('div');
+      row.className = 'bgset-row';
+      var input = document.createElement('input');
+      input.type = 'text';
+      input.maxLength = 100;
+      input.placeholder = '寄语内容（≤100 字）';
+      input.value = q;
+      input.addEventListener('input', function () { quoteRows[i] = this.value; });
+      var del = document.createElement('button');
+      del.className = 'icon-mini';
+      del.type = 'button';
+      del.title = '删除这条';
+      del.innerHTML = ICO.trash;
+      del.addEventListener('click', function () { quoteRows.splice(i, 1); renderQuoteRows(); });
+      row.appendChild(input);
+      row.appendChild(del);
+      box.appendChild(row);
+    });
+    if (!quoteRows.length) {
+      var empty = document.createElement('span');
+      empty.className = 'meta2';
+      empty.textContent = '未设置（前台显示每日一言）';
+      box.appendChild(empty);
+    }
+  }
+
+  $('quoteAddBtn').addEventListener('click', function () {
+    if (quoteRows.length >= 20) { toast('最多 20 条寄语', 'err'); return; }
+    quoteRows.push('');
+    renderQuoteRows();
+    var inputs = $('quoteRows').querySelectorAll('input');
+    if (inputs.length) inputs[inputs.length - 1].focus();
+  });
 
   $('quoteSaveBtn').addEventListener('click', function () {
     api('/api/admin/appearance', {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ quote: $('quoteInput').value })
+      body: JSON.stringify({ quotes: quoteRows })
     }).then(function (d) {
-      if (d.ok) toast(d.quote ? '寄语已保存，前台即刻生效' : '已清除寄语，前台恢复每日一言', 'ok');
-      else toast(d.error || '保存失败', 'err');
+      if (d.ok) {
+        quoteRows = d.quotes.slice();
+        renderQuoteRows();
+        toast(d.quotes.length ? '已保存 ' + d.quotes.length + ' 条寄语，前台随机显示' : '已清空寄语，前台恢复每日一言', 'ok');
+      } else toast(d.error || '保存失败', 'err');
     }).catch(function () { toast('网络错误', 'err'); });
   });
 
@@ -1845,7 +1946,7 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
     var payload = {
       exported_at: new Date().toISOString(),
       media: items,
-      settings: { accent: currentAccent, quote: $('quoteInput').value || null },
+      settings: { accent: currentAccent, quotes: quoteRows.filter(function (q) { return (q || '').trim(); }) },
       visits: visitData,
     };
     var blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });

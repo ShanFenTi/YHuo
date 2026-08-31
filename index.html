@@ -3663,7 +3663,7 @@
         </button>
         <p class="hero-quote" id="heroQuote" hidden></p>
         <!-- 歌词横条：播放 music/ 曲库的歌时显示同步歌词（同名 .lrc），打字机逐字打出当前句；
-             无歌词/未播放时降级显示歌名占位或待机提示 -->
+             无歌词降级显示歌名占位；从未播放时显示一言（管理员寄语 > 每日一言，全部失败才显示待机提示） -->
         <div class="lyric-bar" id="lyricBar" hidden role="status" aria-live="polite">
           <span class="lyric-dots" id="lyricDots" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></span>
           <span class="lyric-line"><span id="lyricText"></span><i class="lyric-cursor" id="lyricCursor" aria-hidden="true"></i></span>
@@ -5405,8 +5405,31 @@
       lyricStartTyping(text, Math.max(600, Math.min(8000, (nextT - sec) * 1000)));
     }
 
-    // 从未播放过：显示待机提示（占位行为由用户配置选定）
-    if (lyricBar) lyricShowPlaceholder('♪ 打开底部播放器，歌词会在这里滚动');
+    // 从未播放过：在歌词条上显示一言（heroQuote 同款：管理员寄语 > 每日一言当日缓存，失败退回待机提示）
+    if (lyricBar) {
+      var lyricIdleSeq = 0;
+      var lyricShowIdle = function (text) { if (lyricIdleSeq === 1) lyricShowPlaceholder(text); };
+      fetch('/api/settings', { credentials: 'same-origin' })
+        .then(function (res) { return res.ok ? res.json() : Promise.reject(new Error('无接口')); })
+        .then(function (s) {
+          if (s && s.ok && s.quote) { lyricIdleSeq = 1; lyricShowIdle(s.quote); return; }
+          var cached = null;
+          try { cached = JSON.parse(localStorage.getItem('dailyQuote')); } catch (e) {}
+          if (cached && cached.date === new Date().toDateString() && cached.text) {
+            lyricIdleSeq = 1; lyricShowIdle(cached.text); return;
+          }
+          return fetch('https://v1.hitokoto.cn/?c=i&encode=json')
+            .then(function (res) { return res.json(); })
+            .then(function (data) {
+              lyricIdleSeq = 1;
+              lyricShowIdle(data.hitokoto + (data.from ? ' —— 「' + data.from + '」' : ''));
+            });
+        })
+        .catch(function () {
+          lyricIdleSeq = 1;
+          lyricShowIdle('♪ 打开底部播放器，歌词会在这里滚动');
+        });
+    }
 
     // =========================
     // 底部悬浮迷你播放器

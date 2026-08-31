@@ -1180,6 +1180,102 @@
     .tools-view .apple-card { width: 100%; }
     .docs-view .tool-block { max-width: 940px; margin: 0 auto; }
 
+    /* AI 布局：左侧历史栏 + 右侧聊天区 */
+    .ai-body {
+      flex: 1;
+      display: flex;
+      min-height: 0;
+    }
+
+    .ai-history {
+      flex: none;
+      width: 200px;
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+      padding: 14px 10px 14px 4vw;
+      border-right: none; /* 极简：不加分割线，靠间距区分 */
+    }
+
+    .ai-history-new {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      flex: none;
+      padding: 8px 12px;
+      margin-bottom: 12px;
+      border: 1px solid var(--apple-border);
+      border-radius: 999px;
+      background: none;
+      color: var(--apple-foreground);
+      font-size: 13px;
+      cursor: pointer;
+      transition: border-color 150ms var(--ease-out), background-color 150ms var(--ease-out);
+    }
+
+    .ai-history-new:hover { border-color: var(--apple-primary); }
+
+    .ai-history-list {
+      flex: 1;
+      overflow-y: auto;
+      scrollbar-width: none; /* 隐藏滚动条（偏好：侧栏不露滚动条） */
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      padding-right: 4px;
+    }
+
+    .ai-history-list::-webkit-scrollbar { display: none; }
+
+    .ai-history-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 10px;
+      border: none;
+      border-radius: 10px;
+      background: none;
+      color: var(--apple-muted-foreground);
+      font-size: 13px;
+      text-align: left;
+      cursor: pointer;
+      transition: background-color 150ms var(--ease-out), color 150ms var(--ease-out);
+    }
+
+    .ai-history-item:hover { background: var(--apple-secondary, rgba(128, 128, 128, 0.12)); color: var(--apple-foreground); }
+
+    .ai-history-item.active { background: var(--apple-secondary, rgba(128, 128, 128, 0.16)); color: var(--apple-foreground); font-weight: 600; }
+
+    .ai-history-item .hi-title {
+      flex: 1;
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .ai-history-item .hi-del {
+      flex: none;
+      display: none;
+      width: 22px;
+      height: 22px;
+      align-items: center;
+      justify-content: center;
+      border: none;
+      border-radius: 6px;
+      background: none;
+      color: var(--apple-muted-foreground);
+      cursor: pointer;
+    }
+
+    .ai-history-item:hover .hi-del { display: inline-flex; }
+    .ai-history-item .hi-del:hover { color: #e5484d; }
+
+    .ai-history-empty { font-size: 12px; color: var(--apple-muted-foreground); padding: 8px 10px; }
+
+    .ai-history-toggle { display: none; } /* 桌面常显侧栏，窄屏才出现 */
+
     .ai-chat {
       flex: 1;
       display: flex;
@@ -1195,6 +1291,38 @@
     }
 
     .ai-view.show .ai-chat { transform: none; opacity: 1; }
+
+    /* 窄屏：历史栏收成抽屉，顶栏加列表按钮唤出 */
+    @media (max-width: 760px) {
+      .ai-history {
+        position: fixed;
+        left: 0;
+        top: 0;
+        bottom: 0;
+        z-index: 20;
+        width: min(280px, 82vw);
+        padding: 14px 14px 14px 18px;
+        background: var(--apple-background);
+        transform: translateX(-100%);
+        transition: transform 250ms var(--ease-out);
+        box-shadow: 8px 0 32px rgba(0, 0, 0, 0.12);
+      }
+      .ai-history.open { transform: none; }
+      .ai-history-toggle {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 34px;
+        height: 34px;
+        margin-left: -8px;
+        border: none;
+        border-radius: 8px;
+        background: none;
+        color: var(--apple-muted-foreground);
+        cursor: pointer;
+      }
+      .ai-history-toggle:hover { color: var(--apple-foreground); }
+    }
 
     .ai-messages {
       flex: 1;
@@ -4078,12 +4206,16 @@
     </div>
   </div>
 
-  <!-- AI 界面：顶栏"AI"进入，对话走 /api/ai/chat（服务端代理，key 在后台配置） -->
+  <!-- AI 界面：顶栏"AI"进入，对话走 /api/ai/chat（服务端代理，key 在后台配置）。
+       左侧历史栏：多对话列表（切换/删除），右侧聊天区 -->
   <div class="ai-view" id="aiView" hidden role="dialog" aria-modal="true" aria-label="AI 助手">
     <header class="album-bar">
+      <button class="ai-history-toggle" id="aiHistoryToggle" type="button" aria-label="历史对话">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+      </button>
       <p class="album-title">AI 助手</p>
       <div class="ai-bar-actions">
-        <button class="album-close" id="aiNewChatBtn" type="button" aria-label="新对话" title="新对话（清空当前聊天）">
+        <button class="album-close" id="aiNewChatBtn" type="button" aria-label="新对话" title="新对话">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg>
         </button>
         <button class="album-close" id="aiViewClose" type="button" aria-label="关闭 AI 界面">
@@ -4091,7 +4223,15 @@
         </button>
       </div>
     </header>
-    <div class="ai-chat">
+    <div class="ai-body">
+      <aside class="ai-history" id="aiHistory" aria-label="历史对话">
+        <button class="ai-history-new" id="aiHistNewBtn" type="button">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+          新对话
+        </button>
+        <div class="ai-history-list" id="aiHistoryList"></div>
+      </aside>
+      <div class="ai-chat">
       <div class="ai-messages" id="aiMessages"></div>
       <form class="ai-input-bar" id="aiForm">
         <div class="ai-attach-row" id="aiAttachRow" hidden></div>
@@ -4115,6 +4255,7 @@
           </button>
         </div>
       </form>
+      </div>
     </div>
   </div>
 
@@ -6824,6 +6965,8 @@
             favLoad(); // 收藏是账号数据，退出即清空内存态
             aiHistory = [];        // AI 对话同属账号数据，退出清内存（服务端历史保留，下次登录可恢复）
             aiAttach = [];
+            aiConvId = 0;
+            aiConvs = [];
             if (aiMessages) aiMessages.innerHTML = '';
             aiRestored = false; // 下个账号打开 AI 界面时重新拉取自己的历史
             setProfileOpen(false); // 回到未登录态并收起面板
@@ -7107,6 +7250,8 @@
             favLoad(); // 收藏是账号数据，退出即清空内存态
             aiHistory = [];        // AI 对话同属账号数据，退出清内存（服务端历史保留，下次登录可恢复）
             aiAttach = [];
+            aiConvId = 0;
+            aiConvs = [];
             if (aiMessages) aiMessages.innerHTML = '';
             aiRestored = false;
             closeProfileView();
@@ -7815,6 +7960,8 @@
     var aiInput = document.getElementById('aiInput');
     var aiMessages = document.getElementById('aiMessages');
     var aiHistory = [];      // 本次对话 {role, content} 列表
+    var aiConvId = 0;        // 当前对话的服务端 id（0=尚未落库的新对话）
+    var aiConvs = [];        // 左侧历史栏数据 [{id,title,updated_at,msgs}]
     var aiConfig = null;     // {enabled, models:[{name,model}], model(默认档案名)}，来自 /api/ai/config
     var aiCurrentModel = null; // 当前选中的档案名
     var aiAttach = [];         // 待发送附件 [{name, size, kind:'image'|'text', data}]
@@ -7952,44 +8099,201 @@
       if (sendBtn) sendBtn.disabled = false;
     }
 
-    // 清空对话（新对话用）：中断进行中的流式请求 + 清本地，并同步清服务端历史
+    // 清空对话（新对话用）：只清本地视图，开一个未落库的新会话（旧对话留在服务端历史栏里）
     function aiResetChat() {
       if (aiAbort) {
         try { aiAbort.abort(); } catch (e) {}
         aiAbort = null;
       }
       aiHistory = [];
+      aiConvId = 0;
       aiAttach = [];
       aiRenderAttach();
       if (aiMessages) aiMessages.innerHTML = '';
       aiStopBusy();
-      fetch('/api/ai/history', { method: 'DELETE', credentials: 'same-origin' }).catch(function () {});
+      aiRenderHistoryList();
     }
 
-    // 追加保存到服务端（静默失败，不打断聊天）
+    // 追加保存到服务端（静默失败，不打断聊天）；首次落库会返回 conv id 与标题
     function aiSaveHistory(msgs) {
       if (!msgs || !msgs.length) return;
       fetch('/api/ai/history', {
         method: 'POST',
         credentials: 'same-origin',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ messages: msgs }),
-      }).catch(function () {});
+        body: JSON.stringify({ messages: msgs, conv: aiConvId || undefined }),
+      })
+        .then(function (r) { return r.ok ? r.json() : null; })
+        .then(function (d) {
+          if (d && d.ok && d.conv) {
+            aiConvId = d.conv;
+            // 更新侧栏（新建则插到最前，否则挪到最前并刷新标题/时间）
+            var existed = false;
+            aiConvs = aiConvs.filter(function (c) {
+              if (c.id === d.conv) {
+                c.title = d.title || c.title;
+                c.updated_at = new Date().toISOString();
+                c.msgs = (c.msgs || 0) + (d.added || 0);
+                existed = true;
+              }
+              return c.id !== d.conv;
+            });
+            if (existed || d.title) {
+              var cur = { id: d.conv, title: d.title || '新对话', updated_at: new Date().toISOString(), msgs: d.added || 0 };
+              aiConvs.unshift(cur);
+            }
+            aiRenderHistoryList();
+          }
+        })
+        .catch(function () {});
     }
 
-    // 打开界面时恢复服务端历史（仅登录用户；游客/无历史则照旧只显示开场白）
+    // 渲染左侧历史栏
+    function aiRenderHistoryList() {
+      var list = document.getElementById('aiHistoryList');
+      if (!list) return;
+      list.innerHTML = '';
+      if (!aiConvs.length) {
+        var empty = document.createElement('p');
+        empty.className = 'ai-history-empty';
+        empty.textContent = '还没有历史对话';
+        list.appendChild(empty);
+        return;
+      }
+      aiConvs.forEach(function (c) {
+        var it = document.createElement('button');
+        it.type = 'button';
+        it.className = 'ai-history-item' + (c.id === aiConvId ? ' active' : '');
+        var t = document.createElement('span');
+        t.className = 'hi-title';
+        t.textContent = c.title || '新对话';
+        it.appendChild(t);
+        var del = document.createElement('span');
+        del.className = 'hi-del';
+        del.title = '删除对话';
+        del.setAttribute('role', 'button');
+        del.setAttribute('aria-label', '删除对话 ' + (c.title || ''));
+        del.innerHTML = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="m19 6-1 14H6L5 6"/></svg>';
+        del.addEventListener('click', function (e) {
+          e.stopPropagation();
+          aiDeleteConv(c);
+        });
+        it.appendChild(del);
+        it.addEventListener('click', function () { aiOpenConv(c.id); });
+        list.appendChild(it);
+      });
+    }
+
+    // 相对时间（updated_at 是 UTC 的 "YYYY-MM-DD HH:MM:SS"）
+    function aiConvTime(s) {
+      var t = Date.parse(String(s || '').replace(' ', 'T') + 'Z');
+      if (isNaN(t)) return '';
+      var m = Math.round((Date.now() - t) / 60000);
+      if (m < 1) return '刚刚';
+      if (m < 60) return m + ' 分钟前';
+      var h = Math.round(m / 60);
+      if (h < 24) return h + ' 小时前';
+      return Math.round(h / 24) + ' 天前';
+    }
+
+    // 拉取历史栏列表
+    function aiLoadConvList() {
+      fetch('/api/ai/conversations', { credentials: 'same-origin' })
+        .then(function (r) { return r.ok ? r.json() : null; })
+        .then(function (d) {
+          if (d && d.ok) {
+            aiConvs = d.conversations || [];
+            aiRenderHistoryList();
+          }
+        })
+        .catch(function () {});
+    }
+
+    // 删除对话（自定义确认弹窗）
+    function aiDeleteConv(c) {
+      if (typeof ask === 'function') {
+        ask({
+          title: '删除对话',
+          msg: '删除「' + (c.title || '新对话') + '」？对话内容将不可恢复。',
+          okText: '删除', danger: true,
+          cb: function (ok) { if (ok) doDeleteConv(c.id); },
+        });
+      } else if (window.confirm('删除「' + (c.title || '新对话') + '」？对话内容将不可恢复。')) {
+        doDeleteConv(c.id);
+      }
+    }
+    function doDeleteConv(id) {
+      fetch('/api/ai/conversations?id=' + id, { method: 'DELETE', credentials: 'same-origin' })
+        .then(function (r) { return r.ok ? r.json() : null; })
+        .then(function (d) {
+          if (!d || !d.ok) return;
+          aiConvs = aiConvs.filter(function (x) { return x.id !== id; });
+          // 删的是当前对话：回到开场白状态（不自动跳别的对话，避免误打开）
+          if (id === aiConvId) {
+            aiConvId = 0;
+            aiHistory = [];
+            if (aiMessages) aiMessages.innerHTML = '';
+            aiGreetIfEmpty();
+          }
+          aiRenderHistoryList();
+        })
+        .catch(function () {});
+    }
+
+    // 切换到某个历史对话
+    function aiOpenConv(id) {
+      if (id === aiConvId) { aiCloseHistoryDrawer(); return; }
+      if (aiAbort) {
+        try { aiAbort.abort(); } catch (e) {}
+        aiAbort = null;
+      }
+      fetch('/api/ai/history?conv=' + id, { credentials: 'same-origin' })
+        .then(function (r) { return r.ok ? r.json() : null; })
+        .then(function (d) {
+          if (!d || !d.ok) return;
+          aiConvId = id;
+          aiHistory = (d.messages || []).map(function (m) { return { role: m.role, content: m.content }; });
+          aiAttach = [];
+          aiRenderAttach();
+          aiMessages.innerHTML = '';
+          if (aiHistory.length) {
+            aiHistory.forEach(function (m) {
+              if (m.role === 'user') addAiMsg('user', m.content);
+              else aiRenderBot(addAiMsg('bot', ''), m.content);
+            });
+          } else {
+            aiGreetIfEmpty();
+          }
+          aiRenderHistoryList();
+          aiCloseHistoryDrawer();
+          if (aiInput) aiInput.focus();
+        })
+        .catch(function () {});
+    }
+
+    // 窄屏历史抽屉开合
+    function aiCloseHistoryDrawer() {
+      var h = document.getElementById('aiHistory');
+      if (h) h.classList.remove('open');
+    }
+
+    // 打开界面时恢复最近对话（登录用户）
     var aiRestored = false;
     function aiRestoreHistory() {
       fetch('/api/ai/history', { credentials: 'same-origin' })
         .then(function (r) { return r.ok ? r.json() : null; })
         .then(function (d) {
-          if (!d || !d.ok || !Array.isArray(d.messages) || !d.messages.length) return;
+          if (!d || !d.ok) return;
+          aiConvId = d.conv || 0;
+          var msgs = d.messages || [];
+          if (!msgs.length) return;
           aiMessages.innerHTML = '';
-          d.messages.forEach(function (m) {
+          msgs.forEach(function (m) {
             if (m.role === 'user') addAiMsg('user', m.content);
             else aiRenderBot(addAiMsg('bot', ''), m.content);
           });
-          aiHistory = d.messages.map(function (m) { return { role: m.role, content: m.content }; });
+          aiHistory = msgs.map(function (m) { return { role: m.role, content: m.content }; });
+          aiRenderHistoryList();
         })
         .catch(function () {});
     }
@@ -8003,9 +8307,10 @@
       aiView.classList.add('show');
       // 每次打开都刷新一次配置（后台开关/改配置即时生效），再补开场白
       fetchAiConfig(true).then(aiGreetIfEmpty);
-      // 首次打开且本地无历史：尝试恢复服务端保存的对话（登录用户）
+      // 首次打开且本地无历史：拉历史栏列表 + 恢复最近对话（登录用户）
       if (!aiRestored && !aiHistory.length) {
         aiRestored = true;
+        aiLoadConvList();
         aiRestoreHistory();
       }
       setTimeout(function () { if (aiInput) aiInput.focus(); }, 200);
@@ -8163,6 +8468,29 @@
         addAiMsg('bot', '🆕 已开启新对话，有什么想问的～');
         if (aiInput) aiInput.focus();
       });
+    }
+    // 侧栏"新对话"：同款行为 + 关抽屉
+    var aiHistNewBtn = document.getElementById('aiHistNewBtn');
+    if (aiHistNewBtn) {
+      aiHistNewBtn.addEventListener('click', function () {
+        aiResetChat();
+        aiGreetIfEmpty();
+        addAiMsg('bot', '🆕 已开启新对话，有什么想问的～');
+        aiCloseHistoryDrawer();
+        if (aiInput) aiInput.focus();
+      });
+    }
+    // 窄屏：顶栏按钮唤出历史抽屉；点遮罩区域（聊天区）关闭
+    var aiHistoryToggle = document.getElementById('aiHistoryToggle');
+    if (aiHistoryToggle) {
+      aiHistoryToggle.addEventListener('click', function () {
+        var h = document.getElementById('aiHistory');
+        if (h) h.classList.toggle('open');
+      });
+    }
+    var aiChatEl = aiView ? aiView.querySelector('.ai-chat') : null;
+    if (aiChatEl) {
+      aiChatEl.addEventListener('click', function () { aiCloseHistoryDrawer(); });
     }
     // 顶栏切换模型：只影响之后的回复，当前对话历史延续（菜单逻辑见 aiSyncModelSwitcher）
     var aiModelBtn = document.getElementById('aiModelBtn');

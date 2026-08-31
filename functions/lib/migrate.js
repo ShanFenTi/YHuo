@@ -78,13 +78,23 @@ const DDL = [
     completion_tokens INTEGER NOT NULL DEFAULT 0,
     PRIMARY KEY (day, provider, model)
   )`,
+  // AI 对话（会话）：一个用户可有多个对话，左侧历史栏展示
+  `CREATE TABLE IF NOT EXISTS ai_conversations (
+    id         INTEGER PRIMARY KEY AUTOINCREMENT,
+    owner      TEXT NOT NULL,
+    title      TEXT NOT NULL DEFAULT '新对话',
+    updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+  )`,
+  `CREATE INDEX IF NOT EXISTS idx_ai_conv_owner ON ai_conversations (owner, updated_at)`,
   // AI 对话历史（登录用户/管理员各存一份；owner='u{userId}' 或 'admin'）。
+  // conv_id 关联 ai_conversations（0=旧数据迁移前的孤儿消息，读取时自动归入"历史对话"）；
   // content 存纯文本：多模态消息只存 text 部分，图片以「[图片]」占位（dataURL 太大不入库）
   `CREATE TABLE IF NOT EXISTS ai_chat_history (
     id         INTEGER PRIMARY KEY AUTOINCREMENT,
     owner      TEXT NOT NULL,
     role       TEXT NOT NULL CHECK (role IN ('user', 'assistant')),
     content    TEXT NOT NULL,
+    conv_id    INTEGER NOT NULL DEFAULT 0,
     created_at TEXT NOT NULL DEFAULT (datetime('now'))
   )`,
   `CREATE INDEX IF NOT EXISTS idx_ai_chat_owner ON ai_chat_history (owner, id)`,
@@ -110,6 +120,27 @@ export async function ensureSchema(env) {
   } catch {}
   try {
     await env.DB.prepare("ALTER TABLE users ADD COLUMN avatar_key TEXT").run();
+  } catch {}
+  // 老库补列：AI 历史表加 conv_id（列已存在时报错忽略）
+  try {
+    await env.DB.prepare("ALTER TABLE ai_chat_history ADD COLUMN conv_id INTEGER NOT NULL DEFAULT 0").run();
+  } catch {}
+  // 旧数据迁移：conv_id=0 的孤儿消息归入自动创建的"历史对话"（一次性，幂等）
+  try {
+    const orphan = await env.DB.prepare(
+      "SELECT DISTINCT owner FROM ai_chat_history WHERE conv_id = 0"
+    ).all();
+    for (const r of orphan.results || []) {
+      const conv = await env.DB.prepare(
+        "INSERT INTO ai_conversations (owner, title) VALUES (?, '历史对话')"
+      ).bind(r.owner).run();
+      const convId = conv.meta ? conv.meta.last_row_id : 0;
+      if (convId) {
+        await env.DB.prepare(
+          "UPDATE ai_chat_history SET conv_id = ? WHERE owner = ? AND conv_id = 0"
+        ).bind(convId, r.owner).run();
+      }
+    }
   } catch {}
   migrated = true;
 }

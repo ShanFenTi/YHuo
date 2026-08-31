@@ -4404,7 +4404,8 @@
       fetch('/api/settings', { credentials: 'same-origin' })
         .then(function (res) { return res.ok ? res.json() : Promise.reject(new Error('无接口')); })
         .then(function (s) {
-          if (s && s.ok && s.quote) showQuote(s.quote);
+          var qs = s && s.ok && Array.isArray(s.quotes) ? s.quotes : [];
+          if (qs.length) showQuote(qs[Math.floor(Math.random() * qs.length)]);
           else loadDailyQuote();
         })
         .catch(loadDailyQuote);
@@ -5412,7 +5413,8 @@
       fetch('/api/settings', { credentials: 'same-origin' })
         .then(function (res) { return res.ok ? res.json() : Promise.reject(new Error('无接口')); })
         .then(function (s) {
-          if (s && s.ok && s.quote) { lyricIdleSeq = 1; lyricShowIdle(s.quote); return; }
+          var qs = s && s.ok && Array.isArray(s.quotes) ? s.quotes : [];
+          if (qs.length) { lyricIdleSeq = 1; lyricShowIdle(qs[Math.floor(Math.random() * qs.length)]); return; }
           var cached = null;
           try { cached = JSON.parse(localStorage.getItem('dailyQuote')); } catch (e) {}
           if (cached && cached.date === new Date().toDateString() && cached.text) {

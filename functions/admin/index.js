@@ -672,9 +672,12 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
       <span class="meta2" id="bgBlurAdminVal">未设置（访客不模糊）</span>
       <button id="bgBlurSaveBtn" class="ghost">保存模糊度</button>
     </div>
-    <p class="appear-label2">主页寄语</p>
-    <input type="text" id="quoteInput" maxlength="100" placeholder="显示在时钟下方；留空则用每日一言">
-    <button id="quoteSaveBtn" class="ghost">保存寄语</button>
+    <p class="appear-label2">主页寄语（保存多条后前台随机显示其一，全部删除则恢复每日一言）</p>
+    <div id="quoteRows"></div>
+    <div class="bgset-row" style="margin-top:8px">
+      <button id="quoteAddBtn" class="ghost" type="button">添加一条</button>
+      <button id="quoteSaveBtn" class="ghost" type="button">保存寄语</button>
+    </div>
     <p class="appear-label2">备份</p>
     <div class="bgset-row">
       <button id="exportBtn" class="ghost">导出媒体清单备份（JSON）</button>
@@ -1855,7 +1858,8 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
         currentAccent = d.accent;
         renderAccents();
         renderBgPreview(d.bg);
-        $('quoteInput').value = d.quote || '';
+        quoteRows = Array.isArray(d.quotes) ? d.quotes.slice() : [];
+        renderQuoteRows();
         var blur = d.blur === null || d.blur === undefined ? 0 : d.blur;
         $('bgBlurAdmin').value = blur;
         $('bgBlurAdminVal').textContent = d.blur === null || d.blur === undefined
@@ -1882,14 +1886,58 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
     }).catch(function () { toast('网络错误', 'err'); });
   });
 
+  // ---------- 主页寄语（多条） ----------
+  var quoteRows = [];
+
+  function renderQuoteRows() {
+    var box = $('quoteRows');
+    box.innerHTML = '';
+    quoteRows.forEach(function (q, i) {
+      var row = document.createElement('div');
+      row.className = 'bgset-row';
+      var input = document.createElement('input');
+      input.type = 'text';
+      input.maxLength = 100;
+      input.placeholder = '寄语内容（≤100 字）';
+      input.value = q;
+      input.addEventListener('input', function () { quoteRows[i] = this.value; });
+      var del = document.createElement('button');
+      del.className = 'icon-mini';
+      del.type = 'button';
+      del.title = '删除这条';
+      del.innerHTML = ICO.trash;
+      del.addEventListener('click', function () { quoteRows.splice(i, 1); renderQuoteRows(); });
+      row.appendChild(input);
+      row.appendChild(del);
+      box.appendChild(row);
+    });
+    if (!quoteRows.length) {
+      var empty = document.createElement('span');
+      empty.className = 'meta2';
+      empty.textContent = '未设置（前台显示每日一言）';
+      box.appendChild(empty);
+    }
+  }
+
+  $('quoteAddBtn').addEventListener('click', function () {
+    if (quoteRows.length >= 20) { toast('最多 20 条寄语', 'err'); return; }
+    quoteRows.push('');
+    renderQuoteRows();
+    var inputs = $('quoteRows').querySelectorAll('input');
+    if (inputs.length) inputs[inputs.length - 1].focus();
+  });
+
   $('quoteSaveBtn').addEventListener('click', function () {
     api('/api/admin/appearance', {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ quote: $('quoteInput').value })
+      body: JSON.stringify({ quotes: quoteRows })
     }).then(function (d) {
-      if (d.ok) toast(d.quote ? '寄语已保存，前台即刻生效' : '已清除寄语，前台恢复每日一言', 'ok');
-      else toast(d.error || '保存失败', 'err');
+      if (d.ok) {
+        quoteRows = d.quotes.slice();
+        renderQuoteRows();
+        toast(d.quotes.length ? '已保存 ' + d.quotes.length + ' 条寄语，前台随机显示' : '已清空寄语，前台恢复每日一言', 'ok');
+      } else toast(d.error || '保存失败', 'err');
     }).catch(function () { toast('网络错误', 'err'); });
   });
 
@@ -1898,7 +1946,7 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
     var payload = {
       exported_at: new Date().toISOString(),
       media: items,
-      settings: { accent: currentAccent, quote: $('quoteInput').value || null },
+      settings: { accent: currentAccent, quotes: quoteRows.filter(function (q) { return (q || '').trim(); }) },
       visits: visitData,
     };
     var blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });

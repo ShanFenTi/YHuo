@@ -14,9 +14,21 @@ export async function onRequestGet({ env }) {
   await ensureSchema(env);
   const accent = await getSetting(env, 'accent');
   const bg = await getSetting(env, 'bg');
-  const quote = await getSetting(env, 'quote');
+  const quotes = await readQuotes(env);
   const blur = await getSetting(env, 'bg_blur');
-  return json({ ok: true, accent: accent || null, bg: bg || null, quote: quote || null, blur: blur === null ? null : parseInt(blur, 10) || 0 });
+  return json({ ok: true, accent: accent || null, bg: bg || null, quotes, blur: blur === null ? null : parseInt(blur, 10) || 0 });
+}
+
+// 寄语列表：优先读新的 quotes（JSON 数组），旧的单条 quote 自动并入
+async function readQuotes(env) {
+  let list = [];
+  try { list = JSON.parse((await getSetting(env, 'quotes')) || '[]'); } catch {}
+  if (!Array.isArray(list)) list = [];
+  if (!list.length) {
+    const legacy = await getSetting(env, 'quote');
+    if (legacy) list = [legacy];
+  }
+  return list.filter((q) => typeof q === 'string' && q.trim()).map((q) => q.trim());
 }
 
 export async function onRequestPut({ request, env }) {
@@ -41,18 +53,23 @@ export async function onRequestPut({ request, env }) {
       .run();
     return json({ ok: true, blur });
   }
-  // 主页寄语：传空 = 恢复每日一言
-  if (body.quote !== undefined) {
-    const quote = String(body.quote || '').trim().slice(0, 100);
-    if (!quote) {
-      await env.DB.prepare("DELETE FROM site_settings WHERE key = 'quote'").run();
-      return json({ ok: true, quote: null });
+  // 主页寄语（多条）：字符串数组，每条 ≤100 字、最多 20 条；空数组 = 恢复每日一言
+  if (body.quotes !== undefined) {
+    if (!Array.isArray(body.quotes)) return json({ ok: false, error: 'quotes 需为数组' }, 400);
+    const list = body.quotes
+      .map((q) => String(q || '').trim().slice(0, 100))
+      .filter(Boolean)
+      .slice(0, 20);
+    if (!list.length) {
+      await env.DB.prepare("DELETE FROM site_settings WHERE key IN ('quotes', 'quote')").run();
+      return json({ ok: true, quotes: [] });
     }
     await env.DB
       .prepare('INSERT INTO site_settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value')
-      .bind('quote', quote)
+      .bind('quotes', JSON.stringify(list))
       .run();
-    return json({ ok: true, quote });
+    await env.DB.prepare("DELETE FROM site_settings WHERE key = 'quote'").run(); // 迁移到新键后清掉旧单条
+    return json({ ok: true, quotes: list });
   }
   // accent 传 null/空 表示恢复站点默认（blue）
   if (body.accent === null || body.accent === '') {

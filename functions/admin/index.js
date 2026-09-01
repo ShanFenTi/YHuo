@@ -529,7 +529,22 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
     <input type="text" id="loginUser" placeholder="用户名" autocomplete="username">
     <input type="password" id="loginPass" placeholder="密码" autocomplete="current-password">
     <button id="loginBtn">登录</button>
+    <!-- 忘记密码：管理员邮箱验证码重置（未绑邮箱/未启用邮件服务时隐藏，由前端拉 /api/settings 判断） -->
+    <button id="adminForgotBtn" class="ghost" type="button" style="width:100%;margin-top:8px;display:none">忘记密码？</button>
     <div class="msg" id="loginMsg"></div>
+  </div>
+
+  <div class="card" id="adminResetCard" hidden>
+    <p class="hint">通过绑定的管理员邮箱重置密码。</p>
+    <input type="text" id="arEmail" placeholder="管理员邮箱" autocomplete="email">
+    <div style="display:flex;gap:8px">
+      <input type="text" id="arCode" inputmode="numeric" maxlength="6" placeholder="验证码" style="flex:1" autocomplete="one-time-code">
+      <button id="arSendBtn" class="ghost" type="button">发送验证码</button>
+    </div>
+    <input type="password" id="arNewPass" placeholder="新密码（至少 6 位）" autocomplete="new-password">
+    <button id="arSubmitBtn">重置密码</button>
+    <button id="arBackBtn" class="ghost" type="button" style="width:100%;margin-top:8px">返回登录</button>
+    <div class="msg" id="arMsg"></div>
   </div>
 
   <div class="card" id="neterrCard" hidden>
@@ -556,6 +571,7 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
       <button data-type="users" title="用户"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg><span>用户</span></button>
       <button data-type="appearance" title="外观"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 2a10 10 0 0 0 0 20z" fill="currentColor" stroke="none"/></svg><span>外观</span></button>
       <button data-type="ai" title="AI 设置"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="8" width="16" height="12" rx="2"/><path d="M12 8V4"/><path d="M9 4h6"/><circle cx="9" cy="13" r="1" fill="currentColor" stroke="none"/><circle cx="15" cy="13" r="1" fill="currentColor" stroke="none"/><path d="M9 17h6"/></svg><span>AI</span></button>
+      <button data-type="email" title="邮件"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg><span>邮件</span></button>
       <button data-type="me" title="我的"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg><span>我的</span></button>
     </nav>
     <div class="sidenav-foot">
@@ -609,6 +625,13 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
             <span class="meta2" id="aiUsageSumm"></span>
           </div>
           <div id="aiUsageBody"><p class="hint" style="margin:0">加载中…</p></div>
+        </div>
+        <div class="card" id="mailUsageCard">
+          <div class="visit-head">
+            <strong>邮件统计</strong>
+            <span class="meta2" id="mailUsageSumm"></span>
+          </div>
+          <div id="mailUsageBody"><p class="hint" style="margin:0">加载中…</p></div>
         </div>
       </div>
 
@@ -744,6 +767,66 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
     </div>
   </div>
 
+  <div id="emailPanel" hidden>
+    <p class="appear-label2">邮件服务（用于注册邮箱验证 / 找回密码 / 登录二次验证）</p>
+    <p class="ai-mgr-label">服务商（都走 HTTP API，Workers 原生支持）</p>
+    <span id="emailProviderDrop" class="ai-drop-full"></span>
+    <p class="ai-mgr-label">发件地址（需在服务商侧完成发件人验证）</p>
+    <input type="text" id="emailFrom" placeholder="noreply@yourdomain.com" style="max-width:320px">
+    <p class="ai-mgr-label">API Key</p>
+    <div class="ai-key-wrap">
+      <input type="password" id="emailApiKey" autocomplete="new-password" placeholder="re_…（Resend）/ xkeysib-…（Brevo）">
+      <button id="emailKeyEye" class="icon-mini ai-key-eye" type="button" title="显示/隐藏"></button>
+    </div>
+    <p class="meta2" id="emailKeyHint" style="margin-top:6px">未设置</p>
+    <p class="ai-mgr-label" style="margin-top:14px">站长邮箱（"仅站长使用"模式下唯一能收验证码的地址，填你注册 Resend 的邮箱；清空后点"保存配置"即移除，"仅站长使用"会自动关闭）</p>
+    <input type="text" id="emailOwnerInput" placeholder="you@example.com" style="max-width:320px">
+    <div class="bgset-row" style="margin-top:14px">
+      <button id="emailAdminOnlyBtn" class="ghost" type="button">开启"仅站长使用"</button>
+      <span class="meta2" id="emailAdminOnlyText">关闭：所有用户可用邮箱功能</span>
+    </div>
+    <div class="bgset-row" style="margin-top:18px">
+      <button id="emailSaveBtn" type="button">保存配置</button>
+      <button id="emailToggleBtn" class="ghost" type="button">停用</button>
+      <span class="meta2" id="emailStateText">状态读取中…</span>
+    </div>
+    <p class="appear-label2" style="margin-top:22px">测试发送</p>
+    <div class="bgset-row">
+      <input type="text" id="emailTestTo" placeholder="收件邮箱" style="max-width:260px">
+      <button id="emailTestBtn" class="ghost" type="button">发送测试邮件</button>
+    </div>
+    <p class="appear-label2" style="margin-top:22px">自定义邮件（给任意邮箱发任意内容）</p>
+    <div class="bgset-row">
+      <input type="text" id="emailCustomTo" placeholder="收件邮箱" style="max-width:260px">
+      <input type="text" id="emailCustomSubject" placeholder="邮件主题" style="max-width:320px">
+    </div>
+    <div class="bgset-row" style="margin-top:8px;align-items:flex-start">
+      <textarea id="emailCustomText" placeholder="邮件正文（纯文本，支持换行，≤5000 字）" rows="5" style="max-width:560px;width:100%;resize:vertical"></textarea>
+    </div>
+    <div class="bgset-row" style="margin-top:8px">
+      <button id="emailCustomBtn" type="button">发送</button>
+      <span class="meta2" id="emailCustomMsg"></span>
+    </div>
+    <p class="appear-label2" style="margin-top:26px">课表提醒定时任务（用户课表的每日早报 / 重点课课前提醒）</p>
+    <p class="meta2">Pages Functions 不支持定时触发，需要外部 cron 每 5 分钟访问下面的 URL。推荐 cron-job.org（免费）：注册后新建任务，地址填下面的 URL，执行间隔选"每 5 分钟"。</p>
+    <div class="bgset-row" style="margin-top:10px">
+      <input type="text" id="schedTickUrl" readonly style="max-width:460px">
+      <button id="schedTickCopyBtn" class="ghost" type="button">复制</button>
+    </div>
+    <div class="bgset-row" style="margin-top:8px">
+      <button id="schedTickRegenBtn" class="ghost" type="button">重新生成密钥</button>
+      <button id="schedTickRunBtn" class="ghost" type="button">立即执行一次</button>
+      <span class="meta2" id="schedTickMsg"></span>
+    </div>
+    <p class="appear-label2" style="margin-top:18px">发送测试提醒</p>
+    <div class="bgset-row" style="margin-top:8px">
+      <input type="text" id="schedTestTo" placeholder="收件邮箱（留空=站长邮箱）" style="max-width:260px">
+      <button id="schedTestBtn" class="ghost" type="button">发送测试提醒</button>
+      <span class="meta2" id="schedTestMsg"></span>
+    </div>
+    <p class="meta2" style="margin-top:6px">按真实课表算出"今天该发什么"，立即发送早报 / 课前提醒样式的【测试】邮件（不用等真实到点，不影响防重发记录）。收件人须是绑定了已验证邮箱且启用过课表的账号；仅站长模式下只能发到站长邮箱。</p>
+  </div>
+
   <div id="mePanel" hidden>
     <div class="card me-card">
       <div class="me-left">
@@ -759,6 +842,24 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
         <p class="meta2">头像显示在侧边栏左上角；JPG/PNG/GIF/WebP，≤2MB，保存在站点 KV。</p>
       </div>
       <input type="file" id="meAvatarInput" accept=".jpg,.jpeg,.png,.gif,.webp" hidden>
+    </div>
+    <div class="card" id="meEmailCard" style="margin-top:16px" hidden>
+      <p class="appear-label2" style="margin-top:0">管理员邮箱（绑定后可用邮箱验证码重置后台密码）</p>
+      <div class="bgset-row" id="meEmailBoundRow" hidden>
+        <span class="meta2" id="meEmailText"></span>
+        <button id="meEmailRemoveBtn" class="danger" type="button">解绑</button>
+      </div>
+      <div id="meEmailFormRow">
+        <div class="bgset-row">
+          <input type="text" id="meEmailInput" placeholder="you@example.com" style="max-width:280px">
+          <button id="meEmailSendBtn" class="ghost" type="button">发送验证码</button>
+        </div>
+        <div class="bgset-row" style="margin-top:8px">
+          <input type="text" id="meEmailCode" inputmode="numeric" maxlength="6" placeholder="6 位验证码" style="max-width:160px">
+          <button id="meEmailVerifyBtn" type="button">验证并绑定</button>
+        </div>
+        <p class="meta2" id="meEmailMsg" style="margin:8px 0 0"></p>
+      </div>
     </div>
   </div>
     </main>
@@ -934,8 +1035,70 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
     $('appShell').hidden = name !== 'main';
     $('setupCard').hidden = name !== 'setup';
     $('loginCard').hidden = name !== 'login';
+    $('adminResetCard').hidden = name !== 'reset';
     $('neterrCard').hidden = name !== 'neterr';
+    // 登录页显示时顺带查邮件服务开关（决定"忘记密码"入口显隐）
+    if (name === 'login') refreshAdminForgot();
   }
+
+  // 管理员"忘记密码"入口：邮件服务启用才显示
+  var adminForgotChecked = false;
+  function refreshAdminForgot() {
+    fetch('/api/settings').then(function (r) { return r.ok ? r.json() : null; }).then(function (d) {
+      adminForgotChecked = true;
+      var on = !!(d && d.ok && d.emailEnabled);
+      $('adminForgotBtn').style.display = on ? '' : 'none';
+    }).catch(function () {});
+  }
+
+  // ---------- 管理员邮箱重置密码 ----------
+  function arMsg(text, err) { showMsg($('arMsg'), text || '', err ? 'err' : ''); }
+  $('adminForgotBtn').addEventListener('click', function () { show('reset'); });
+  $('arBackBtn').addEventListener('click', function () { show('login'); });
+  var arCountdown = null;
+  $('arSendBtn').addEventListener('click', function () {
+    var email = $('arEmail').value.trim();
+    if (!email) { arMsg('请先填写管理员邮箱', true); return; }
+    var btn = this; btn.disabled = true;
+    api('/api/email/code', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: email, purpose: 'admin-reset' })
+    }).then(function (d) {
+      btn.disabled = false;
+      if (d.ok) {
+        arMsg('验证码已发送，注意查收（含垃圾箱）');
+        var left = 60;
+        btn.disabled = true;
+        btn.textContent = left + 's';
+        clearInterval(arCountdown);
+        arCountdown = setInterval(function () {
+          left--;
+          if (left <= 0) { clearInterval(arCountdown); btn.disabled = false; btn.textContent = '发送验证码'; }
+          else btn.textContent = left + 's';
+        }, 1000);
+      } else arMsg(d.error || '发送失败', true);
+    }).catch(function () { btn.disabled = false; arMsg('网络错误', true); });
+  });
+  $('arSubmitBtn').addEventListener('click', function () {
+    var email = $('arEmail').value.trim();
+    var code = $('arCode').value.trim();
+    var np = $('arNewPass').value;
+    if (!email || !/^\d{6}$/.test(code)) { arMsg('请填写邮箱和 6 位验证码', true); return; }
+    if (np.length < 6) { arMsg('新密码至少 6 位', true); return; }
+    var btn = this; btn.disabled = true;
+    api('/api/auth/reset', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: email, code: code, newPassword: np })
+    }).then(function (d) {
+      btn.disabled = false;
+      if (d.ok) {
+        show('login');
+        showMsg($('loginMsg'), '密码已重置，请用新密码登录', '');
+      } else arMsg(d.error || '重置失败', true);
+    }).catch(function () { btn.disabled = false; arMsg('网络错误', true); });
+  });
 
   // 自动重试 3 次：网络抖动时误显示登录表单会让人误以为账号丢了
   function loadStatus(tries) {
@@ -1000,6 +1163,7 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
     loadUsers();
     loadVisits();
     loadAiUsage();
+    loadMailUsage();
     loadMe(); // 侧边栏左上角头像
   }
 
@@ -1063,6 +1227,39 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
           '<td style="padding:5px 6px;border-top:1px solid var(--row-line);text-align:right;white-space:nowrap">' + m.calls + '</td>' +
           '<td style="padding:5px 6px;border-top:1px solid var(--row-line);text-align:right;white-space:nowrap">' + Number(m.prompt).toLocaleString() + '</td>' +
           '<td style="padding:5px 6px;border-top:1px solid var(--row-line);text-align:right;white-space:nowrap">' + Number(m.completion).toLocaleString() + '</td></tr>';
+      });
+      html += '</table>';
+      body.innerHTML = html;
+    }).catch(function () {});
+  }
+
+  // ---------- 邮件发送统计（概览卡片） ----------
+  var MAIL_KIND_NAMES = {
+    'code': '验证码',
+    'test': '测试邮件',
+    'custom': '自定义邮件',
+    'sched-daily': '课表每日早报',
+    'sched-class': '课表课前提醒',
+    'sched-test': '课表提醒测试',
+  };
+  function loadMailUsage() {
+    api('/api/admin/email/usage').then(function (d) {
+      if (!d.ok) return;
+      var body = $('mailUsageBody');
+      if (!d.total) {
+        body.innerHTML = '<p class="hint" style="margin:0">还没有发送记录，发出第一封邮件后这里会有统计。</p>';
+        $('mailUsageSumm').textContent = '';
+        return;
+      }
+      $('mailUsageSumm').textContent = '今日 ' + d.today + ' · 近 14 天 ' + d.d14 + ' · 近 30 天 ' + d.d30;
+      var html = '<table style="width:100%;border-collapse:collapse;font-size:13px">';
+      html += '<tr style="color:var(--muted)">' +
+        '<th style="text-align:left;padding:4px 6px;font-weight:600">用途</th>' +
+        '<th style="text-align:right;padding:4px 6px;font-weight:600">累计发送</th></tr>';
+      d.byKind.forEach(function (k) {
+        html += '<tr>' +
+          '<td style="padding:5px 6px;border-top:1px solid var(--row-line)">' + (MAIL_KIND_NAMES[k.kind] || k.kind) + '</td>' +
+          '<td style="padding:5px 6px;border-top:1px solid var(--row-line);text-align:right;white-space:nowrap">' + k.count + '</td></tr>';
       });
       html += '</table>';
       body.innerHTML = html;
@@ -1760,7 +1957,8 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
 
       var meta = document.createElement('span');
       meta.className = 'meta';
-      meta.textContent = '注册于 ' + fmtDate(u.created_at) + ' · ' + fmtRel(u.last_seen_at);
+      meta.textContent = '注册于 ' + fmtDate(u.created_at) + ' · ' + fmtRel(u.last_seen_at)
+        + (u.email ? ' · ' + u.email + (u.twofa_enabled ? '（2FA）' : '') : '');
 
       var ban = document.createElement('button');
       ban.className = 'ghost';
@@ -2259,6 +2457,202 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
     options: tagOptions(),
   });
 
+  // ---------- 邮件服务配置 ----------
+  var emailEnabledNow = false;
+  makeAiDrop($('emailProviderDrop'), {
+    fullWidth: true,
+    value: 'resend',
+    options: [
+      { value: 'resend', label: 'Resend（免费 100 封/天，推荐）' },
+      { value: 'brevo', label: 'Brevo（免费 300 封/天）' },
+    ],
+  });
+  $('emailKeyEye').innerHTML = ICO.eye;
+  var emailKeyShown = false;
+  $('emailKeyEye').addEventListener('click', function () {
+    emailKeyShown = !emailKeyShown;
+    $('emailApiKey').type = emailKeyShown ? 'text' : 'password';
+    $('emailKeyEye').innerHTML = emailKeyShown ? ICO.eyeOff : ICO.eye;
+  });
+  var emailAdminOnlyNow = false;
+  function emailStateText(enabled) {
+    $('emailStateText').textContent = enabled
+      ? '已启用：' + (emailAdminOnlyNow ? '仅站长可用（找回密码/绑定/2FA 限站长邮箱）' : '前台注册需邮箱验证，找回密码/二次验证可用')
+      : '未启用：前台不显示邮箱相关功能';
+    $('emailToggleBtn').textContent = enabled ? '停用' : '启用';
+  }
+  function emailAdminOnlyText(on) {
+    $('emailAdminOnlyText').textContent = on
+      ? '已开启：普通用户不出现邮箱功能，只有站长邮箱可用（适合无域名只能发自己的场景）'
+      : '关闭：所有用户可用邮箱功能';
+    $('emailAdminOnlyBtn').textContent = on ? '关闭"仅站长使用"' : '开启"仅站长使用"';
+  }
+  function loadEmailSettings() {
+    api('/api/admin/email').then(function (d) {
+      if (!d.ok) { toast(d.error || '读取邮件配置失败', 'err'); return; }
+      emailEnabledNow = !!d.enabled;
+      emailAdminOnlyNow = !!d.adminOnly;
+      $('emailProviderDrop').value = d.provider;
+      $('emailFrom').value = d.from || '';
+      $('emailApiKey').value = '';
+      $('emailApiKey').placeholder = d.keySet ? '留空保持不变' : 're_…（Resend）/ xkeysib-…（Brevo）';
+      $('emailKeyHint').textContent = d.keySet ? '已保存（尾 4 位 ' + d.keyTail + '）；输入框留空 = 不修改' : '未设置';
+      $('emailOwnerInput').value = d.ownerEmail || '';
+      emailAdminOnlyText(emailAdminOnlyNow);
+      emailStateText(d.enabled);
+    }).catch(function () { toast('网络错误', 'err'); });
+  }
+  function saveEmailConfig(opts, done) {
+    var ownerEmail = $('emailOwnerInput').value.trim();
+    api('/api/admin/email', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        enabled: opts.enabled,
+        // 站长邮箱清空 = 移除（此时"仅站长"强制关闭）
+        admin_only: opts.admin_only && !!ownerEmail,
+        provider: $('emailProviderDrop').value,
+        from: $('emailFrom').value.trim(),
+        owner_email: ownerEmail,
+        api_key: $('emailApiKey').value.trim() || undefined, // 留空 = 保留原 Key
+      })
+    }).then(function (d) {
+      if (d.ok) {
+        emailEnabledNow = !!d.enabled;
+        $('emailApiKey').value = '';
+        loadEmailSettings();
+        if (done) done(d);
+      } else toast(d.error || '保存失败', 'err');
+    }).catch(function () { toast('网络错误', 'err'); });
+  }
+  $('emailAdminOnlyBtn').addEventListener('click', function () {
+    var next = !emailAdminOnlyNow;
+    if (next && !$('emailOwnerInput').value.trim()) {
+      toast('请先填写站长邮箱', 'err');
+      return;
+    }
+    saveEmailConfig({ enabled: emailEnabledNow, admin_only: next }, function (d) {
+      toast(d.adminOnly ? '已开启"仅站长使用"' : '已关闭，所有用户可用邮箱功能', 'ok');
+    });
+  });
+  $('emailSaveBtn').addEventListener('click', function () {
+    saveEmailConfig({ enabled: true, admin_only: emailAdminOnlyNow }, function (d) {
+      toast(d.enabled ? '邮件配置已保存并启用' : '已保存；补全 API Key 和发件人后会自动启用', 'ok');
+    });
+  });
+  $('emailToggleBtn').addEventListener('click', function () {
+    saveEmailConfig({ enabled: !emailEnabledNow, admin_only: emailAdminOnlyNow }, function (d) {
+      toast(d.enabled ? '邮件服务已启用' : '邮件服务已停用', 'ok');
+    });
+  });
+  $('emailTestBtn').addEventListener('click', function () {
+    var to = $('emailTestTo').value.trim();
+    if (!to) { toast('请填写收件邮箱', 'err'); return; }
+    toast('发送中…', '', true);
+    api('/api/admin/email', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ to: to })
+    }).then(function (d) {
+      if (d.ok) toast('测试邮件已发送，注意查收（含垃圾箱）', 'ok');
+      else toast(d.error || '发送失败', 'err');
+    }).catch(function () { toast('网络错误', 'err'); });
+  });
+
+  // ---------- 自定义邮件：任意收件人 + 主题 + 纯文本正文 ----------
+  $('emailCustomBtn').addEventListener('click', function () {
+    var to = $('emailCustomTo').value.trim();
+    var subject = $('emailCustomSubject').value.trim();
+    var text = $('emailCustomText').value;
+    if (!to) { toast('请填写收件邮箱', 'err'); return; }
+    if (!subject && !text.trim()) { toast('请填写主题或正文', 'err'); return; }
+    $('emailCustomBtn').disabled = true;
+    $('emailCustomMsg').textContent = '发送中…';
+    api('/api/admin/email', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ to: to, subject: subject, text: text })
+    }).then(function (d) {
+      if (d.ok) {
+        $('emailCustomMsg').textContent = '已发送至 ' + to + '，注意查收（含垃圾箱）';
+        toast('自定义邮件已发送', 'ok');
+      } else {
+        $('emailCustomMsg').textContent = d.error || '发送失败';
+        toast(d.error || '发送失败', 'err');
+      }
+    }).catch(function () {
+      $('emailCustomMsg').textContent = '网络错误';
+      toast('网络错误', 'err');
+    }).then(function () { $('emailCustomBtn').disabled = false; });
+  });
+
+  // ---------- 课表提醒定时任务（tick URL 管理 + 手动触发） ----------
+  var schedTickKey = '';
+  function loadSchedTick() {
+    api('/api/admin/schedule').then(function (d) {
+      if (!d.ok) return;
+      schedTickKey = d.key || '';
+      $('schedTickUrl').value = d.url || '';
+    }).catch(function () {});
+  }
+  $('schedTickCopyBtn').addEventListener('click', function () {
+    var url = $('schedTickUrl').value;
+    if (!url) return;
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(url).then(function () { toast('已复制', 'ok'); });
+    } else {
+      $('schedTickUrl').select();
+      document.execCommand('copy');
+      toast('已复制', 'ok');
+    }
+  });
+  $('schedTickRegenBtn').addEventListener('click', function () {
+    api('/api/admin/schedule', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'regenerate' })
+    }).then(function (d) {
+      if (d.ok) {
+        schedTickKey = d.key || '';
+        $('schedTickUrl').value = d.url || '';
+        $('schedTickMsg').textContent = '已重新生成，旧地址立即失效（记得更新 cron 配置）';
+        toast('定时密钥已重新生成', 'ok');
+      } else toast(d.error || '操作失败', 'err');
+    }).catch(function () { toast('网络错误', 'err'); });
+  });
+  $('schedTickRunBtn').addEventListener('click', function () {
+    $('schedTickMsg').textContent = '执行中…';
+    api('/api/schedule/tick?key=' + encodeURIComponent(schedTickKey)).then(function (d) {
+      if (d.ok) {
+        $('schedTickMsg').textContent = d.disabled
+          ? '邮件服务未启用，未发送任何提醒'
+          : '本次发送 ' + (d.sent || 0) + ' 封提醒邮件' + (d.errors && d.errors.length ? '（' + d.errors.length + ' 个失败）' : '');
+      } else $('schedTickMsg').textContent = d.error || '执行失败';
+    }).catch(function () { $('schedTickMsg').textContent = '网络错误'; });
+  });
+  $('schedTestBtn').addEventListener('click', function () {
+    var to = $('schedTestTo').value.trim();
+    $('schedTestBtn').disabled = true;
+    $('schedTestMsg').textContent = '发送中…';
+    api('/api/admin/schedule', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'test', email: to })
+    }).then(function (d) {
+      if (d.ok) {
+        var dayNames = ['周一', '周二', '周三', '周四', '周五', '周六', '周日'];
+        var info = (d.week ? '第 ' + d.week + ' 教学周' : '学期外') + ' · ' + (dayNames[d.dow - 1] || '') + ' · 今日 ' + d.courseCount + ' 节课';
+        $('schedTestMsg').textContent = '已发 ' + d.sent.length + ' 封到 ' + d.email + '（' + info + '）' + (d.errors.length ? '，' + d.errors.length + ' 封失败' : '');
+        toast('测试提醒已发送', 'ok');
+      } else {
+        $('schedTestMsg').textContent = d.error || '发送失败';
+        toast(d.error || '发送失败', 'err');
+      }
+    }).catch(function () {
+      $('schedTestMsg').textContent = '网络错误';
+    }).then(function () { $('schedTestBtn').disabled = false; });
+  });
+
   function tagSelect(value, onchange) {
     var host = document.createElement('span');
     makeAiDrop(host, {
@@ -2597,7 +2991,7 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
   $('aiProtocol').addEventListener('change', function () { fetchAiModels(false); });
 
   // ---------- 侧边栏导航 ----------
-  var PAGE_TITLES = { overview: '概览', music: '音乐', video: '视频', image: '图片', users: '用户', appearance: '外观', ai: 'AI 设置', me: '我的' };
+  var PAGE_TITLES = { overview: '概览', music: '音乐', video: '视频', image: '图片', users: '用户', appearance: '外观', ai: 'AI 设置', email: '邮件', me: '我的' };
   var navBtns = document.querySelectorAll('#sideNav button');
   // ---------- 我的（管理员资料 + 头像；头像 KV 键存 site_settings 'admin_avatar'） ----------
   function applyAdminAvatar(key) {
@@ -2611,12 +3005,106 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
     meImg.hidden = !has;
     $('meAvatarRemoveBtn').hidden = !has;
   }
+  // ---------- 管理员邮箱（绑定/解绑；重置后台密码用） ----------
+  var meAdminEmail = null;
+  function meEmailMsg(text, err) {
+    var el = $('meEmailMsg');
+    el.textContent = text || '';
+    el.className = 'meta2' + (err ? ' ai-test-err' : '');
+  }
+  function renderMeEmail() {
+    var card = $('meEmailCard');
+    if (!meAdminEmail) {
+      $('meEmailBoundRow').hidden = true;
+      $('meEmailFormRow').hidden = false;
+    } else {
+      $('meEmailBoundRow').hidden = false;
+      $('meEmailFormRow').hidden = true;
+      $('meEmailText').textContent = '已绑定 ' + meAdminEmail + '（可用于重置后台密码）';
+    }
+  }
+  var meEmailCountdown = null;
+  var meEmailSentTo = ''; // 发送成功后暂存邮箱：验证时输入框若被清空/改动，仍用发码的那个地址
+  function startMeEmailCountdown() {
+    var left = 60;
+    var btn = $('meEmailSendBtn');
+    btn.disabled = true;
+    btn.textContent = left + 's';
+    clearInterval(meEmailCountdown);
+    meEmailCountdown = setInterval(function () {
+      left--;
+      if (left <= 0) {
+        clearInterval(meEmailCountdown);
+        btn.disabled = false;
+        btn.textContent = '发送验证码';
+      } else btn.textContent = left + 's';
+    }, 1000);
+  }
+  $('meEmailSendBtn').addEventListener('click', function () {
+    var email = $('meEmailInput').value.trim();
+    if (!email) { meEmailMsg('请先填写邮箱地址', true); return; }
+    meEmailMsg('验证码发送中…');
+    api('/api/admin/me', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'email-send', email: email })
+    }).then(function (d) {
+      if (d.ok) {
+        meEmailSentTo = email;
+        meEmailMsg('验证码已发送，注意查收（含垃圾箱）');
+        startMeEmailCountdown();
+      }
+      else meEmailMsg(d.error || '发送失败', true);
+    }).catch(function () { meEmailMsg('网络错误', true); });
+  });
+  $('meEmailVerifyBtn').addEventListener('click', function () {
+    // 优先取输入框的邮箱；为空则回落到发码时暂存的地址
+    var email = $('meEmailInput').value.trim() || meEmailSentTo;
+    var code = $('meEmailCode').value.trim();
+    if (!email) { meEmailMsg('请填写邮箱地址', true); return; }
+    if (!/^\d{6}$/.test(code)) { meEmailMsg('请填写 6 位验证码', true); return; }
+    if (meEmailSentTo && email !== meEmailSentTo) {
+      meEmailMsg('邮箱与发送验证码的地址不一致，请改回 ' + meEmailSentTo + ' 或重新发送', true);
+      return;
+    }
+    api('/api/admin/me', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'email-verify', email: email, code: code })
+    }).then(function (d) {
+      if (d.ok) { meAdminEmail = d.email || email; renderMeEmail(); meEmailMsg('邮箱绑定成功'); }
+      else meEmailMsg(d.error || '绑定失败', true);
+    }).catch(function () { meEmailMsg('网络错误', true); });
+  });
+  $('meEmailRemoveBtn').addEventListener('click', function () {
+    ask({
+      title: '解绑邮箱',
+      msg: '解绑后将无法通过邮箱重置后台密码，确定？',
+      okText: '解绑', danger: true,
+      cb: function (okVal) {
+        if (!okVal) return;
+        api('/api/admin/me', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'email-remove' })
+        }).then(function (d) {
+          if (d.ok) { meAdminEmail = null; renderMeEmail(); meEmailMsg(''); toast('邮箱已解绑', 'ok'); }
+          else toast(d.error || '操作失败', 'err');
+        }).catch(function () { toast('网络错误', 'err'); });
+      },
+    });
+  });
+
   function loadMe() {
     api('/api/admin/me').then(function (d) {
       if (!d.ok) return;
       $('meName').textContent = d.username || '管理员';
       $('meMeta').textContent = d.created_at ? '管理员账号 · ' + fmtDate(d.created_at) + ' 创建' : '管理员账号';
       applyAdminAvatar(d.avatar);
+      // 邮箱卡：邮件服务启用才显示
+      $('meEmailCard').hidden = !d.emailEnabled;
+      meAdminEmail = d.email || null;
+      renderMeEmail();
     }).catch(function () {});
   }
   $('brandMark').addEventListener('click', function () { switchPage('me'); });
@@ -2663,12 +3151,14 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
     var isUsers = type === 'users';
     var isAppear = type === 'appearance';
     var isAi = type === 'ai';
+    var isEmail = type === 'email';
     var isMe = type === 'me';
     $('overviewPanel').hidden = !isOverview;
-    $('mediaPanel').hidden = isOverview || isUsers || isAppear || isAi || isMe;
+    $('mediaPanel').hidden = isOverview || isUsers || isAppear || isAi || isEmail || isMe;
     $('userPanel').hidden = !isUsers;
     $('appearancePanel').hidden = !isAppear;
     $('aiPanel').hidden = !isAi;
+    $('emailPanel').hidden = !isEmail;
     $('mePanel').hidden = !isMe;
     // 列表对所有媒体类型常显（列表/工具/存储条都在 image-shell 里，隐藏它会连列表一起藏掉）；
     // 只收起左侧相册侧栏
@@ -2678,12 +3168,17 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
     document.body.classList.remove('nav-open'); // 窄屏选完即收起菜单
     if (isOverview) {
       loadAiUsage(); // 每次切回概览刷新 AI 用量
+      loadMailUsage(); // 邮件统计同刷
     }
     if (isAppear) {
       loadAppearance();
     }
     if (isAi) {
       loadAiSettings();
+    }
+    if (isEmail) {
+      loadEmailSettings();
+      loadSchedTick();
     }
     if (isMe) {
       loadMe();
@@ -2692,7 +3187,7 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
       $('userSearch').value = ''; // 换进来重置搜索
       loadUsers();
     }
-    if (!isOverview && !isUsers && !isAppear && !isAi && !isMe) {
+    if (!isOverview && !isUsers && !isAppear && !isAi && !isEmail && !isMe) {
       $('fileInput').accept = TYPE_EXT[type];
       $('titleInput').value = '';
       selected = {}; // 换标签页清空勾选和搜索

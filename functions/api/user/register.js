@@ -1,7 +1,9 @@
-// POST /api/user/register { username, password } —— 开放注册，成功即自动登录
+// POST /api/user/register { username, password, email?, code? } —— 开放注册，成功即自动登录
+// 邮箱服务启用时 email+code 必填（验证通过才落库）；未启用时保持纯用户名注册。
 import { json } from '../../lib/util.js';
 import { hashPassword, randomHex, createUserSession, userCookie } from '../../lib/auth.js';
 import { ensureSchema } from '../../lib/migrate.js';
+import { getEmailConfig, isEmailAddr, verifyCode } from '../../lib/email.js';
 
 export async function onRequestPost({ request, env }) {
   await ensureSchema(env);
@@ -21,6 +23,21 @@ export async function onRequestPost({ request, env }) {
     return json({ ok: false, error: '密码需 6-100 位' }, 400);
   }
 
+  // 邮箱验证（服务启用且非"仅站长模式"时强制；仅站长模式普通用户注册不要邮箱）
+  const cfg = await getEmailConfig(env);
+  let email = null;
+  if (cfg.enabled && !cfg.adminOnly) {
+    email = String(body.email || '').trim().toLowerCase();
+    const code = String(body.code || '').trim();
+    if (!isEmailAddr(email)) return json({ ok: false, error: '请填写正确的邮箱' }, 400);
+    if (!/^\d{6}$/.test(code)) return json({ ok: false, error: '请填写 6 位邮箱验证码' }, 400);
+    try {
+      await verifyCode(env, email, 'register', code);
+    } catch (e) {
+      return json({ ok: false, error: (e && e.message) || '验证码校验失败' }, 400);
+    }
+  }
+
   // 管理员用户名也不允许被前台注册占用，避免冒充
   const taken = await env.DB.prepare('SELECT id FROM admin_users WHERE username = ?').bind(username).first()
     || await env.DB.prepare('SELECT id FROM users WHERE username = ?').bind(username).first();
@@ -28,11 +45,14 @@ export async function onRequestPost({ request, env }) {
 
   const salt = randomHex(32);
   const hash = await hashPassword(password, salt);
+  const withEmail = !!email; // 仅站长模式下 email 为 null（普通用户注册不带邮箱）
   let result;
   try {
     result = await env.DB
-      .prepare('INSERT INTO users (username, password_hash, salt) VALUES (?, ?, ?)')
-      .bind(username, hash, salt)
+      .prepare(withEmail
+        ? 'INSERT INTO users (username, password_hash, salt, email, email_verified) VALUES (?, ?, ?, ?, 1)'
+        : 'INSERT INTO users (username, password_hash, salt) VALUES (?, ?, ?)')
+      .bind(...(withEmail ? [username, hash, salt, email] : [username, hash, salt]))
       .run();
   } catch {
     return json({ ok: false, error: '用户名已被占用' }, 400); // 并发注册撞 UNIQUE 的兜底

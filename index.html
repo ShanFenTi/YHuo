@@ -669,14 +669,24 @@
       margin-bottom: 10px;
     }
 
-    /* 每日一言（加载成功后淡入，失败自动隐藏；多条时打字机轮播） */
+    /* 每日一言：天气胶囊同款样式（浅色胶囊底），按内容自适应宽度；多条时打字机轮播 */
     .hero-quote {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      max-width: 860px;
+      align-self: flex-start; /* hero-section 是纵向 flex，防止被拉满整行 */
       margin-top: 14px;
-      font-size: 14px;
-      line-height: 1.8;
+      padding: 7px 14px;
+      border: 1px solid var(--apple-border);
+      border-radius: 999px;
+      background: var(--apple-card);
       color: var(--apple-muted-foreground);
-      max-width: 520px;
-      min-height: 1.8em;
+      font-size: 13px;
+      line-height: 1.6;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
       opacity: 0;
       transform: translateY(4px);
       transition: opacity 600ms var(--ease-out), transform 600ms var(--ease-out);
@@ -791,6 +801,12 @@
 
     @media (prefers-reduced-motion: reduce) {
       .lyric-cursor { animation: none; }
+      /* 系统开了"减少动态效果"：弹窗直接显隐，不做缩放回弹 */
+      .sched-editor-panel,
+      .sched-editor-overlay.show .sched-editor-panel {
+        transform: none;
+        transition: opacity 120ms var(--ease-out);
+      }
     }
 
     /* ===== 天气胶囊（首页日期下方，点击换城市） ===== */
@@ -1170,6 +1186,125 @@
     .tools-view .apple-card { width: 100%; }
     .docs-view .tool-block { max-width: 940px; margin: 0 auto; }
 
+    /* AI 布局：左侧历史栏（默认收起成抽屉，点顶栏按钮唤出）+ 右侧聊天区 */
+    .ai-body {
+      flex: 1;
+      display: flex;
+      min-height: 0;
+    }
+
+    .ai-history {
+      position: fixed;
+      left: 0;
+      top: 0;
+      bottom: 0;
+      z-index: 20;
+      width: min(280px, 82vw);
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+      padding: 14px 14px 14px 18px;
+      background: var(--apple-background);
+      transform: translateX(-100%);
+      transition: transform 250ms var(--ease-out);
+      box-shadow: 8px 0 32px rgba(0, 0, 0, 0.12);
+    }
+
+    .ai-history.open { transform: none; }
+
+    .ai-history-new {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      flex: none;
+      padding: 8px 12px;
+      margin-bottom: 12px;
+      border: 1px solid var(--apple-border);
+      border-radius: 999px;
+      background: none;
+      color: var(--apple-foreground);
+      font-size: 13px;
+      cursor: pointer;
+      transition: border-color 150ms var(--ease-out), background-color 150ms var(--ease-out);
+    }
+
+    .ai-history-new:hover { border-color: var(--apple-primary); }
+
+    .ai-history-list {
+      flex: 1;
+      overflow-y: auto;
+      scrollbar-width: none; /* 隐藏滚动条（偏好：侧栏不露滚动条） */
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      padding-right: 4px;
+    }
+
+    .ai-history-list::-webkit-scrollbar { display: none; }
+
+    .ai-history-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 10px;
+      border: none;
+      border-radius: 10px;
+      background: none;
+      color: var(--apple-muted-foreground);
+      font-size: 13px;
+      text-align: left;
+      cursor: pointer;
+      transition: background-color 150ms var(--ease-out), color 150ms var(--ease-out);
+    }
+
+    .ai-history-item:hover { background: var(--apple-secondary, rgba(128, 128, 128, 0.12)); color: var(--apple-foreground); }
+
+    .ai-history-item.active { background: var(--apple-secondary, rgba(128, 128, 128, 0.16)); color: var(--apple-foreground); font-weight: 600; }
+
+    .ai-history-item .hi-title {
+      flex: 1;
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .ai-history-item .hi-del {
+      flex: none;
+      display: none;
+      width: 22px;
+      height: 22px;
+      align-items: center;
+      justify-content: center;
+      border: none;
+      border-radius: 6px;
+      background: none;
+      color: var(--apple-muted-foreground);
+      cursor: pointer;
+    }
+
+    .ai-history-item:hover .hi-del { display: inline-flex; }
+    .ai-history-item .hi-del:hover { color: #e5484d; }
+
+    .ai-history-empty { font-size: 12px; color: var(--apple-muted-foreground); padding: 8px 10px; }
+
+    .ai-history-toggle {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 34px;
+      height: 34px;
+      margin-left: -8px;
+      border: none;
+      border-radius: 8px;
+      background: none;
+      color: var(--apple-muted-foreground);
+      cursor: pointer;
+    }
+
+    .ai-history-toggle:hover { color: var(--apple-foreground); }
+
     .ai-chat {
       flex: 1;
       display: flex;
@@ -1536,7 +1671,9 @@
       position: fixed;
       bottom: 16px;
       right: 0;
-      z-index: 60;
+      /* 高于全屏界面(150)：工具/文档/AI/相册/杂项/个人主页里箭头也可见可点；
+         低于灯箱(200)和登录卡片(400)，大图预览时不抢层 */
+      z-index: 160;
       transition: transform 350ms var(--ease-out);
     }
 
@@ -1823,6 +1960,350 @@
       max-width: 860px;
       margin: 0 auto 16px;
     }
+
+    /* ===== 课表卡（个人主页）===== */
+    .sched-toolbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-bottom: 12px;
+    }
+    .sched-week-nav {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .sched-mini-btn {
+      width: 26px;
+      height: 26px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border: 1px solid var(--apple-border);
+      border-radius: 8px;
+      background: var(--apple-secondary);
+      color: var(--apple-foreground);
+      font-size: 15px;
+      line-height: 1;
+      cursor: pointer;
+    }
+    .sched-week-label {
+      font-size: 13px;
+      font-weight: 600;
+      min-width: 64px;
+      text-align: center;
+    }
+    .sched-toolbar-right {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .sched-inline {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      color: var(--apple-muted-foreground);
+      white-space: nowrap;
+    }
+    .sched-inline-input {
+      height: 30px;
+      padding: 0 8px;
+      font-size: 12px;
+      font-family: inherit;
+      color: var(--apple-foreground);
+      background: var(--apple-secondary);
+      border: 1px solid var(--apple-border);
+      border-radius: 8px;
+      outline: none;
+    }
+    .sched-time-input { width: 92px; }
+    .sched-num-input { width: 60px; }
+
+    /* 周视图：左侧节次号 + 7 天列；课程块按节次跨行 */
+    .sched-grid {
+      display: grid;
+      grid-template-columns: 30px repeat(7, minmax(0, 1fr));
+      gap: 3px;
+      overflow-x: auto;
+      padding-bottom: 4px;
+    }
+    .sched-head {
+      font-size: 11px;
+      font-weight: 600;
+      text-align: center;
+      color: var(--apple-muted-foreground);
+      padding: 4px 0 6px;
+    }
+    .sched-node {
+      font-size: 10px;
+      color: var(--apple-muted-foreground);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .sched-empty-cell {
+      border-radius: 8px;
+      background: color-mix(in srgb, var(--apple-foreground) 4%, transparent);
+      min-height: 46px;
+      cursor: copy; /* 提示可点击添加 */
+      transition: background-color 120ms var(--ease-out);
+    }
+    .sched-empty-cell:hover {
+      background: color-mix(in srgb, var(--apple-primary) 14%, transparent);
+    }
+    .sched-empty-cell.drag-on {
+      background: color-mix(in srgb, var(--apple-primary) 22%, transparent);
+    }
+    /* 编辑实时预览块：半透明 + 虚线描边，和正式课程区分 */
+    .sched-course.sched-preview {
+      opacity: 0.75;
+      outline: 2px dashed rgba(255, 255, 255, 0.8);
+      outline-offset: -2px;
+    }
+    .sched-course {
+      border-radius: 8px;
+      padding: 4px 6px;
+      font-size: 11px;
+      line-height: 1.35;
+      color: #fff;
+      overflow: hidden;
+      cursor: pointer;
+      transition: transform 150ms var(--ease-out), box-shadow 150ms var(--ease-out);
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+    .sched-course:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.18);
+    }
+    .sched-course-name {
+      font-weight: 600;
+      word-break: break-all;
+    }
+    .sched-course-place { opacity: 0.85; }
+    .sched-course-remind { align-self: flex-start; }
+
+    /* 课程编辑弹窗：居中遮罩 + 面板（复用背景选择器的浮层模式） */
+    .sched-editor-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 300; /* 高于全屏层(150/160)，低于登录卡片(400) */
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      background: rgba(0, 0, 0, 0.5);
+      backdrop-filter: blur(6px);
+      -webkit-backdrop-filter: blur(6px);
+      opacity: 0;
+      visibility: hidden;
+      transition: opacity 250ms var(--ease-out), visibility 250ms var(--ease-out);
+    }
+    .sched-editor-overlay.show {
+      opacity: 1;
+      visibility: visible;
+    }
+    .sched-editor-overlay[hidden] {
+      display: none;
+    }
+    /* 弹窗动效：打开时从 92% 弹起并轻微过冲（自定义弹簧曲线），关闭时缩回淡出 */
+    .sched-editor-panel {
+      width: min(440px, 92vw);
+      max-height: calc(100vh - 48px);
+      overflow-y: auto;
+      background: var(--apple-card);
+      color: var(--apple-card-foreground);
+      border: 1px solid var(--apple-border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow-md);
+      padding: calc(var(--spacing) * 5);
+      transform: scale(0.92);
+      opacity: 0;
+      transition: transform 200ms var(--ease-out), opacity 160ms var(--ease-out);
+    }
+    .sched-editor-overlay.show .sched-editor-panel {
+      /* cubic-bezier 过冲：末段越过 1 再回落，模拟弹簧回弹 */
+      transform: scale(1);
+      opacity: 1;
+      transition: transform 420ms cubic-bezier(0.34, 1.56, 0.64, 1), opacity 200ms var(--ease-out);
+    }
+    .sched-editor-title {
+      font-size: 13px;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      margin-bottom: 14px;
+      color: var(--apple-foreground);
+    }
+    .sched-editor-row {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      flex-wrap: wrap;
+      margin-top: 8px;
+    }
+    .sched-remind-row {
+      display: flex;
+      gap: 16px;
+      align-items: center;
+      flex-wrap: wrap;
+      margin-top: 12px;
+      padding-top: 12px;
+      border-top: 1px solid var(--apple-border);
+    }
+    .sched-editor-row .profilev-input { flex: 1; min-width: 90px; }
+    .sched-editor-actions { margin-top: 16px; }
+    .sched-editor-row select.profilev-input { flex: 0 0 auto; }
+
+    /* ===== 胶囊点选控件（课程编辑弹窗 + 提醒设置）===== */
+    .sched-field-label {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--apple-muted-foreground);
+      margin: 12px 0 6px;
+    }
+    .sched-field-label:first-child { margin-top: 0; }
+    .sched-field-sub { font-weight: 400; opacity: 0.8; }
+    .sched-field-sub-label { margin: 4px 0 6px; }
+    .sched-pill-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      align-items: center;
+    }
+    .sched-pill {
+      min-width: 34px;
+      height: 30px;
+      padding: 0 12px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12.5px;
+      font-family: inherit;
+      color: var(--apple-foreground);
+      background: var(--apple-secondary);
+      border: 1px solid var(--apple-border);
+      border-radius: 999px;
+      cursor: pointer;
+      transition: background-color 160ms var(--ease-out), color 160ms var(--ease-out),
+        border-color 160ms var(--ease-out), transform 120ms var(--ease-out);
+    }
+    .sched-pill:hover {
+      border-color: var(--apple-primary);
+      color: var(--apple-primary);
+    }
+    .sched-pill:active { transform: scale(0.94); }
+    .sched-pill.on {
+      background: var(--apple-primary);
+      border-color: var(--apple-primary);
+      color: var(--apple-primary-foreground);
+    }
+    /* 节次胶囊：数字多，收紧一点 */
+    .sched-pill-dense .sched-pill {
+      min-width: 30px;
+      height: 26px;
+      padding: 0 8px;
+      font-size: 12px;
+    }
+    .sched-pill-row .sched-inline-input { margin-left: 6px; }
+
+    /* iOS 风格开关（每日早报） */
+    .sched-switch-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      width: 100%;
+      cursor: pointer;
+    }
+    .sched-switch {
+      position: relative;
+      flex: none;
+      width: 44px;
+      height: 26px;
+    }
+    .sched-switch input {
+      position: absolute;
+      opacity: 0;
+      width: 100%;
+      height: 100%;
+      margin: 0;
+      cursor: pointer;
+    }
+    .sched-switch i {
+      position: absolute;
+      inset: 0;
+      border-radius: 999px;
+      background: color-mix(in srgb, var(--apple-foreground) 18%, transparent);
+      transition: background-color 220ms var(--ease-out);
+      pointer-events: none;
+    }
+    .sched-switch i::after {
+      content: '';
+      position: absolute;
+      top: 3px;
+      left: 3px;
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      background: #fff;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+      transition: transform 220ms cubic-bezier(0.34, 1.56, 0.64, 1); /* 和编辑弹窗同款回弹 */
+    }
+    .sched-switch input:checked + i {
+      background: var(--apple-primary);
+    }
+    .sched-switch input:checked + i::after {
+      transform: translateX(18px);
+    }
+
+    /* 提醒设置区：分行布局，早报关闭时时间快选淡出禁用 */
+    .sched-remind-block {
+      margin-top: 14px;
+      padding-top: 14px;
+      border-top: 1px solid var(--apple-border);
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .sched-remind-line {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .sched-remind-dep {
+      transition: opacity 220ms var(--ease-out);
+    }
+    .sched-remind-dep.off {
+      opacity: 0.45;
+      pointer-events: none;
+    }
+    .sched-nodetimes { margin-top: 10px; }
+    .sched-nodetimes summary {
+      font-size: 12px;
+      color: var(--apple-muted-foreground);
+      cursor: pointer;
+      user-select: none;
+    }
+    /* 作息时间项：标签在上、输入框占满整格，避免窄格里文字+输入框横向溢出 */
+    .sched-nodetimes-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(104px, 1fr));
+      gap: 8px;
+      margin-top: 8px;
+    }
+    .sched-nt-item {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      min-width: 0;
+    }
+    .sched-nt-item .sched-inline-input { width: 100%; }
+    .flex-spacer { flex: 1; }
 
     /* 个人主页操作区按钮行（危险项描红） */
     .profile-actions {
@@ -3490,6 +3971,12 @@
       transform: none;
     }
 
+    /* 退场：卡片向上飘走（与入场自下方浮起方向相反，点空白/登录成功关闭时生效） */
+    .login-gate.hide .login-card {
+      opacity: 0;
+      transform: translateY(-20px) scale(0.98);
+    }
+
     .login-logo {
       font-size: 20px;
       font-weight: 700;
@@ -3593,6 +4080,36 @@
       margin-top: 14px;
     }
 
+    /* 验证码：输入框整行（与其他输入框同宽），发送按钮单独一行 */
+    .login-code-btn {
+      width: 100%;
+      margin-top: 8px;
+      font-size: 13px;
+      letter-spacing: 0;
+      white-space: nowrap;
+    }
+    .login-code-btn:disabled { opacity: 0.55; cursor: default; }
+
+    /* 忘记密码 / 返回登录 链接行 */
+    .login-alt-row {
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+      margin-top: 10px;
+    }
+    .login-link {
+      background: none;
+      border: none;
+      padding: 0;
+      font-size: 12px;
+      font-family: inherit;
+      color: var(--apple-muted-foreground);
+      cursor: pointer;
+      border-bottom: 1px solid transparent;
+      transition: color 180ms var(--ease-out);
+    }
+    .login-link:hover { color: var(--apple-primary); }
+
     .login-guest {
       margin: 14px auto 0;
       padding: 2px 0;
@@ -3629,6 +4146,7 @@
       <button class="nav-link" id="docsBtn" type="button" aria-haspopup="dialog" aria-controls="docsView">文档</button>
       <button class="nav-link ai-entry" id="aiBtn" type="button" aria-haspopup="dialog" aria-controls="aiView">AI</button>
       <button class="nav-link album-entry" id="albumBtn" type="button" aria-haspopup="dialog" aria-controls="albumView">相册</button>
+      <button class="nav-link" id="miscBtn" type="button" aria-haspopup="dialog" aria-controls="miscView">杂项</button>
     </nav>
     <div class="header-actions">
       <button class="login-toggle" id="loginToggle" type="button" aria-label="登录选项" title="登录选项">
@@ -3676,7 +4194,7 @@
         </button>
         <p class="hero-quote" id="heroQuote" hidden><span id="heroQuoteText"></span><i class="hq-cursor" aria-hidden="true"></i></p>
         <!-- 歌词横条：播放 music/ 曲库的歌时显示同步歌词（同名 .lrc），打字机逐字打出当前句；
-             无歌词降级显示歌名占位；从未播放时显示一言（管理员寄语 > 每日一言，全部失败才显示待机提示） -->
+             无歌词降级显示歌名占位；从未播放时显示待机提示（一言在上方胶囊，不在此重复） -->
         <div class="lyric-bar" id="lyricBar" hidden role="status" aria-live="polite">
           <span class="lyric-dots" id="lyricDots" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></span>
           <span class="lyric-line"><span id="lyricText"></span><i class="lyric-cursor" id="lyricCursor" aria-hidden="true"></i></span>
@@ -3684,27 +4202,38 @@
         </div>
       </section>
 
-    <!-- 图片画廊（首页） -->
-    <section id="gallery" class="content-section">
-      <div class="tool-block">
-        <div class="apple-card gallery-card">
-          <div class="card-padding">
-            <p class="card-eyebrow">图片 · IMAGES</p>
-            <div class="gallery" id="galleryGrid"></div>
-            <div class="deck-nav" id="deckNav" hidden>
-              <button class="deck-btn" id="deckPrev" type="button" aria-label="上一张">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
-              </button>
-              <span class="deck-count" id="deckCount">1 / 1</span>
-              <button class="deck-btn" id="deckNext" type="button" aria-label="下一张">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
-              </button>
+    <!-- 杂项界面：顶栏"杂项"进入（工具/相册同款全屏层），图片画廊从首页迁入 -->
+    <div id="miscView" class="tools-view" hidden role="dialog" aria-modal="true" aria-label="杂项">
+    <header class="album-bar">
+      <p class="album-title">杂项 · MISC</p>
+      <button class="album-close" id="miscViewClose" type="button" aria-label="关闭杂项">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>
+      </button>
+    </header>
+    <div class="tools-scroll">
+      <!-- 图片画廊（原首页卡片迁入） -->
+      <section id="gallery">
+        <div class="tool-block">
+          <div class="apple-card gallery-card">
+            <div class="card-padding">
+              <p class="card-eyebrow">图片 · IMAGES</p>
+              <div class="gallery" id="galleryGrid"></div>
+              <div class="deck-nav" id="deckNav" hidden>
+                <button class="deck-btn" id="deckPrev" type="button" aria-label="上一张">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+                </button>
+                <span class="deck-count" id="deckCount">1 / 1</span>
+                <button class="deck-btn" id="deckNext" type="button" aria-label="下一张">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
+                </button>
+              </div>
+              <p class="empty-hint" id="galleryEmpty" hidden>images 文件夹里还没有图片，放入后刷新即可显示。</p>
             </div>
-            <p class="empty-hint" id="galleryEmpty" hidden>images 文件夹里还没有图片，放入后刷新即可显示。</p>
           </div>
         </div>
-      </div>
-    </section>
+      </section>
+    </div>
+    </div>
 
     <!-- 工具合集界面：顶栏"工具"进入（相册同款全屏层） -->
     <div id="toolsView" class="tools-view" hidden role="dialog" aria-modal="true" aria-label="工具合集">
@@ -4012,7 +4541,97 @@
         </div>
       </div>
 
+      <!-- 课表（周视图 + WakeUp 导入 + 邮件提醒设置）；未启用时只显示入口行 -->
+      <div class="apple-card" id="schedCard" style="display:none">
+        <div class="card-padding">
+          <p class="card-eyebrow">课表 · SCHEDULE</p>
+          <!-- 启用入口（服务端没有课表数据时显示） -->
+          <div id="schedEnable" hidden>
+            <button class="appear-btn" id="schedEnableBtn" type="button">＋ 启用课表</button>
+            <p class="profile-hint" style="margin-top:10px;">导入 WakeUp 课表或手动添加课程，配合邮箱获得每日早报和上课前提醒。</p>
+          </div>
+          <div id="schedBody" hidden>
+          <div class="sched-toolbar">
+            <div class="sched-week-nav">
+              <button class="sched-mini-btn" id="schedWeekPrev" type="button" aria-label="上一周">‹</button>
+              <span class="sched-week-label" id="schedWeekLabel">第 1 周</span>
+              <button class="sched-mini-btn" id="schedWeekNext" type="button" aria-label="下一周">›</button>
+            </div>
+            <div class="sched-toolbar-right">
+              <label class="sched-inline">学期首周一
+                <input class="sched-inline-input" type="date" id="schedTermStart">
+              </label>
+              <button class="appear-btn" id="schedImportBtn" type="button">导入 WakeUp</button>
+              <input type="file" id="schedImportFile" accept=".json,.csv,application/json,text/csv" hidden>
+              <button class="appear-btn" id="schedAddBtn" type="button">＋ 添加课程</button>
+            </div>
+          </div>
+          <div class="sched-grid" id="schedGrid" aria-label="周课表"></div>
+          <!-- 提醒设置：iOS 风格开关 + 时间/提前量胶囊快选 -->
+          <div class="sched-remind-block">
+            <div class="sched-remind-line">
+              <label class="sched-switch-row">
+                <span class="sched-inline">每日早报（当天课程一封汇总）</span>
+                <span class="sched-switch"><input type="checkbox" id="schedDailyOn"><i></i></span>
+              </label>
+            </div>
+            <div class="sched-remind-line sched-remind-dep" id="schedDailyTimeRow">
+              <div class="sched-pill-row" id="schedTimeQuick">
+                <button type="button" class="sched-pill" data-t="06:30">6:30</button>
+                <button type="button" class="sched-pill" data-t="07:00">7:00</button>
+                <button type="button" class="sched-pill" data-t="07:30">7:30</button>
+                <button type="button" class="sched-pill" data-t="08:00">8:00</button>
+                <input class="sched-inline-input sched-time-input" type="time" id="schedDailyTime" value="07:00" aria-label="自定义早报时间">
+              </div>
+            </div>
+            <div class="sched-remind-line">
+              <span class="sched-inline">重点课提前提醒</span>
+              <div class="sched-pill-row" id="schedAheadQuick">
+                <button type="button" class="sched-pill" data-a="15">15 分钟</button>
+                <button type="button" class="sched-pill" data-a="30">30 分钟</button>
+                <button type="button" class="sched-pill" data-a="60">1 小时</button>
+                <input class="sched-inline-input sched-num-input" type="number" id="schedAhead" min="5" max="120" aria-label="自定义提前分钟数">
+              </div>
+            </div>
+            <div class="sched-remind-line" style="flex-direction:row;justify-content:flex-end;">
+              <button class="appear-btn danger-btn" id="schedRemoveBtn" type="button">移除课表</button>
+            </div>
+          </div>
+          <!-- 作息时间（每节上课时间，展开编辑） -->
+          <details class="sched-nodetimes">
+            <summary>作息时间（各节上课时间）</summary>
+            <div class="sched-nodetimes-grid" id="schedNodeTimes"></div>
+          </details>
+          <p class="profile-msg" id="schedMsg"></p>
+          <p class="profile-hint" id="schedEmailHint" hidden></p>
+          </div>
+        </div>
+      </div>
+
       <div class="profilev-grid">
+        <!-- 邮箱（绑定 / 找回密码基础 / 登录二次验证） -->
+        <div class="apple-card" id="emailCard" style="display:none">
+          <div class="card-padding">
+            <p class="card-eyebrow">邮箱 · EMAIL</p>
+            <div id="emailBoundView" style="display:none">
+              <p class="profile-hint" id="emailBoundText" style="margin:0 0 10px;">已绑定</p>
+              <div class="profile-actions">
+                <button class="appear-btn" id="emailRebindBtn" type="button">换绑邮箱</button>
+                <button class="appear-btn" id="twofaToggleBtn" type="button">开启二次验证</button>
+              </div>
+              <p class="profile-hint" style="margin-top:10px;">开启二次验证后，每次登录需额外输入邮箱验证码。</p>
+            </div>
+            <div id="emailBindView" style="display:none">
+              <input class="profilev-input" id="pemailInput" type="email" placeholder="新邮箱地址">
+              <div class="pwd-out-row" style="display:flex;gap:8px;align-items:center;margin-bottom:10px;">
+                <input class="profilev-input" id="pemailCode" type="text" inputmode="numeric" maxlength="6" placeholder="验证码" style="margin-bottom:0;">
+                <button class="appear-btn" id="pemailSendBtn" type="button" style="white-space:nowrap;">发送验证码</button>
+              </div>
+              <button class="appear-btn" id="pemailVerifyBtn" type="button">验证并绑定</button>
+              <p class="profile-msg" id="pemailMsg"></p>
+            </div>
+          </div>
+        </div>
         <!-- 修改密码 -->
         <div class="apple-card">
           <div class="card-padding">
@@ -4055,6 +4674,53 @@
     </div>
   </div>
 
+  <!-- 课程编辑弹窗：点课程块或"添加课程"弹出，居中显示（不用滚到卡片底部找表单） -->
+  <div class="sched-editor-overlay" id="schedEditor" hidden role="dialog" aria-modal="true" aria-label="编辑课程">
+    <div class="sched-editor-panel">
+      <p class="sched-editor-title" id="schedEditorTitle">添加课程</p>
+      <input class="profilev-input" id="schedEName" type="text" placeholder="课程名（必填）">
+      <div class="sched-editor-row">
+        <input class="profilev-input" id="schedEPlace" type="text" placeholder="教室">
+        <input class="profilev-input" id="schedETeacher" type="text" placeholder="教师">
+      </div>
+      <!-- 周几：胶囊点选（隐藏原生 select，保留无障碍） -->
+      <div class="sched-field-label">星期</div>
+      <div class="sched-pill-row" id="schedEDayPills" role="radiogroup" aria-label="星期">
+        <button type="button" class="sched-pill" data-v="1">一</button>
+        <button type="button" class="sched-pill" data-v="2">二</button>
+        <button type="button" class="sched-pill" data-v="3">三</button>
+        <button type="button" class="sched-pill" data-v="4">四</button>
+        <button type="button" class="sched-pill" data-v="5">五</button>
+        <button type="button" class="sched-pill" data-v="6">六</button>
+        <button type="button" class="sched-pill" data-v="7">日</button>
+      </div>
+      <!-- 节次：起止胶囊点选 -->
+      <div class="sched-field-label">节次 <span class="sched-field-sub" id="schedENodeHint"></span></div>
+      <div class="sched-pill-row sched-pill-dense" id="schedEStartPills" role="radiogroup" aria-label="开始节次"></div>
+      <div class="sched-field-label sched-field-sub-label">到</div>
+      <div class="sched-pill-row sched-pill-dense" id="schedEEndPills" role="radiogroup" aria-label="结束节次"></div>
+      <!-- 周次：快选胶囊 + 自定义输入 -->
+      <div class="sched-field-label">周次</div>
+      <div class="sched-pill-row" id="schedEWeekQuick">
+        <button type="button" class="sched-pill" data-w="1-16">全学期</button>
+        <button type="button" class="sched-pill" data-w="1-16单">单周</button>
+        <button type="button" class="sched-pill" data-w="1-16双">双周</button>
+        <button type="button" class="sched-pill" data-w="1-8">前半</button>
+        <button type="button" class="sched-pill" data-w="9-16">后半</button>
+      </div>
+      <input class="profilev-input" id="schedEWeeks" type="text" placeholder="或自定义，如 1-16 / 1,3,5 / 1-16(单)">
+      <div class="sched-editor-row">
+        <label class="sched-inline"><input type="checkbox" id="schedERemind"> 重点课（课前单独邮件提醒）</label>
+      </div>
+      <div class="sched-editor-row sched-editor-actions">
+        <button class="appear-btn danger-btn" id="schedEDelete" type="button" hidden>删除</button>
+        <span class="flex-spacer"></span>
+        <button class="appear-btn" id="schedECancel" type="button">取消</button>
+        <button class="appear-btn" id="schedESave" type="button">保存</button>
+      </div>
+    </div>
+  </div>
+
   <!-- 背景图选择器：从站内图片中挑选，也可上传本地图片 -->
   <div class="bg-picker" id="bgPicker" hidden role="dialog" aria-modal="true" aria-label="选择背景图片">
     <div class="bg-picker-panel">
@@ -4068,12 +4734,16 @@
     </div>
   </div>
 
-  <!-- AI 界面：顶栏"AI"进入，对话走 /api/ai/chat（服务端代理，key 在后台配置） -->
+  <!-- AI 界面：顶栏"AI"进入，对话走 /api/ai/chat（服务端代理，key 在后台配置）。
+       左侧历史栏：多对话列表（切换/删除），右侧聊天区 -->
   <div class="ai-view" id="aiView" hidden role="dialog" aria-modal="true" aria-label="AI 助手">
     <header class="album-bar">
+      <button class="ai-history-toggle" id="aiHistoryToggle" type="button" aria-label="历史对话">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+      </button>
       <p class="album-title">AI 助手</p>
       <div class="ai-bar-actions">
-        <button class="album-close" id="aiNewChatBtn" type="button" aria-label="新对话" title="新对话（清空当前聊天）">
+        <button class="album-close" id="aiNewChatBtn" type="button" aria-label="新对话" title="新对话">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg>
         </button>
         <button class="album-close" id="aiViewClose" type="button" aria-label="关闭 AI 界面">
@@ -4081,7 +4751,15 @@
         </button>
       </div>
     </header>
-    <div class="ai-chat">
+    <div class="ai-body">
+      <aside class="ai-history" id="aiHistory" aria-label="历史对话">
+        <button class="ai-history-new" id="aiHistNewBtn" type="button">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+          新对话
+        </button>
+        <div class="ai-history-list" id="aiHistoryList"></div>
+      </aside>
+      <div class="ai-chat">
       <div class="ai-messages" id="aiMessages"></div>
       <form class="ai-input-bar" id="aiForm">
         <div class="ai-attach-row" id="aiAttachRow" hidden></div>
@@ -4105,6 +4783,7 @@
           </button>
         </div>
       </form>
+      </div>
     </div>
   </div>
 
@@ -4139,19 +4818,41 @@
   <div class="login-gate" id="loginGate" role="dialog" aria-modal="true" aria-label="登录">
     <form class="login-card" id="loginForm" autocomplete="off">
       <p class="login-logo">YHUO</p>
-      <p class="login-sub">欢迎回来，请登录</p>
-      <label class="login-field">
+      <p class="login-sub" id="loginSub">欢迎回来，请登录</p>
+      <!-- 邮箱（注册/找回密码模式） -->
+      <label class="login-field" id="emailField" style="display:none">
+        <span>邮箱</span>
+        <input type="email" id="gateEmail" placeholder="you@example.com" autocomplete="email">
+      </label>
+      <!-- 验证码（注册/找回/登录二次验证）：输入框整行 + 发送按钮整行，与其他输入框等宽 -->
+      <div class="login-field" id="codeField" style="display:none">
+        <label class="login-field" style="margin:0">
+          <span>验证码</span>
+          <input type="text" id="gateCode" inputmode="numeric" maxlength="6" placeholder="6 位数字" autocomplete="one-time-code">
+        </label>
+        <button type="button" class="login-btn login-code-btn" id="gateSendCode">发送验证码</button>
+      </div>
+      <!-- 新密码（找回密码模式） -->
+      <label class="login-field" id="newPassField" style="display:none">
+        <span>新密码</span>
+        <input type="password" id="gateNewPass" placeholder="新密码（至少 6 位）" autocomplete="new-password">
+      </label>
+      <label class="login-field" id="loginUserField">
         <span>账号</span>
         <input type="text" id="loginUser" placeholder="用户名（2-30 字符）">
       </label>
-      <label class="login-field">
+      <label class="login-field" id="loginPassField">
         <span>密码</span>
         <input type="password" id="loginPass" placeholder="密码（至少 6 位）">
       </label>
       <p class="login-error" id="loginError" hidden>请填写账号和密码</p>
       <div class="login-actions">
-        <button class="login-btn" type="submit">登 录</button>
+        <button class="login-btn" type="submit" id="loginSubmitBtn">登 录</button>
         <button class="login-btn login-register" id="loginRegister" type="button">注 册</button>
+      </div>
+      <div class="login-alt-row">
+        <button type="button" class="login-link" id="forgotBtn" style="display:none">忘记密码？</button>
+        <button type="button" class="login-link" id="backLoginBtn" style="display:none">返回登录</button>
       </div>
       <button class="login-guest" id="loginGuest" type="button">游客进入</button>
       <p class="login-hint">账号免费注册，登录身份保存在本站；也可以游客进入</p>
@@ -4265,7 +4966,8 @@
       // 全屏界面打开期间高亮由各自的 open 函数接管，滚动监听不抢回
       if (
         (albumView && !albumView.hidden) || (aiView && !aiView.hidden) ||
-        (toolsView && !toolsView.hidden) || (docsView && !docsView.hidden)
+        (toolsView && !toolsView.hidden) || (docsView && !docsView.hidden) ||
+        (miscView && !miscView.hidden)
       ) return;
       navLinks.forEach(function (a) {
         a.classList.toggle('active', a.getAttribute('data-target') === id);
@@ -4287,7 +4989,7 @@
     // fsRegister 一次 + open 函数开头调 fsOpen(id)，不再需要任何互斥清单。
     // FS_TOP：顶层互斥组；docViewer 叠在 docsView 上（Esc 逐层退），不参与互斥但会被其他层关闭。
     // =========================
-    var FS_TOP = ['profileView', 'albumView', 'toolsView', 'docsView', 'aiView'];
+    var FS_TOP = ['profileView', 'albumView', 'toolsView', 'docsView', 'aiView', 'miscView'];
     var FS_ALL = FS_TOP.concat(['docViewer']);
     var FS_REG = {}; // id → { el, btn, close, lockScroll }
     function fsRegister(id, opts) { FS_REG[id] = opts || {}; }
@@ -4390,10 +5092,10 @@
       hitokotoPool = new Promise(function (resolve) {
         var cached = null;
         try { cached = JSON.parse(localStorage.getItem('dailyQuote')); } catch (e) {}
-        if (cached && cached.date === new Date().toDateString()) {
-          var t = Array.isArray(cached.texts) && cached.texts.length ? cached.texts
-            : (cached.text ? [cached.text] : []);
-          if (t.length) { resolve(t); return; }
+        // 只认新格式（texts 数组）；旧单条 text 缓存不作数，强制拉新的一批
+        if (cached && cached.date === new Date().toDateString() && Array.isArray(cached.texts) && cached.texts.length > 1) {
+          resolve(cached.texts);
+          return;
         }
         var jobs = [];
         for (var i = 0; i < 6; i++) {
@@ -4408,13 +5110,32 @@
             var s = d.hitokoto + (d.from ? ' —— 「' + d.from + '」' : '');
             if (!seen[s]) { seen[s] = 1; texts.push(s); }
           });
+          if (!texts.length) {
+            // 主域名全军覆没：换国际备用域名再试一批
+            var jobs2 = [];
+            for (var j = 0; j < 6; j++) {
+              jobs2.push(fetch('https://international.v1.hitokoto.cn/?c=i&encode=json')
+                .then(function (res) { return res.json(); })
+                .catch(function () { return null; }));
+            }
+            return Promise.all(jobs2).then(function (list2) {
+              list2.forEach(function (d) {
+                if (!d || !d.hitokoto) return;
+                var s = d.hitokoto + (d.from ? ' —— 「' + d.from + '」' : '');
+                if (!seen[s]) { seen[s] = 1; texts.push(s); }
+              });
+              resolve(texts);
+            });
+          }
+          resolve(texts);
+        }).then(function (texts) {
           if (texts.length) {
             try {
               localStorage.setItem('dailyQuote', JSON.stringify({ date: new Date().toDateString(), texts: texts }));
             } catch (e) {}
           }
-          resolve(texts);
-        });
+          return texts;
+        }).then(resolve);
       });
       return hitokotoPool;
     }
@@ -4457,6 +5178,33 @@
           hqHoldTimer = setTimeout(hqNext, hqHoldMs);
         });
       }
+      // 点击一言：立即切下一条；池子只有 0~1 条时在线拉一条新的（避免切了还是原来那句）
+      heroQuote.addEventListener('click', function () {
+        clearTimeout(hqHoldTimer);
+        if (hqList.length >= 2) { hqNext(); return; }
+        // 池子不足：现拉一条替换显示（不进池子，下次点击再拉）
+        fetch('https://v1.hitokoto.cn/?c=i&encode=json')
+          .then(function (res) { return res.ok ? res.json() : null; })
+          .catch(function () { return null; })
+          .then(function (d) {
+            if (d && d.hitokoto) {
+              var s = d.hitokoto + (d.from ? ' —— 「' + d.from + '」' : '');
+              if (s !== hqList[hqIdx]) { hqTypeText(s); return; }
+            }
+            // 拉失败或与当前相同：换备用域名再试一次
+            return fetch('https://international.v1.hitokoto.cn/?c=i&encode=json')
+              .then(function (res) { return res.ok ? res.json() : null; })
+              .catch(function () { return null; })
+              .then(function (d2) {
+                if (d2 && d2.hitokoto) {
+                  var s2 = d2.hitokoto + (d2.from ? ' —— 「' + d2.from + '」' : '');
+                  if (s2 !== hqList[hqIdx]) hqTypeText(s2);
+                }
+              });
+          });
+      });
+      heroQuote.style.cursor = 'pointer';
+      heroQuote.title = '点击切换';
       // 页面不可见时暂停打字/轮播，回来继续
       document.addEventListener('visibilitychange', function () {
         hqStop = document.hidden;
@@ -4476,6 +5224,14 @@
       var showQuotes = function (list) {
         hqList = list.filter(function (q) { return q && q.trim(); });
         if (!hqList.length) return loadDailyQuote();
+        if (hqList.length === 1) {
+          // 单条寄语：并入一言池混合轮播（避免只有一条时静态不动）
+          getHitokotoPool().then(function (texts) {
+            hqList = hqList.concat(texts);
+            showQuote(hqList[0], 6000);
+          });
+          return;
+        }
         showQuote(hqList[0]);
       };
       var loadDailyQuote = function () {
@@ -5408,6 +6164,7 @@
       lyricPlain = null;
       lyricIdx = -1;
       var seq = ++lyricFetchSeq;
+      lyricStopIdle(); // 任何切歌都终止待机一言轮播
       if (!lyricBar) return;
       var display = lyricDisplayName(name);
       if (!/music\//.test(src || '')) { lyricShowPlaceholder('♪ ' + display); return; } // KV 媒体/本地 blob 无同名 lrc 可取
@@ -5489,44 +6246,9 @@
       lyricStartTyping(text, Math.max(600, Math.min(8000, (nextT - sec) * 1000)));
     }
 
-    // 从未播放过：在歌词条上显示一言（寄语或一言池，多条轮播：寄语约 8 秒/条、一言 3 秒/句）
-    if (lyricBar) {
-      var lyricIdleSeq = 0;
-      var lyricIdleList = [];
-      var lyricIdleIdx = -1;
-      var lyricIdleHold = null;
-      var lyricIdleHoldMs = 8000;
-      var lyricShowIdle = function (text) { if (lyricIdleSeq === 1) lyricShowPlaceholder(text); };
-      var lyricIdleNext = function () {
-        if (lyricIdleSeq !== 1 || document.hidden || !lyricIdleList.length) return;
-        lyricIdleIdx = (lyricIdleIdx + 1) % lyricIdleList.length;
-        lyricShowPlaceholder(lyricIdleList[lyricIdleIdx]);
-        if (lyricIdleList.length > 1) lyricIdleHold = setTimeout(lyricIdleNext, lyricIdleHoldMs);
-      };
-      document.addEventListener('visibilitychange', function () {
-        clearTimeout(lyricIdleHold);
-        if (!document.hidden && lyricIdleList.length > 1) lyricIdleHold = setTimeout(lyricIdleNext, 1200);
-      });
-      var lyricIdleStart = function (list, holdMs) {
-        lyricIdleList = list;
-        lyricIdleHoldMs = holdMs || 8000;
-        lyricIdleSeq = 1;
-        lyricIdleIdx = -1;
-        lyricIdleNext();
-      };
-      fetch('/api/settings', { credentials: 'same-origin' })
-        .then(function (res) { return res.ok ? res.json() : Promise.reject(new Error('无接口')); })
-        .then(function (s) {
-          var qs = s && s.ok && Array.isArray(s.quotes) ? s.quotes : [];
-          if (qs.length) { lyricIdleStart(qs, 8000); return; }
-          getHitokotoPool().then(function (texts) {
-            lyricIdleStart(texts.length ? texts : ['♪ 打开底部播放器，歌词会在这里滚动'], 3000);
-          });
-        })
-        .catch(function () {
-          lyricIdleStart(['♪ 打开底部播放器，歌词会在这里滚动']);
-        });
-    }
+    // 从未播放过：待机提示（一言已移到天气胶囊下方独立显示，这里不再重复轮播）
+    if (lyricBar) lyricShowPlaceholder('♪ 打开底部播放器，歌词会在这里滚动');
+    function lyricStopIdle() {} // 切歌时调用，保留空实现（待机只有静态一句，无需终止）
 
     // =========================
     // 底部悬浮迷你播放器
@@ -6444,14 +7166,15 @@
       }
     }
     // 认证请求：20 秒超时，网络挂起时也能给用户反馈
-    function authPost(path, u, p, done, busyBtns) {
+    // authJson 通用版（任意 body）；needCode（登录二次验证）原样透传给回调
+    function authJson(path, body, done, busyBtns) {
       busyBtns = busyBtns || [];
       busyBtns.forEach(function (b) { if (b) b.disabled = true; });
       var opts = {
         method: 'POST',
         credentials: 'same-origin',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username: u, password: p })
+        body: JSON.stringify(body)
       };
       if (typeof AbortController === 'function') {
         var ctl = new AbortController();
@@ -6463,10 +7186,15 @@
           return res.json().catch(function () { return { ok: false, error: '响应异常' }; });
         })
         .then(function (d) {
-          done(d && d.ok ? d : { ok: false, error: (d && d.error) || '服务暂时不可用，请稍后重试' });
+          if (d && d.ok) done(d);
+          else if (d && d.needCode) done({ ok: false, needCode: true, ticket: d.ticket, error: d.error });
+          else done({ ok: false, error: (d && d.error) || '服务暂时不可用，请稍后重试' });
         })
         .catch(function () { done({ ok: false, error: '网络错误，请稍后重试' }); })
         .then(function () { busyBtns.forEach(function (b) { if (b) b.disabled = false; }); });
+    }
+    function authPost(path, u, p, done, busyBtns) {
+      authJson(path, { username: u, password: p }, done, busyBtns);
     }
     function openGate() {
       document.body.classList.add('login-lock');
@@ -6584,56 +7312,328 @@
       });
       if (loginUser) loginUser.addEventListener('input', saveLoginDraft);
       if (loginPass) loginPass.addEventListener('input', saveLoginDraft);
+
+      // ---------- 登录卡片多模式：login | register | reset（忘记密码）| code（二次验证码步骤） ----------
+      var gateMode = 'login';
+      var gateEmailEnabled = false;   // 邮箱功能可用（找回密码入口/重置表单）
+      var gateEmailRegister = false;  // 注册需邮箱验证（仅站长模式下为 false，普通用户注册不要邮箱）
+      var gateTicket = '';          // 登录二次验证的中间票据
+      var gateUser = '';            // 进入验证码步骤时暂存用户名
+      var gateEmailInput = document.getElementById('gateEmail');
+      var gateCodeInput = document.getElementById('gateCode');
+      var gateNewPassInput = document.getElementById('gateNewPass');
+      var gateSendCodeBtn = document.getElementById('gateSendCode');
+      var forgotBtn = document.getElementById('forgotBtn');
+      var backLoginBtn = document.getElementById('backLoginBtn');
+      var loginSubEl = document.getElementById('loginSub');
+      var loginSubmitBtn = document.getElementById('loginSubmitBtn');
+
+      // ---------- 模式切换的平滑动画（登录/注册/找回/验证码互相过渡不生硬） ----------
+      var gateMotionOK = !(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+      function gateClearAnim(el) {
+        if (el._gateT) { clearTimeout(el._gateT); el._gateT = 0; }
+        el.style.transition = '';
+        el.style.height = '';
+        el.style.opacity = '';
+        el.style.overflow = '';
+        el.style.marginBottom = '';
+        el.style.transform = '';
+        el.style.flex = '';
+        el.style.minWidth = '';
+        el.style.whiteSpace = '';
+      }
+      // 输入行：高度+透明度+下边距一起过渡，卡片高度随内容平滑伸缩
+      function gateSlide(el, show) {
+        if (!el) return;
+        var isHidden = el.style.display === 'none';
+        if (show === !isHidden) return; // 显隐状态没变，不重复动画
+        gateClearAnim(el);
+        if (!gateMotionOK) { el.style.display = show ? '' : 'none'; return; }
+        if (show) {
+          el.style.display = '';
+          var h = el.offsetHeight; // 先量自然高度再从 0 展开
+          if (!h) return;
+          el.style.overflow = 'hidden';
+          el.style.height = '0px';
+          el.style.opacity = '0';
+          el.style.marginBottom = '0';
+          el.style.transform = 'translateY(-6px)';
+          void el.offsetWidth; // 强制回流让起始态生效
+          el.style.transition = 'height 300ms var(--ease-out), opacity 240ms var(--ease-out), margin-bottom 300ms var(--ease-out), transform 300ms var(--ease-out)';
+          el.style.height = h + 'px';
+          el.style.opacity = '1';
+          el.style.marginBottom = '';
+          el.style.transform = '';
+          el._gateT = setTimeout(function () { gateClearAnim(el); }, 340);
+        } else {
+          var h0 = el.offsetHeight;
+          if (!h0) { el.style.display = 'none'; return; }
+          el.style.overflow = 'hidden';
+          el.style.height = h0 + 'px';
+          void el.offsetWidth;
+          el.style.transition = 'height 300ms var(--ease-out), opacity 200ms var(--ease-out), margin-bottom 300ms var(--ease-out), transform 300ms var(--ease-out)';
+          el.style.height = '0px';
+          el.style.opacity = '0';
+          el.style.marginBottom = '0';
+          el.style.transform = 'translateY(-6px)';
+          el._gateT = setTimeout(function () {
+            el.style.display = 'none';
+            gateClearAnim(el);
+          }, 320);
+        }
+      }
+      // 小链接/发送按钮：淡入淡出
+      function gateFade(el, show) {
+        if (!el) return;
+        var isHidden = el.style.display === 'none';
+        if (show === !isHidden) return;
+        gateClearAnim(el);
+        if (!gateMotionOK) { el.style.display = show ? '' : 'none'; return; }
+        if (show) {
+          el.style.display = '';
+          el.style.opacity = '0';
+          void el.offsetWidth;
+          el.style.transition = 'opacity 240ms var(--ease-out)';
+          el.style.opacity = '1';
+          el._gateT = setTimeout(function () { gateClearAnim(el); }, 280);
+        } else {
+          el.style.transition = 'opacity 180ms var(--ease-out)';
+          el.style.opacity = '0';
+          el._gateT = setTimeout(function () {
+            el.style.display = 'none';
+            gateClearAnim(el);
+          }, 200);
+        }
+      }
+      // 并排的注册按钮：flex 宽度+透明度过渡，避免整行布局突跳
+      function gateFlex(el, show) {
+        if (!el) return;
+        var isHidden = el.style.display === 'none';
+        if (show === !isHidden) return;
+        gateClearAnim(el);
+        if (!gateMotionOK) { el.style.display = show ? '' : 'none'; return; }
+        el.style.minWidth = '0';
+        el.style.whiteSpace = 'nowrap';
+        if (show) {
+          el.style.display = '';
+          el.style.overflow = 'hidden';
+          el.style.flex = '0 1 0%';
+          el.style.opacity = '0';
+          void el.offsetWidth;
+          el.style.transition = 'flex 300ms var(--ease-out), opacity 240ms var(--ease-out)';
+          el.style.flex = '1 1 0%';
+          el.style.opacity = '1';
+          el._gateT = setTimeout(function () { gateClearAnim(el); }, 340);
+        } else {
+          el.style.overflow = 'hidden';
+          el.style.transition = 'flex 300ms var(--ease-out), opacity 200ms var(--ease-out)';
+          el.style.flex = '0 1 0%';
+          el.style.opacity = '0';
+          el._gateT = setTimeout(function () {
+            el.style.display = 'none';
+            gateClearAnim(el);
+          }, 320);
+        }
+      }
+      // 文案切换（副标题/提交按钮）：先淡出换字再淡入
+      function gateText(el, text) {
+        if (!el || el.textContent === text) return;
+        if (!gateMotionOK) { el.textContent = text; return; }
+        if (el._gateT) { clearTimeout(el._gateT); el._gateT = 0; }
+        el.style.transition = 'opacity 140ms var(--ease-out)';
+        el.style.opacity = '0';
+        el._gateT = setTimeout(function () {
+          el.textContent = text;
+          el.style.opacity = '1';
+          el._gateT = setTimeout(function () {
+            el.style.transition = '';
+            el.style.opacity = '';
+            el._gateT = 0;
+          }, 180);
+        }, 150);
+      }
+
+      function setGateMode(mode) {
+        gateMode = mode;
+        var emailOn = (gateEmailRegister && mode === 'register') || (gateEmailEnabled && mode === 'reset');
+        var codeOn = emailOn || mode === 'code';
+        // code 模式：验证码由服务器在密码验证通过时已发送，隐藏手动发送按钮
+        // （先定发送按钮显隐再展开验证码行，量出来的高度才准确）
+        gateFade(gateSendCodeBtn, codeOn && mode !== 'code');
+        gateSlide(document.getElementById('emailField'), emailOn);
+        gateSlide(document.getElementById('codeField'), codeOn);
+        gateSlide(document.getElementById('newPassField'), mode === 'reset');
+        gateSlide(document.getElementById('loginUserField'), mode === 'login' || mode === 'register');
+        gateSlide(document.getElementById('loginPassField'), mode === 'login' || mode === 'register');
+        gateFlex(loginRegister, mode === 'login');
+        gateText(loginSubmitBtn, mode === 'register' ? '注 册' : mode === 'reset' ? '重置密码' : mode === 'code' ? '验 证' : '登 录');
+        gateFade(forgotBtn, mode === 'login' && gateEmailEnabled);
+        gateFade(backLoginBtn, mode !== 'login');
+        gateText(loginSubEl, mode === 'register' ? '创建一个新账号'
+          : mode === 'reset' ? '通过绑定邮箱找回密码'
+          : mode === 'code' ? '输入邮箱里的验证码' : '欢迎回来，请登录');
+        showLoginMsg('');
+      }
+
+      // 邮箱功能开关：跟随站点配置（后台未配邮件服务时相关 UI 全部隐藏；
+      // 仅站长模式下注册不要邮箱，但找回密码入口保留——服务端只放行站长邮箱）
+      fetch('/api/settings', { credentials: 'same-origin' })
+        .then(function (r) { return r.ok ? r.json() : null; })
+        .then(function (d) {
+          var was = gateEmailEnabled;
+          gateEmailEnabled = !!(d && d.ok && d.emailEnabled);
+          gateEmailRegister = !!(d && d.ok && d.emailRegister);
+          if (was !== gateEmailEnabled || (gateMode === 'register' && !gateEmailRegister)) {
+            setGateMode(gateMode); // 刷新字段可见性
+          }
+        })
+        .catch(function () {});
+
+      // 登录成功统一收口（普通登录 / 二次验证通过共用）
+      function gateLoginDone(d, fallbackUser) {
+        showLoginMsg('');
+        setLoginAvatar(d.avatar || null); // 登录响应带头像键
+        // 管理员账密验证通过时响应才带 admin:true，据此弹欢迎浮窗（含"进入后台"按钮）；
+        // 不能查 /api/auth/status 判断登录身份——它只看浏览器有无管理员会话 Cookie，
+        // 浏览器残留后台登录态时普通账号也会被误判（坑 11，欢迎浮窗也曾因此误弹）
+        passGate(d.username || fallbackUser);
+        favLoad(); // 拉取该账号的收藏
+        setGateMode('login');
+        try {
+          if (d.admin) {
+            sessionStorage.setItem('adminWelcome', '1');      // 本次会话是管理员登录
+            sessionStorage.setItem('adminWelcomeShown', '1'); // 刚弹过，刷新不重复
+            showWelcomeToast(d.username || fallbackUser, true);
+          } else {
+            // 普通账号登录：清掉可能残留的管理员标记，写自己的欢迎标记
+            sessionStorage.removeItem('adminWelcome');
+            sessionStorage.removeItem('adminWelcomeShown');
+            sessionStorage.setItem('userWelcome', '1');
+            sessionStorage.setItem('userWelcomeShown', '1');
+            showWelcomeToast(d.username || fallbackUser, false);
+          }
+        } catch (e) {}
+      }
+
+      if (forgotBtn) {
+        forgotBtn.addEventListener('click', function () { setGateMode('reset'); });
+      }
+      if (backLoginBtn) {
+        backLoginBtn.addEventListener('click', function () {
+          gateTicket = '';
+          setGateMode('login');
+        });
+      }
+
+      // 发送验证码（60 秒倒计时防连点）
+      var codeCountdown = null;
+      function startCodeCountdown() {
+        var left = 60;
+        if (gateSendCodeBtn) {
+          gateSendCodeBtn.disabled = true;
+          gateSendCodeBtn.textContent = left + 's';
+          clearInterval(codeCountdown);
+          codeCountdown = setInterval(function () {
+            left--;
+            if (left <= 0) {
+              clearInterval(codeCountdown);
+              gateSendCodeBtn.disabled = false;
+              gateSendCodeBtn.textContent = '发送验证码';
+            } else gateSendCodeBtn.textContent = left + 's';
+          }, 1000);
+        }
+      }
+      if (gateSendCodeBtn) {
+        gateSendCodeBtn.addEventListener('click', function () {
+          var email = gateEmailInput ? gateEmailInput.value.trim() : '';
+          if (!email) { showLoginMsg('请先填写邮箱'); return; }
+          var purpose = gateMode === 'reset' ? 'reset' : 'register';
+          showLoginMsg('验证码发送中…');
+          authJson('/api/email/code', { email: email, purpose: purpose }, function (d) {
+            if (d.ok) {
+              showLoginMsg('验证码已发送，注意查收（含垃圾箱）');
+              startCodeCountdown();
+            } else showLoginMsg(d.error);
+          }, [gateSendCodeBtn]);
+        });
+      }
+
       if (loginForm) {
         var loginButtons = [loginForm.querySelector('.login-btn'), loginRegister];
         loginForm.addEventListener('submit', function (e) {
           e.preventDefault();
           var u = loginUser ? loginUser.value.trim() : '';
           var p = loginPass ? loginPass.value : '';
+          var email = gateEmailInput ? gateEmailInput.value.trim() : '';
+          var code = gateCodeInput ? gateCodeInput.value.trim() : '';
+          var np = gateNewPassInput ? gateNewPassInput.value : '';
+
+          if (gateMode === 'register') {
+            if (!u || !p) { showLoginMsg('请填写账号和密码'); return; }
+            if (p.length < 6) { showLoginMsg('密码至少 6 位'); return; }
+            if (gateEmailRegister) {
+              if (!email) { showLoginMsg('请填写邮箱'); return; }
+              if (!/^\d{6}$/.test(code)) { showLoginMsg('请填写 6 位邮箱验证码'); return; }
+            }
+            showLoginMsg('注册中…');
+            authJson('/api/user/register', {
+              username: u, password: p,
+              email: gateEmailRegister ? email : undefined,
+              code: gateEmailRegister ? code : undefined,
+            }, function (d) {
+              if (d.ok) {
+                setLoginAvatar(null); // 新注册没有头像
+                passGate(u);
+                favLoad(); // 新账号收藏为空，同时清掉内存里的残留
+                setGateMode('login');
+              } else showLoginMsg(d.error);
+            }, loginButtons);
+            return;
+          }
+
+          if (gateMode === 'reset') {
+            if (!email || !/^\d{6}$/.test(code)) { showLoginMsg('请填写邮箱和 6 位验证码'); return; }
+            if (np.length < 6) { showLoginMsg('新密码至少 6 位'); return; }
+            showLoginMsg('重置中…');
+            authJson('/api/user/password', { email: email, code: code, newPassword: np }, function (d) {
+              if (d.ok) {
+                setGateMode('login');
+                showLoginMsg('密码已重置，请用新密码登录');
+              } else showLoginMsg(d.error);
+            }, loginButtons);
+            return;
+          }
+
+          if (gateMode === 'code') {
+            if (!/^\d{6}$/.test(code)) { showLoginMsg('请填写 6 位验证码'); return; }
+            showLoginMsg('验证中…');
+            authJson('/api/user/login', { username: gateUser, ticket: gateTicket, code: code }, function (d) {
+              if (d.ok) gateLoginDone(d, gateUser);
+              else if (d.needCode) { gateTicket = d.ticket; showLoginMsg(d.error); } // 极少：重新触发了发码
+              else showLoginMsg(d.error);
+            }, loginButtons);
+            return;
+          }
+
+          // 常规登录
           if (!u || !p) { showLoginMsg('请填写账号和密码'); return; }
           showLoginMsg('登录中…');
           authPost('/api/user/login', u, p, function (d) {
-            if (d.ok) {
-              showLoginMsg('');
-              setLoginAvatar(d.avatar || null); // 登录响应带头像键
-              // 管理员账密验证通过时响应才带 admin:true，据此弹欢迎浮窗（含"进入后台"按钮）；
-              // 不能查 /api/auth/status 判断登录身份——它只看浏览器有无管理员会话 Cookie，
-              // 浏览器残留后台登录态时普通账号也会被误判（坑 11，欢迎浮窗也曾因此误弹）
-              passGate(u);
-              favLoad(); // 拉取该账号的收藏
-              try {
-                if (d.admin) {
-                  sessionStorage.setItem('adminWelcome', '1');      // 本次会话是管理员登录
-                  sessionStorage.setItem('adminWelcomeShown', '1'); // 刚弹过，刷新不重复
-                  showAdminWelcome(d.username || u);
-                } else {
-                  // 普通账号登录：清掉可能残留的管理员标记
-                  sessionStorage.removeItem('adminWelcome');
-                  sessionStorage.removeItem('adminWelcomeShown');
-                }
-              } catch (e) {}
+            if (d.ok) gateLoginDone(d, u);
+            else if (d.needCode) {
+              // 开了二次验证：验证码已由服务器发送到邮箱，进入验证码步骤
+              gateTicket = d.ticket;
+              gateUser = u;
+              if (gateCodeInput) gateCodeInput.value = '';
+              setGateMode('code');
+              showLoginMsg(d.error);
             }
             else showLoginMsg(d.error);
           }, loginButtons);
         });
       }
       if (loginRegister) {
-        loginRegister.addEventListener('click', function () {
-          var u = loginUser ? loginUser.value.trim() : '';
-          var p = loginPass ? loginPass.value : '';
-          if (!u || !p) { showLoginMsg('请填写账号和密码'); return; }
-          if (p.length < 6) { showLoginMsg('密码至少 6 位'); return; }
-          showLoginMsg('注册中…');
-          authPost('/api/user/register', u, p, function (d) {
-            // 注意 authPost 的 done 回调传对象 {ok, error}，不是 (ok, msg) 布尔签名
-            if (d.ok) {
-              showLoginMsg('');
-              setLoginAvatar(null); // 新注册没有头像
-              passGate(u);
-              favLoad(); // 新账号收藏为空，同时清掉内存里的残留
-            } else showLoginMsg(d.error);
-          }, loginButtons);
-        });
+        loginRegister.addEventListener('click', function () { setGateMode('register'); });
       }
       if (loginGuest) {
         loginGuest.addEventListener('click', function () {
@@ -6788,13 +7788,22 @@
               sessionStorage.removeItem(LOGIN_NAME_KEY);
               sessionStorage.removeItem('adminWelcome');
               sessionStorage.removeItem('adminWelcomeShown');
+              sessionStorage.removeItem('userWelcome');
+              sessionStorage.removeItem('userWelcomeShown');
             } catch (e) {}
             setLoginAvatar(null); // 退出清空三键
             refreshLoginBadge();
             favLoad(); // 收藏是账号数据，退出即清空内存态
+            aiHistory = [];        // AI 对话同属账号数据，退出清内存（服务端历史保留，下次登录可恢复）
+            aiAttach = [];
+            aiConvId = 0;
+            aiConvs = [];
+            if (aiMessages) aiMessages.innerHTML = '';
+            aiRestored = false; // 下个账号打开 AI 界面时重新拉取自己的历史
             setProfileOpen(false); // 回到未登录态并收起面板
             updateProfilePanel();
             showProfileMsg('已退出登录');
+            showTopToast('👋 已退出登录，期待下次再见', false);
             });
         });
       }
@@ -6900,6 +7909,146 @@
       return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
     }
 
+    // ---------- 邮箱卡：绑定 / 换绑 / 登录二次验证（服务未启用时整卡隐藏） ----------
+    var emailCard = document.getElementById('emailCard');
+    var emailBoundView = document.getElementById('emailBoundView');
+    var emailBindView = document.getElementById('emailBindView');
+    var pemailInput = document.getElementById('pemailInput');
+    var pemailCode = document.getElementById('pemailCode');
+    var pemailSendBtn = document.getElementById('pemailSendBtn');
+    var pemailVerifyBtn = document.getElementById('pemailVerifyBtn');
+    var pemailMsg = document.getElementById('pemailMsg');
+    var emailBoundText = document.getElementById('emailBoundText');
+    var emailRebindBtn = document.getElementById('emailRebindBtn');
+    var twofaToggleBtn = document.getElementById('twofaToggleBtn');
+    var emailBoundEmail = null;
+    var emailTwofa = false;
+
+    function showPEmailMsg(text, err) {
+      if (!pemailMsg) return;
+      pemailMsg.textContent = text || '';
+      pemailMsg.classList.toggle('err', !!err);
+    }
+    function maskedEmail(e) {
+      var at = String(e || '').indexOf('@');
+      if (at < 1) return e || '';
+      var name = e.slice(0, at);
+      var head = name.slice(0, Math.min(2, name.length));
+      return head + '***' + e.slice(at);
+    }
+    function renderEmailCard() {
+      if (!emailCard) return;
+      if (!emailBoundEmail) {
+        emailBoundView.style.display = 'none';
+        emailBindView.style.display = '';
+      } else {
+        emailBoundView.style.display = '';
+        emailBindView.style.display = 'none';
+        emailBoundText.textContent = '已绑定 ' + maskedEmail(emailBoundEmail) + '（可用于找回密码）';
+        if (twofaToggleBtn) twofaToggleBtn.textContent = emailTwofa ? '关闭二次验证' : '开启二次验证';
+      }
+    }
+    function loadEmailCard() {
+      if (!emailCard) return;
+      fetch('/api/user/email', { credentials: 'same-origin' })
+        .then(function (r) { return r.ok ? r.json() : null; })
+        .then(function (d) {
+          if (!d || !d.ok) { emailCard.style.display = 'none'; return; } // 未登录/接口不可用
+          // 邮件服务未配置，或"仅站长模式"下当前用户不是站长 → 整卡隐藏
+          emailCard.style.display = (d.enabled && d.owner) ? '' : 'none';
+          emailBoundEmail = d.verified ? d.email : null;
+          emailTwofa = !!d.twofa;
+          renderEmailCard();
+        })
+        .catch(function () { if (emailCard) emailCard.style.display = 'none'; });
+    }
+    if (emailRebindBtn) {
+      emailRebindBtn.addEventListener('click', function () {
+        emailBoundEmail = null; // 临时进入绑定视图（不影响已存数据）
+        if (pemailInput) pemailInput.value = '';
+        if (pemailCode) pemailCode.value = '';
+        showPEmailMsg('');
+        renderEmailCard();
+      });
+    }
+    // 发送绑定验证码（60 秒倒计时）
+    var peCountdown = null;
+    if (pemailSendBtn) {
+      pemailSendBtn.addEventListener('click', function () {
+        var email = pemailInput ? pemailInput.value.trim() : '';
+        if (!email) { showPEmailMsg('请先填写邮箱地址', true); return; }
+        showPEmailMsg('验证码发送中…');
+        fetch('/api/user/email', {
+          method: 'POST',
+          credentials: 'same-origin',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'bind-send', email: email }),
+        })
+          .then(function (r) { return r.json().catch(function () { return { ok: false, error: '响应异常' }; }); })
+          .then(function (d) {
+            if (d.ok) {
+              showPEmailMsg('验证码已发送，注意查收（含垃圾箱）');
+              var left = 60;
+              pemailSendBtn.disabled = true;
+              pemailSendBtn.textContent = left + 's';
+              clearInterval(peCountdown);
+              peCountdown = setInterval(function () {
+                left--;
+                if (left <= 0) {
+                  clearInterval(peCountdown);
+                  pemailSendBtn.disabled = false;
+                  pemailSendBtn.textContent = '发送验证码';
+                } else pemailSendBtn.textContent = left + 's';
+              }, 1000);
+            } else showPEmailMsg(d.error || '发送失败', true);
+          })
+          .catch(function () { showPEmailMsg('网络错误', true); });
+      });
+    }
+    if (pemailVerifyBtn) {
+      pemailVerifyBtn.addEventListener('click', function () {
+        var email = pemailInput ? pemailInput.value.trim() : '';
+        var code = pemailCode ? pemailCode.value.trim() : '';
+        if (!email || !/^\d{6}$/.test(code)) { showPEmailMsg('请填写邮箱和 6 位验证码', true); return; }
+        fetch('/api/user/email', {
+          method: 'POST',
+          credentials: 'same-origin',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'bind-verify', email: email, code: code }),
+        })
+          .then(function (r) { return r.json().catch(function () { return { ok: false, error: '响应异常' }; }); })
+          .then(function (d) {
+            if (d.ok) {
+              emailBoundEmail = d.email || email;
+              emailTwofa = false; // 换绑后 2FA 保持关闭，避免旧邮箱验证状态误开
+              renderEmailCard();
+              showPEmailMsg('邮箱绑定成功');
+            } else showPEmailMsg(d.error || '绑定失败', true);
+          })
+          .catch(function () { showPEmailMsg('网络错误', true); });
+      });
+    }
+    if (twofaToggleBtn) {
+      twofaToggleBtn.addEventListener('click', function () {
+        var next = !emailTwofa;
+        fetch('/api/user/email', {
+          method: 'POST',
+          credentials: 'same-origin',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'toggle2fa', enabled: next }),
+        })
+          .then(function (r) { return r.json().catch(function () { return { ok: false, error: '响应异常' }; }); })
+          .then(function (d) {
+            if (d.ok) {
+              emailTwofa = !!d.twofa;
+              renderEmailCard();
+              showPEmailMsg(emailTwofa ? '二次验证已开启，下次登录将要求邮箱验证码' : '二次验证已关闭');
+            } else showPEmailMsg(d.error || '操作失败', true);
+          })
+          .catch(function () { showPEmailMsg('网络错误', true); });
+      });
+    }
+
     function loadProfileData() {
       fetch('/api/user/profile', { credentials: 'same-origin' })
         .then(function (r) { return r.json().catch(function () { return { ok: false }; }); })
@@ -6934,6 +8083,654 @@
           if (profilevSub) profilevSub.textContent = '资料加载失败';
         });
     }
+
+    // ---------- 课表卡：周视图 / WakeUp 导入 / 手动编辑 / 邮件提醒设置 ----------
+    // 数据结构与后端 lib/schedule.js 对齐；每次改动整份 PUT 保存
+    var schedCard = document.getElementById('schedCard');
+    var schedGridEl = document.getElementById('schedGrid');
+    var schedWeekLabel = document.getElementById('schedWeekLabel');
+    var schedWeekPrev = document.getElementById('schedWeekPrev');
+    var schedWeekNext = document.getElementById('schedWeekNext');
+    var schedTermStart = document.getElementById('schedTermStart');
+    var schedImportBtn = document.getElementById('schedImportBtn');
+    var schedImportFile = document.getElementById('schedImportFile');
+    var schedAddBtn = document.getElementById('schedAddBtn');
+    var schedEditor = document.getElementById('schedEditor');
+    var schedEName = document.getElementById('schedEName');
+    var schedEPlace = document.getElementById('schedEPlace');
+    var schedETeacher = document.getElementById('schedETeacher');
+    var schedEWeeks = document.getElementById('schedEWeeks');
+    var schedERemind = document.getElementById('schedERemind');
+    var schedEDelete = document.getElementById('schedEDelete');
+    var schedECancel = document.getElementById('schedECancel');
+    var schedESave = document.getElementById('schedESave');
+    var schedDailyOn = document.getElementById('schedDailyOn');
+    var schedDailyTime = document.getElementById('schedDailyTime');
+    var schedAhead = document.getElementById('schedAhead');
+    var schedNodeTimesEl = document.getElementById('schedNodeTimes');
+    var schedMsg = document.getElementById('schedMsg');
+    var schedEmailHint = document.getElementById('schedEmailHint');
+    var schedData = null;   // 归一化课表（termStart/nodeTimes/courses/daily/remindAhead）
+    var schedViewWeek = 0;  // 正在查看的教学周（0 = 跟随当前周）
+    var schedEditIdx = -2; // 编辑中的课程下标（-1 = 新增，-2 = 未在编辑）
+    var schedPreview = null; // 编辑中的实时预览（null = 不显示；{name,day,startNode,endNode}）
+    var SCHED_DAYS = ['周一', '周二', '周三', '周四', '周五', '周六', '周日'];
+    var SCHED_COLORS = ['#5b8def', '#e8618c', '#3aa981', '#e0913d', '#8b6fd6', '#4ab3c4', '#d16a4a', '#6f7f95'];
+
+    function showSchedMsg(text, err) {
+      if (!schedMsg) return;
+      schedMsg.textContent = text || '';
+      schedMsg.classList.toggle('err', !!err);
+    }
+    function schedColor(name) {
+      var h = 0;
+      var s = String(name || '');
+      for (var i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0;
+      return SCHED_COLORS[h % SCHED_COLORS.length];
+    }
+    // 当前教学周（本地时间；termStart 自动校准到那周的周一）
+    function schedCurWeek() {
+      if (!schedData || !schedData.termStart) return 0;
+      var t = new Date(schedData.termStart + 'T00:00:00');
+      if (isNaN(t)) return 0;
+      var wd = t.getDay();
+      t.setDate(t.getDate() - ((wd + 6) % 7));
+      var days = Math.floor((Date.now() - t.getTime()) / 86400e3);
+      return days < 0 ? 0 : Math.floor(days / 7) + 1;
+    }
+    // 周次文本 → 周数组（与服务端 parseWeekDesc 同规则）："1-16(单)" "1,3,5" "1-8周(双)"
+    function schedParseWeeks(str) {
+      var s = String(str || '').trim();
+      if (!s) return [];
+      var odd = /单/.test(s), even = /双/.test(s);
+      var nums = {}, out = [];
+      var ranges = s.match(/\d+(\s*-\s*\d+)?/g) || [];
+      ranges.forEach(function (r) {
+        var ab = r.split('-');
+        var from = parseInt(ab[0], 10) || 0, to = parseInt(ab[1], 10) || from;
+        for (var i = from; i <= to && i <= 30; i++) {
+          if (i < 1) continue;
+          if (odd && i % 2 === 0) continue;
+          if (even && i % 2 === 1) continue;
+          if (!nums[i]) { nums[i] = 1; out.push(i); }
+        }
+      });
+      return out.sort(function (a, b) { return a - b; });
+    }
+    // 周数组 → 紧凑文本（连续周压缩成区间："1,2,3,5" → "1-3,5"）
+    function schedWeeksText(arr) {
+      if (!arr || !arr.length) return '';
+      var sorted = arr.slice().sort(function (a, b) { return a - b; });
+      var parts = [], start = sorted[0], prev = sorted[0];
+      for (var i = 1; i <= sorted.length; i++) {
+        var cur = sorted[i];
+        if (cur === prev + 1) { prev = cur; continue; }
+        parts.push(start === prev ? String(start) : start + '-' + prev);
+        start = prev = cur;
+      }
+      return parts.join(',');
+    }
+
+    function renderSchedGrid() {
+      if (!schedGridEl || !schedData) return;
+      var grid = schedGridEl;
+      if (grid._cleanupDrag) { grid._cleanupDrag(); grid._cleanupDrag = null; }
+      grid.innerHTML = '';
+      var cur = schedCurWeek();
+      var week = schedViewWeek || cur || 1;
+      if (schedWeekLabel) {
+        schedWeekLabel.textContent = schedData.termStart
+          ? '第 ' + week + ' 周' + (week === cur ? ' · 本周' : '')
+          : '未设学期起始';
+      }
+      // 本周有课的课程（week=0 时按第 1 周展示，避免空白）
+      var show = schedData.courses.filter(function (c) {
+        return !c.weeks.length || c.weeks.indexOf(week) !== -1;
+      });
+      var maxNode = 10;
+      show.forEach(function (c) { if (c.endNode > maxNode) maxNode = c.endNode; });
+      grid.style.gridTemplateRows = '26px repeat(' + maxNode + ', 50px)';
+      var cell = function (col, row, el, span) {
+        el.style.gridColumn = String(col);
+        el.style.gridRow = String(row) + (span ? ' / span ' + span : '');
+        grid.appendChild(el);
+      };
+      // 空白格状态：点击弹添加表单（预填星期/节次）；mousedown 后拖到别的格 = 预填跨节
+      var dragStart = null; // {day, node}
+      var dragCells = [];
+      var cellIndex = {};   // 'day,node' → 空白格元素（拖选高亮用）
+      var markDrag = function (on) {
+        dragCells.forEach(function (el) { el.classList.toggle('drag-on', on); });
+      };
+      var cellDay = 0, cellNode = 0;
+      var onCellEnter = function (day, node) {
+        if (!dragStart) return;
+        // 拖选范围：同一天的连续节次
+        if (day !== dragStart.day) { markDrag(false); dragCells = []; return; }
+        var from = Math.min(dragStart.node, node), to = Math.max(dragStart.node, node);
+        markDrag(false); dragCells = [];
+        for (var n = from; n <= to; n++) {
+          var el = cellIndex[day + ',' + n];
+          if (el) { el.classList.add('drag-on'); dragCells.push(el); }
+        }
+        cellNode = node;
+      };
+      var onCellDown = function (day, node, e) {
+        if (e.button !== 0) return;
+        dragStart = { day: day, node: node };
+        cellDay = day; cellNode = node;
+        onCellEnter(day, node);
+        e.preventDefault(); // 防止拖选时选中文本
+      };
+      var onCellUp = function () {
+        if (!dragStart) return;
+        var from = Math.min(dragStart.node, cellNode), to = Math.max(dragStart.node, cellNode);
+        dragStart = null;
+        markDrag(false); dragCells = [];
+        schedOpenEditor(-1, cellDay, from, to); // 预填星期与节次区间
+      };
+      // 表头：空 + 周一~周日
+      for (var d = 1; d <= 7; d++) {
+        var h = document.createElement('div');
+        h.className = 'sched-head';
+        h.textContent = SCHED_DAYS[d - 1];
+        cell(d + 1, 1, h);
+      }
+      // 节次号 + 空底格
+      for (var n = 1; n <= maxNode; n++) {
+        var num = document.createElement('div');
+        num.className = 'sched-node';
+        num.textContent = n;
+        cell(1, n + 1, num);
+        for (var dd = 1; dd <= 7; dd++) {
+          var empty = document.createElement('div');
+          empty.className = 'sched-empty-cell';
+          empty.title = '点击添加课程';
+          (function (day, node, el) {
+            el.addEventListener('mousedown', function (e) { onCellDown(day, node, e); });
+            el.addEventListener('mouseenter', function () { onCellEnter(day, node); });
+            cellIndex[day + ',' + node] = el;
+          })(dd, n, empty);
+          cell(dd + 1, n + 1, empty);
+        }
+      }
+      // 全局 mouseup：拖到格子外松开也收尾
+      var docMouseUp = function () { onCellUp(); };
+      document.addEventListener('mouseup', docMouseUp);
+      grid._cleanupDrag = function () { document.removeEventListener('mouseup', docMouseUp); };
+      // 课程块（叠在空底格上）；正在编辑的那门课跳过原块——由预览块顶替
+      schedData.courses.forEach(function (c, i) {
+        if (show.indexOf(c) === -1) return;
+        if (i === schedEditIdx) return;
+        var el = document.createElement('div');
+        el.className = 'sched-course';
+        el.style.background = schedColor(c.name);
+        el.style.gridColumn = String(c.day + 1);
+        el.style.gridRow = (c.startNode + 1) + ' / span ' + (c.endNode - c.startNode + 1);
+        el.title = c.name + (c.place ? ' · ' + c.place : '') + (c.teacher ? ' · ' + c.teacher : '')
+          + ' · 第' + c.startNode + '-' + c.endNode + '节' + (c.weeks.length ? ' · ' + schedWeeksText(c.weeks) + ' 周' : '');
+        var nm = document.createElement('span');
+        nm.className = 'sched-course-name';
+        nm.textContent = c.name;
+        el.appendChild(nm);
+        if (c.place) {
+          var pl = document.createElement('span');
+          pl.className = 'sched-course-place';
+          pl.textContent = c.place;
+          el.appendChild(pl);
+        }
+        if (c.remind) {
+          var rm = document.createElement('span');
+          rm.className = 'sched-course-remind';
+          rm.textContent = '⏰';
+          el.appendChild(rm);
+        }
+        el.addEventListener('click', function () { schedOpenEditor(i); });
+        grid.appendChild(el);
+      });
+      // 编辑中的临时预览块：弹窗改字段时周视图实时反映（半透明虚线框）
+      if (schedEditIdx !== -2 && schedPreview) {
+        var pv = document.createElement('div');
+        pv.className = 'sched-course sched-preview';
+        pv.style.background = schedColor(schedPreview.name || '新课程');
+        pv.style.gridColumn = String(schedPreview.day + 1);
+        pv.style.gridRow = (schedPreview.startNode + 1) + ' / span ' + (schedPreview.endNode - schedPreview.startNode + 1);
+        pv.appendChild((function () {
+          var s = document.createElement('span');
+          s.className = 'sched-course-name';
+          s.textContent = schedPreview.name || '新课程';
+          return s;
+        })());
+        grid.appendChild(pv);
+      }
+    }
+
+    function renderSchedNodeTimes() {
+      if (!schedNodeTimesEl || !schedData) return;
+      var box = schedNodeTimesEl;
+      box.innerHTML = '';
+      schedData.nodeTimes.forEach(function (t, i) {
+        var wrap = document.createElement('label');
+        wrap.className = 'sched-nt-item';
+        var label = document.createElement('span');
+        label.className = 'sched-inline';
+        label.style.whiteSpace = 'nowrap';
+        label.textContent = '第' + (i + 1) + '节';
+        var input = document.createElement('input');
+        input.type = 'time';
+        input.className = 'sched-inline-input';
+        input.value = String(t.h).padStart(2, '0') + ':' + String(t.m).padStart(2, '0');
+        input.addEventListener('change', function () {
+          var v = input.value.split(':');
+          schedData.nodeTimes[i] = { h: parseInt(v[0], 10) || 0, m: parseInt(v[1], 10) || 0 };
+          schedSave('作息时间已保存');
+        });
+        wrap.appendChild(label);
+        wrap.appendChild(input);
+        box.appendChild(wrap);
+      });
+    }
+
+    function renderSchedAll() {
+      if (!schedData) return;
+      if (schedTermStart) schedTermStart.value = schedData.termStart || '';
+      if (schedDailyOn) schedDailyOn.checked = !!(schedData.daily && schedData.daily.on);
+      if (schedDailyTime) schedDailyTime.value = (schedData.daily && schedData.daily.time) || '07:00';
+      if (schedAhead) schedAhead.value = schedData.remindAhead || 30;
+      schedSyncDailyDep();
+      schedSyncTimePills();
+      schedSyncAheadPills();
+      renderSchedGrid();
+      renderSchedNodeTimes();
+    }
+
+    // ---------- 胶囊点选控件：编辑弹窗（星期/节次/周次快选） ----------
+    // 状态存内存（schedEDayVal 等），胶囊高亮同步；原 select/number 输入已移除
+    var schedEDayVal = 1;
+    var schedEStartVal = 1;
+    var schedEEndVal = 2;
+    var schedDayPills = document.getElementById('schedEDayPills');
+    var schedStartPills = document.getElementById('schedEStartPills');
+    var schedEndPills = document.getElementById('schedEEndPills');
+    var schedWeekQuick = document.getElementById('schedEWeekQuick');
+    var schedENodeHint = document.getElementById('schedENodeHint');
+
+    // 节次胶囊按作息表数量生成（默认 12 节）
+    function schedBuildNodePills() {
+      [schedStartPills, schedEndPills].forEach(function (box) {
+        if (!box) return;
+        box.innerHTML = '';
+        var n = schedData && schedData.nodeTimes ? schedData.nodeTimes.length : 12;
+        for (var i = 1; i <= Math.max(n, 10); i++) {
+          var b = document.createElement('button');
+          b.type = 'button';
+          b.className = 'sched-pill';
+          b.dataset.v = String(i);
+          b.textContent = String(i);
+          box.appendChild(b);
+        }
+      });
+      schedSyncPills();
+    }
+    function schedSyncPills() {
+      if (schedDayPills) Array.prototype.forEach.call(schedDayPills.children, function (b) {
+        b.classList.toggle('on', Number(b.dataset.v) === schedEDayVal);
+      });
+      if (schedStartPills) Array.prototype.forEach.call(schedStartPills.children, function (b) {
+        b.classList.toggle('on', Number(b.dataset.v) === schedEStartVal);
+      });
+      if (schedEndPills) Array.prototype.forEach.call(schedEndPills.children, function (b) {
+        b.classList.toggle('on', Number(b.dataset.v) === schedEEndVal);
+      });
+      if (schedENodeHint) {
+        var t = schedData && schedData.nodeTimes ? schedData.nodeTimes[schedEStartVal - 1] : null;
+        schedENodeHint.textContent = t ? '（' + String(t.h).padStart(2, '0') + ':' + String(t.m).padStart(2, '0') + ' 开课）' : '';
+      }
+      // 周次快选：文本与输入框完全一致才高亮
+      if (schedWeekQuick) {
+        var wv = (schedEWeeks ? schedEWeeks.value : '').replace(/\s/g, '');
+        Array.prototype.forEach.call(schedWeekQuick.children, function (b) {
+          b.classList.toggle('on', b.dataset.w === wv);
+        });
+      }
+    }
+    if (schedDayPills) schedDayPills.addEventListener('click', function (e) {
+      var b = e.target.closest ? e.target.closest('.sched-pill') : null;
+      if (!b) return;
+      schedEDayVal = Number(b.dataset.v) || 1;
+      schedSyncPills();
+      schedUpdatePreview();
+    });
+    if (schedStartPills) schedStartPills.addEventListener('click', function (e) {
+      var b = e.target.closest ? e.target.closest('.sched-pill') : null;
+      if (!b) return;
+      schedEStartVal = Number(b.dataset.v) || 1;
+      if (schedEEndVal < schedEStartVal) schedEEndVal = schedEStartVal;
+      schedSyncPills();
+      schedUpdatePreview();
+    });
+    if (schedEndPills) schedEndPills.addEventListener('click', function (e) {
+      var b = e.target.closest ? e.target.closest('.sched-pill') : null;
+      if (!b) return;
+      schedEEndVal = Math.max(schedEStartVal, Number(b.dataset.v) || schedEStartVal);
+      schedSyncPills();
+      schedUpdatePreview();
+    });
+    if (schedWeekQuick) schedWeekQuick.addEventListener('click', function (e) {
+      var b = e.target.closest ? e.target.closest('.sched-pill') : null;
+      if (!b) return;
+      if (schedEWeeks) schedEWeeks.value = b.dataset.w || '';
+      schedSyncPills();
+    });
+    if (schedEWeeks) schedEWeeks.addEventListener('input', schedSyncPills);
+
+    // idx: 课程下标；-1 = 新增（可带预填 day/startNode/endNode，来自点/拖空白格）
+    function schedOpenEditor(idx, preDay, preStart, preEnd) {
+      if (!schedEditor || !schedData) return;
+      schedEditIdx = idx;
+      var c = idx >= 0 ? schedData.courses[idx] : null;
+      var titleEl = document.getElementById('schedEditorTitle');
+      if (titleEl) titleEl.textContent = c ? '编辑课程' : '添加课程';
+      schedEName.value = c ? c.name : '';
+      schedEPlace.value = c ? c.place : '';
+      schedETeacher.value = c ? c.teacher : '';
+      schedEDayVal = c ? c.day : (preDay || 1);
+      var st = c ? c.startNode : (preStart || 1);
+      var en = c ? c.endNode : (preEnd || preStart || (st + 1));
+      schedEStartVal = st;
+      schedEEndVal = Math.max(st, en);
+      schedEWeeks.value = c ? schedWeeksText(c.weeks) : '1-16';
+      schedERemind.checked = c ? !!c.remind : false;
+      schedEDelete.hidden = !c;
+      schedBuildNodePills();
+      schedUpdatePreview();
+      schedEditor.hidden = false;
+      void schedEditor.offsetWidth; // 重启动效
+      schedEditor.classList.add('show');
+      if (schedEName) schedEName.focus();
+    }
+
+    function schedCloseEditor() {
+      if (!schedEditor) return;
+      schedEditor.classList.remove('show');
+      setTimeout(function () { schedEditor.hidden = true; }, 260);
+      schedEditIdx = -2;
+      schedPreview = null;
+      renderSchedGrid();
+    }
+
+    // 弹窗字段 → 周视图实时预览（临时半透明块）
+    function schedUpdatePreview() {
+      if (schedEditIdx === -2 || !schedData) return;
+      schedPreview = {
+        name: schedEName.value.trim(),
+        day: schedEDayVal,
+        startNode: Math.max(1, Math.min(20, Math.min(schedEStartVal, schedEEndVal))),
+        endNode: Math.max(1, Math.min(20, Math.max(schedEStartVal, schedEEndVal))),
+      };
+      renderSchedGrid();
+    }
+    if (schedEName) schedEName.addEventListener('input', schedUpdatePreview);
+
+    function schedSave(msg) {
+      if (!schedData) return;
+      fetch('/api/schedule', {
+        method: 'PUT',
+        credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ schedule: schedData }),
+      })
+        .then(function (r) { return r.json().catch(function () { return { ok: false, error: '响应异常' }; }); })
+        .then(function (d) {
+          if (d.ok) {
+            schedData = d.schedule;
+            renderSchedAll();
+            showSchedMsg(msg || '已保存', false);
+          } else showSchedMsg(d.error || '保存失败', true);
+        })
+        .catch(function () { showSchedMsg('网络错误', true); });
+    }
+
+    // 启用/移除两个视图：没存过课表 → 只显示"＋ 启用课表"入口；有数据 → 完整卡
+    var schedEnableBox = document.getElementById('schedEnable');
+    var schedBodyBox = document.getElementById('schedBody');
+    var schedEnableBtn = document.getElementById('schedEnableBtn');
+    var schedRemoveBtn = document.getElementById('schedRemoveBtn');
+    function schedShowBody(on) {
+      if (schedEnableBox) schedEnableBox.hidden = on;
+      if (schedBodyBox) schedBodyBox.hidden = !on;
+    }
+
+    function loadSched() {
+      if (!schedCard) return;
+      fetch('/api/schedule', { credentials: 'same-origin' })
+        .then(function (r) { return r.ok ? r.json() : null; })
+        .then(function (d) {
+          if (!d || !d.ok) { schedCard.style.display = 'none'; return; } // 未登录/接口不可用
+          schedCard.style.display = '';
+          schedData = d.schedule;
+          schedViewWeek = 0;
+          schedCloseEditor();
+          renderSchedAll();
+          showSchedMsg('');
+          schedShowBody(!!d.exists); // 没启用过只显示入口行
+          if (d.exists) renderSchedEmailHint();
+        })
+        .catch(function () { if (schedCard) schedCard.style.display = 'none'; });
+    }
+
+    // 启用：把默认空课表存到服务端（落行），切到完整视图
+    if (schedEnableBtn) schedEnableBtn.addEventListener('click', function () {
+      if (!schedData) return;
+      schedSave('课表已启用，先设学期首周一再添加课程');
+      schedShowBody(true);
+      renderSchedEmailHint();
+    });
+
+    // 移除：确认后删服务端数据，回到入口行（提醒随之停止）
+    if (schedRemoveBtn) schedRemoveBtn.addEventListener('click', function () {
+      if (!schedData) return;
+      var doRemove = function () {
+        fetch('/api/schedule', { method: 'DELETE', credentials: 'same-origin' })
+          .then(function (r) { return r.json().catch(function () { return { ok: false, error: '响应异常' }; }); })
+          .then(function (d) {
+            if (d.ok) {
+              schedShowBody(false);
+              showSchedMsg('');
+            } else showSchedMsg(d.error || '移除失败', true);
+          })
+          .catch(function () { showSchedMsg('网络错误', true); });
+      };
+      if (typeof ask === 'function') {
+        ask({
+          title: '移除课表',
+          msg: '移除后所有课程、作息和提醒设置将被删除，提醒邮件随之停止。此操作不可恢复。',
+          okText: '移除', danger: true,
+          cb: function (ok) { if (ok) doRemove(); },
+        });
+      } else if (window.confirm('移除后所有课程、作息和提醒设置将被删除，确定移除课表？')) {
+        doRemove();
+      }
+    });
+
+    // 提示语：提醒依赖邮件服务 + 已验证邮箱（GitHub Pages 静态模式下接口 404 → 整卡隐藏）
+    function renderSchedEmailHint() {
+      if (!schedEmailHint) return;
+      fetch('/api/user/email', { credentials: 'same-origin' })
+        .then(function (r) { return r.ok ? r.json() : null; })
+        .then(function (d) {
+          if (!d || !d.ok) { schedEmailHint.hidden = true; return; }
+          if (!d.enabled) {
+            schedEmailHint.textContent = '站点未启用邮件服务，课表提醒暂时不会发送。';
+            schedEmailHint.hidden = false;
+          } else if (!d.verified) {
+            schedEmailHint.textContent = '提醒通过邮件发送，请先在下方绑定并验证邮箱。';
+            schedEmailHint.hidden = false;
+          } else if (!d.owner) {
+            schedEmailHint.textContent = '当前为"仅站长"邮件模式，普通账号暂收不到课表提醒。';
+            schedEmailHint.hidden = false;
+          } else {
+            schedEmailHint.hidden = true;
+          }
+        })
+        .catch(function () { schedEmailHint.hidden = true; });
+    }
+
+    if (schedWeekPrev) schedWeekPrev.addEventListener('click', function () {
+      var cur = schedCurWeek() || 1;
+      schedViewWeek = Math.max(1, (schedViewWeek || cur) - 1);
+      renderSchedGrid();
+    });
+    if (schedWeekNext) schedWeekNext.addEventListener('click', function () {
+      var cur = schedCurWeek() || 1;
+      schedViewWeek = Math.min(30, (schedViewWeek || cur) + 1);
+      renderSchedGrid();
+    });
+    if (schedTermStart) schedTermStart.addEventListener('change', function () {
+      if (!schedData) return;
+      schedData.termStart = schedTermStart.value || '';
+      schedViewWeek = 0;
+      schedSave('学期起始已保存');
+    });
+    if (schedImportBtn) schedImportBtn.addEventListener('click', function () {
+      if (schedImportFile) schedImportFile.click();
+    });
+    if (schedImportFile) schedImportFile.addEventListener('change', function () {
+      var file = schedImportFile.files && schedImportFile.files[0];
+      schedImportFile.value = ''; // 允许重复导入同一文件
+      if (!file) return;
+      showSchedMsg('导入中…');
+      var isCsv = /\.csv$/i.test(file.name);
+      var reader = new FileReader();
+      reader.onload = function () {
+        var text = String(reader.result || '');
+        // 按内容兜底分流：JSON 一定以 { 或 [ 开头，其余按 CSV 处理
+        if (!/^\s*[{[]/.test(text)) isCsv = true;
+        var payload;
+        if (isCsv) {
+          payload = { wakeUpCsv: text };
+        } else {
+          var obj;
+          try { obj = JSON.parse(text); } catch (e) {
+            showSchedMsg('文件不是合法的 JSON / CSV', true); return;
+          }
+          payload = { wakeUp: obj };
+        }
+        fetch('/api/schedule', {
+          method: 'PUT',
+          credentials: 'same-origin',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        })
+          .then(function (r) { return r.json().catch(function () { return { ok: false, error: '响应异常' }; }); })
+          .then(function (d) {
+            if (d.ok) {
+              schedData = d.schedule;
+              schedViewWeek = 0;
+              schedCloseEditor();
+              renderSchedAll();
+              showSchedMsg('导入成功，共 ' + schedData.courses.length + ' 门课程');
+            } else showSchedMsg(d.error || '导入失败', true);
+          })
+          .catch(function () { showSchedMsg('网络错误', true); });
+      };
+      reader.readAsText(file);
+    });
+    if (schedAddBtn) schedAddBtn.addEventListener('click', function () { schedOpenEditor(-1); });
+    // 点遮罩空白处关闭（点面板内部不关）
+    if (schedEditor) schedEditor.addEventListener('click', function (e) {
+      if (e.target === schedEditor) schedCloseEditor();
+    });
+    // Esc 关闭编辑弹窗（不冒泡给个人主页的 Esc——那会连主页一起关掉）
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape' && schedEditor && !schedEditor.hidden) {
+        e.stopImmediatePropagation();
+        schedCloseEditor();
+      }
+    }, true);
+    if (schedECancel) schedECancel.addEventListener('click', schedCloseEditor);
+    if (schedEDelete) schedEDelete.addEventListener('click', function () {
+      if (schedEditIdx < 0 || !schedData) return;
+      schedData.courses.splice(schedEditIdx, 1);
+      schedCloseEditor();
+      schedSave('课程已删除');
+    });
+    if (schedESave) schedESave.addEventListener('click', function () {
+      if (!schedData) return;
+      var name = schedEName.value.trim();
+      if (!name) { showSchedMsg('课程名不能为空', true); return; }
+      var start = schedEStartVal, end = schedEEndVal;
+      if (end < start) end = start;
+      var weeks = schedParseWeeks(schedEWeeks.value);
+      if (!weeks.length) { showSchedMsg('周次格式不正确，示例：1-16 或 1,3,5 或 1-16(单)', true); return; }
+      var c = {
+        name: name, place: schedEPlace.value.trim(), teacher: schedETeacher.value.trim(),
+        day: schedEDayVal,
+        startNode: Math.max(1, Math.min(20, start)),
+        endNode: Math.max(1, Math.min(20, end)),
+        weeks: weeks, remind: schedERemind.checked,
+      };
+      if (schedEditIdx >= 0) schedData.courses[schedEditIdx] = c;
+      else schedData.courses.push(c);
+      schedCloseEditor();
+      schedSave('课程已保存');
+    });
+    // 早报开关：同步时间快选行的禁用态
+    var schedTimeQuickRow = document.getElementById('schedDailyTimeRow');
+    function schedSyncDailyDep() {
+      if (schedTimeQuickRow) schedTimeQuickRow.classList.toggle('off', !(schedDailyOn && schedDailyOn.checked));
+    }
+    if (schedDailyOn) schedDailyOn.addEventListener('change', function () {
+      schedData.daily.on = schedDailyOn.checked;
+      schedSyncDailyDep();
+      schedSave('提醒设置已保存');
+    });
+    // 时间快选胶囊：点击即写入并保存
+    var schedTimeQuick = document.getElementById('schedTimeQuick');
+    if (schedTimeQuick) schedTimeQuick.addEventListener('click', function (e) {
+      var b = e.target.closest ? e.target.closest('.sched-pill') : null;
+      if (!b || !b.dataset.t) return;
+      if (schedDailyTime) schedDailyTime.value = b.dataset.t;
+      schedSyncTimePills();
+      schedData.daily.time = b.dataset.t;
+      schedSave('提醒设置已保存');
+    });
+    function schedSyncTimePills() {
+      if (!schedTimeQuick) return;
+      var v = schedDailyTime ? schedDailyTime.value : '';
+      Array.prototype.forEach.call(schedTimeQuick.children, function (b) {
+        if (b.dataset.t) b.classList.toggle('on', b.dataset.t === v);
+      });
+    }
+    if (schedDailyTime) schedDailyTime.addEventListener('change', function () {
+      schedData.daily.time = schedDailyTime.value || '07:00';
+      schedSyncTimePills();
+      schedSave('提醒设置已保存');
+    });
+    // 提前量快选胶囊
+    var schedAheadQuick = document.getElementById('schedAheadQuick');
+    function schedSyncAheadPills() {
+      if (!schedAheadQuick) return;
+      var v = String(schedAhead ? schedAhead.value : '');
+      Array.prototype.forEach.call(schedAheadQuick.children, function (b) {
+        if (b.dataset.a) b.classList.toggle('on', b.dataset.a === v);
+      });
+    }
+    if (schedAheadQuick) schedAheadQuick.addEventListener('click', function (e) {
+      var b = e.target.closest ? e.target.closest('.sched-pill') : null;
+      if (!b || !b.dataset.a) return;
+      var n = Number(b.dataset.a) || 30;
+      if (schedAhead) schedAhead.value = String(n);
+      schedSyncAheadPills();
+      schedData.remindAhead = n;
+      schedSave('提醒设置已保存');
+    });
+    if (schedAhead) schedAhead.addEventListener('change', function () {
+      schedData.remindAhead = Math.max(5, Math.min(120, parseInt(schedAhead.value, 10) || 30));
+      schedAhead.value = String(schedData.remindAhead);
+      schedSyncAheadPills();
+      schedSave('提醒设置已保存');
+    });
 
     // 头像变化后同步个人主页（面板由 updateProfilePanel 管，这里管主页大头像）
     function updateProfileView() {
@@ -7025,6 +8822,8 @@
       fsOpen('profileView'); // 互斥收起其他全屏层（个人主页不接管高亮/不锁滚动，保持原行为）
       setProfileOpen(false);
       loadProfileData();
+      loadEmailCard();
+      loadSched();
       renderFavorites();
       profileView.hidden = false;
       void profileView.offsetWidth;
@@ -7067,12 +8866,21 @@
               sessionStorage.removeItem(LOGIN_NAME_KEY);
               sessionStorage.removeItem('adminWelcome');
               sessionStorage.removeItem('adminWelcomeShown');
+              sessionStorage.removeItem('userWelcome');
+              sessionStorage.removeItem('userWelcomeShown');
             } catch (e) {}
             setLoginAvatar(null); // 退出清空三键
             refreshLoginBadge();
             favLoad(); // 收藏是账号数据，退出即清空内存态
+            aiHistory = [];        // AI 对话同属账号数据，退出清内存（服务端历史保留，下次登录可恢复）
+            aiAttach = [];
+            aiConvId = 0;
+            aiConvs = [];
+            if (aiMessages) aiMessages.innerHTML = '';
+            aiRestored = false;
             closeProfileView();
             updateProfilePanel();
+            showTopToast('👋 已退出登录，期待下次再见', false);
           });
       });
     }
@@ -7118,21 +8926,29 @@
     if (isMember()) favLoad();
 
     // =========================
-    // 管理员欢迎浮窗：仅在管理员账密登录（响应带 admin:true）时弹出；
-    // 页面加载时只认 sessionStorage 里的 adminWelcome 标记（刷新不重复弹）。
+    // 登录欢迎浮窗：管理员/普通账号登录成功都弹出（管理员多一个"进入后台"按钮）；
+    // 页面加载时只认 sessionStorage 里的标记（刷新不重复弹）。
     // 注意：绝不能用 /api/auth/status 做"是不是管理员"的判断——它只反映
     // 浏览器有无管理员会话 Cookie，分不清当前登录的是谁（坑 11）
     // =========================
     var adminToast = document.getElementById('adminToast');
     var adminToastTimer = null;
 
-    function showAdminWelcome(name) {
+    function showTopToast(text, withAdminBtn) {
       if (!adminToast) return;
       var textEl = document.getElementById('adminToastText');
-      if (textEl) textEl.textContent = '👑 欢迎回来，管理员 ' + (name || '');
+      if (textEl) textEl.textContent = text;
+      // "进入后台"按钮只在管理员欢迎时显示，其余场景（普通登录/退出）不展示
+      if (adminToastAdminBtn) adminToastAdminBtn.style.display = withAdminBtn ? '' : 'none';
       adminToast.classList.add('show');
       if (adminToastTimer) clearTimeout(adminToastTimer);
       adminToastTimer = setTimeout(function () { adminToast.classList.remove('show'); }, 6000);
+    }
+
+    function showWelcomeToast(name, isAdmin) {
+      showTopToast(isAdmin
+        ? '👑 欢迎回来，管理员 ' + (name || '')
+        : '👋 欢迎回来，' + (name || ''), isAdmin);
     }
 
     var adminToastClose = document.getElementById('adminToastClose');
@@ -7145,18 +8961,26 @@
       location.href = '/admin';
     });
 
-    // 页面加载：仅当本会话确实发生过管理员登录（且本次刷新还没弹过）才补弹
-    (function checkAdminWelcome() {
-      var flag = null, shown = null;
+    // 页面加载：仅当本会话确实发生过登录（且本次刷新还没弹过）才补弹
+    (function checkLoginWelcome() {
+      var flag = null, shown = null, adminFlag = null;
       try {
-        flag = sessionStorage.getItem('adminWelcome');
-        shown = sessionStorage.getItem('adminWelcomeShown');
+        adminFlag = sessionStorage.getItem('adminWelcome');
+        if (adminFlag === '1') {
+          flag = 'admin';
+          shown = sessionStorage.getItem('adminWelcomeShown');
+        } else {
+          flag = sessionStorage.getItem('userWelcome') === '1' ? 'user' : null;
+          shown = sessionStorage.getItem('userWelcomeShown');
+        }
       } catch (e) {}
-      if (flag === '1' && shown !== '1') {
-        try { sessionStorage.setItem('adminWelcomeShown', '1'); } catch (e) {}
+      if (flag && shown !== '1') {
+        try {
+          sessionStorage.setItem(flag === 'admin' ? 'adminWelcomeShown' : 'userWelcomeShown', '1');
+        } catch (e) {}
         var name = null;
         try { name = sessionStorage.getItem(LOGIN_NAME_KEY); } catch (e) {}
-        showAdminWelcome(name);
+        showWelcomeToast(name, flag === 'admin');
       }
     })();
 
@@ -7777,6 +9601,8 @@
     var aiInput = document.getElementById('aiInput');
     var aiMessages = document.getElementById('aiMessages');
     var aiHistory = [];      // 本次对话 {role, content} 列表
+    var aiConvId = 0;        // 当前对话的服务端 id（0=尚未落库的新对话）
+    var aiConvs = [];        // 左侧历史栏数据 [{id,title,updated_at,msgs}]
     var aiConfig = null;     // {enabled, models:[{name,model}], model(默认档案名)}，来自 /api/ai/config
     var aiCurrentModel = null; // 当前选中的档案名
     var aiAttach = [];         // 待发送附件 [{name, size, kind:'image'|'text', data}]
@@ -7914,17 +9740,203 @@
       if (sendBtn) sendBtn.disabled = false;
     }
 
-    // 清空对话（关闭界面 / 新对话共用）：中断进行中的流式请求
+    // 清空对话（新对话用）：只清本地视图，开一个未落库的新会话（旧对话留在服务端历史栏里）
     function aiResetChat() {
       if (aiAbort) {
         try { aiAbort.abort(); } catch (e) {}
         aiAbort = null;
       }
       aiHistory = [];
+      aiConvId = 0;
       aiAttach = [];
       aiRenderAttach();
       if (aiMessages) aiMessages.innerHTML = '';
       aiStopBusy();
+      aiRenderHistoryList();
+    }
+
+    // 追加保存到服务端（静默失败，不打断聊天）；首次落库会返回 conv id 与标题
+    function aiSaveHistory(msgs) {
+      if (!msgs || !msgs.length) return;
+      fetch('/api/ai/history', {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ messages: msgs, conv: aiConvId || undefined }),
+      })
+        .then(function (r) { return r.ok ? r.json() : null; })
+        .then(function (d) {
+          if (d && d.ok && d.conv) {
+            aiConvId = d.conv;
+            // 更新侧栏（新建则插到最前，否则挪到最前并刷新标题/时间）
+            var existed = false;
+            aiConvs = aiConvs.filter(function (c) {
+              if (c.id === d.conv) {
+                c.title = d.title || c.title;
+                c.updated_at = new Date().toISOString();
+                c.msgs = (c.msgs || 0) + (d.added || 0);
+                existed = true;
+              }
+              return c.id !== d.conv;
+            });
+            if (existed || d.title) {
+              var cur = { id: d.conv, title: d.title || '新对话', updated_at: new Date().toISOString(), msgs: d.added || 0 };
+              aiConvs.unshift(cur);
+            }
+            aiRenderHistoryList();
+          }
+        })
+        .catch(function () {});
+    }
+
+    // 渲染左侧历史栏
+    function aiRenderHistoryList() {
+      var list = document.getElementById('aiHistoryList');
+      if (!list) return;
+      list.innerHTML = '';
+      if (!aiConvs.length) {
+        var empty = document.createElement('p');
+        empty.className = 'ai-history-empty';
+        empty.textContent = '还没有历史对话';
+        list.appendChild(empty);
+        return;
+      }
+      aiConvs.forEach(function (c) {
+        var it = document.createElement('button');
+        it.type = 'button';
+        it.className = 'ai-history-item' + (c.id === aiConvId ? ' active' : '');
+        var t = document.createElement('span');
+        t.className = 'hi-title';
+        t.textContent = c.title || '新对话';
+        it.appendChild(t);
+        var del = document.createElement('span');
+        del.className = 'hi-del';
+        del.title = '删除对话';
+        del.setAttribute('role', 'button');
+        del.setAttribute('aria-label', '删除对话 ' + (c.title || ''));
+        del.innerHTML = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="m19 6-1 14H6L5 6"/></svg>';
+        del.addEventListener('click', function (e) {
+          e.stopPropagation();
+          aiDeleteConv(c);
+        });
+        it.appendChild(del);
+        it.addEventListener('click', function () { aiOpenConv(c.id); });
+        list.appendChild(it);
+      });
+    }
+
+    // 相对时间（updated_at 是 UTC 的 "YYYY-MM-DD HH:MM:SS"）
+    function aiConvTime(s) {
+      var t = Date.parse(String(s || '').replace(' ', 'T') + 'Z');
+      if (isNaN(t)) return '';
+      var m = Math.round((Date.now() - t) / 60000);
+      if (m < 1) return '刚刚';
+      if (m < 60) return m + ' 分钟前';
+      var h = Math.round(m / 60);
+      if (h < 24) return h + ' 小时前';
+      return Math.round(h / 24) + ' 天前';
+    }
+
+    // 拉取历史栏列表
+    function aiLoadConvList() {
+      fetch('/api/ai/conversations', { credentials: 'same-origin' })
+        .then(function (r) { return r.ok ? r.json() : null; })
+        .then(function (d) {
+          if (d && d.ok) {
+            aiConvs = d.conversations || [];
+            aiRenderHistoryList();
+          }
+        })
+        .catch(function () {});
+    }
+
+    // 删除对话（自定义确认弹窗）
+    function aiDeleteConv(c) {
+      if (typeof ask === 'function') {
+        ask({
+          title: '删除对话',
+          msg: '删除「' + (c.title || '新对话') + '」？对话内容将不可恢复。',
+          okText: '删除', danger: true,
+          cb: function (ok) { if (ok) doDeleteConv(c.id); },
+        });
+      } else if (window.confirm('删除「' + (c.title || '新对话') + '」？对话内容将不可恢复。')) {
+        doDeleteConv(c.id);
+      }
+    }
+    function doDeleteConv(id) {
+      fetch('/api/ai/conversations?id=' + id, { method: 'DELETE', credentials: 'same-origin' })
+        .then(function (r) { return r.ok ? r.json() : null; })
+        .then(function (d) {
+          if (!d || !d.ok) return;
+          aiConvs = aiConvs.filter(function (x) { return x.id !== id; });
+          // 删的是当前对话：回到开场白状态（不自动跳别的对话，避免误打开）
+          if (id === aiConvId) {
+            aiConvId = 0;
+            aiHistory = [];
+            if (aiMessages) aiMessages.innerHTML = '';
+            aiGreetIfEmpty();
+          }
+          aiRenderHistoryList();
+        })
+        .catch(function () {});
+    }
+
+    // 切换到某个历史对话
+    function aiOpenConv(id) {
+      if (id === aiConvId) { aiCloseHistoryDrawer(); return; }
+      if (aiAbort) {
+        try { aiAbort.abort(); } catch (e) {}
+        aiAbort = null;
+      }
+      fetch('/api/ai/history?conv=' + id, { credentials: 'same-origin' })
+        .then(function (r) { return r.ok ? r.json() : null; })
+        .then(function (d) {
+          if (!d || !d.ok) return;
+          aiConvId = id;
+          aiHistory = (d.messages || []).map(function (m) { return { role: m.role, content: m.content }; });
+          aiAttach = [];
+          aiRenderAttach();
+          aiMessages.innerHTML = '';
+          if (aiHistory.length) {
+            aiHistory.forEach(function (m) {
+              if (m.role === 'user') addAiMsg('user', m.content);
+              else aiRenderBot(addAiMsg('bot', ''), m.content);
+            });
+          } else {
+            aiGreetIfEmpty();
+          }
+          aiRenderHistoryList();
+          aiCloseHistoryDrawer();
+          if (aiInput) aiInput.focus();
+        })
+        .catch(function () {});
+    }
+
+    // 窄屏历史抽屉开合
+    function aiCloseHistoryDrawer() {
+      var h = document.getElementById('aiHistory');
+      if (h) h.classList.remove('open');
+    }
+
+    // 打开界面时恢复最近对话（登录用户）
+    var aiRestored = false;
+    function aiRestoreHistory() {
+      fetch('/api/ai/history', { credentials: 'same-origin' })
+        .then(function (r) { return r.ok ? r.json() : null; })
+        .then(function (d) {
+          if (!d || !d.ok) return;
+          aiConvId = d.conv || 0;
+          var msgs = d.messages || [];
+          if (!msgs.length) return;
+          aiMessages.innerHTML = '';
+          msgs.forEach(function (m) {
+            if (m.role === 'user') addAiMsg('user', m.content);
+            else aiRenderBot(addAiMsg('bot', ''), m.content);
+          });
+          aiHistory = msgs.map(function (m) { return { role: m.role, content: m.content }; });
+          aiRenderHistoryList();
+        })
+        .catch(function () {});
     }
 
     function openAiView() {
@@ -7936,6 +9948,12 @@
       aiView.classList.add('show');
       // 每次打开都刷新一次配置（后台开关/改配置即时生效），再补开场白
       fetchAiConfig(true).then(aiGreetIfEmpty);
+      // 首次打开且本地无历史：拉历史栏列表 + 恢复最近对话（登录用户）
+      if (!aiRestored && !aiHistory.length) {
+        aiRestored = true;
+        aiLoadConvList();
+        aiRestoreHistory();
+      }
       setTimeout(function () { if (aiInput) aiInput.focus(); }, 200);
     }
 
@@ -7943,7 +9961,12 @@
       if (!aiView || aiView.hidden) return;
       fsClose('aiView'); // 解锁滚动 + 摘高亮（统一管理器）
       aiView.classList.remove('show');
-      aiResetChat(); // 关闭即清空：中断流式请求 + 清历史
+      aiCloseHistoryDrawer(); // 关界面顺手收起历史抽屉
+      // 关闭保留对话：只中断进行中的流式请求（历史在内存 + 服务端，重开可继续）
+      if (aiAbort) {
+        try { aiAbort.abort(); } catch (e) {}
+        aiAbort = null;
+      }
       setTimeout(function () {
         aiView.hidden = true;
         onScroll(); // 关闭后恢复按滚动位置的导航高亮
@@ -7978,6 +10001,8 @@
             aiRenderBot(addAiMsg('bot', ''), full);
           }
           messages.push({ role: 'assistant', content: full });
+          // 成功的一问一答成对入服务端历史（失败的不存，避免重试重复）
+          aiSaveHistory(messages.slice(-2));
         } else {
           if (pending) pending.remove();
           addAiMsg('bot', '（模型没有返回内容，换个问法试试？）');
@@ -8085,6 +10110,29 @@
         addAiMsg('bot', '🆕 已开启新对话，有什么想问的～');
         if (aiInput) aiInput.focus();
       });
+    }
+    // 侧栏"新对话"：同款行为 + 关抽屉
+    var aiHistNewBtn = document.getElementById('aiHistNewBtn');
+    if (aiHistNewBtn) {
+      aiHistNewBtn.addEventListener('click', function () {
+        aiResetChat();
+        aiGreetIfEmpty();
+        addAiMsg('bot', '🆕 已开启新对话，有什么想问的～');
+        aiCloseHistoryDrawer();
+        if (aiInput) aiInput.focus();
+      });
+    }
+    // 窄屏：顶栏按钮唤出历史抽屉；点遮罩区域（聊天区）关闭
+    var aiHistoryToggle = document.getElementById('aiHistoryToggle');
+    if (aiHistoryToggle) {
+      aiHistoryToggle.addEventListener('click', function () {
+        var h = document.getElementById('aiHistory');
+        if (h) h.classList.toggle('open');
+      });
+    }
+    var aiChatEl = aiView ? aiView.querySelector('.ai-chat') : null;
+    if (aiChatEl) {
+      aiChatEl.addEventListener('click', function () { aiCloseHistoryDrawer(); });
     }
     // 顶栏切换模型：只影响之后的回复，当前对话历史延续（菜单逻辑见 aiSyncModelSwitcher）
     var aiModelBtn = document.getElementById('aiModelBtn');
@@ -8243,6 +10291,8 @@
     var toolsBtn = document.getElementById('toolsBtn');
     var docsView = document.getElementById('docsView');
     var docsBtn = document.getElementById('docsBtn');
+    var miscView = document.getElementById('miscView');
+    var miscBtn = document.getElementById('miscBtn');
 
     // 各全屏层真正的关闭按钮 id（不能靠 .album-close 类找：AI 顶栏的"新对话"按钮
     // 也用了这个样式类且排在关闭按钮前面，querySelector 会取到它导致互斥失效）
@@ -8253,6 +10303,7 @@
       toolsView: 'toolsViewClose',
       docsView: 'docsViewClose',
       aiView: 'aiViewClose',
+      miscView: 'miscViewClose',
     };
     function closeFullscreenOf(id) {
       var el = document.getElementById(id);
@@ -8303,14 +10354,36 @@
       }, 250);
     }
 
+    function openMiscView() {
+      if (!miscView) return;
+      fsOpen('miscView'); // 互斥收起其他全屏层 + 接管顶栏高亮 + 锁背景滚动（统一管理器）
+      setProfileOpen(false);
+      miscView.hidden = false;
+      void miscView.offsetWidth;
+      miscView.classList.add('show');
+    }
+
+    function closeMiscView() {
+      fsClose('miscView'); // 解锁滚动 + 摘高亮（统一管理器）
+      miscView.classList.remove('show');
+      setTimeout(function () {
+        miscView.hidden = true;
+        onScroll();
+      }, 250);
+    }
+
     if (toolsBtn) toolsBtn.addEventListener('click', openToolsView);
     var toolsViewClose = document.getElementById('toolsViewClose');
     if (toolsViewClose) toolsViewClose.addEventListener('click', closeToolsView);
     if (docsBtn) docsBtn.addEventListener('click', openDocsView);
     var docsViewClose = document.getElementById('docsViewClose');
     if (docsViewClose) docsViewClose.addEventListener('click', closeDocsView);
+    if (miscBtn) miscBtn.addEventListener('click', openMiscView);
+    var miscViewClose = document.getElementById('miscViewClose');
+    if (miscViewClose) miscViewClose.addEventListener('click', closeMiscView);
     fsRegister('toolsView', { el: toolsView, btn: toolsBtn, close: closeToolsView });
     fsRegister('docsView', { el: docsView, btn: docsBtn, close: closeDocsView });
+    fsRegister('miscView', { el: miscView, btn: miscBtn, close: closeMiscView });
 
     document.addEventListener('keydown', function (e) {
       if (e.key !== 'Escape') return;
@@ -8318,6 +10391,7 @@
       if (docViewer && !docViewer.hidden) return;
       if (toolsView && !toolsView.hidden) closeToolsView();
       if (docsView && !docsView.hidden) closeDocsView();
+      if (miscView && !miscView.hidden) closeMiscView();
     });
   })();
   </script>

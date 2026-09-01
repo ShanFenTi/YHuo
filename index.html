@@ -1955,6 +1955,156 @@
       margin: 0 auto 16px;
     }
 
+    /* ===== 课表卡（个人主页）===== */
+    .sched-toolbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-bottom: 12px;
+    }
+    .sched-week-nav {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .sched-mini-btn {
+      width: 26px;
+      height: 26px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border: 1px solid var(--apple-border);
+      border-radius: 8px;
+      background: var(--apple-secondary);
+      color: var(--apple-foreground);
+      font-size: 15px;
+      line-height: 1;
+      cursor: pointer;
+    }
+    .sched-week-label {
+      font-size: 13px;
+      font-weight: 600;
+      min-width: 64px;
+      text-align: center;
+    }
+    .sched-toolbar-right {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .sched-inline {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      color: var(--apple-muted-foreground);
+      white-space: nowrap;
+    }
+    .sched-inline-input {
+      height: 30px;
+      padding: 0 8px;
+      font-size: 12px;
+      font-family: inherit;
+      color: var(--apple-foreground);
+      background: var(--apple-secondary);
+      border: 1px solid var(--apple-border);
+      border-radius: 8px;
+      outline: none;
+    }
+    .sched-time-input { width: 92px; }
+    .sched-num-input { width: 60px; }
+
+    /* 周视图：左侧节次号 + 7 天列；课程块按节次跨行 */
+    .sched-grid {
+      display: grid;
+      grid-template-columns: 30px repeat(7, minmax(0, 1fr));
+      gap: 3px;
+      overflow-x: auto;
+      padding-bottom: 4px;
+    }
+    .sched-head {
+      font-size: 11px;
+      font-weight: 600;
+      text-align: center;
+      color: var(--apple-muted-foreground);
+      padding: 4px 0 6px;
+    }
+    .sched-node {
+      font-size: 10px;
+      color: var(--apple-muted-foreground);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .sched-empty-cell {
+      border-radius: 8px;
+      background: color-mix(in srgb, var(--apple-foreground) 4%, transparent);
+      min-height: 46px;
+    }
+    .sched-course {
+      border-radius: 8px;
+      padding: 4px 6px;
+      font-size: 11px;
+      line-height: 1.35;
+      color: #fff;
+      overflow: hidden;
+      cursor: pointer;
+      transition: transform 150ms var(--ease-out), box-shadow 150ms var(--ease-out);
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+    .sched-course:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.18);
+    }
+    .sched-course-name {
+      font-weight: 600;
+      word-break: break-all;
+    }
+    .sched-course-place { opacity: 0.85; }
+    .sched-course-remind { align-self: flex-start; }
+
+    .sched-editor {
+      margin: 12px 0;
+      padding: 12px;
+      border: 1px dashed var(--apple-border);
+      border-radius: 10px;
+    }
+    .sched-editor-row {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      flex-wrap: wrap;
+      margin-top: 8px;
+    }
+    .sched-remind-row {
+      display: flex;
+      gap: 16px;
+      align-items: center;
+      flex-wrap: wrap;
+      margin-top: 12px;
+      padding-top: 12px;
+      border-top: 1px solid var(--apple-border);
+    }
+    .sched-nodetimes { margin-top: 10px; }
+    .sched-nodetimes summary {
+      font-size: 12px;
+      color: var(--apple-muted-foreground);
+      cursor: pointer;
+      user-select: none;
+    }
+    .sched-nodetimes-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
+      gap: 6px;
+      margin-top: 8px;
+    }
+    .flex-spacer { flex: 1; }
+
     /* 个人主页操作区按钮行（危险项描红） */
     .profile-actions {
       display: flex;
@@ -4188,6 +4338,69 @@
               <p class="profilev-sub" id="profilevSub">加载中…</p>
             </div>
           </div>
+        </div>
+      </div>
+
+      <!-- 课表（周视图 + WakeUp 导入 + 邮件提醒设置） -->
+      <div class="apple-card" id="schedCard" style="display:none">
+        <div class="card-padding">
+          <p class="card-eyebrow">课表 · SCHEDULE</p>
+          <div class="sched-toolbar">
+            <div class="sched-week-nav">
+              <button class="sched-mini-btn" id="schedWeekPrev" type="button" aria-label="上一周">‹</button>
+              <span class="sched-week-label" id="schedWeekLabel">第 1 周</span>
+              <button class="sched-mini-btn" id="schedWeekNext" type="button" aria-label="下一周">›</button>
+            </div>
+            <div class="sched-toolbar-right">
+              <label class="sched-inline">学期首周一
+                <input class="sched-inline-input" type="date" id="schedTermStart">
+              </label>
+              <button class="appear-btn" id="schedImportBtn" type="button">导入 WakeUp</button>
+              <input type="file" id="schedImportFile" accept=".json,application/json" hidden>
+              <button class="appear-btn" id="schedAddBtn" type="button">＋ 添加课程</button>
+            </div>
+          </div>
+          <div class="sched-grid" id="schedGrid" aria-label="周课表"></div>
+          <!-- 课程编辑器（点课程块或"添加课程"展开） -->
+          <div class="sched-editor" id="schedEditor" hidden>
+            <input class="profilev-input" id="schedEName" type="text" placeholder="课程名（必填）">
+            <div class="sched-editor-row">
+              <input class="profilev-input" id="schedEPlace" type="text" placeholder="教室">
+              <input class="profilev-input" id="schedETeacher" type="text" placeholder="教师">
+            </div>
+            <div class="sched-editor-row">
+              <select class="profilev-input" id="schedEDay">
+                <option value="1">周一</option><option value="2">周二</option><option value="3">周三</option>
+                <option value="4">周四</option><option value="5">周五</option><option value="6">周六</option>
+                <option value="7">周日</option>
+              </select>
+              <input class="profilev-input" id="schedEStart" type="number" min="1" max="20" placeholder="第几节起">
+              <input class="profilev-input" id="schedEEnd" type="number" min="1" max="20" placeholder="到第几节">
+              <input class="profilev-input" id="schedEWeeks" type="text" placeholder="周次，如 1-16(单)">
+            </div>
+            <div class="sched-editor-row">
+              <label class="sched-inline"><input type="checkbox" id="schedERemind"> 重点课（课前单独邮件提醒）</label>
+              <span class="flex-spacer"></span>
+              <button class="appear-btn danger-btn" id="schedEDelete" type="button" hidden>删除</button>
+              <button class="appear-btn" id="schedECancel" type="button">取消</button>
+              <button class="appear-btn" id="schedESave" type="button">保存</button>
+            </div>
+          </div>
+          <!-- 提醒设置 -->
+          <div class="sched-remind-row">
+            <label class="sched-inline"><input type="checkbox" id="schedDailyOn"> 每日早报</label>
+            <input class="sched-inline-input sched-time-input" type="time" id="schedDailyTime" value="07:00">
+            <label class="sched-inline">重点课提前
+              <input class="sched-inline-input sched-num-input" type="number" id="schedAhead" min="5" max="120"> 分钟
+            </label>
+          </div>
+          <!-- 作息时间（每节上课时间，展开编辑） -->
+          <details class="sched-nodetimes">
+            <summary>作息时间（各节上课时间）</summary>
+            <div class="sched-nodetimes-grid" id="schedNodeTimes"></div>
+          </details>
+          <p class="profile-msg" id="schedMsg"></p>
+          <p class="profile-hint" id="schedEmailHint" hidden></p>
         </div>
       </div>
 
@@ -7620,6 +7833,373 @@
         });
     }
 
+    // ---------- 课表卡：周视图 / WakeUp 导入 / 手动编辑 / 邮件提醒设置 ----------
+    // 数据结构与后端 lib/schedule.js 对齐；每次改动整份 PUT 保存
+    var schedCard = document.getElementById('schedCard');
+    var schedGridEl = document.getElementById('schedGrid');
+    var schedWeekLabel = document.getElementById('schedWeekLabel');
+    var schedWeekPrev = document.getElementById('schedWeekPrev');
+    var schedWeekNext = document.getElementById('schedWeekNext');
+    var schedTermStart = document.getElementById('schedTermStart');
+    var schedImportBtn = document.getElementById('schedImportBtn');
+    var schedImportFile = document.getElementById('schedImportFile');
+    var schedAddBtn = document.getElementById('schedAddBtn');
+    var schedEditor = document.getElementById('schedEditor');
+    var schedEName = document.getElementById('schedEName');
+    var schedEPlace = document.getElementById('schedEPlace');
+    var schedETeacher = document.getElementById('schedETeacher');
+    var schedEDay = document.getElementById('schedEDay');
+    var schedEStart = document.getElementById('schedEStart');
+    var schedEEnd = document.getElementById('schedEEnd');
+    var schedEWeeks = document.getElementById('schedEWeeks');
+    var schedERemind = document.getElementById('schedERemind');
+    var schedEDelete = document.getElementById('schedEDelete');
+    var schedECancel = document.getElementById('schedECancel');
+    var schedESave = document.getElementById('schedESave');
+    var schedDailyOn = document.getElementById('schedDailyOn');
+    var schedDailyTime = document.getElementById('schedDailyTime');
+    var schedAhead = document.getElementById('schedAhead');
+    var schedNodeTimesEl = document.getElementById('schedNodeTimes');
+    var schedMsg = document.getElementById('schedMsg');
+    var schedEmailHint = document.getElementById('schedEmailHint');
+    var schedData = null;   // 归一化课表（termStart/nodeTimes/courses/daily/remindAhead）
+    var schedViewWeek = 0;  // 正在查看的教学周（0 = 跟随当前周）
+    var schedEditIdx = -1;  // 编辑中的课程下标（-1 = 新增）
+    var SCHED_DAYS = ['周一', '周二', '周三', '周四', '周五', '周六', '周日'];
+    var SCHED_COLORS = ['#5b8def', '#e8618c', '#3aa981', '#e0913d', '#8b6fd6', '#4ab3c4', '#d16a4a', '#6f7f95'];
+
+    function showSchedMsg(text, err) {
+      if (!schedMsg) return;
+      schedMsg.textContent = text || '';
+      schedMsg.classList.toggle('err', !!err);
+    }
+    function schedColor(name) {
+      var h = 0;
+      var s = String(name || '');
+      for (var i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0;
+      return SCHED_COLORS[h % SCHED_COLORS.length];
+    }
+    // 当前教学周（本地时间；termStart 自动校准到那周的周一）
+    function schedCurWeek() {
+      if (!schedData || !schedData.termStart) return 0;
+      var t = new Date(schedData.termStart + 'T00:00:00');
+      if (isNaN(t)) return 0;
+      var wd = t.getDay();
+      t.setDate(t.getDate() - ((wd + 6) % 7));
+      var days = Math.floor((Date.now() - t.getTime()) / 86400e3);
+      return days < 0 ? 0 : Math.floor(days / 7) + 1;
+    }
+    // 周次文本 → 周数组（与服务端 parseWeekDesc 同规则）："1-16(单)" "1,3,5" "1-8周(双)"
+    function schedParseWeeks(str) {
+      var s = String(str || '').trim();
+      if (!s) return [];
+      var odd = /单/.test(s), even = /双/.test(s);
+      var nums = {}, out = [];
+      var ranges = s.match(/\d+(\s*-\s*\d+)?/g) || [];
+      ranges.forEach(function (r) {
+        var ab = r.split('-');
+        var from = parseInt(ab[0], 10) || 0, to = parseInt(ab[1], 10) || from;
+        for (var i = from; i <= to && i <= 30; i++) {
+          if (i < 1) continue;
+          if (odd && i % 2 === 0) continue;
+          if (even && i % 2 === 1) continue;
+          if (!nums[i]) { nums[i] = 1; out.push(i); }
+        }
+      });
+      return out.sort(function (a, b) { return a - b; });
+    }
+    // 周数组 → 紧凑文本（连续周压缩成区间："1,2,3,5" → "1-3,5"）
+    function schedWeeksText(arr) {
+      if (!arr || !arr.length) return '';
+      var sorted = arr.slice().sort(function (a, b) { return a - b; });
+      var parts = [], start = sorted[0], prev = sorted[0];
+      for (var i = 1; i <= sorted.length; i++) {
+        var cur = sorted[i];
+        if (cur === prev + 1) { prev = cur; continue; }
+        parts.push(start === prev ? String(start) : start + '-' + prev);
+        start = prev = cur;
+      }
+      return parts.join(',');
+    }
+
+    function renderSchedGrid() {
+      if (!schedGridEl || !schedData) return;
+      var grid = schedGridEl;
+      grid.innerHTML = '';
+      var cur = schedCurWeek();
+      var week = schedViewWeek || cur || 1;
+      if (schedWeekLabel) {
+        schedWeekLabel.textContent = schedData.termStart
+          ? '第 ' + week + ' 周' + (week === cur ? ' · 本周' : '')
+          : '未设学期起始';
+      }
+      // 本周有课的课程（week=0 时按第 1 周展示，避免空白）
+      var show = schedData.courses.filter(function (c) {
+        return !c.weeks.length || c.weeks.indexOf(week) !== -1;
+      });
+      var maxNode = 10;
+      show.forEach(function (c) { if (c.endNode > maxNode) maxNode = c.endNode; });
+      grid.style.gridTemplateRows = '26px repeat(' + maxNode + ', 50px)';
+      var cell = function (col, row, el, span) {
+        el.style.gridColumn = String(col);
+        el.style.gridRow = String(row) + (span ? ' / span ' + span : '');
+        grid.appendChild(el);
+      };
+      // 表头：空 + 周一~周日
+      for (var d = 1; d <= 7; d++) {
+        var h = document.createElement('div');
+        h.className = 'sched-head';
+        h.textContent = SCHED_DAYS[d - 1];
+        cell(d + 1, 1, h);
+      }
+      // 节次号 + 空底格
+      for (var n = 1; n <= maxNode; n++) {
+        var num = document.createElement('div');
+        num.className = 'sched-node';
+        num.textContent = n;
+        cell(1, n + 1, num);
+        for (var dd = 1; dd <= 7; dd++) {
+          var empty = document.createElement('div');
+          empty.className = 'sched-empty-cell';
+          cell(dd + 1, n + 1, empty);
+        }
+      }
+      // 课程块（叠在空底格上）
+      schedData.courses.forEach(function (c, i) {
+        if (show.indexOf(c) === -1) return;
+        var el = document.createElement('div');
+        el.className = 'sched-course';
+        el.style.background = schedColor(c.name);
+        el.style.gridColumn = String(c.day + 1);
+        el.style.gridRow = (c.startNode + 1) + ' / span ' + (c.endNode - c.startNode + 1);
+        el.title = c.name + (c.place ? ' · ' + c.place : '') + (c.teacher ? ' · ' + c.teacher : '')
+          + ' · 第' + c.startNode + '-' + c.endNode + '节' + (c.weeks.length ? ' · ' + schedWeeksText(c.weeks) + ' 周' : '');
+        var nm = document.createElement('span');
+        nm.className = 'sched-course-name';
+        nm.textContent = c.name;
+        el.appendChild(nm);
+        if (c.place) {
+          var pl = document.createElement('span');
+          pl.className = 'sched-course-place';
+          pl.textContent = c.place;
+          el.appendChild(pl);
+        }
+        if (c.remind) {
+          var rm = document.createElement('span');
+          rm.className = 'sched-course-remind';
+          rm.textContent = '⏰';
+          el.appendChild(rm);
+        }
+        el.addEventListener('click', function () { schedOpenEditor(i); });
+        grid.appendChild(el);
+      });
+    }
+
+    function renderSchedNodeTimes() {
+      if (!schedNodeTimesEl || !schedData) return;
+      var box = schedNodeTimesEl;
+      box.innerHTML = '';
+      schedData.nodeTimes.forEach(function (t, i) {
+        var wrap = document.createElement('label');
+        wrap.className = 'sched-inline';
+        var label = document.createElement('span');
+        label.textContent = '第' + (i + 1) + '节';
+        var input = document.createElement('input');
+        input.type = 'time';
+        input.className = 'sched-inline-input sched-time-input';
+        input.value = String(t.h).padStart(2, '0') + ':' + String(t.m).padStart(2, '0');
+        input.addEventListener('change', function () {
+          var v = input.value.split(':');
+          schedData.nodeTimes[i] = { h: parseInt(v[0], 10) || 0, m: parseInt(v[1], 10) || 0 };
+          schedSave('作息时间已保存');
+        });
+        wrap.appendChild(label);
+        wrap.appendChild(input);
+        box.appendChild(wrap);
+      });
+    }
+
+    function renderSchedAll() {
+      if (!schedData) return;
+      if (schedTermStart) schedTermStart.value = schedData.termStart || '';
+      if (schedDailyOn) schedDailyOn.checked = !!(schedData.daily && schedData.daily.on);
+      if (schedDailyTime) schedDailyTime.value = (schedData.daily && schedData.daily.time) || '07:00';
+      if (schedAhead) schedAhead.value = schedData.remindAhead || 30;
+      renderSchedGrid();
+      renderSchedNodeTimes();
+    }
+
+    function schedOpenEditor(idx) {
+      if (!schedEditor || !schedData) return;
+      schedEditIdx = idx;
+      var c = idx >= 0 ? schedData.courses[idx] : null;
+      schedEName.value = c ? c.name : '';
+      schedEPlace.value = c ? c.place : '';
+      schedETeacher.value = c ? c.teacher : '';
+      schedEDay.value = c ? String(c.day) : '1';
+      schedEStart.value = c ? c.startNode : 1;
+      schedEEnd.value = c ? c.endNode : 2;
+      schedEWeeks.value = c ? schedWeeksText(c.weeks) : '1-16';
+      schedERemind.checked = c ? !!c.remind : false;
+      schedEDelete.hidden = !c;
+      schedEditor.hidden = false;
+      if (schedEName) schedEName.focus();
+    }
+
+    function schedCloseEditor() {
+      if (schedEditor) schedEditor.hidden = true;
+      schedEditIdx = -1;
+    }
+
+    function schedSave(msg) {
+      if (!schedData) return;
+      fetch('/api/schedule', {
+        method: 'PUT',
+        credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ schedule: schedData }),
+      })
+        .then(function (r) { return r.json().catch(function () { return { ok: false, error: '响应异常' }; }); })
+        .then(function (d) {
+          if (d.ok) {
+            schedData = d.schedule;
+            renderSchedAll();
+            showSchedMsg(msg || '已保存', false);
+          } else showSchedMsg(d.error || '保存失败', true);
+        })
+        .catch(function () { showSchedMsg('网络错误', true); });
+    }
+
+    function loadSched() {
+      if (!schedCard) return;
+      fetch('/api/schedule', { credentials: 'same-origin' })
+        .then(function (r) { return r.ok ? r.json() : null; })
+        .then(function (d) {
+          if (!d || !d.ok) { schedCard.style.display = 'none'; return; } // 未登录/接口不可用
+          schedCard.style.display = '';
+          schedData = d.schedule;
+          schedViewWeek = 0;
+          schedCloseEditor();
+          renderSchedAll();
+          showSchedMsg('');
+          renderSchedEmailHint();
+        })
+        .catch(function () { if (schedCard) schedCard.style.display = 'none'; });
+    }
+
+    // 提示语：提醒依赖邮件服务 + 已验证邮箱（GitHub Pages 静态模式下接口 404 → 整卡隐藏）
+    function renderSchedEmailHint() {
+      if (!schedEmailHint) return;
+      fetch('/api/user/email', { credentials: 'same-origin' })
+        .then(function (r) { return r.ok ? r.json() : null; })
+        .then(function (d) {
+          if (!d || !d.ok) { schedEmailHint.hidden = true; return; }
+          if (!d.enabled) {
+            schedEmailHint.textContent = '站点未启用邮件服务，课表提醒暂时不会发送。';
+            schedEmailHint.hidden = false;
+          } else if (!d.verified) {
+            schedEmailHint.textContent = '提醒通过邮件发送，请先在下方绑定并验证邮箱。';
+            schedEmailHint.hidden = false;
+          } else if (!d.owner) {
+            schedEmailHint.textContent = '当前为"仅站长"邮件模式，普通账号暂收不到课表提醒。';
+            schedEmailHint.hidden = false;
+          } else {
+            schedEmailHint.hidden = true;
+          }
+        })
+        .catch(function () { schedEmailHint.hidden = true; });
+    }
+
+    if (schedWeekPrev) schedWeekPrev.addEventListener('click', function () {
+      var cur = schedCurWeek() || 1;
+      schedViewWeek = Math.max(1, (schedViewWeek || cur) - 1);
+      renderSchedGrid();
+    });
+    if (schedWeekNext) schedWeekNext.addEventListener('click', function () {
+      var cur = schedCurWeek() || 1;
+      schedViewWeek = Math.min(30, (schedViewWeek || cur) + 1);
+      renderSchedGrid();
+    });
+    if (schedTermStart) schedTermStart.addEventListener('change', function () {
+      if (!schedData) return;
+      schedData.termStart = schedTermStart.value || '';
+      schedViewWeek = 0;
+      schedSave('学期起始已保存');
+    });
+    if (schedImportBtn) schedImportBtn.addEventListener('click', function () {
+      if (schedImportFile) schedImportFile.click();
+    });
+    if (schedImportFile) schedImportFile.addEventListener('change', function () {
+      var file = schedImportFile.files && schedImportFile.files[0];
+      schedImportFile.value = ''; // 允许重复导入同一文件
+      if (!file) return;
+      showSchedMsg('导入中…');
+      var reader = new FileReader();
+      reader.onload = function () {
+        var obj;
+        try { obj = JSON.parse(reader.result); } catch (e) {
+          showSchedMsg('文件不是合法的 JSON', true); return;
+        }
+        fetch('/api/schedule', {
+          method: 'PUT',
+          credentials: 'same-origin',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ wakeUp: obj }),
+        })
+          .then(function (r) { return r.json().catch(function () { return { ok: false, error: '响应异常' }; }); })
+          .then(function (d) {
+            if (d.ok) {
+              schedData = d.schedule;
+              schedViewWeek = 0;
+              schedCloseEditor();
+              renderSchedAll();
+              showSchedMsg('导入成功，共 ' + schedData.courses.length + ' 门课程');
+            } else showSchedMsg(d.error || '导入失败', true);
+          })
+          .catch(function () { showSchedMsg('网络错误', true); });
+      };
+      reader.readAsText(file);
+    });
+    if (schedAddBtn) schedAddBtn.addEventListener('click', function () { schedOpenEditor(-1); });
+    if (schedECancel) schedECancel.addEventListener('click', schedCloseEditor);
+    if (schedEDelete) schedEDelete.addEventListener('click', function () {
+      if (schedEditIdx < 0 || !schedData) return;
+      schedData.courses.splice(schedEditIdx, 1);
+      schedCloseEditor();
+      schedSave('课程已删除');
+    });
+    if (schedESave) schedESave.addEventListener('click', function () {
+      if (!schedData) return;
+      var name = schedEName.value.trim();
+      if (!name) { showSchedMsg('课程名不能为空', true); return; }
+      var start = parseInt(schedEStart.value, 10) || 1;
+      var end = parseInt(schedEEnd.value, 10) || start;
+      if (end < start) end = start;
+      var weeks = schedParseWeeks(schedEWeeks.value);
+      if (!weeks.length) { showSchedMsg('周次格式不正确，示例：1-16 或 1,3,5 或 1-16(单)', true); return; }
+      var c = {
+        name: name, place: schedEPlace.value.trim(), teacher: schedETeacher.value.trim(),
+        day: parseInt(schedEDay.value, 10) || 1,
+        startNode: Math.max(1, Math.min(20, start)),
+        endNode: Math.max(1, Math.min(20, end)),
+        weeks: weeks, remind: schedERemind.checked,
+      };
+      if (schedEditIdx >= 0) schedData.courses[schedEditIdx] = c;
+      else schedData.courses.push(c);
+      schedCloseEditor();
+      schedSave('课程已保存');
+    });
+    if (schedDailyOn) schedDailyOn.addEventListener('change', function () {
+      schedData.daily.on = schedDailyOn.checked; schedSave('提醒设置已保存');
+    });
+    if (schedDailyTime) schedDailyTime.addEventListener('change', function () {
+      schedData.daily.time = schedDailyTime.value || '07:00'; schedSave('提醒设置已保存');
+    });
+    if (schedAhead) schedAhead.addEventListener('change', function () {
+      schedData.remindAhead = Math.max(5, Math.min(120, parseInt(schedAhead.value, 10) || 30));
+      schedSave('提醒设置已保存');
+    });
+
     // 头像变化后同步个人主页（面板由 updateProfilePanel 管，这里管主页大头像）
     function updateProfileView() {
       if (profileView && !profileView.hidden) loadProfileData();
@@ -7711,6 +8291,7 @@
       setProfileOpen(false);
       loadProfileData();
       loadEmailCard();
+      loadSched();
       renderFavorites();
       profileView.hidden = false;
       void profileView.offsetWidth;

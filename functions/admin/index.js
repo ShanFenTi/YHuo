@@ -788,6 +788,17 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
       <input type="text" id="emailTestTo" placeholder="收件邮箱" style="max-width:260px">
       <button id="emailTestBtn" class="ghost" type="button">发送测试邮件</button>
     </div>
+    <p class="appear-label2" style="margin-top:26px">课表提醒定时任务（用户课表的每日早报 / 重点课课前提醒）</p>
+    <p class="meta2">Pages Functions 不支持定时触发，需要外部 cron 每 5 分钟访问下面的 URL。推荐 cron-job.org（免费）：注册后新建任务，地址填下面的 URL，执行间隔选"每 5 分钟"。</p>
+    <div class="bgset-row" style="margin-top:10px">
+      <input type="text" id="schedTickUrl" readonly style="max-width:460px">
+      <button id="schedTickCopyBtn" class="ghost" type="button">复制</button>
+    </div>
+    <div class="bgset-row" style="margin-top:8px">
+      <button id="schedTickRegenBtn" class="ghost" type="button">重新生成密钥</button>
+      <button id="schedTickRunBtn" class="ghost" type="button">立即执行一次</button>
+      <span class="meta2" id="schedTickMsg"></span>
+    </div>
   </div>
 
   <div id="mePanel" hidden>
@@ -2486,6 +2497,51 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
     }).catch(function () { toast('网络错误', 'err'); });
   });
 
+  // ---------- 课表提醒定时任务（tick URL 管理 + 手动触发） ----------
+  var schedTickKey = '';
+  function loadSchedTick() {
+    api('/api/admin/schedule').then(function (d) {
+      if (!d.ok) return;
+      schedTickKey = d.key || '';
+      $('schedTickUrl').value = d.url || '';
+    }).catch(function () {});
+  }
+  $('schedTickCopyBtn').addEventListener('click', function () {
+    var url = $('schedTickUrl').value;
+    if (!url) return;
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(url).then(function () { toast('已复制', 'ok'); });
+    } else {
+      $('schedTickUrl').select();
+      document.execCommand('copy');
+      toast('已复制', 'ok');
+    }
+  });
+  $('schedTickRegenBtn').addEventListener('click', function () {
+    api('/api/admin/schedule', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'regenerate' })
+    }).then(function (d) {
+      if (d.ok) {
+        schedTickKey = d.key || '';
+        $('schedTickUrl').value = d.url || '';
+        $('schedTickMsg').textContent = '已重新生成，旧地址立即失效（记得更新 cron 配置）';
+        toast('定时密钥已重新生成', 'ok');
+      } else toast(d.error || '操作失败', 'err');
+    }).catch(function () { toast('网络错误', 'err'); });
+  });
+  $('schedTickRunBtn').addEventListener('click', function () {
+    $('schedTickMsg').textContent = '执行中…';
+    api('/api/schedule/tick?key=' + encodeURIComponent(schedTickKey)).then(function (d) {
+      if (d.ok) {
+        $('schedTickMsg').textContent = d.disabled
+          ? '邮件服务未启用，未发送任何提醒'
+          : '本次发送 ' + (d.sent || 0) + ' 封提醒邮件' + (d.errors && d.errors.length ? '（' + d.errors.length + ' 个失败）' : '');
+      } else $('schedTickMsg').textContent = d.error || '执行失败';
+    }).catch(function () { $('schedTickMsg').textContent = '网络错误'; });
+  });
+
   function tagSelect(value, onchange) {
     var host = document.createElement('span');
     makeAiDrop(host, {
@@ -3010,6 +3066,7 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
     }
     if (isEmail) {
       loadEmailSettings();
+      loadSchedTick();
     }
     if (isMe) {
       loadMe();

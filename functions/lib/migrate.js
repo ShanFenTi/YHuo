@@ -114,6 +114,23 @@ const DDL = [
     created_at TEXT NOT NULL DEFAULT (datetime('now'))
   )`,
   `CREATE INDEX IF NOT EXISTS idx_ai_chat_owner ON ai_chat_history (owner, id)`,
+  // 课表（每用户一份 JSON）：termStart=学期第一周周一，courses=归一化课程数组，
+  // nodeTimes=各节次开始时间，daily/remindAhead=提醒设置。结构见 lib/schedule.js
+  `CREATE TABLE IF NOT EXISTS schedules (
+    user_id    INTEGER PRIMARY KEY,
+    data       TEXT NOT NULL,
+    updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+  )`,
+  // 课表提醒发送记录：防同一提醒重复发送。
+  // kind='daily'（每日早报，ref 固定 0）| 'class'（重点课课前提醒，ref=课程在数组里的下标）
+  `CREATE TABLE IF NOT EXISTS schedule_sent (
+    user_id INTEGER NOT NULL,
+    day     TEXT NOT NULL,
+    kind    TEXT NOT NULL,
+    ref     TEXT NOT NULL DEFAULT '0',
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    PRIMARY KEY (user_id, day, kind, ref)
+  )`,
 ];
 
 // 同一个隔离实例里只跑一次

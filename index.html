@@ -801,6 +801,12 @@
 
     @media (prefers-reduced-motion: reduce) {
       .lyric-cursor { animation: none; }
+      /* 系统开了"减少动态效果"：弹窗直接显隐，不做缩放回弹 */
+      .sched-editor-panel,
+      .sched-editor-overlay.show .sched-editor-panel {
+        transform: none;
+        transition: opacity 120ms var(--ease-out);
+      }
     }
 
     /* ===== 天气胶囊（首页日期下方，点击换城市） ===== */
@@ -2105,6 +2111,7 @@
     .sched-editor-overlay[hidden] {
       display: none;
     }
+    /* 弹窗动效：打开时从 92% 弹起并轻微过冲（自定义弹簧曲线），关闭时缩回淡出 */
     .sched-editor-panel {
       width: min(440px, 92vw);
       max-height: calc(100vh - 48px);
@@ -2115,11 +2122,15 @@
       border-radius: var(--radius);
       box-shadow: var(--shadow-md);
       padding: calc(var(--spacing) * 5);
-      transform: translateY(14px) scale(0.98);
-      transition: transform 280ms var(--ease-out);
+      transform: scale(0.92);
+      opacity: 0;
+      transition: transform 200ms var(--ease-out), opacity 160ms var(--ease-out);
     }
     .sched-editor-overlay.show .sched-editor-panel {
-      transform: none;
+      /* cubic-bezier 过冲：末段越过 1 再回落，模拟弹簧回弹 */
+      transform: scale(1);
+      opacity: 1;
+      transition: transform 420ms cubic-bezier(0.34, 1.56, 0.64, 1), opacity 200ms var(--ease-out);
     }
     .sched-editor-title {
       font-size: 13px;

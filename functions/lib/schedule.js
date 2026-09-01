@@ -196,7 +196,9 @@ export function parseWakeUpCsv(text) {
   const ciName = colOf(['课程名', '课程名称', '课程']);
   const ciDay = colOf(['星期', '周几', '星期几']);
   const ciTeacher = colOf(['讲师', '教师', '老师']);
-  const ciNode = colOf(['节数', '节次', '上课节次']);
+  const ciStartNode = colOf(['开始节数']);
+  const ciEndNode = colOf(['结束节数']);
+  const ciNode = colOf(['节数', '节次', '上课节次']); // 单列式（"第1,2节"）
   const ciPlace = colOf(['教室', '地点', '上课地点']);
   const ciWeeks = colOf(['周次', '周数', '上课周次']);
   if (ciName < 0) throw new Error('CSV 表头里找不到"课程名"列');
@@ -215,9 +217,18 @@ export function parseWakeUpCsv(text) {
     if (!name) continue;
     const day = ciDay >= 0 ? dayOf(f[ciDay]) : 0;
     if (!day) continue;
-    const node = ciNode >= 0 ? parseNodeDesc(f[ciNode]) : null;
-    const startNode = node ? node.start : 1;
-    let endNode = node ? node.end : startNode;
+    // 节次：优先"开始/结束节数"两列，否则单列"第1,2节"式描述
+    let startNode = 1, endNode = 1;
+    if (ciStartNode >= 0) {
+      startNode = parseInt((f[ciStartNode] || '').match(/\d+/) || ['1'], 10) || 1;
+      endNode = ciEndNode >= 0
+        ? (parseInt((f[ciEndNode] || '').match(/\d+/) || [String(startNode)], 10) || startNode)
+        : startNode;
+    } else {
+      const node = ciNode >= 0 ? parseNodeDesc(f[ciNode]) : null;
+      startNode = node ? node.start : 1;
+      endNode = node ? node.end : startNode;
+    }
     if (endNode < startNode) endNode = startNode;
     let weeks = ciWeeks >= 0 ? parseWeekDesc(f[ciWeeks]) : [];
     if (!weeks.length) weeks = [1];

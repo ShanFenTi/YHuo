@@ -2097,12 +2097,20 @@
       cursor: pointer;
       user-select: none;
     }
+    /* 作息时间项：标签在上、输入框占满整格，避免窄格里文字+输入框横向溢出 */
     .sched-nodetimes-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
-      gap: 6px;
+      grid-template-columns: repeat(auto-fill, minmax(104px, 1fr));
+      gap: 8px;
       margin-top: 8px;
     }
+    .sched-nt-item {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      min-width: 0;
+    }
+    .sched-nt-item .sched-inline-input { width: 100%; }
     .flex-spacer { flex: 1; }
 
     /* 个人主页操作区按钮行（危险项描红） */
@@ -8001,12 +8009,14 @@
       box.innerHTML = '';
       schedData.nodeTimes.forEach(function (t, i) {
         var wrap = document.createElement('label');
-        wrap.className = 'sched-inline';
+        wrap.className = 'sched-nt-item';
         var label = document.createElement('span');
+        label.className = 'sched-inline';
+        label.style.whiteSpace = 'nowrap';
         label.textContent = '第' + (i + 1) + '节';
         var input = document.createElement('input');
         input.type = 'time';
-        input.className = 'sched-inline-input sched-time-input';
+        input.className = 'sched-inline-input';
         input.value = String(t.h).padStart(2, '0') + ':' + String(t.m).padStart(2, '0');
         input.addEventListener('change', function () {
           var v = input.value.split(':');

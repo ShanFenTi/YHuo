@@ -772,7 +772,7 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
       <button id="emailKeyEye" class="icon-mini ai-key-eye" type="button" title="显示/隐藏"></button>
     </div>
     <p class="meta2" id="emailKeyHint" style="margin-top:6px">未设置</p>
-    <p class="ai-mgr-label" style="margin-top:14px">站长邮箱（"仅站长使用"模式下唯一能收验证码的地址，填你注册 Resend 的邮箱）</p>
+    <p class="ai-mgr-label" style="margin-top:14px">站长邮箱（"仅站长使用"模式下唯一能收验证码的地址，填你注册 Resend 的邮箱；清空后点"保存配置"即移除，"仅站长使用"会自动关闭）</p>
     <input type="text" id="emailOwnerInput" placeholder="you@example.com" style="max-width:320px">
     <div class="bgset-row" style="margin-top:14px">
       <button id="emailAdminOnlyBtn" class="ghost" type="button">开启"仅站长使用"</button>
@@ -787,6 +787,18 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
     <div class="bgset-row">
       <input type="text" id="emailTestTo" placeholder="收件邮箱" style="max-width:260px">
       <button id="emailTestBtn" class="ghost" type="button">发送测试邮件</button>
+    </div>
+    <p class="appear-label2" style="margin-top:22px">自定义邮件（给任意邮箱发任意内容）</p>
+    <div class="bgset-row">
+      <input type="text" id="emailCustomTo" placeholder="收件邮箱" style="max-width:260px">
+      <input type="text" id="emailCustomSubject" placeholder="邮件主题" style="max-width:320px">
+    </div>
+    <div class="bgset-row" style="margin-top:8px;align-items:flex-start">
+      <textarea id="emailCustomText" placeholder="邮件正文（纯文本，支持换行，≤5000 字）" rows="5" style="max-width:560px;width:100%;resize:vertical"></textarea>
+    </div>
+    <div class="bgset-row" style="margin-top:8px">
+      <button id="emailCustomBtn" type="button">发送</button>
+      <span class="meta2" id="emailCustomMsg"></span>
     </div>
     <p class="appear-label2" style="margin-top:26px">课表提醒定时任务（用户课表的每日早报 / 重点课课前提醒）</p>
     <p class="meta2">Pages Functions 不支持定时触发，需要外部 cron 每 5 分钟访问下面的 URL。推荐 cron-job.org（免费）：注册后新建任务，地址填下面的 URL，执行间隔选"每 5 分钟"。</p>
@@ -2443,15 +2455,17 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
     }).catch(function () { toast('网络错误', 'err'); });
   }
   function saveEmailConfig(opts, done) {
+    var ownerEmail = $('emailOwnerInput').value.trim();
     api('/api/admin/email', {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         enabled: opts.enabled,
-        admin_only: opts.admin_only,
+        // 站长邮箱清空 = 移除（此时"仅站长"强制关闭）
+        admin_only: opts.admin_only && !!ownerEmail,
         provider: $('emailProviderDrop').value,
         from: $('emailFrom').value.trim(),
-        owner_email: $('emailOwnerInput').value.trim() || undefined,
+        owner_email: ownerEmail,
         api_key: $('emailApiKey').value.trim() || undefined, // 留空 = 保留原 Key
       })
     }).then(function (d) {
@@ -2495,6 +2509,33 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
       if (d.ok) toast('测试邮件已发送，注意查收（含垃圾箱）', 'ok');
       else toast(d.error || '发送失败', 'err');
     }).catch(function () { toast('网络错误', 'err'); });
+  });
+
+  // ---------- 自定义邮件：任意收件人 + 主题 + 纯文本正文 ----------
+  $('emailCustomBtn').addEventListener('click', function () {
+    var to = $('emailCustomTo').value.trim();
+    var subject = $('emailCustomSubject').value.trim();
+    var text = $('emailCustomText').value;
+    if (!to) { toast('请填写收件邮箱', 'err'); return; }
+    if (!subject && !text.trim()) { toast('请填写主题或正文', 'err'); return; }
+    $('emailCustomBtn').disabled = true;
+    $('emailCustomMsg').textContent = '发送中…';
+    api('/api/admin/email', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ to: to, subject: subject, text: text })
+    }).then(function (d) {
+      if (d.ok) {
+        $('emailCustomMsg').textContent = '已发送至 ' + to + '，注意查收（含垃圾箱）';
+        toast('自定义邮件已发送', 'ok');
+      } else {
+        $('emailCustomMsg').textContent = d.error || '发送失败';
+        toast(d.error || '发送失败', 'err');
+      }
+    }).catch(function () {
+      $('emailCustomMsg').textContent = '网络错误';
+      toast('网络错误', 'err');
+    }).then(function () { $('emailCustomBtn').disabled = false; });
   });
 
   // ---------- 课表提醒定时任务（tick URL 管理 + 手动触发） ----------

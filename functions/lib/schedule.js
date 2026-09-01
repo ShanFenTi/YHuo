@@ -85,8 +85,10 @@ export function normSchedule(raw) {
 
 // ---------- WakeUp 课程表导出 JSON 解析 ----------
 // WakeUp 导出格式：{ courses: [{ courseName, roomName, teacherName,
-//   day(1-7), startNode, step(节次跨度), weeks: bool[](下标0=第1周) }] }
-// 兼容部分版本的 endNode 字段；解析失败抛 Error（中文消息可直接给前端）。
+//   day(1-7), startNode, step(节次跨度), weeks: bool[](下标0=第1周) }]
+// 兼容多版本字段：courseName/name、roomName/room、teacherName/teacher、
+//   startNode/startSection、endNode/endSection、weeks 支持布尔数组/数字数组/文本（"1-16"、"2-16双"）、weekStr。
+// 解析失败抛 Error（中文消息可直接给前端）。
 export function parseWakeUp(obj) {
   if (!obj || typeof obj !== 'object' || !Array.isArray(obj.courses)) {
     throw new Error('不是有效的 WakeUp 课表文件（缺少 courses 数组）');
@@ -95,15 +97,17 @@ export function parseWakeUp(obj) {
   const courses = [];
   for (const c of obj.courses) {
     if (!c || typeof c !== 'object') continue;
-    const name = String(c.courseName || '').trim().slice(0, 60);
+    const name = String(c.courseName || c.name || '').trim().slice(0, 60);
     if (!name) continue;
     const day = Math.max(1, Math.min(7, Math.floor(Number(c.day) || 0)));
     if (!day || day < 1) continue;
-    const startNode = Math.max(1, Math.floor(Number(c.startNode) || 1));
-    const endNode = c.endNode != null
-      ? Math.max(startNode, Math.floor(Number(c.endNode) || startNode))
+    const sn = c.startNode != null ? c.startNode : c.startSection;
+    const startNode = Math.max(1, Math.floor(Number(sn) || 1));
+    const en = c.endNode != null ? c.endNode : c.endSection;
+    const endNode = en != null
+      ? Math.max(startNode, Math.floor(Number(en) || startNode))
       : startNode + Math.max(1, Math.floor(Number(c.step) || 1)) - 1;
-    // weeks：布尔数组（true=该周有课）；兼容已是数字数组的写法
+    // weeks：布尔数组（true=该周有课）/ 数字数组 / 文本（如 "1-16"、"2-16双"、"1-16周(单)"）；另有 weekStr 别称
     let weeks = [];
     if (Array.isArray(c.weeks)) {
       c.weeks.forEach((w, i) => {
@@ -111,14 +115,15 @@ export function parseWakeUp(obj) {
         if (n > 30) return;
         if (typeof w === 'number' ? w > 0 : !!w) weeks.push(n);
       });
+    } else if (typeof c.weeks === 'string' && c.weeks.trim()) {
+      weeks = parseWeekDesc(c.weeks);
     } else if (typeof c.weekStr === 'string' && c.weekStr.trim()) {
-      // 少数版本带文本周次（如 "1-16周(单)"）
       weeks = parseWeekDesc(c.weekStr);
     }
     if (!weeks.length) weeks = [1]; // 无周次信息按全学期处理不了，退化为第 1 周
     courses.push({
-      name, place: String(c.roomName || '').trim().slice(0, 60),
-      teacher: String(c.teacherName || '').trim().slice(0, 40),
+      name, place: String(c.roomName || c.room || '').trim().slice(0, 60),
+      teacher: String(c.teacherName || c.teacher || '').trim().slice(0, 40),
       day, startNode, endNode: Math.min(endNode, MAX_NODES), weeks, remind: false,
     });
   }

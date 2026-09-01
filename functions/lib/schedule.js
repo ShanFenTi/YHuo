@@ -342,7 +342,7 @@ export async function runTick(env) {
         const [hh, mm] = data.daily.time.split(':').map(Number);
         if (nowHM >= hh * 60 + mm) {
           if (!(await hasSent(env, row.user_id, day, 'daily', '0'))) {
-            await sendMail(env, email, '今日课程（' + day + '）', dailyHtml(day, list));
+            await sendMail(env, email, '今日课程（' + day + '）', dailyHtml(day, list), 'sched-daily');
             await markSent(env, row.user_id, day, 'daily', '0');
             sent++;
           }
@@ -356,7 +356,7 @@ export async function runTick(env) {
         if (nowHM >= remindAt && nowHM < startMin) {
           const ref = String(c.idx);
           if (!(await hasSent(env, row.user_id, day, 'class', ref))) {
-            await sendMail(env, email, '即将上课：' + c.name, classHtml(c, data.remindAhead));
+            await sendMail(env, email, '即将上课：' + c.name, classHtml(c, data.remindAhead), 'sched-class');
             await markSent(env, row.user_id, day, 'class', ref);
             sent++;
           }

@@ -131,6 +131,14 @@ const DDL = [
     created_at TEXT NOT NULL DEFAULT (datetime('now')),
     PRIMARY KEY (user_id, day, kind, ref)
   )`,
+  // 邮件发送量按天计账（北京时间 day + 用途 kind）：验证码/测试/自定义/课表早报/课表课前提醒
+  // sendMail 成功后写入，后台概览页"邮件统计"卡片展示
+  `CREATE TABLE IF NOT EXISTS email_usage_daily (
+    day   TEXT NOT NULL,
+    kind  TEXT NOT NULL,
+    count INTEGER NOT NULL DEFAULT 0,
+    PRIMARY KEY (day, kind)
+  )`,
 ];
 
 // 同一个隔离实例里只跑一次

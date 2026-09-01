@@ -54,11 +54,23 @@ async function sendViaBrevo(cfg, to, subject, html) {
   if (!res.ok) throw new Error('brevo ' + res.status + ' ' + (await res.text()).slice(0, 200));
 }
 
-export async function sendMail(env, to, subject, html) {
+// 发送邮件并按天计账（kind=用途：code/t/custom/sched-daily/sched-class，概览统计用）。
+// 记账失败不影响发送结果（catch 吞掉）。
+export async function sendMail(env, to, subject, html, kind) {
   const cfg = await getEmailConfig(env);
   if (!cfg.enabled) throw new Error('邮件服务未启用');
-  if (cfg.provider === 'brevo') return sendViaBrevo(cfg, to, subject, html);
-  return sendViaResend(cfg, to, subject, html);
+  if (cfg.provider === 'brevo') await sendViaBrevo(cfg, to, subject, html);
+  else await sendViaResend(cfg, to, subject, html);
+  if (kind) {
+    try {
+      const day = new Date(Date.now() + 8 * 3600 * 1000).toISOString().slice(0, 10);
+      await env.DB
+        .prepare(`INSERT INTO email_usage_daily (day, kind, count) VALUES (?, ?, 1)
+          ON CONFLICT(day, kind) DO UPDATE SET count = count + 1`)
+        .bind(day, String(kind).slice(0, 20))
+        .run();
+    } catch {}
+  }
 }
 
 function codeHtml(code, minutes) {
@@ -104,7 +116,7 @@ export async function issueCode(env, email, purpose) {
       .bind(email, purpose, hash, dbNow(CODE_TTL_MIN * 60)),
   ]);
   try {
-    await sendMail(env, email, 'YHuo 验证码：' + code, codeHtml(code, CODE_TTL_MIN));
+    await sendMail(env, email, 'YHuo 验证码：' + code, codeHtml(code, CODE_TTL_MIN), 'code');
   } catch (e) {
     // 邮件没发出去：把刚写的码作废，避免用户收到不了却占着 60 秒冷却
     await env.DB.prepare('DELETE FROM email_codes WHERE email = ? AND purpose = ?').bind(email, purpose).run();

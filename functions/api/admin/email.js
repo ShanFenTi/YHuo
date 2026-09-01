@@ -81,9 +81,9 @@ export async function onRequestPost({ request, env }) {
         ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
       const html = '<div style="font-family:system-ui,-apple-system,Segoe UI,sans-serif;max-width:520px;margin:0 auto;padding:28px 24px;color:#222;font-size:14px;line-height:1.7;white-space:pre-wrap;">'
         + esc(text) + '</div>';
-      await sendMail(env, to, subject, html);
+      await sendMail(env, to, subject, html, 'custom');
     } else {
-      await sendMail(env, to, 'YHuo 测试邮件', '<div style="font-family:system-ui,sans-serif;padding:24px;"><h2 style="margin:0 0 12px;">测试成功 🎉</h2><p style="color:#555;margin:0;">这封邮件说明 YHuo 的邮件服务配置正确。</p></div>');
+      await sendMail(env, to, 'YHuo 测试邮件', '<div style="font-family:system-ui,sans-serif;padding:24px;"><h2 style="margin:0 0 12px;">测试成功 🎉</h2><p style="color:#555;margin:0;">这封邮件说明 YHuo 的邮件服务配置正确。</p></div>', 'test');
     }
   } catch (e) {
     return json({ ok: false, error: (e && e.message) || '发送失败' }, 500);

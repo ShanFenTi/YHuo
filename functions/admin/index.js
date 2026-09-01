@@ -626,6 +626,13 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
           </div>
           <div id="aiUsageBody"><p class="hint" style="margin:0">加载中…</p></div>
         </div>
+        <div class="card" id="mailUsageCard">
+          <div class="visit-head">
+            <strong>邮件统计</strong>
+            <span class="meta2" id="mailUsageSumm"></span>
+          </div>
+          <div id="mailUsageBody"><p class="hint" style="margin:0">加载中…</p></div>
+        </div>
       </div>
 
       <div id="mediaPanel" hidden>
@@ -1149,6 +1156,7 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
     loadUsers();
     loadVisits();
     loadAiUsage();
+    loadMailUsage();
     loadMe(); // 侧边栏左上角头像
   }
 
@@ -1212,6 +1220,38 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
           '<td style="padding:5px 6px;border-top:1px solid var(--row-line);text-align:right;white-space:nowrap">' + m.calls + '</td>' +
           '<td style="padding:5px 6px;border-top:1px solid var(--row-line);text-align:right;white-space:nowrap">' + Number(m.prompt).toLocaleString() + '</td>' +
           '<td style="padding:5px 6px;border-top:1px solid var(--row-line);text-align:right;white-space:nowrap">' + Number(m.completion).toLocaleString() + '</td></tr>';
+      });
+      html += '</table>';
+      body.innerHTML = html;
+    }).catch(function () {});
+  }
+
+  // ---------- 邮件发送统计（概览卡片） ----------
+  var MAIL_KIND_NAMES = {
+    'code': '验证码',
+    'test': '测试邮件',
+    'custom': '自定义邮件',
+    'sched-daily': '课表每日早报',
+    'sched-class': '课表课前提醒',
+  };
+  function loadMailUsage() {
+    api('/api/admin/email/usage').then(function (d) {
+      if (!d.ok) return;
+      var body = $('mailUsageBody');
+      if (!d.total) {
+        body.innerHTML = '<p class="hint" style="margin:0">还没有发送记录，发出第一封邮件后这里会有统计。</p>';
+        $('mailUsageSumm').textContent = '';
+        return;
+      }
+      $('mailUsageSumm').textContent = '今日 ' + d.today + ' · 近 14 天 ' + d.d14 + ' · 近 30 天 ' + d.d30;
+      var html = '<table style="width:100%;border-collapse:collapse;font-size:13px">';
+      html += '<tr style="color:var(--muted)">' +
+        '<th style="text-align:left;padding:4px 6px;font-weight:600">用途</th>' +
+        '<th style="text-align:right;padding:4px 6px;font-weight:600">累计发送</th></tr>';
+      d.byKind.forEach(function (k) {
+        html += '<tr>' +
+          '<td style="padding:5px 6px;border-top:1px solid var(--row-line)">' + (MAIL_KIND_NAMES[k.kind] || k.kind) + '</td>' +
+          '<td style="padding:5px 6px;border-top:1px solid var(--row-line);text-align:right;white-space:nowrap">' + k.count + '</td></tr>';
       });
       html += '</table>';
       body.innerHTML = html;
@@ -3098,6 +3138,7 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
     document.body.classList.remove('nav-open'); // 窄屏选完即收起菜单
     if (isOverview) {
       loadAiUsage(); // 每次切回概览刷新 AI 用量
+      loadMailUsage(); // 邮件统计同刷
     }
     if (isAppear) {
       loadAppearance();

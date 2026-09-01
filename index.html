@@ -4364,7 +4364,7 @@
                 <input class="sched-inline-input" type="date" id="schedTermStart">
               </label>
               <button class="appear-btn" id="schedImportBtn" type="button">导入 WakeUp</button>
-              <input type="file" id="schedImportFile" accept=".json,application/json" hidden>
+              <input type="file" id="schedImportFile" accept=".json,.csv,application/json,text/csv" hidden>
               <button class="appear-btn" id="schedAddBtn" type="button">＋ 添加课程</button>
             </div>
           </div>
@@ -8144,17 +8144,27 @@
       schedImportFile.value = ''; // 允许重复导入同一文件
       if (!file) return;
       showSchedMsg('导入中…');
+      var isCsv = /\.csv$/i.test(file.name);
       var reader = new FileReader();
       reader.onload = function () {
-        var obj;
-        try { obj = JSON.parse(reader.result); } catch (e) {
-          showSchedMsg('文件不是合法的 JSON', true); return;
+        var text = String(reader.result || '');
+        // 按内容兜底分流：JSON 一定以 { 或 [ 开头，其余按 CSV 处理
+        if (!/^\s*[{[]/.test(text)) isCsv = true;
+        var payload;
+        if (isCsv) {
+          payload = { wakeUpCsv: text };
+        } else {
+          var obj;
+          try { obj = JSON.parse(text); } catch (e) {
+            showSchedMsg('文件不是合法的 JSON / CSV', true); return;
+          }
+          payload = { wakeUp: obj };
         }
         fetch('/api/schedule', {
           method: 'PUT',
           credentials: 'same-origin',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ wakeUp: obj }),
+          body: JSON.stringify(payload),
         })
           .then(function (r) { return r.json().catch(function () { return { ok: false, error: '响应异常' }; }); })
           .then(function (d) {

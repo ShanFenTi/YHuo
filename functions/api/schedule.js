@@ -1,11 +1,12 @@
 // GET /api/schedule → 当前用户课表（没存过返回默认空结构）
-// PUT /api/schedule → 两种 body：
+// PUT /api/schedule → 三种 body：
 //   { schedule: {...} }        整份保存（前端每次改动全量提交，结构见 lib/schedule.js）
-//   { wakeUp: <WakeUp导出JSON> } 导入 WakeUp 课表：服务端解析替换课程，保留提醒设置/作息
+//   { wakeUp: <WakeUp导出JSON> } 导入 WakeUp JSON：服务端解析替换课程，保留提醒设置/作息
+//   { wakeUpCsv: '<CSV文本>' }  导入 WakeUp CSV（同上）
 import { json, getCookie } from '../lib/util.js';
 import { getUserSession, USER_COOKIE } from '../lib/auth.js';
 import { ensureSchema } from '../lib/migrate.js';
-import { normSchedule, parseWakeUp } from '../lib/schedule.js';
+import { normSchedule, parseWakeUp, parseWakeUpCsv } from '../lib/schedule.js';
 
 async function currentUser(request, env) {
   await ensureSchema(env);
@@ -33,15 +34,17 @@ export async function onRequestPut({ request, env }) {
     return json({ ok: false, error: '请求格式错误' }, 400);
   }
   let data;
-  if (body && body.wakeUp) {
-    // WakeUp 导入：解析课程替换原有，保留学期起始/作息/提醒设置
+  if (body && (body.wakeUp || body.wakeUpCsv)) {
+    // WakeUp 导入（JSON 或 CSV）：解析课程替换原有，保留学期起始/作息/提醒设置
     const row = await env.DB
       .prepare('SELECT data FROM schedules WHERE user_id = ?')
       .bind(sess.userId).first();
     let old = {};
     try { old = JSON.parse(row ? row.data : '{}') || {}; } catch {}
     let courses;
-    try { courses = parseWakeUp(body.wakeUp); } catch (e) {
+    try {
+      courses = body.wakeUp ? parseWakeUp(body.wakeUp) : parseWakeUpCsv(body.wakeUpCsv);
+    } catch (e) {
       return json({ ok: false, error: (e && e.message) || '导入失败' }, 400);
     }
     data = normSchedule({

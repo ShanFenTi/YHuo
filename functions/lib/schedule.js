@@ -145,6 +145,92 @@ export function parseWeekDesc(str) {
   return Array.from(nums).sort((x, y) => x - y);
 }
 
+// ---------- WakeUp CSV 解析 ----------
+// WakeUp「分享-导出 CSV」格式（UTF-8，首行表头）：
+//   课程名,星期,讲师,节数,教室,周次
+//   高等数学,周一,张三,第1,2节,教1-101,1-16周(单)
+// 解析失败抛 Error（中文消息）。列按表头名匹配，兼容列序变化。
+function splitCsvLine(line) {
+  const out = [];
+  let cur = '', inQ = false;
+  for (let i = 0; i < line.length; i++) {
+    const ch = line[i];
+    if (ch === '"') {
+      if (inQ && line[i + 1] === '"') { cur += '"'; i++; } // 转义的引号
+      else inQ = !inQ;
+    } else if (ch === ',' && !inQ) {
+      out.push(cur); cur = '';
+    } else cur += ch;
+  }
+  out.push(cur);
+  return out.map(s => s.trim());
+}
+
+// "第1,2节" / "第1-2节" / "第3节" → {start,end}
+function parseNodeDesc(str) {
+  const nums = (String(str || '').match(/\d+/g) || []).map(Number);
+  if (!nums.length) return null;
+  const start = nums[0];
+  const end = nums.length > 1 ? nums[nums.length - 1] : start;
+  return { start, end: Math.max(start, end) };
+}
+
+export function parseWakeUpCsv(text) {
+  const s = String(text || '').replace(/^\uFEFF/, ''); // 去 BOM
+  const lines = s.split(/\r?\n/).filter(l => l.trim());
+  if (lines.length < 2) throw new Error('CSV 文件里没有课程数据');
+  const header = splitCsvLine(lines[0]);
+  // 找各列下标（表头可能叫"课程名/星期/讲师/教师/节数/节次/教室/地点/周次"）
+  const colOf = (names) => {
+    for (const n of names) {
+      const i = header.findIndex(h => h.replace(/\s/g, '') === n);
+      if (i > -1) return i;
+    }
+    return -1;
+  };
+  const ciName = colOf(['课程名', '课程名称', '课程']);
+  const ciDay = colOf(['星期', '周几', '星期几']);
+  const ciTeacher = colOf(['讲师', '教师', '老师']);
+  const ciNode = colOf(['节数', '节次', '上课节次']);
+  const ciPlace = colOf(['教室', '地点', '上课地点']);
+  const ciWeeks = colOf(['周次', '周数', '上课周次']);
+  if (ciName < 0) throw new Error('CSV 表头里找不到"课程名"列');
+  // 星期："周一"或数字 1-7
+  const dayOf = (v) => {
+    const map = { '一': 1, '二': 2, '三': 3, '四': 4, '五': 5, '六': 6, '日': 7, '天': 7 };
+    const m = String(v || '').match(/[一二三四五六日天]/);
+    if (m) return map[m[0]] || 0;
+    const n = parseInt(String(v).replace(/\D/g, ''), 10);
+    return n >= 1 && n <= 7 ? n : 0;
+  };
+  const courses = [];
+  for (const line of lines.slice(1)) {
+    const f = splitCsvLine(line);
+    const name = (f[ciName] || '').slice(0, 60);
+    if (!name) continue;
+    const day = ciDay >= 0 ? dayOf(f[ciDay]) : 0;
+    if (!day) continue;
+    const node = ciNode >= 0 ? parseNodeDesc(f[ciNode]) : null;
+    const startNode = node ? node.start : 1;
+    let endNode = node ? node.end : startNode;
+    if (endNode < startNode) endNode = startNode;
+    let weeks = ciWeeks >= 0 ? parseWeekDesc(f[ciWeeks]) : [];
+    if (!weeks.length) weeks = [1];
+    courses.push({
+      name,
+      place: ciPlace >= 0 ? (f[ciPlace] || '').slice(0, 60) : '',
+      teacher: ciTeacher >= 0 ? (f[ciTeacher] || '').slice(0, 40) : '',
+      day,
+      startNode,
+      endNode: Math.min(endNode, MAX_NODES),
+      weeks,
+      remind: false,
+    });
+  }
+  if (!courses.length) throw new Error('CSV 里没有解析到有效课程（检查星期/节数列）');
+  return courses.slice(0, MAX_COURSES);
+}
+
 // ---------- 周次与当日课程 ----------
 // termStart 会被校准到那一周的周一；返回当前教学周（1 起），学期外返回 0
 export function currentWeek(termStart, bjDate) {

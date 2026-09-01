@@ -311,12 +311,13 @@ export function classHtml(c, minutes) {
 }
 
 // ---------- tick：检查并发送本期提醒 ----------
-// 返回 { ok, sent }；任何一封发送失败不中断后续（记入 errors 数组）
+// 返回 { ok, sent, errors, users }；users 为逐账号诊查明细（邮箱打码），
+// 供后台「立即执行一次」显示"为什么没发/发了什么"，cron 调用方多收几个字段无影响。
 export async function runTick(env) {
   // 邮件服务没配好直接跳过；仅站长模式下只有站长邮箱能收到（Resend 无域名限制），
   // 其他用户不发（发了也是被服务商拒收）
   const cfg = await getEmailConfig(env);
-  if (!cfg.enabled) return { ok: true, sent: 0, disabled: true };
+  if (!cfg.enabled) return { ok: true, sent: 0, disabled: true, users: [] };
 
   const now = bjNow();
   const day = bjDayStr(now);
@@ -328,28 +329,39 @@ export async function runTick(env) {
     .all();
   let sent = 0;
   const errors = [];
+  const users = [];
   for (const row of rows || []) {
     let data;
     try { data = normSchedule(JSON.parse(row.data)); } catch { continue; }
     const { date, list } = coursesToday(data, now);
     if (date !== day) continue; // 理论不会发生，防御
-    if (!list.length) continue;
+    const info = { todayCount: list.length, dailyOn: data.daily.on, dailyTime: data.daily.time };
+    if (!list.length) { info.skip = '今天没课'; users.push(info); continue; }
     const email = await getUserEmail(env, row.user_id);
-    if (!email) continue;
-    if (cfg.adminOnly && email !== cfg.ownerEmail) continue;
+    if (!email) { info.skip = '邮箱未绑定或未验证'; users.push(info); continue; }
+    if (cfg.adminOnly && email !== cfg.ownerEmail) { info.skip = '仅站长模式，账号邮箱不是站长邮箱'; users.push(info); continue; }
+    info.email = maskEmail(email);
     try {
       // 1) 每日早报：到点且今天没发过
       if (data.daily && data.daily.on) {
         const [hh, mm] = data.daily.time.split(':').map(Number);
         if (nowHM >= hh * 60 + mm) {
+          info.dailyDue = true;
           if (!(await hasSent(env, row.user_id, day, 'daily', '0'))) {
             await sendMail(env, email, '今日课程（' + day + '）', dailyHtml(day, list), 'sched-daily');
             await markSent(env, row.user_id, day, 'daily', '0');
             sent++;
+            info.dailySent = true;
+          } else {
+            info.dailyAlready = true; // 今天早些时候已发过
           }
+        } else {
+          info.dailyDue = false; // 还没到设定的早报时间
         }
       }
       // 2) 重点课课前提醒：进入 [开课-提前量, 开课) 窗口且该课没发过
+      info.remindCount = list.filter(c => c.remind).length;
+      info.inWindow = 0;
       for (const c of list) {
         if (!c.remind) continue;
         const startMin = Number(c.startHH) * 60 + Number(c.startMM);
@@ -360,14 +372,24 @@ export async function runTick(env) {
             await sendMail(env, email, '即将上课：' + c.name, classHtml(c, data.remindAhead), 'sched-class');
             await markSent(env, row.user_id, day, 'class', ref);
             sent++;
+            info.inWindow++;
           }
         }
       }
     } catch (e) {
       errors.push(String((e && e.message) || e).slice(0, 100));
+      info.error = String((e && e.message) || e).slice(0, 80);
     }
+    users.push(info);
   }
-  return { ok: true, sent, errors };
+  return { ok: true, sent, errors, users };
+}
+
+// 邮箱打码：a***@domain（诊断明细不回完整邮箱，防泄漏到 cron 响应日志）
+function maskEmail(s) {
+  const at = String(s || '').indexOf('@');
+  if (at <= 0) return '***';
+  return s[0] + '***' + s.slice(at);
 }
 
 async function getUserEmail(env, userId) {

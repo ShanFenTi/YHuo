@@ -2624,9 +2624,27 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
     $('schedTickMsg').textContent = '执行中…';
     api('/api/schedule/tick?key=' + encodeURIComponent(schedTickKey)).then(function (d) {
       if (d.ok) {
-        $('schedTickMsg').textContent = d.disabled
-          ? '邮件服务未启用，未发送任何提醒'
-          : '本次发送 ' + (d.sent || 0) + ' 封提醒邮件' + (d.errors && d.errors.length ? '（' + d.errors.length + ' 个失败）' : '');
+        if (d.disabled) {
+          $('schedTickMsg').textContent = '邮件服务未启用，未发送任何提醒';
+          return;
+        }
+        var parts = ['本次发送 ' + (d.sent || 0) + ' 封'];
+        (d.users || []).forEach(function (u) {
+          if (u.skip) { parts.push('账号跳过：' + u.skip + '（今日 ' + u.todayCount + ' 节）'); return; }
+          var seg = '今日 ' + u.todayCount + ' 节';
+          seg += u.dailyOn
+            ? (u.dailyAlready ? ' · 早报今天已发过'
+              : u.dailyDue ? ' · 早报本次已发'
+              : ' · 早报未到点（设 ' + u.dailyTime + '）')
+            : ' · 早报未开';
+          if (u.remindCount) {
+            seg += ' · 重点课 ' + u.remindCount + ' 门' + (u.inWindow ? '，' + u.inWindow + ' 门本次已提醒' : '，当前不在提醒窗口');
+          }
+          if (u.error) seg += ' · 出错：' + u.error;
+          parts.push(u.email + '：' + seg);
+        });
+        if (d.errors && d.errors.length) parts.push(d.errors.length + ' 个发送失败');
+        $('schedTickMsg').textContent = parts.join('　|　');
       } else $('schedTickMsg').textContent = d.error || '执行失败';
     }).catch(function () { $('schedTickMsg').textContent = '网络错误'; });
   });

@@ -25,7 +25,7 @@ export async function onRequestGet({ request, env }) {
   }
   try {
     const r = await runTick(env);
-    return json({ ok: true, sent: r.sent, disabled: !!r.disabled, errors: r.errors || [] });
+    return json({ ok: true, sent: r.sent, disabled: !!r.disabled, errors: r.errors || [], users: r.users || [] });
   } catch (e) {
     return json({ ok: false, error: (e && e.message) || '执行失败' }, 500);
   }

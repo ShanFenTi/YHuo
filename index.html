@@ -2068,11 +2068,51 @@
     .sched-course-place { opacity: 0.85; }
     .sched-course-remind { align-self: flex-start; }
 
-    .sched-editor {
-      margin: 12px 0;
-      padding: 12px;
-      border: 1px dashed var(--apple-border);
-      border-radius: 10px;
+    /* 课程编辑弹窗：居中遮罩 + 面板（复用背景选择器的浮层模式） */
+    .sched-editor-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 300; /* 高于全屏层(150/160)，低于登录卡片(400) */
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      background: rgba(0, 0, 0, 0.5);
+      backdrop-filter: blur(6px);
+      -webkit-backdrop-filter: blur(6px);
+      opacity: 0;
+      visibility: hidden;
+      transition: opacity 250ms var(--ease-out), visibility 250ms var(--ease-out);
+    }
+    .sched-editor-overlay.show {
+      opacity: 1;
+      visibility: visible;
+    }
+    .sched-editor-overlay[hidden] {
+      display: none;
+    }
+    .sched-editor-panel {
+      width: min(440px, 92vw);
+      max-height: calc(100vh - 48px);
+      overflow-y: auto;
+      background: var(--apple-card);
+      color: var(--apple-card-foreground);
+      border: 1px solid var(--apple-border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow-md);
+      padding: calc(var(--spacing) * 5);
+      transform: translateY(14px) scale(0.98);
+      transition: transform 280ms var(--ease-out);
+    }
+    .sched-editor-overlay.show .sched-editor-panel {
+      transform: none;
+    }
+    .sched-editor-title {
+      font-size: 13px;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      margin-bottom: 14px;
+      color: var(--apple-foreground);
     }
     .sched-editor-row {
       display: flex;
@@ -2090,6 +2130,9 @@
       padding-top: 12px;
       border-top: 1px solid var(--apple-border);
     }
+    .sched-editor-row .profilev-input { flex: 1; min-width: 90px; }
+    .sched-editor-actions { margin-top: 16px; }
+    .sched-editor-row select.profilev-input { flex: 0 0 auto; }
     .sched-nodetimes { margin-top: 10px; }
     .sched-nodetimes summary {
       font-size: 12px;
@@ -4369,31 +4412,6 @@
             </div>
           </div>
           <div class="sched-grid" id="schedGrid" aria-label="周课表"></div>
-          <!-- 课程编辑器（点课程块或"添加课程"展开） -->
-          <div class="sched-editor" id="schedEditor" hidden>
-            <input class="profilev-input" id="schedEName" type="text" placeholder="课程名（必填）">
-            <div class="sched-editor-row">
-              <input class="profilev-input" id="schedEPlace" type="text" placeholder="教室">
-              <input class="profilev-input" id="schedETeacher" type="text" placeholder="教师">
-            </div>
-            <div class="sched-editor-row">
-              <select class="profilev-input" id="schedEDay">
-                <option value="1">周一</option><option value="2">周二</option><option value="3">周三</option>
-                <option value="4">周四</option><option value="5">周五</option><option value="6">周六</option>
-                <option value="7">周日</option>
-              </select>
-              <input class="profilev-input" id="schedEStart" type="number" min="1" max="20" placeholder="第几节起">
-              <input class="profilev-input" id="schedEEnd" type="number" min="1" max="20" placeholder="到第几节">
-              <input class="profilev-input" id="schedEWeeks" type="text" placeholder="周次，如 1-16(单)">
-            </div>
-            <div class="sched-editor-row">
-              <label class="sched-inline"><input type="checkbox" id="schedERemind"> 重点课（课前单独邮件提醒）</label>
-              <span class="flex-spacer"></span>
-              <button class="appear-btn danger-btn" id="schedEDelete" type="button" hidden>删除</button>
-              <button class="appear-btn" id="schedECancel" type="button">取消</button>
-              <button class="appear-btn" id="schedESave" type="button">保存</button>
-            </div>
-          </div>
           <!-- 提醒设置 -->
           <div class="sched-remind-row">
             <label class="sched-inline"><input type="checkbox" id="schedDailyOn"> 每日早报</label>
@@ -4474,6 +4492,37 @@
           <ul class="fav-music" id="favMusic"></ul>
           <p class="empty-hint" id="favEmpty" hidden>还没有收藏。相册大图右上角的 ♥ 收藏照片，播放列表里的 ♥ 收藏音乐。</p>
         </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 课程编辑弹窗：点课程块或"添加课程"弹出，居中显示（不用滚到卡片底部找表单） -->
+  <div class="sched-editor-overlay" id="schedEditor" hidden role="dialog" aria-modal="true" aria-label="编辑课程">
+    <div class="sched-editor-panel">
+      <p class="sched-editor-title" id="schedEditorTitle">添加课程</p>
+      <input class="profilev-input" id="schedEName" type="text" placeholder="课程名（必填）">
+      <div class="sched-editor-row">
+        <input class="profilev-input" id="schedEPlace" type="text" placeholder="教室">
+        <input class="profilev-input" id="schedETeacher" type="text" placeholder="教师">
+      </div>
+      <div class="sched-editor-row">
+        <select class="profilev-input" id="schedEDay">
+          <option value="1">周一</option><option value="2">周二</option><option value="3">周三</option>
+          <option value="4">周四</option><option value="5">周五</option><option value="6">周六</option>
+          <option value="7">周日</option>
+        </select>
+        <input class="profilev-input" id="schedEStart" type="number" min="1" max="20" placeholder="第几节起">
+        <input class="profilev-input" id="schedEEnd" type="number" min="1" max="20" placeholder="到第几节">
+        <input class="profilev-input" id="schedEWeeks" type="text" placeholder="周次，如 1-16(单)">
+      </div>
+      <div class="sched-editor-row">
+        <label class="sched-inline"><input type="checkbox" id="schedERemind"> 重点课（课前单独邮件提醒）</label>
+      </div>
+      <div class="sched-editor-row sched-editor-actions">
+        <button class="appear-btn danger-btn" id="schedEDelete" type="button" hidden>删除</button>
+        <span class="flex-spacer"></span>
+        <button class="appear-btn" id="schedECancel" type="button">取消</button>
+        <button class="appear-btn" id="schedESave" type="button">保存</button>
       </div>
     </div>
   </div>
@@ -8043,6 +8092,8 @@
       if (!schedEditor || !schedData) return;
       schedEditIdx = idx;
       var c = idx >= 0 ? schedData.courses[idx] : null;
+      var titleEl = document.getElementById('schedEditorTitle');
+      if (titleEl) titleEl.textContent = c ? '编辑课程' : '添加课程';
       schedEName.value = c ? c.name : '';
       schedEPlace.value = c ? c.place : '';
       schedETeacher.value = c ? c.teacher : '';
@@ -8053,11 +8104,15 @@
       schedERemind.checked = c ? !!c.remind : false;
       schedEDelete.hidden = !c;
       schedEditor.hidden = false;
+      void schedEditor.offsetWidth; // 重启动效
+      schedEditor.classList.add('show');
       if (schedEName) schedEName.focus();
     }
 
     function schedCloseEditor() {
-      if (schedEditor) schedEditor.hidden = true;
+      if (!schedEditor) return;
+      schedEditor.classList.remove('show');
+      setTimeout(function () { schedEditor.hidden = true; }, 260);
       schedEditIdx = -1;
     }
 
@@ -8181,6 +8236,17 @@
       reader.readAsText(file);
     });
     if (schedAddBtn) schedAddBtn.addEventListener('click', function () { schedOpenEditor(-1); });
+    // 点遮罩空白处关闭（点面板内部不关）
+    if (schedEditor) schedEditor.addEventListener('click', function (e) {
+      if (e.target === schedEditor) schedCloseEditor();
+    });
+    // Esc 关闭编辑弹窗（不冒泡给个人主页的 Esc——那会连主页一起关掉）
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape' && schedEditor && !schedEditor.hidden) {
+        e.stopImmediatePropagation();
+        schedCloseEditor();
+      }
+    }, true);
     if (schedECancel) schedECancel.addEventListener('click', schedCloseEditor);
     if (schedEDelete) schedEDelete.addEventListener('click', function () {
       if (schedEditIdx < 0 || !schedData) return;

@@ -4541,10 +4541,16 @@
         </div>
       </div>
 
-      <!-- 课表（周视图 + WakeUp 导入 + 邮件提醒设置） -->
+      <!-- 课表（周视图 + WakeUp 导入 + 邮件提醒设置）；未启用时只显示入口行 -->
       <div class="apple-card" id="schedCard" style="display:none">
         <div class="card-padding">
           <p class="card-eyebrow">课表 · SCHEDULE</p>
+          <!-- 启用入口（服务端没有课表数据时显示） -->
+          <div id="schedEnable" hidden>
+            <button class="appear-btn" id="schedEnableBtn" type="button">＋ 启用课表</button>
+            <p class="profile-hint" style="margin-top:10px;">导入 WakeUp 课表或手动添加课程，配合邮箱获得每日早报和上课前提醒。</p>
+          </div>
+          <div id="schedBody" hidden>
           <div class="sched-toolbar">
             <div class="sched-week-nav">
               <button class="sched-mini-btn" id="schedWeekPrev" type="button" aria-label="上一周">‹</button>
@@ -4587,6 +4593,9 @@
                 <input class="sched-inline-input sched-num-input" type="number" id="schedAhead" min="5" max="120" aria-label="自定义提前分钟数">
               </div>
             </div>
+            <div class="sched-remind-line" style="flex-direction:row;justify-content:flex-end;">
+              <button class="appear-btn danger-btn" id="schedRemoveBtn" type="button">移除课表</button>
+            </div>
           </div>
           <!-- 作息时间（每节上课时间，展开编辑） -->
           <details class="sched-nodetimes">
@@ -4595,6 +4604,7 @@
           </details>
           <p class="profile-msg" id="schedMsg"></p>
           <p class="profile-hint" id="schedEmailHint" hidden></p>
+          </div>
         </div>
       </div>
 
@@ -8481,6 +8491,16 @@
         .catch(function () { showSchedMsg('网络错误', true); });
     }
 
+    // 启用/移除两个视图：没存过课表 → 只显示"＋ 启用课表"入口；有数据 → 完整卡
+    var schedEnableBox = document.getElementById('schedEnable');
+    var schedBodyBox = document.getElementById('schedBody');
+    var schedEnableBtn = document.getElementById('schedEnableBtn');
+    var schedRemoveBtn = document.getElementById('schedRemoveBtn');
+    function schedShowBody(on) {
+      if (schedEnableBox) schedEnableBox.hidden = on;
+      if (schedBodyBox) schedBodyBox.hidden = !on;
+    }
+
     function loadSched() {
       if (!schedCard) return;
       fetch('/api/schedule', { credentials: 'same-origin' })
@@ -8493,10 +8513,45 @@
           schedCloseEditor();
           renderSchedAll();
           showSchedMsg('');
-          renderSchedEmailHint();
+          schedShowBody(!!d.exists); // 没启用过只显示入口行
+          if (d.exists) renderSchedEmailHint();
         })
         .catch(function () { if (schedCard) schedCard.style.display = 'none'; });
     }
+
+    // 启用：把默认空课表存到服务端（落行），切到完整视图
+    if (schedEnableBtn) schedEnableBtn.addEventListener('click', function () {
+      if (!schedData) return;
+      schedSave('课表已启用，先设学期首周一再添加课程');
+      schedShowBody(true);
+      renderSchedEmailHint();
+    });
+
+    // 移除：确认后删服务端数据，回到入口行（提醒随之停止）
+    if (schedRemoveBtn) schedRemoveBtn.addEventListener('click', function () {
+      if (!schedData) return;
+      var doRemove = function () {
+        fetch('/api/schedule', { method: 'DELETE', credentials: 'same-origin' })
+          .then(function (r) { return r.json().catch(function () { return { ok: false, error: '响应异常' }; }); })
+          .then(function (d) {
+            if (d.ok) {
+              schedShowBody(false);
+              showSchedMsg('');
+            } else showSchedMsg(d.error || '移除失败', true);
+          })
+          .catch(function () { showSchedMsg('网络错误', true); });
+      };
+      if (typeof ask === 'function') {
+        ask({
+          title: '移除课表',
+          msg: '移除后所有课程、作息和提醒设置将被删除，提醒邮件随之停止。此操作不可恢复。',
+          okText: '移除', danger: true,
+          cb: function (ok) { if (ok) doRemove(); },
+        });
+      } else if (window.confirm('移除后所有课程、作息和提醒设置将被删除，确定移除课表？')) {
+        doRemove();
+      }
+    });
 
     // 提示语：提醒依赖邮件服务 + 已验证邮箱（GitHub Pages 静态模式下接口 404 → 整卡隐藏）
     function renderSchedEmailHint() {

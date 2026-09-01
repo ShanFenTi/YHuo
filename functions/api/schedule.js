@@ -21,7 +21,7 @@ export async function onRequestGet({ request, env }) {
     .bind(sess.userId).first();
   let data = {};
   try { data = JSON.parse(row ? row.data : '{}') || {}; } catch {}
-  return json({ ok: true, schedule: normSchedule(data) });
+  return json({ ok: true, exists: !!row, schedule: normSchedule(data) });
 }
 
 export async function onRequestPut({ request, env }) {
@@ -62,4 +62,15 @@ export async function onRequestPut({ request, env }) {
     .bind(sess.userId, JSON.stringify(data))
     .run();
   return json({ ok: true, schedule: data });
+}
+
+// DELETE /api/schedule → 移除整份课表（课程/设置/学期起始全部清空，提醒随之停止）
+export async function onRequestDelete({ request, env }) {
+  const sess = await currentUser(request, env);
+  if (!sess) return json({ ok: false, error: '未登录' }, 401);
+  await env.DB
+    .prepare('DELETE FROM schedules WHERE user_id = ?')
+    .bind(sess.userId)
+    .run();
+  return json({ ok: true });
 }

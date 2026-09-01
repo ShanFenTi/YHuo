@@ -24,15 +24,27 @@ async function writeKey(env, key) {
   return key;
 }
 
+async function readSetting(env, name) {
+  const row = await env.DB
+    .prepare('SELECT value FROM site_settings WHERE key = ?').bind(name).first();
+  if (!row) return null;
+  try { return JSON.parse(row.value); } catch { return null; }
+}
+
 export async function onRequestGet({ request, env }) {
   await ensureSchema(env);
   let key = await readKey(env);
   if (!key) key = await writeKey(env, randomHex(20)); // 首次查看自动生成
   const origin = new URL(request.url).origin;
+  // tick 访问留痕（tick.js 写入）：last=鉴权成功的最近访问，lastBad=密钥错误的最近访问
+  const last = await readSetting(env, 'schedule_tick_last');
+  const lastBad = await readSetting(env, 'schedule_tick_bad');
   return json({
     ok: true,
     key,
     url: origin + '/api/schedule/tick?key=' + key,
+    last: last && typeof last === 'object' ? last : null,
+    lastBad: lastBad && typeof lastBad === 'object' ? lastBad : null,
   });
 }
 

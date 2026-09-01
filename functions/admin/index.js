@@ -813,6 +813,7 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
       <input type="text" id="schedTickUrl" readonly style="max-width:460px">
       <button id="schedTickCopyBtn" class="ghost" type="button">复制</button>
     </div>
+    <p class="meta2" id="schedTickLast" style="margin-top:8px"></p>
     <div class="bgset-row" style="margin-top:8px">
       <button id="schedTickRegenBtn" class="ghost" type="button">重新生成密钥</button>
       <button id="schedTickRunBtn" class="ghost" type="button">立即执行一次</button>
@@ -2586,13 +2587,34 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
     }).then(function () { $('emailCustomBtn').disabled = false; });
   });
 
-  // ---------- 课表提醒定时任务（tick URL 管理 + 手动触发） ----------
+  // ---------- 课表提醒定时任务（tick URL 管理 + 手动触发 + cron 访问留痕显示） ----------
   var schedTickKey = '';
+  function renderTickLast(last, lastBad) {
+    var el = $('schedTickLast');
+    if ((!last || !last.t) && (!lastBad || !lastBad.t)) {
+      el.textContent = '还没有任何访问记录：外部 cron 从未来敲过门（任务没建/没激活，或 URL 填错）';
+      return;
+    }
+    var seg = '';
+    if (last && last.t) {
+      seg = '最近一次 tick 访问：' + last.t + '（北京时间）· 密钥正确';
+      if (last.error) seg += ' · 执行出错：' + last.error;
+      else seg += last.disabled ? ' · 邮件服务未启用' : ' · 发送 ' + (last.sent || 0) + ' 封'
+        + (last.errors ? '，' + last.errors + ' 个失败' : '');
+      seg += '（后台手动执行也计入）';
+    }
+    if (lastBad && lastBad.t) {
+      if (seg) seg += '　|　';
+      seg += '⚠ 另有密钥错误的访问：' + lastBad.t + '（有调用方在用过期 URL 敲门，把 cron 任务里的地址换成上面最新的）';
+    }
+    el.textContent = seg;
+  }
   function loadSchedTick() {
     api('/api/admin/schedule').then(function (d) {
       if (!d.ok) return;
       schedTickKey = d.key || '';
       $('schedTickUrl').value = d.url || '';
+      renderTickLast(d.last, d.lastBad);
     }).catch(function () {});
   }
   $('schedTickCopyBtn').addEventListener('click', function () {
@@ -2645,6 +2667,7 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
         });
         if (d.errors && d.errors.length) parts.push(d.errors.length + ' 个发送失败');
         $('schedTickMsg').textContent = parts.join('　|　');
+        loadSchedTick(); // 手动执行也留了痕，刷新"最近访问"显示
       } else $('schedTickMsg').textContent = d.error || '执行失败';
     }).catch(function () { $('schedTickMsg').textContent = '网络错误'; });
   });

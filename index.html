@@ -248,6 +248,9 @@
       -webkit-font-smoothing: antialiased;
       -moz-osx-font-smoothing: grayscale;
       transition: background-color 300ms var(--ease-out), color 300ms var(--ease-out);
+      /* 长内容兜底：横向溢出一律裁掉，不让页面被撑宽（fixed 定位弹层在移动端会随布局视口位移）；
+         用 clip 不产生滚动容器，不影响 sticky/fixed 与页面内横向滚动区 */
+      overflow-x: clip;
     }
 
     ::selection {
@@ -674,7 +677,7 @@
       display: inline-flex;
       align-items: center;
       gap: 8px;
-      max-width: 860px;
+      max-width: min(860px, 100%); /* 上限同时受容器约束，长句绝不把页面撑出横向溢出（fixed 弹层会被拖动） */
       align-self: flex-start; /* hero-section 是纵向 flex，防止被拉满整行 */
       margin-top: 14px;
       padding: 7px 14px;
@@ -708,6 +711,14 @@
     }
 
     .hero-quote.typing .hq-cursor { display: inline-block; }
+
+    /* 窄屏：一言过长换行成多行（手机上 nowrap 会撑出横向溢出，登录弹窗等 fixed 层跟着左右位移） */
+    @media (max-width: 640px) {
+      .hero-quote {
+        white-space: normal;
+        border-radius: 18px;
+      }
+    }
 
     /* ===== 歌词横条（hero 末尾，播放时同步显示当前句，打字机逐字打出） ===== */
     .lyric-bar {

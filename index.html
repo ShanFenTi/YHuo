@@ -1,13 +1,319 @@
 <!DOCTYPE html>
-<html lang="zh-CN" class="light">
-<head>
+<html lang="zh-CN" class="light" data-accent="blue"><head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>YHuo — 个人主页</title>
-  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script><style>/*! tailwindcss v4.3.3 | MIT License | https://tailwindcss.com */
+@layer theme, base, components, utilities;
+@layer theme {
+  :root, :host {
+    --font-sans: DM Sans, ui-sans-serif, sans-serif, system-ui;
+    --font-mono: JetBrains Mono, monospace;
+    --default-font-family: DM Sans, ui-sans-serif, sans-serif, system-ui;
+    --default-mono-font-family: JetBrains Mono, monospace;
+  }
+}
+@layer base {
+  *, ::after, ::before, ::backdrop, ::file-selector-button {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    border: 0 solid;
+  }
+  html, :host {
+    line-height: 1.5;
+    -webkit-text-size-adjust: 100%;
+    tab-size: 4;
+    font-family: var(--default-font-family, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', 'Noto Sans', Arial, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji');
+    font-feature-settings: var(--default-font-feature-settings, normal);
+    font-variation-settings: var(--default-font-variation-settings, normal);
+    -webkit-tap-highlight-color: transparent;
+  }
+  hr {
+    height: 0;
+    color: inherit;
+    border-top-width: 1px;
+  }
+  abbr:where([title]) {
+    -webkit-text-decoration: underline dotted;
+    text-decoration: underline dotted;
+  }
+  h1, h2, h3, h4, h5, h6 {
+    font-size: inherit;
+    font-weight: inherit;
+  }
+  a {
+    color: inherit;
+    -webkit-text-decoration: inherit;
+    text-decoration: inherit;
+  }
+  b, strong {
+    font-weight: bolder;
+  }
+  code, kbd, samp, pre {
+    font-family: var(--default-mono-font-family, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace);
+    font-feature-settings: var(--default-mono-font-feature-settings, normal);
+    font-variation-settings: var(--default-mono-font-variation-settings, normal);
+    font-size: 1em;
+  }
+  small {
+    font-size: 80%;
+  }
+  sub, sup {
+    font-size: 75%;
+    line-height: 0;
+    position: relative;
+    vertical-align: baseline;
+  }
+  sub {
+    bottom: -0.25em;
+  }
+  sup {
+    top: -0.5em;
+  }
+  table {
+    text-indent: 0;
+    border-color: inherit;
+    border-collapse: collapse;
+  }
+  :-moz-focusring:where(:not(iframe)) {
+    outline: auto;
+  }
+  progress {
+    vertical-align: baseline;
+  }
+  summary {
+    display: list-item;
+  }
+  ol, ul, menu {
+    list-style: none;
+  }
+  img, svg, video, canvas, audio, iframe, embed, object {
+    display: block;
+    vertical-align: middle;
+  }
+  img, video {
+    max-width: 100%;
+    height: auto;
+  }
+  button, input, select, optgroup, textarea, ::file-selector-button {
+    font: inherit;
+    font-feature-settings: inherit;
+    font-variation-settings: inherit;
+    letter-spacing: inherit;
+    color: inherit;
+    border-radius: 0;
+    background-color: transparent;
+    opacity: 1;
+  }
+  :where(select:is([multiple], [size])) optgroup {
+    font-weight: bolder;
+  }
+  :where(select:is([multiple], [size])) optgroup option {
+    padding-inline-start: 20px;
+  }
+  ::file-selector-button {
+    margin-inline-end: 4px;
+  }
+  ::placeholder {
+    opacity: 1;
+  }
+  @supports (not (-webkit-appearance: -apple-pay-button))  or (contain-intrinsic-size: 1px) {
+    ::placeholder {
+      color: currentcolor;
+      @supports (color: color-mix(in lab, red, red)) {
+        color: color-mix(in oklab, currentcolor 50%, transparent);
+      }
+    }
+  }
+  textarea {
+    resize: vertical;
+  }
+  ::-webkit-search-decoration {
+    -webkit-appearance: none;
+  }
+  ::-webkit-date-and-time-value {
+    min-height: 1lh;
+    text-align: inherit;
+  }
+  ::-webkit-datetime-edit {
+    display: inline-flex;
+  }
+  ::-webkit-datetime-edit-fields-wrapper {
+    padding: 0;
+  }
+  ::-webkit-datetime-edit, ::-webkit-datetime-edit-year-field, ::-webkit-datetime-edit-month-field, ::-webkit-datetime-edit-day-field, ::-webkit-datetime-edit-hour-field, ::-webkit-datetime-edit-minute-field, ::-webkit-datetime-edit-second-field, ::-webkit-datetime-edit-millisecond-field, ::-webkit-datetime-edit-meridiem-field {
+    padding-block: 0;
+  }
+  ::-webkit-calendar-picker-indicator {
+    line-height: 1;
+  }
+  :-moz-ui-invalid {
+    box-shadow: none;
+  }
+  button, input:where([type='button'], [type='reset'], [type='submit']), ::file-selector-button {
+    appearance: button;
+  }
+  ::-webkit-inner-spin-button, ::-webkit-outer-spin-button {
+    height: auto;
+  }
+  [hidden]:where(:not([hidden='until-found'])) {
+    display: none !important;
+  }
+}
+@layer utilities;
+@layer base {
+  *, *::before, *::after {
+    box-sizing: border-box;
+  }
+  html {
+    -webkit-text-size-adjust: 100%;
+    tab-size: 4;
+  }
+  body {
+    margin: 0;
+    background: var(--apple-background);
+    color: var(--apple-foreground);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+  hr {
+    height: 0;
+    color: inherit;
+    border-top-width: 1px;
+  }
+  abbr:where([title]) {
+    text-decoration: underline dotted;
+  }
+  h1, h2, h3, h4, h5, h6 {
+    font-size: inherit;
+    font-weight: inherit;
+  }
+  a {
+    color: inherit;
+    text-decoration: inherit;
+  }
+  b, strong {
+    font-weight: bolder;
+  }
+  code, kbd, samp, pre {
+    font-family: var(--font-mono);
+    font-size: 1em;
+  }
+  small {
+    font-size: 80%;
+  }
+  sub, sup {
+    font-size: 75%;
+    line-height: 0;
+    position: relative;
+    vertical-align: baseline;
+  }
+  sub {
+    bottom: -0.25em;
+  }
+  sup {
+    top: -0.5em;
+  }
+  table {
+    text-indent: 0;
+    border-color: inherit;
+    border-collapse: collapse;
+  }
+  button, input, optgroup, select, textarea {
+    font-family: inherit;
+    font-feature-settings: inherit;
+    font-variation-settings: inherit;
+    font-size: 100%;
+    font-weight: inherit;
+    line-height: inherit;
+    color: inherit;
+    margin: 0;
+    padding: 0;
+  }
+  button, select {
+    text-transform: none;
+  }
+  button, [type='button'], [type='reset'], [type='submit'] {
+    -webkit-appearance: button;
+  }
+  ::-webkit-file-upload-button {
+    -webkit-appearance: button;
+    font: inherit;
+  }
+  :-moz-focusring {
+    outline: auto;
+  }
+  :-moz-ui-invalid {
+    box-shadow: none;
+  }
+  progress {
+    vertical-align: baseline;
+  }
+  ::-webkit-inner-spin-button, ::-webkit-outer-spin-button {
+    height: auto;
+  }
+  [type='search'] {
+    -webkit-appearance: textfield;
+    outline-offset: -2px;
+  }
+  ::-webkit-search-decoration {
+    -webkit-appearance: none;
+  }
+  summary {
+    display: list-item;
+  }
+  blockquote, dl, dd, h1, h2, h3, h4, h5, h6, hr, figure, p, pre {
+    margin: 0;
+  }
+  fieldset {
+    margin: 0;
+    padding: 0;
+  }
+  legend {
+    padding: 0;
+  }
+  ol, ul, menu {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+  dialog {
+    padding: 0;
+  }
+  textarea {
+    resize: vertical;
+  }
+  input::placeholder, textarea::placeholder {
+    opacity: 1;
+    color: currentColor;
+    @supports (color: color-mix(in lab, red, red)) {
+      color: color-mix(in srgb, currentColor 50%, transparent);
+    }
+  }
+  button, [role="button"] {
+    cursor: pointer;
+  }
+  :disabled {
+    cursor: default;
+  }
+  img, svg, video, canvas, audio, iframe, embed, object {
+    display: block;
+    vertical-align: middle;
+  }
+  img, video {
+    max-width: 100%;
+    height: auto;
+  }
+  [hidden]:where(:not([hidden="until-found"])) {
+    display: none !important;
+  }
+}
+</style>
   <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,100..1000;1,9..40,100..1000&family=JetBrains+Mono:wght@100..800&display=swap" rel="stylesheet">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,100..1000;1,9..40,100..1000&amp;family=JetBrains+Mono:wght@100..800&amp;display=swap" rel="stylesheet">
   <style type="text/tailwindcss">
     @theme inline {
       --color-background: var(--apple-background);
@@ -805,6 +1111,8 @@
 
     @media (max-width: 640px) {
       .lyric-bar { padding: 14px 16px; gap: 10px; }
+      /* 窄屏右侧音符已隐藏，左侧待机点若仍占位会推偏歌词居中（实测偏右 27px），一并隐藏不占位 */
+      .lyric-dots { display: none; }
       .lyric-line { font-size: 14.5px; }
       .lyric-bar.placeholder .lyric-line { font-size: 13.5px; }
       .lyric-note { display: none; }
@@ -3906,6 +4214,202 @@
       }
     }
 
+    /* ===== 移动端侧边抽屉导航（≤640px 窄屏：顶栏导航收进侧边栏） ===== */
+    .nav-toggle {
+      display: none; /* 桌面隐藏，仅窄屏显示 */
+      align-items: center;
+      justify-content: center;
+      width: 36px;
+      height: 36px;
+      border: 1px solid var(--apple-border);
+      border-radius: 999px;
+      background: var(--apple-card);
+      color: var(--apple-foreground);
+      cursor: pointer;
+      transition: background-color 180ms var(--ease-out), border-color 180ms var(--ease-out), transform 180ms var(--ease-out);
+    }
+
+    .nav-toggle:hover {
+      transform: scale(1.06);
+    }
+
+    .drawer-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 340;
+      background: rgba(0, 0, 0, 0.4);
+      opacity: 0;
+      visibility: hidden;
+      transition: opacity 250ms var(--ease-out), visibility 250ms var(--ease-out);
+    }
+
+    .side-drawer {
+      position: fixed;
+      top: 0;
+      left: 0;
+      bottom: 0;
+      z-index: 350;
+      width: min(78vw, 300px);
+      display: flex;
+      flex-direction: column;
+      background: color-mix(in srgb, var(--apple-background) 86%, transparent);
+      backdrop-filter: blur(24px);
+      -webkit-backdrop-filter: blur(24px);
+      border-right: 1px solid var(--apple-border);
+      box-shadow: var(--shadow-lg);
+      transform: translateX(-100%);
+      visibility: hidden;
+      transition: transform 260ms var(--ease-out), visibility 260ms var(--ease-out);
+    }
+
+    body.drawer-open .drawer-overlay {
+      opacity: 1;
+      visibility: visible;
+    }
+
+    body.drawer-open .side-drawer {
+      transform: translateX(0);
+      visibility: visible;
+    }
+
+    .drawer-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      height: 52px;
+      padding: 0 20px;
+      border-bottom: 1px solid var(--apple-border);
+      flex: none;
+    }
+
+    .drawer-close {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 34px;
+      height: 34px;
+      border: 1px solid var(--apple-border);
+      border-radius: 999px;
+      background: var(--apple-card);
+      color: var(--apple-foreground);
+      cursor: pointer;
+      transition: background-color 180ms var(--ease-out), border-color 180ms var(--ease-out), transform 180ms var(--ease-out);
+    }
+
+    .drawer-close:hover {
+      transform: scale(1.06);
+    }
+
+    .drawer-nav {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      padding: 14px 12px;
+      overflow-y: auto;
+    }
+
+    .drawer-link {
+      display: flex;
+      align-items: center;
+      min-height: 48px;
+      padding: 0 16px;
+      border-radius: 12px;
+      font-size: 15px;
+      font-weight: 500;
+      color: var(--apple-foreground);
+      text-decoration: none;
+      text-align: left;
+      background: none;
+      border: none;
+      cursor: pointer;
+      transition: background-color 160ms var(--ease-out), color 160ms var(--ease-out);
+    }
+
+    .drawer-link:hover {
+      background: var(--apple-secondary);
+    }
+
+    .drawer-link.active {
+      background: var(--apple-secondary);
+      font-weight: 600;
+      color: var(--apple-primary);
+    }
+
+    .drawer-foot {
+      flex: none;
+      border-top: 1px solid var(--apple-border);
+      padding: 10px 12px 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .drawer-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      min-height: 48px;
+      padding: 0 16px;
+      border-radius: 12px;
+      font-size: 15px;
+      color: var(--apple-foreground);
+      background: none;
+      border: none;
+      cursor: pointer;
+      transition: background-color 160ms var(--ease-out);
+    }
+
+    .drawer-row:hover {
+      background: var(--apple-secondary);
+    }
+
+    .drawer-row svg {
+      flex: none;
+      color: var(--apple-muted-foreground);
+    }
+
+    .drawer-row-state {
+      font-size: 12px;
+      color: var(--apple-muted-foreground);
+    }
+
+    /* 窄屏：顶栏收为 Logo + 头像 + 汉堡，导航与主题收进侧边抽屉 */
+    @media (max-width: 640px) {
+      .site-header {
+        grid-template-columns: 1fr auto;
+        padding: 0 4vw;
+      }
+
+      .site-nav {
+        display: none;
+      }
+
+      .theme-toggle {
+        display: none;
+      }
+
+      .nav-toggle {
+        display: inline-flex;
+      }
+    }
+
+    /* 窄屏：迷你播放器显示时占满底部，外观箭头与回顶按钮上移避让，避免右下角重叠 */
+    @media (max-width: 640px) {
+      body.mini-active .appear-dock {
+        bottom: calc(84px + env(safe-area-inset-bottom, 0px));
+      }
+
+      body.mini-active .back-top {
+        bottom: calc(152px + env(safe-area-inset-bottom, 0px));
+      }
+    }
+
+    /* 迷你播放器悬浮底部：显示时给页脚底部留出空间，滚动到底不被遮挡 */
+    body.mini-active .site-footer {
+      padding-bottom: calc(88px + env(safe-area-inset-bottom, 0px));
+    }
+
     /* ===== Reduced Motion ===== */
     @media (prefers-reduced-motion: reduce) {
       html {
@@ -4140,16 +4644,16 @@
     }
   </style>
 </head>
-<body>
+<body class="mini-active" style="overflow: hidden;">
 
   <!-- 阅读进度条 -->
-  <div class="progress-bar" id="progressBar" role="progressbar" aria-label="阅读进度"></div>
+  <div class="progress-bar" id="progressBar" role="progressbar" aria-label="阅读进度" style="width: 99.6491%;"></div>
 
   <!-- 自定义背景层 -->
-  <div class="bg-layer" id="bgLayer" aria-hidden="true"><div class="bg-dim" id="bgDimLayer"></div></div>
+  <div class="bg-layer" id="bgLayer" aria-hidden="true"><div class="bg-dim" id="bgDimLayer" style="opacity: 0.25;"></div></div>
 
   <!-- 顶部导航 -->
-  <header class="site-header" id="siteHeader">
+  <header class="site-header scrolled" id="siteHeader">
     <a class="logo" href="#home" aria-label="回到首页">YHuo</a>
     <nav class="site-nav" aria-label="主导航">
       <a href="#home" class="nav-link active" data-target="home">首页</a>
@@ -4160,21 +4664,53 @@
       <button class="nav-link" id="miscBtn" type="button" aria-haspopup="dialog" aria-controls="miscView">杂项</button>
     </nav>
     <div class="header-actions">
-      <button class="login-toggle" id="loginToggle" type="button" aria-label="登录选项" title="登录选项">
-        <svg class="login-default-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+      <button class="login-toggle" id="loginToggle" type="button" aria-label="登录选项" title="登录选项（当前：游客）" aria-expanded="false">
+        <svg class="login-default-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
         <span class="avatar-letter" id="avatarLetter" aria-hidden="true"></span>
         <img class="avatar-img" id="avatarImg" alt="">
       </button>
+      <button class="nav-toggle" id="navToggle" type="button" aria-label="打开导航" aria-expanded="false" aria-controls="sideDrawer">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
+      </button>
       <button class="theme-toggle" id="themeToggle" type="button" aria-label="切换深色模式">
       <span id="iconMoon" class="svg-icon" width="18" height="18" aria-hidden="true">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
       </span>
-      <span id="iconSun" class="svg-icon" width="18" height="18" aria-hidden="true" hidden>
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>
+      <span id="iconSun" class="svg-icon" width="18" height="18" aria-hidden="true" hidden="">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"></circle><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"></path></svg>
       </span>
     </button>
     </div>
   </header>
+
+  <!-- 移动端侧边抽屉导航（≤640px 窄屏：顶栏导航收进侧边栏） -->
+  <div class="drawer-overlay" id="drawerOverlay" aria-hidden="true"></div>
+  <aside class="side-drawer" id="sideDrawer" aria-label="移动端导航" aria-hidden="true">
+    <div class="drawer-head">
+      <a class="logo" href="#home" aria-label="回到首页">YHuo</a>
+      <button class="drawer-close" id="drawerClose" type="button" aria-label="关闭导航">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"></path></svg>
+      </button>
+    </div>
+    <nav class="drawer-nav" aria-label="侧边导航">
+      <a href="#home" class="drawer-link" data-target="home">首页</a>
+      <button class="drawer-link" type="button" data-view="toolsView" data-nav-id="toolsBtn">工具</button>
+      <button class="drawer-link" type="button" data-view="docsView" data-nav-id="docsBtn">文档</button>
+      <button class="drawer-link" type="button" data-view="aiView" data-nav-id="aiBtn">AI</button>
+      <button class="drawer-link" type="button" data-view="albumView" data-nav-id="albumBtn">相册</button>
+      <button class="drawer-link" type="button" data-view="miscView" data-nav-id="miscBtn">杂项</button>
+    </nav>
+    <div class="drawer-foot">
+      <button class="drawer-row" id="drawerThemeToggle" type="button">
+        <span>深色模式</span>
+        <span class="drawer-row-state" id="drawerThemeState">浅色</span>
+      </button>
+      <button class="drawer-row" id="drawerLoginRow" type="button">
+        <span id="drawerLoginName">登录 / 注册</span>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"></path></svg>
+      </button>
+    </div>
+  </aside>
 
   <main class="page-main">
     <!-- 顶部锚点 -->
@@ -4182,43 +4718,43 @@
 
       <!-- Hero / 时钟区域 -->
       <section class="hero-section" aria-label="本地时间">
-        <p class="hero-greeting" id="heroGreeting">你好</p>
+        <p class="hero-greeting" id="heroGreeting">下午好 🌤️</p>
         <div class="hero-row">
           <div class="clock-hud">
             <i class="hud-corner tl" aria-hidden="true"></i><i class="hud-corner tr" aria-hidden="true"></i><i class="hud-corner bl" aria-hidden="true"></i><i class="hud-corner br" aria-hidden="true"></i>
             <p class="hud-label">SYS.TIME // LOCAL</p>
             <div class="clock-display">
-              <span class="clock-seg" id="clockH">00</span><i class="clock-colon">:</i><span class="clock-seg" id="clockM">00</span><i class="clock-colon">:</i><span class="clock-seg" id="clockS">00</span><span class="clock-ms" id="clockMs">.000</span>
+              <span class="clock-seg" id="clockH">17</span><i class="clock-colon">:</i><span class="clock-seg" id="clockM">58</span><i class="clock-colon">:</i><span class="clock-seg tick" id="clockS">03</span><span class="clock-ms" id="clockMs">.625</span>
             </div>
             <span class="scanline" aria-hidden="true"></span>
           </div>
           <!-- 视频轮播卡片：video 文件夹里的视频依次循环播放 -->
           <div class="video-box">
-            <video id="homeVideo" muted playsinline controls preload="metadata"></video>
+            <video id="homeVideo" muted="" playsinline="" controls="" preload="metadata" src="video/d2efe7a728d73b5f82a229be321fbd09.mp4"></video>
           </div>
         </div>
-        <p class="clock-date" id="clockDate">--</p>
+        <p class="clock-date" id="clockDate">2026.09.02  周三</p>
         <!-- 天气胶囊：Open-Meteo 免费接口，点击换城市；加载失败静默隐藏 -->
-        <button class="weather-chip" id="weatherChip" type="button" hidden title="点击更换城市">
+        <button class="weather-chip loaded" id="weatherChip" type="button" title="点击更换城市">
           <span class="weather-icon" id="weatherIcon" aria-hidden="true">☀️</span>
-          <span class="weather-text" id="weatherText">--</span>
+          <span class="weather-text" id="weatherText">新加坡 32°C · 晴 33°/28°</span>
         </button>
-        <p class="hero-quote" id="heroQuote" hidden><span id="heroQuoteText"></span><i class="hq-cursor" aria-hidden="true"></i></p>
+        <p class="hero-quote loaded" id="heroQuote" title="点击切换" style="cursor: pointer;"><span id="heroQuoteText">自信人生二百年，会当水击三千里。 —— 「残句」</span><i class="hq-cursor" aria-hidden="true"></i></p>
         <!-- 歌词横条：播放时显示同步歌词（后台曲库自带的 .lrc 或 music/ 同名 .lrc），打字机逐字打出当前句；
              无歌词降级显示歌名占位；从未播放时显示待机提示（一言在上方胶囊，不在此重复） -->
-        <div class="lyric-bar" id="lyricBar" hidden role="status" aria-live="polite">
+        <div class="lyric-bar placeholder show" id="lyricBar" role="status" aria-live="polite">
           <span class="lyric-dots" id="lyricDots" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></span>
-          <span class="lyric-line"><span id="lyricText"></span><i class="lyric-cursor" id="lyricCursor" aria-hidden="true"></i></span>
-          <span class="lyric-note" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg></span>
+          <span class="lyric-line"><span id="lyricText">♪ 远航星的告别</span><i class="lyric-cursor" id="lyricCursor" aria-hidden="true"></i></span>
+          <span class="lyric-note" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"></path><circle cx="6" cy="18" r="3"></circle><circle cx="18" cy="16" r="3"></circle></svg></span>
         </div>
       </section>
 
     <!-- 杂项界面：顶栏"杂项"进入（工具/相册同款全屏层），图片画廊从首页迁入 -->
-    <div id="miscView" class="tools-view" hidden role="dialog" aria-modal="true" aria-label="杂项">
+    <div id="miscView" class="tools-view" role="dialog" aria-modal="true" aria-label="杂项" hidden="">
     <header class="album-bar">
       <p class="album-title">杂项 · MISC</p>
       <button class="album-close" id="miscViewClose" type="button" aria-label="关闭杂项">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"></path></svg>
       </button>
     </header>
     <div class="tools-scroll">
@@ -4228,17 +4764,17 @@
           <div class="apple-card gallery-card">
             <div class="card-padding">
               <p class="card-eyebrow">图片 · IMAGES</p>
-              <div class="gallery" id="galleryGrid"></div>
-              <div class="deck-nav" id="deckNav" hidden>
+              <div class="gallery" id="galleryGrid" style="height: min(42vw, 432px);"><img alt="image 8" src="images/8.jpeg" class="" style="--tilt: -6deg; --jx: -9px; --jy: 7px; z-index: 4;"><img alt="image 1" src="images/1.jpg" class="" style="--tilt: 5deg; --jx: -2px; --jy: 6px; z-index: 3;"><img alt="image 3" src="images/3.webp" class="" style="--tilt: -3deg; --jx: -7px; --jy: 2px; z-index: 2;"><img alt="image 4" src="images/4.webp" class="" style="--tilt: -7deg; --jx: 1px; --jy: 0px; z-index: 1;"><img alt="image 6" src="images/6.webp" style="--tilt: 2deg; --jx: -4px; --jy: -4px; z-index: 8;" class="deck-front"><img alt="image 7" src="images/7.webp" style="--tilt: -2deg; --jx: 4px; --jy: -6px; z-index: 7;" class="deck-1"><img alt="image 5" src="images/5.webp" style="--tilt: 6deg; --jx: 9px; --jy: -2px; z-index: 6;" class="deck-2"><img alt="image 9" src="images/9.webp" style="--tilt: 7deg; --jx: -1px; --jy: 5px; z-index: 5;" class=""></div>
+              <div class="deck-nav" id="deckNav">
                 <button class="deck-btn" id="deckPrev" type="button" aria-label="上一张">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"></path></svg>
                 </button>
-                <span class="deck-count" id="deckCount">1 / 1</span>
+                <span class="deck-count" id="deckCount">5 / 8</span>
                 <button class="deck-btn" id="deckNext" type="button" aria-label="下一张">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"></path></svg>
                 </button>
               </div>
-              <p class="empty-hint" id="galleryEmpty" hidden>images 文件夹里还没有图片，放入后刷新即可显示。</p>
+              <p class="empty-hint" id="galleryEmpty" hidden="">images 文件夹里还没有图片，放入后刷新即可显示。</p>
             </div>
           </div>
         </div>
@@ -4247,11 +4783,11 @@
     </div>
 
     <!-- 工具合集界面：顶栏"工具"进入（相册同款全屏层） -->
-    <div id="toolsView" class="tools-view" hidden role="dialog" aria-modal="true" aria-label="工具合集">
+    <div id="toolsView" class="tools-view" role="dialog" aria-modal="true" aria-label="工具合集" hidden="">
     <header class="album-bar">
       <p class="album-title">工具合集 · TOOLS</p>
       <button class="album-close" id="toolsViewClose" type="button" aria-label="关闭工具合集">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"></path></svg>
       </button>
     </header>
     <div class="tools-scroll">
@@ -4308,11 +4844,11 @@
               <div class="tool-card" id="toolPwd">
                 <p class="tool-card-title">🔐 密码生成</p>
                 <div class="pwd-out-row">
-                  <input class="profilev-input" id="pwdGenOut" type="text" readonly>
+                  <input class="profilev-input" id="pwdGenOut" type="text" readonly="">
                   <button class="appear-btn" id="pwdGenCopy" type="button">复制</button>
                 </div>
                 <label class="tool-check"><input type="range" id="pwdGenLen" min="8" max="32" value="16"> <span id="pwdGenLenLabel">16 位</span></label>
-                <label class="tool-check"><input type="checkbox" id="pwdGenSym" checked> 含符号 !@#$%</label>
+                <label class="tool-check"><input type="checkbox" id="pwdGenSym" checked=""> 含符号 !@#$%</label>
                 <button class="appear-btn" id="pwdGenBtn" type="button" style="width:100%;">生成</button>
               </div>
 
@@ -4321,7 +4857,7 @@
                 <p class="tool-card-title">🎨 颜色转换</p>
                 <div class="color-row">
                   <input type="color" id="colorPick" value="#4f8ef7" aria-label="选颜色">
-                  <div class="color-preview" id="colorPreview"></div>
+                  <div class="color-preview" id="colorPreview" style="background: rgb(79, 142, 247);"></div>
                 </div>
                 <p class="color-val">HEX <span class="color-code" id="colorHex">#4f8ef7</span></p>
                 <p class="color-val">RGB <span class="color-code" id="colorRgb">rgb(79, 142, 247)</span></p>
@@ -4336,11 +4872,11 @@
     </div>
 
     <!-- 文档界面：顶栏"文档"进入；点卡片在阅读层打开（阅读层叠在其上） -->
-    <div id="docsView" class="docs-view" hidden role="dialog" aria-modal="true" aria-label="文档">
+    <div id="docsView" class="docs-view" role="dialog" aria-modal="true" aria-label="文档" hidden="">
     <header class="album-bar">
       <p class="album-title">文档 · DOCS</p>
       <button class="album-close" id="docsViewClose" type="button" aria-label="关闭文档界面">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"></path></svg>
       </button>
     </header>
     <div class="docs-scroll">
@@ -4348,8 +4884,8 @@
         <div class="apple-card">
           <div class="card-padding">
             <p class="card-eyebrow">文档 · DOCS</p>
-            <div class="docs-grid" id="docsGrid"></div>
-            <p class="empty-hint" id="docsEmpty" hidden>docs/docs.json 里还没有文档条目。</p>
+            <div class="docs-grid" id="docsGrid"><button class="doc-card" type="button"><p class="doc-card-title">关于本站</p><p class="doc-card-desc">YHuo 的功能总览：时钟首页、相册、音乐、外观自定义与账号体系。</p><p class="doc-card-meta">2026-08-30</p></button><button class="doc-card" type="button"><p class="doc-card-title">更新日志</p><p class="doc-card-desc">本站的版本记录：每次上线了什么、改了什么。</p><p class="doc-card-meta">2026-08-30</p></button></div>
+            <p class="empty-hint" id="docsEmpty" hidden="">docs/docs.json 里还没有文档条目。</p>
           </div>
         </div>
       </div>
@@ -4378,19 +4914,19 @@
           <button class="appear-btn" id="bgClearBtn" type="button">恢复默认</button>
           <label class="dim-row">背景变暗 <input type="range" id="bgDim" min="0" max="70" value="25"></label>
           <label class="dim-row">背景模糊 <input type="range" id="bgBlur" min="0" max="30" value="0"></label>
-          <button class="appear-btn" id="bgBlurFollow" type="button" hidden style="margin-top:8px">跟随站点默认</button>
+          <button class="appear-btn" id="bgBlurFollow" type="button" hidden="" style="margin-top:8px">跟随站点默认</button>
         </div>
-        <input type="file" id="bgInput" accept="image/*" hidden>
+        <input type="file" id="bgInput" accept="image/*" hidden="">
 
         <p class="appear-label">动效</p>
         <label class="switch-row">
           <span>大卡片跟随鼠标</span>
-          <input type="checkbox" id="cardMouseToggle" checked>
+          <input type="checkbox" id="cardMouseToggle" checked="">
           <span class="switch-ui" aria-hidden="true"></span>
         </label>
         <label class="switch-row">
           <span>小图片倾斜动效</span>
-          <input type="checkbox" id="imgMouseToggle" checked>
+          <input type="checkbox" id="imgMouseToggle" checked="">
           <span class="switch-ui" aria-hidden="true"></span>
         </label>
 
@@ -4398,7 +4934,7 @@
       </div>
     </div>
     <button class="appear-tab" id="appearTab" type="button" aria-label="外观设置" title="外观设置" aria-expanded="false">
-      <svg class="svg-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg>
+      <svg class="svg-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"></path></svg>
     </button>
   </div>
 
@@ -4412,8 +4948,8 @@
           <span class="profile-avatar-mask" aria-hidden="true">更换</span>
         </div>
         <div class="profile-info">
-          <p class="profile-name" id="profileName">未登录</p>
-          <p class="profile-status" id="profileStatus"></p>
+          <p class="profile-name" id="profileName">游客</p>
+          <p class="profile-status" id="profileStatus">游客模式</p>
         </div>
       </div>
 
@@ -4422,24 +4958,24 @@
 
       <div class="profile-menu">
         <button class="profile-menu-item member-only" id="profileHomeBtn" type="button">
-          <svg class="svg-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+          <svg class="svg-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
           我的主页
         </button>
         <button class="profile-menu-item member-only" id="avatarChangeBtn" type="button">
-          <svg class="svg-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14.5 4h-5C7.4 4 6.4 5 6.4 7.2v9.6C6.4 19 7.4 20 9.5 20h5c2.1 0 3.1-1 3.1-3.2V7.2C17.6 5 16.6 4 14.5 4z"/><circle cx="12" cy="10" r="1.6"/><path d="m8.4 16.4 2.2-2.2a1 1 0 0 1 1.4 0l2.2 2.2"/></svg>
+          <svg class="svg-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14.5 4h-5C7.4 4 6.4 5 6.4 7.2v9.6C6.4 19 7.4 20 9.5 20h5c2.1 0 3.1-1 3.1-3.2V7.2C17.6 5 16.6 4 14.5 4z"></path><circle cx="12" cy="10" r="1.6"></circle><path d="m8.4 16.4 2.2-2.2a1 1 0 0 1 1.4 0l2.2 2.2"></path></svg>
           更换头像
         </button>
         <button class="profile-menu-item member-only remove-only" id="avatarRemoveBtn" type="button">
-          <svg class="svg-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></svg>
+          <svg class="svg-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"></path><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"></path><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" x2="10" y1="11" y2="17"></line><line x1="14" x2="14" y1="11" y2="17"></line></svg>
           移除头像
         </button>
         <div class="profile-menu-sep" aria-hidden="true"></div>
         <button class="profile-menu-item danger" id="profileLogoutBtn" type="button">
-          <svg class="svg-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="m16 17 5-5-5-5"/><line x1="21" x2="9" y1="12" y2="12"/></svg>
+          <svg class="svg-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><path d="m16 17 5-5-5-5"></path><line x1="21" x2="9" y1="12" y2="12"></line></svg>
           退出登录
         </button>
       </div>
-      <input type="file" id="avatarInput" accept=".jpg,.jpeg,.png,.gif,.webp,image/jpeg,image/png,image/gif,image/webp" hidden>
+      <input type="file" id="avatarInput" accept=".jpg,.jpeg,.png,.gif,.webp,image/jpeg,image/png,image/gif,image/webp" hidden="">
     </div>
   </div>
 
@@ -4448,90 +4984,90 @@
     <span class="admin-toast-text" id="adminToastText">欢迎回来，管理员</span>
     <button class="appear-btn admin-toast-btn" id="adminToastAdminBtn" type="button">进入后台</button>
     <button class="admin-toast-close" id="adminToastClose" type="button" aria-label="关闭欢迎浮窗">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"></path></svg>
     </button>
   </div>
 
   <!-- 页脚 -->
   <footer class="site-footer">
-    <p>&copy; 2026 YHuo<span class="uptime" id="siteUptime" title="自 2026-08-29 起运行"> · 已运行 0 天 0 时 0 分 0 秒</span><span class="uptime" id="visitCount" hidden></span></p>
-    <a href="#home" id="footerTop">回到顶部 <svg class="svg-icon inline-arrow" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 7-7 7 7"/><path d="M12 19V5"/></svg></a>
+    <p>© 2026 YHuo<span class="uptime" id="siteUptime" title="自 2026-08-29 起运行"> · 已运行 4 天 5 时 15 分 55 秒</span><span class="uptime" id="visitCount" hidden=""></span></p>
+    <a href="#home" id="footerTop">回到顶部 <svg class="svg-icon inline-arrow" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 7-7 7 7"></path><path d="M12 19V5"></path></svg></a>
   </footer>
 
   <!-- 回到顶部按钮 -->
   <button class="back-top" id="backTop" type="button" aria-label="回到顶部">
-    <svg class="svg-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 7-7 7 7"/><path d="M12 19V5"/></svg>
+    <svg class="svg-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 7-7 7 7"></path><path d="M12 19V5"></path></svg>
   </button>
 
   <!-- 底部悬浮迷你播放器（滚出音乐卡片后显示） -->
-  <div class="mini-player" id="miniPlayer" role="region" aria-label="音乐迷你播放器">
-    <div class="mini-progress" aria-hidden="true"><div class="mini-progress-fill" id="miniProgressFill"></div></div>
+  <div class="mini-player show" id="miniPlayer" role="region" aria-label="音乐迷你播放器">
+    <div class="mini-progress" aria-hidden="true"><div class="mini-progress-fill" id="miniProgressFill" style="width: 3.77923%;"></div></div>
     <div class="mini-cover" id="miniCover" aria-hidden="true">
-      <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
+      <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"></path><circle cx="6" cy="18" r="3"></circle><circle cx="18" cy="16" r="3"></circle></svg>
     </div>
     <!-- 均衡器：常驻显示，播放=主题色跳动，暂停=灰色静止 -->
     <span class="mini-eq" aria-hidden="true"><i></i><i></i><i></i></span>
-    <span class="mini-title" id="miniTitle">未在播放</span>
+    <span class="mini-title" id="miniTitle">远航星的告别.mp3</span>
     <button class="ctrl-btn mini-btn" id="miniPrevBtn" type="button" aria-label="上一首">
-      <svg class="svg-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg>
+      <svg class="svg-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"></path></svg>
     </button>
     <button class="ctrl-btn mini-btn play-btn-main" id="miniPlayBtn" type="button" aria-label="播放或暂停">
-      <svg class="svg-icon play-icon" id="miniPlayIcon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 9.003a1 1 0 0 1 1.517-.859l4.997 2.997a1 1 0 0 1 0 1.718l-4.997 2.997A1 1 0 0 1 9 14.996z"/><circle cx="12" cy="12" r="10"/></svg>
+      <svg class="svg-icon play-icon" id="miniPlayIcon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 9.003a1 1 0 0 1 1.517-.859l4.997 2.997a1 1 0 0 1 0 1.718l-4.997 2.997A1 1 0 0 1 9 14.996z"></path><circle cx="12" cy="12" r="10"></circle></svg>
     </button>
     <button class="ctrl-btn mini-btn" id="miniNextBtn" type="button" aria-label="下一首">
-      <svg class="svg-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>
+      <svg class="svg-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"></path></svg>
     </button>
-    <button class="ctrl-btn mini-btn" id="miniModeBtn" type="button" aria-label="顺序播放" title="顺序播放"></button>
+    <button class="ctrl-btn mini-btn" id="miniModeBtn" type="button" aria-label="顺序播放" title="顺序播放"><svg class="svg-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="4" y1="8" x2="15" y2="8"></line><path d="m12 5 3 3-3 3"></path><line x1="4" y1="16" x2="15" y2="16"></line><path d="m12 13 3 3-3 3"></path></svg></button>
     <button class="ctrl-btn mini-btn" id="miniListBtn" type="button" aria-label="播放列表">
-      <svg class="svg-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="4" x2="20" y1="7" y2="7"/><line x1="4" x2="20" y1="12" y2="12"/><line x1="4" x2="14" y1="17" y2="17"/></svg>
+      <svg class="svg-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="4" x2="20" y1="7" y2="7"></line><line x1="4" x2="20" y1="12" y2="12"></line><line x1="4" x2="14" y1="17" y2="17"></line></svg>
     </button>
 
     <!-- 播放列表面板 -->
-    <div class="mini-playlist" id="miniPlaylist" hidden>
-      <ul id="miniPlaylistList"></ul>
+    <div class="mini-playlist" id="miniPlaylist" hidden="">
+      <ul id="miniPlaylistList"><li><span class="pl-index">01</span><span class="pl-name">晴天 - 周杰伦.mp3</span></li><li class="active"><span class="pl-index">02</span><span class="pl-name">远航星的告别.mp3</span></li></ul>
     </div>
   </div>
 
   <!-- 灯箱大图预览 -->
-  <div class="lightbox" id="lightbox" hidden role="dialog" aria-modal="true" aria-label="图片预览">
+  <div class="lightbox" id="lightbox" hidden="" role="dialog" aria-modal="true" aria-label="图片预览">
     <img id="lightboxImg" alt="大图预览">
     <button class="lb-fav" id="lbFav" type="button" aria-label="收藏这张照片" aria-pressed="false">
-      <svg width="18" height="18" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+      <svg width="18" height="18" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>
     </button>
     <button class="lb-nav lb-prev" id="lbPrev" type="button" aria-label="上一张">
-      <svg class="svg-icon" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg>
+      <svg class="svg-icon" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"></path></svg>
     </button>
     <button class="lb-nav lb-next" id="lbNext" type="button" aria-label="下一张">
-      <svg class="svg-icon" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>
+      <svg class="svg-icon" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"></path></svg>
     </button>
     <span class="lb-counter" id="lbCounter"></span>
   </div>
 
   <!-- 相册独立界面：顶栏"相册"按钮进入，Esc 或右上角按钮退出；点图片打开大图预览 -->
-  <div class="album-view" id="albumView" hidden role="dialog" aria-modal="true" aria-label="相册">
+  <div class="album-view" id="albumView" role="dialog" aria-modal="true" aria-label="相册" hidden="">
     <header class="album-bar">
       <p class="album-title">相册 · ALBUM</p>
       <button class="album-close" id="albumCloseBtn" type="button" aria-label="关闭相册">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"></path></svg>
       </button>
     </header>
     <div class="album-scroll">
-      <div class="apple-card gallery-card">
+      <div class="apple-card gallery-card" style="--cx: 0deg; --cy: 0deg; --mx: 34.2%; --my: 3.3%;">
         <div class="card-padding">
           <p class="card-eyebrow">图片 · IMAGES</p>
-          <div class="album-list" id="albumList"></div>
-          <p class="empty-hint" id="albumEmpty" hidden>images 文件夹里还没有图片，放入后刷新即可显示。</p>
+          <div class="album-list" id="albumList"><div class="album-entry"><div class="album-cover"><div class="album-stack"><div class="stack-photo"><div class="img-wrap"><img alt="image 8" src="images/8.jpeg" class=""></div></div><div class="stack-photo"><div class="img-wrap"><img alt="image 1" src="images/1.jpg" class=""></div></div><div class="stack-photo"><div class="img-wrap"><img alt="image 6" src="http://localhost:8000/images/6.webp" class=""><img class="under" alt="image 4" src="http://localhost:8000/images/4.webp"></div></div><div class="album-count-badge">8 张</div></div><div class="album-info"><h3>全部照片</h3><p>点击展开照片墙</p></div></div><div class="album-photos"><div class="album-photos-inner"><div class="wall" style="--cols: 3;"><div class="wall-item" style="--tilt: -6deg;"><div class="frame"><div class="img-wrap"><img alt="image 8" src="images/8.jpeg" class=""></div></div></div><div class="wall-item" style="--tilt: 5deg;"><div class="frame"><div class="img-wrap"><img alt="image 1" src="images/1.jpg" class=""></div></div></div><div class="wall-item" style="--tilt: -3deg;"><div class="frame"><div class="img-wrap"><img alt="image 3" src="images/3.webp" class=""></div></div></div><div class="wall-item" style="--tilt: -7deg;"><div class="frame"><div class="img-wrap"><img alt="image 4" src="images/4.webp" class=""></div></div></div><div class="wall-item" style="--tilt: 2deg;"><div class="frame"><div class="img-wrap"><img alt="image 6" src="images/6.webp" class=""></div></div></div><div class="wall-item" style="--tilt: -2deg;"><div class="frame"><div class="img-wrap"><img alt="image 7" src="images/7.webp" class=""></div></div></div><div class="wall-item" style="--tilt: 6deg;"><div class="frame"><div class="img-wrap"><img alt="image 5" src="images/5.webp" class=""></div></div></div><div class="wall-item" style="--tilt: 7deg;"><div class="frame"><div class="img-wrap"><img alt="image 9" src="images/9.webp" class=""></div></div></div></div></div></div></div></div>
+          <p class="empty-hint" id="albumEmpty" hidden="">images 文件夹里还没有图片，放入后刷新即可显示。</p>
         </div>
       </div>
     </div>
   </div>
 
   <!-- 个人主页界面：头像下拉菜单"我的主页"进入，Esc 或右上角按钮退出 -->
-  <div class="profile-view" id="profileView" hidden role="dialog" aria-modal="true" aria-label="个人主页">
+  <div class="profile-view" id="profileView" hidden="" role="dialog" aria-modal="true" aria-label="个人主页">
     <header class="album-bar">
       <p class="album-title">个人主页 · PROFILE</p>
       <button class="album-close" id="profileViewClose" type="button" aria-label="关闭个人主页">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"></path></svg>
       </button>
     </header>
     <div class="profile-scroll">
@@ -4557,11 +5093,11 @@
         <div class="card-padding">
           <p class="card-eyebrow">课表 · SCHEDULE</p>
           <!-- 启用入口（服务端没有课表数据时显示） -->
-          <div id="schedEnable" hidden>
+          <div id="schedEnable" hidden="">
             <button class="appear-btn" id="schedEnableBtn" type="button">＋ 启用课表</button>
             <p class="profile-hint" style="margin-top:10px;">导入 WakeUp 课表或手动添加课程，配合邮箱获得每日早报和上课前提醒。</p>
           </div>
-          <div id="schedBody" hidden>
+          <div id="schedBody" hidden="">
           <div class="sched-toolbar">
             <div class="sched-week-nav">
               <button class="sched-mini-btn" id="schedWeekPrev" type="button" aria-label="上一周">‹</button>
@@ -4573,7 +5109,7 @@
                 <input class="sched-inline-input" type="date" id="schedTermStart">
               </label>
               <button class="appear-btn" id="schedImportBtn" type="button">导入 WakeUp</button>
-              <input type="file" id="schedImportFile" accept=".json,.csv,application/json,text/csv" hidden>
+              <input type="file" id="schedImportFile" accept=".json,.csv,application/json,text/csv" hidden="">
               <button class="appear-btn" id="schedAddBtn" type="button">＋ 添加课程</button>
             </div>
           </div>
@@ -4614,7 +5150,7 @@
             <div class="sched-nodetimes-grid" id="schedNodeTimes"></div>
           </details>
           <p class="profile-msg" id="schedMsg"></p>
-          <p class="profile-hint" id="schedEmailHint" hidden></p>
+          <p class="profile-hint" id="schedEmailHint" hidden=""></p>
           </div>
         </div>
       </div>
@@ -4648,9 +5184,9 @@
           <div class="card-padding">
             <p class="card-eyebrow">修改密码 · PASSWORD</p>
             <form id="pwdForm" autocomplete="off">
-              <input class="profilev-input" id="pwdOld" type="password" placeholder="旧密码" required>
-              <input class="profilev-input" id="pwdNew" type="password" placeholder="新密码（至少 6 位）" required>
-              <input class="profilev-input" id="pwdNew2" type="password" placeholder="再输入一遍新密码" required>
+              <input class="profilev-input" id="pwdOld" type="password" placeholder="旧密码" required="">
+              <input class="profilev-input" id="pwdNew" type="password" placeholder="新密码（至少 6 位）" required="">
+              <input class="profilev-input" id="pwdNew2" type="password" placeholder="再输入一遍新密码" required="">
               <button class="appear-btn" id="pwdSubmit" type="submit">修改密码</button>
               <p class="profile-msg" id="pwdMsg"></p>
             </form>
@@ -4679,14 +5215,14 @@
           <div class="fav-photos" id="favPhotos"></div>
           <p class="profilev-sec-title">音乐</p>
           <ul class="fav-music" id="favMusic"></ul>
-          <p class="empty-hint" id="favEmpty" hidden>还没有收藏。相册大图右上角的 ♥ 收藏照片，播放列表里的 ♥ 收藏音乐。</p>
+          <p class="empty-hint" id="favEmpty" hidden="">还没有收藏。相册大图右上角的 ♥ 收藏照片，播放列表里的 ♥ 收藏音乐。</p>
         </div>
       </div>
     </div>
   </div>
 
   <!-- 课程编辑弹窗：点课程块或"添加课程"弹出，居中显示（不用滚到卡片底部找表单） -->
-  <div class="sched-editor-overlay" id="schedEditor" hidden role="dialog" aria-modal="true" aria-label="编辑课程">
+  <div class="sched-editor-overlay" id="schedEditor" hidden="" role="dialog" aria-modal="true" aria-label="编辑课程">
     <div class="sched-editor-panel">
       <p class="sched-editor-title" id="schedEditorTitle">添加课程</p>
       <input class="profilev-input" id="schedEName" type="text" placeholder="课程名（必填）">
@@ -4724,7 +5260,7 @@
         <label class="sched-inline"><input type="checkbox" id="schedERemind"> 重点课（课前单独邮件提醒）</label>
       </div>
       <div class="sched-editor-row sched-editor-actions">
-        <button class="appear-btn danger-btn" id="schedEDelete" type="button" hidden>删除</button>
+        <button class="appear-btn danger-btn" id="schedEDelete" type="button" hidden="">删除</button>
         <span class="flex-spacer"></span>
         <button class="appear-btn" id="schedECancel" type="button">取消</button>
         <button class="appear-btn" id="schedESave" type="button">保存</button>
@@ -4733,11 +5269,11 @@
   </div>
 
   <!-- 背景图选择器：从站内图片中挑选，也可上传本地图片 -->
-  <div class="bg-picker" id="bgPicker" hidden role="dialog" aria-modal="true" aria-label="选择背景图片">
+  <div class="bg-picker" id="bgPicker" hidden="" role="dialog" aria-modal="true" aria-label="选择背景图片">
     <div class="bg-picker-panel">
       <p class="bg-picker-title">选择背景图片</p>
       <div class="bg-picker-grid" id="bgPickerGrid"></div>
-      <p class="empty-hint" id="bgPickerEmpty" hidden>images 文件夹里还没有图片。</p>
+      <p class="empty-hint" id="bgPickerEmpty" hidden="">images 文件夹里还没有图片。</p>
       <div class="bg-picker-foot">
         <button class="appear-btn" id="bgLocalBtn" type="button">上传本地图片…</button>
         <button class="appear-btn" id="bgPickerClose" type="button">取消</button>
@@ -4747,25 +5283,25 @@
 
   <!-- AI 界面：顶栏"AI"进入，对话走 /api/ai/chat（服务端代理，key 在后台配置）。
        左侧历史栏：多对话列表（切换/删除），右侧聊天区 -->
-  <div class="ai-view" id="aiView" hidden role="dialog" aria-modal="true" aria-label="AI 助手">
+  <div class="ai-view" id="aiView" hidden="" role="dialog" aria-modal="true" aria-label="AI 助手">
     <header class="album-bar">
       <button class="ai-history-toggle" id="aiHistoryToggle" type="button" aria-label="历史对话">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
       </button>
       <p class="album-title">AI 助手</p>
       <div class="ai-bar-actions">
         <button class="album-close" id="aiNewChatBtn" type="button" aria-label="新对话" title="新对话">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"></path><path d="M3 3v5h5"></path></svg>
         </button>
         <button class="album-close" id="aiViewClose" type="button" aria-label="关闭 AI 界面">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"></path></svg>
         </button>
       </div>
     </header>
     <div class="ai-body">
       <aside class="ai-history" id="aiHistory" aria-label="历史对话">
         <button class="ai-history-new" id="aiHistNewBtn" type="button">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14M5 12h14"></path></svg>
           新对话
         </button>
         <div class="ai-history-list" id="aiHistoryList"></div>
@@ -4773,24 +5309,23 @@
       <div class="ai-chat">
       <div class="ai-messages" id="aiMessages"></div>
       <form class="ai-input-bar" id="aiForm">
-        <div class="ai-attach-row" id="aiAttachRow" hidden></div>
+        <div class="ai-attach-row" id="aiAttachRow" hidden=""></div>
         <input type="text" id="aiInput" placeholder="给 AI 发消息…" autocomplete="off" maxlength="500">
         <div class="ai-input-tools">
           <button type="button" class="ai-tool-icon" id="aiFileBtn" title="上传附件（图片发给视觉模型，文本文件作为上下文）" aria-label="上传附件">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"></path></svg>
           </button>
-          <input type="file" id="aiFileInput" multiple hidden
-            accept="image/*,.txt,.md,.markdown,.json,.csv,.log,.js,.ts,.mjs,.py,.html,.css,.xml,.yml,.yaml,.sh,.sql,.ini,.conf">
+          <input type="file" id="aiFileInput" multiple="" hidden="" accept="image/*,.txt,.md,.markdown,.json,.csv,.log,.js,.ts,.mjs,.py,.html,.css,.xml,.yml,.yaml,.sh,.sql,.ini,.conf">
           <span class="ai-tools-spacer"></span>
           <div class="ai-model-switch" id="aiModelSwitch">
-            <button type="button" class="ai-model-btn" id="aiModelBtn" hidden aria-haspopup="listbox" aria-label="切换模型">
+            <button type="button" class="ai-model-btn" id="aiModelBtn" hidden="" aria-haspopup="listbox" aria-label="切换模型">
               <span id="aiModelLabel"></span>
-              <svg class="chev" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+              <svg class="chev" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"></path></svg>
             </button>
-            <div class="ai-model-menu" id="aiModelMenu" hidden role="listbox" aria-label="模型列表"></div>
+            <div class="ai-model-menu" id="aiModelMenu" hidden="" role="listbox" aria-label="模型列表"></div>
           </div>
           <button type="submit" id="aiSendBtn" class="ai-send-btn" aria-label="发送">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 19V5"/><path d="m5 12 7-7 7 7"/></svg>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 19V5"></path><path d="m5 12 7-7 7 7"></path></svg>
           </button>
         </div>
       </form>
@@ -4799,11 +5334,11 @@
   </div>
 
   <!-- 文档阅读层：点文档卡片进入，Esc/右上角退出 -->
-  <div class="doc-viewer" id="docViewer" hidden role="dialog" aria-modal="true" aria-label="文档阅读">
+  <div class="doc-viewer" id="docViewer" hidden="" role="dialog" aria-modal="true" aria-label="文档阅读">
     <header class="album-bar">
       <p class="album-title" id="docViewerTitle">文档</p>
       <button class="album-close" id="docViewerClose" type="button" aria-label="关闭文档">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"></path></svg>
       </button>
     </header>
     <div class="doc-scroll">
@@ -4812,12 +5347,12 @@
   </div>
 
   <!-- 天气城市选择：点击天气胶囊弹出，搜索或定位 -->
-  <div class="weather-picker" id="weatherPicker" hidden role="dialog" aria-modal="true" aria-label="选择城市">
+  <div class="weather-picker" id="weatherPicker" hidden="" role="dialog" aria-modal="true" aria-label="选择城市">
     <div class="weather-picker-panel">
       <p class="weather-picker-title">选择城市</p>
       <input class="profilev-input" id="weatherSearch" type="text" placeholder="输入城市名，如 上海、东京、Paris" autocomplete="off">
       <ul class="weather-results" id="weatherResults"></ul>
-      <p class="empty-hint" id="weatherResultsEmpty" hidden>没有找到匹配的城市。</p>
+      <p class="empty-hint" id="weatherResultsEmpty" hidden="">没有找到匹配的城市。</p>
       <div class="weather-picker-foot">
         <button class="appear-btn" id="weatherLocateBtn" type="button">使用我的位置</button>
         <button class="appear-btn" id="weatherPickerClose" type="button">关闭</button>
@@ -4826,7 +5361,7 @@
   </div>
 
   <!-- 登录界面：真实账号体系（开放注册），也可游客进入 -->
-  <div class="login-gate" id="loginGate" role="dialog" aria-modal="true" aria-label="登录">
+  <div class="login-gate hide" id="loginGate" role="dialog" aria-modal="true" aria-label="登录" hidden="">
     <form class="login-card" id="loginForm" autocomplete="off">
       <p class="login-logo">YHUO</p>
       <p class="login-sub" id="loginSub">欢迎回来，请登录</p>
@@ -4856,7 +5391,7 @@
         <span>密码</span>
         <input type="password" id="loginPass" placeholder="密码（至少 6 位）">
       </label>
-      <p class="login-error" id="loginError" hidden>请填写账号和密码</p>
+      <p class="login-error" id="loginError" hidden="">请填写账号和密码</p>
       <div class="login-actions">
         <button class="login-btn" type="submit" id="loginSubmitBtn">登 录</button>
         <button class="login-btn login-register" id="loginRegister" type="button">注 册</button>
@@ -4942,12 +5477,13 @@
     var prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
     applyTheme(savedTheme || (prefersDark ? 'dark' : 'light'));
 
-    themeBtn.addEventListener('click', function () {
+    function toggleTheme() {
       var isDark = document.documentElement.classList.contains('dark');
       var next = isDark ? 'light' : 'dark';
       applyTheme(next);
       try { localStorage.setItem(THEME_KEY, next); } catch (e) {}
-    });
+    }
+    themeBtn.addEventListener('click', toggleTheme);
 
     // =========================
     // 滚动处理：导航高亮 + 进度条 + 回顶按钮 + 导航阴影
@@ -10416,7 +10952,130 @@
       if (docsView && !docsView.hidden) closeDocsView();
       if (miscView && !miscView.hidden) closeMiscView();
     });
+
+    // =========================
+    // 移动端侧边抽屉导航（≤640px 窄屏）
+    // 顶栏导航收进侧边栏：抽屉项模拟点击顶栏对应按钮（复用全屏层 open 逻辑），
+    // 主题/登录复用 toggleTheme / openGate / openProfileView。
+    // =========================
+    var navToggle = document.getElementById('navToggle');
+    var sideDrawer = document.getElementById('sideDrawer');
+    var drawerOverlay = document.getElementById('drawerOverlay');
+    var drawerClose = document.getElementById('drawerClose');
+    var drawerThemeToggle = document.getElementById('drawerThemeToggle');
+    var drawerLoginRow = document.getElementById('drawerLoginRow');
+    var drawerLoginName = document.getElementById('drawerLoginName');
+    var drawerThemeState = document.getElementById('drawerThemeState');
+    var drawerLinks = sideDrawer ? Array.prototype.slice.call(sideDrawer.querySelectorAll('.drawer-link')) : [];
+    var drawerHeadLogo = sideDrawer ? sideDrawer.querySelector('.drawer-head .logo') : null;
+
+    function isDrawerOpen() {
+      return document.body.classList.contains('drawer-open');
+    }
+
+    function drawerHasOpenFullscreen() {
+      return FS_ALL.some(function (id) {
+        var el = document.getElementById(id);
+        return el && !el.hidden;
+      });
+    }
+
+    function syncDrawerNav() {
+      if (!drawerLinks.length) return;
+      var activeBtn = document.querySelector('.site-nav .nav-link.active');
+      var cur = activeBtn ? (activeBtn.getAttribute('data-target') || activeBtn.id) : 'home';
+      drawerLinks.forEach(function (a) {
+        var match = a.getAttribute('data-target') || a.getAttribute('data-nav-id');
+        a.classList.toggle('active', match === cur);
+      });
+    }
+
+    function syncDrawerAuth() {
+      if (!drawerLoginName) return;
+      var name = null;
+      try { name = sessionStorage.getItem(LOGIN_NAME_KEY); } catch (e) {}
+      drawerLoginName.textContent = isMember() ? (name || '个人中心') : '登录 / 注册';
+    }
+
+    function syncDrawerTheme() {
+      if (drawerThemeState) {
+        drawerThemeState.textContent = document.documentElement.classList.contains('dark') ? '深色' : '浅色';
+      }
+    }
+
+    function setDrawer(open) {
+      if (!sideDrawer) return;
+      document.body.classList.toggle('drawer-open', open);
+      if (navToggle) navToggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+      if (sideDrawer) sideDrawer.setAttribute('aria-hidden', open ? 'false' : 'true');
+      if (drawerOverlay) drawerOverlay.setAttribute('aria-hidden', open ? 'false' : 'true');
+      if (open) {
+        // 锁背景滚动；同步抽屉内导航高亮/登录状态/主题状态
+        document.body.style.overflow = 'hidden';
+        syncDrawerNav();
+        syncDrawerAuth();
+        syncDrawerTheme();
+      } else {
+        // 无全屏层打开才解锁，避免误清全屏层的滚动锁
+        if (!drawerHasOpenFullscreen()) document.body.style.overflow = '';
+      }
+    }
+
+    if (navToggle) navToggle.addEventListener('click', function () { setDrawer(!isDrawerOpen()); });
+    if (drawerClose) drawerClose.addEventListener('click', function () { setDrawer(false); });
+    if (drawerOverlay) drawerOverlay.addEventListener('click', function () { setDrawer(false); });
+
+    if (drawerThemeToggle) {
+      drawerThemeToggle.addEventListener('click', function () {
+        toggleTheme();
+        syncDrawerTheme();
+      });
+    }
+
+    if (drawerLoginRow) {
+      drawerLoginRow.addEventListener('click', function () {
+        setDrawer(false);
+        if (isMember()) openProfileView();
+        else openGate();
+      });
+    }
+
+    // 抽屉导航项：首页回顶部；其余模拟点击顶栏对应按钮
+    drawerLinks.forEach(function (a) {
+      a.addEventListener('click', function () {
+        var target = a.getAttribute('data-target');
+        var navId = a.getAttribute('data-nav-id');
+        setDrawer(false);
+        if (target) {
+          var homeLink = document.querySelector('.site-nav .nav-link[data-target="' + target + '"]');
+          if (homeLink) homeLink.click();
+          else window.scrollTo({ top: 0, behavior: 'smooth' });
+        } else if (navId) {
+          var btn = document.getElementById(navId);
+          if (btn) btn.click();
+        }
+      });
+    });
+
+    if (drawerHeadLogo) {
+      drawerHeadLogo.addEventListener('click', function (e) {
+        e.preventDefault();
+        setDrawer(false);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      });
+    }
+
+    // Esc 关闭抽屉
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape' && isDrawerOpen()) setDrawer(false);
+    });
+
+    // 窗口拉宽回桌面尺寸时复位抽屉
+    window.addEventListener('resize', function () {
+      if (window.innerWidth > 640 && isDrawerOpen()) setDrawer(false);
+    });
   })();
   </script>
-</body>
-</html>
+
+
+</body></html>

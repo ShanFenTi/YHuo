@@ -4204,7 +4204,7 @@
           <span class="weather-text" id="weatherText">--</span>
         </button>
         <p class="hero-quote" id="heroQuote" hidden><span id="heroQuoteText"></span><i class="hq-cursor" aria-hidden="true"></i></p>
-        <!-- 歌词横条：播放 music/ 曲库的歌时显示同步歌词（同名 .lrc），打字机逐字打出当前句；
+        <!-- 歌词横条：播放时显示同步歌词（后台曲库自带的 .lrc 或 music/ 同名 .lrc），打字机逐字打出当前句；
              无歌词降级显示歌名占位；从未播放时显示待机提示（一言在上方胶囊，不在此重复） -->
         <div class="lyric-bar" id="lyricBar" hidden role="status" aria-live="polite">
           <span class="lyric-dots" id="lyricDots" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></span>
@@ -6018,7 +6018,7 @@
       audio.src = tracks[i].src;
       audio.play().catch(function () {});
       if (miniTitle) miniTitle.textContent = tracks[i].name;
-      musicLyricsLoad(tracks[i].name, tracks[i].src); // 歌词横条跟随切歌
+      musicLyricsLoad(tracks[i].name, tracks[i].src, tracks[i].lrc); // 歌词横条跟随切歌
       renderPlaylist();
       saveMeta();
     }
@@ -6109,8 +6109,8 @@
     });
 
     // =========================
-    // 歌词横条（hero 末尾）：music/ 曲库同名 .lrc，打字机逐字同步当前句。
-    // 无歌词/后台曲库（KV 媒体）→ ♪ 歌名占位；从未播放 → 待机提示。
+    // 歌词横条（hero 末尾）：后台曲库自带 .lrc（media.lrc 随 /api/playlist 下发）或
+    // music/ 曲库同名 .lrc，打字机逐字同步当前句。无歌词 → ♪ 歌名占位；从未播放 → 待机提示。
     // 防坑 2：Cloudflare 对不存在路径返回 200+首页，响应以 '<' 开头一律视为无歌词。
     // =========================
     var lyricBar = document.getElementById('lyricBar');
@@ -6166,11 +6166,12 @@
       return plain.length ? { timed: null, plain: plain } : null;
     }
 
-    // 曲目切换时调用：加载同名 .lrc（仅静态 music/ 曲库；KV 媒体直接占位）
+    // 曲目切换时调用：优先用后台曲库自带的 .lrc 文本（media.lrc，随 /api/playlist 下发）；
+    // 否则取静态 music/ 同名 .lrc；本地 blob 无歌词。
     function lyricDisplayName(name) {
       return String(name || '').replace(/\.(mp3|wav|m4a|flac|ogg|aac|opus|aiff|aif|weba)$/i, '');
     }
-    function musicLyricsLoad(name, src) {
+    function musicLyricsLoad(name, src, lrc) {
       lyricLines = null;
       lyricPlain = null;
       lyricIdx = -1;
@@ -6178,6 +6179,17 @@
       lyricStopIdle(); // 任何切歌都终止待机一言轮播
       if (!lyricBar) return;
       var display = lyricDisplayName(name);
+      // 后台曲库歌词：直接解析自带文本，不用再 fetch 同名文件
+      if (lrc) {
+        var parsed0 = lyricParseLrc(lrc);
+        if (parsed0) {
+          lyricLines = parsed0.timed;
+          lyricPlain = parsed0.plain;
+          lyricIdx = -1;
+          musicLyricsTick();
+        } else lyricShowPlaceholder('♪ ' + display);
+        return;
+      }
       if (!/music\//.test(src || '')) { lyricShowPlaceholder('♪ ' + display); return; } // KV 媒体/本地 blob 无同名 lrc 可取
       lyricShowPlaceholder('♪ ' + display, true); // 加载期间显示歌名 + 待机点
       fetch('music/' + encodeURIComponent(display) + '.lrc', { credentials: 'same-origin' })
@@ -6305,7 +6317,7 @@
       current = idx;
       currentName = tracks[idx].name;
       if (miniTitle) miniTitle.textContent = tracks[idx].name;
-      musicLyricsLoad(tracks[idx].name, tracks[idx].src); // 歌词横条跟随切歌
+      musicLyricsLoad(tracks[idx].name, tracks[idx].src, tracks[idx].lrc); // 歌词横条跟随切歌
       audio.src = tracks[idx].src;
       audio.addEventListener('loadedmetadata', function () {
         audio.currentTime = meta.time || 0;
@@ -6532,7 +6544,7 @@
         current = 0;
         syncCurrentByName();
         if (miniTitle) miniTitle.textContent = tracks[current].name;
-        musicLyricsLoad(tracks[current].name, tracks[current].src); // 歌词横条跟随切歌
+          musicLyricsLoad(tracks[current].name, tracks[current].src, tracks[current].lrc); // 歌词横条跟随切歌
         audio.src = tracks[current].src;
 
         // 曲库加载期间用户点过播放：直接开始
@@ -6725,7 +6737,7 @@
             if (tracks[i].name === name) { dup = true; break; }
           }
           if (!dup) {
-            tracks.push({ name: name, src: item.url });
+            tracks.push({ name: name, src: item.url, lrc: item.lrc }); // lrc=后台曲库歌词文本（有才带）
             added++;
           }
           trackDone();

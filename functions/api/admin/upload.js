@@ -1,9 +1,11 @@
 // POST /api/admin/upload —— multipart 表单上传媒体文件到 KV
-// 字段：type = music|video|image；file = 文件；title = 可选显示名
+// 字段：type = music|video|image；file = 文件；title = 可选显示名；
+//       lrc = 可选歌词附件（仅 type=music，.lrc 文本文件 ≤200KB，随歌曲一并入库）
 import { json } from '../../lib/util.js';
 
 // KV 单值上限 25MiB（免费版无需绑卡），留点余量
 const MAX_SIZE = 24 * 1024 * 1024;
+const MAX_LRC = 200 * 1024;
 
 const TYPES = {
   music: ['mp3', 'wav', 'm4a', 'flac', 'ogg', 'aac', 'opus'],
@@ -49,6 +51,17 @@ export async function onRequestPost({ request, env }) {
   const key = `${type}/${crypto.randomUUID()}.${ext}`;
   const mime = MIME[ext] || file.type || 'application/octet-stream';
 
+  // 可选歌词附件：.lrc 文本直接进 media.lrc（不进 KV，歌词很小不值得单独对象）
+  let lrcText = null;
+  if (type === 'music') {
+    const lrcFile = form.get('lrc');
+    if (lrcFile && typeof lrcFile !== 'string') {
+      if (!/\.lrc$/i.test(lrcFile.name || '')) return json({ ok: false, error: '歌词附件必须是 .lrc 文件' }, 400);
+      if (lrcFile.size > MAX_LRC) return json({ ok: false, error: '歌词文件超过 200KB' }, 400);
+      lrcText = (await lrcFile.text()).slice(0, MAX_LRC);
+    }
+  }
+
   // KV 存二进制，mime 放进 metadata 供播放接口使用
   await env.MEDIA.put(key, await file.arrayBuffer(), { metadata: { mime } });
 
@@ -57,12 +70,12 @@ export async function onRequestPost({ request, env }) {
     .bind(type)
     .first();
   const result = await env.DB
-    .prepare('INSERT INTO media (type, title, r2_key, mime, size, sort_order, album) VALUES (?, ?, ?, ?, ?, ?, ?)')
-    .bind(type, title, key, mime, file.size, next.v, album)
+    .prepare('INSERT INTO media (type, title, r2_key, mime, size, sort_order, album, lrc) VALUES (?, ?, ?, ?, ?, ?, ?, ?)')
+    .bind(type, title, key, mime, file.size, next.v, album, lrcText)
     .run();
 
   return json({
     ok: true,
-    item: { id: result.meta.last_row_id, type, title, mime, size: file.size, sort_order: next.v, album },
+    item: { id: result.meta.last_row_id, type, title, mime, size: file.size, sort_order: next.v, album, has_lrc: !!lrcText },
   });
 }

@@ -159,6 +159,10 @@ export async function ensureSchema(env) {
   try {
     await env.DB.prepare("ALTER TABLE media ADD COLUMN album TEXT NOT NULL DEFAULT ''").run();
   } catch {}
+  // 后台曲库歌词：media.lrc 存 .lrc 文本（静态 music/ 曲库仍走同名文件方案）
+  try {
+    await env.DB.prepare("ALTER TABLE media ADD COLUMN lrc TEXT").run();
+  } catch {}
   try {
     await env.DB.prepare("ALTER TABLE users ADD COLUMN avatar_key TEXT").run();
   } catch {}

@@ -901,7 +901,7 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
   var $ = function (id) { return document.getElementById(id); };
   var TYPE_NAMES = { music: '音乐', video: '视频', image: '图片' };
   var TYPE_EXT = {
-    music: '.mp3,.wav,.m4a,.flac,.ogg,.aac,.opus',
+    music: '.mp3,.wav,.m4a,.flac,.ogg,.aac,.opus,.lrc', // .lrc 在上传队列里与同名歌曲配对成歌词附件，不单独入库
     video: '.mp4,.webm,.mov,.m4v,.ogv',
     image: '.jpg,.jpeg,.png,.gif,.webp,.svg,.avif,.bmp'
   };
@@ -931,6 +931,8 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
     up: ico('<path d="M12 19V5"/><path d="m5 12 7-7 7 7"/>'),
     down: ico('<path d="M12 5v14"/><path d="m19 12-7 7-7-7"/>'),
     box: ico('<path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/>'),
+    lrc: ico('<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M9 13h6M9 17h4"/>'),
+    x: ico('<path d="M18 6 6 18M6 6l12 12"/>'),
   };
 
   // ---------- 黑白主题切换（浅色 / 深色，本地记住） ----------
@@ -1567,6 +1569,57 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
     $('batchDelBtn').textContent = '删除所选 (' + n + ')';
   }
 
+  // ---------- 音乐歌词：补传/替换/移除（存 media.lrc 列，/api/playlist 随清单下发前台） ----------
+  function uploadLrc(it) {
+    var inp = document.createElement('input');
+    inp.type = 'file';
+    inp.accept = '.lrc';
+    inp.onchange = function () {
+      var f = inp.files && inp.files[0];
+      if (!f) return;
+      if (!/\.lrc$/i.test(f.name)) { toast('请选择 .lrc 歌词文件', 'err'); return; }
+      if (f.size > 200 * 1024) { toast('歌词文件超过 200KB', 'err'); return; }
+      f.text().then(function (txt) {
+        if (!txt.trim()) { toast('歌词文件是空的', 'err'); return; }
+        api('/api/admin/media/' + it.id, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ lrc: txt })
+        }).then(function (d) {
+          if (d.ok) {
+            it.has_lrc = true;
+            toast('《' + it.title + '》歌词已保存，前台刷新后生效', 'ok');
+            renderList();
+          } else toast(d.error || '保存失败', 'err');
+        }).catch(function () { toast('网络错误', 'err'); });
+      });
+    };
+    inp.click();
+  }
+
+  function removeLrc(it) {
+    ask({
+      title: '移除歌词',
+      msg: '移除《' + it.title + '》的歌词？歌曲本身不受影响。',
+      okText: '移除',
+      danger: true,
+      cb: function (yes) {
+        if (!yes) return;
+        api('/api/admin/media/' + it.id, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ lrc: '' })
+        }).then(function (d) {
+          if (d.ok) {
+            it.has_lrc = false;
+            toast('歌词已移除', 'ok');
+            renderList();
+          } else toast(d.error || '操作失败', 'err');
+        }).catch(function () { toast('网络错误', 'err'); });
+      },
+    });
+  }
+
   function renderList() {
     var list = $('list');
     var arr = items[currentType] || [];
@@ -1699,6 +1752,24 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
         '<span>' + (currentType === 'music' ? '试听' : (currentType === 'video' ? '预览' : '查看')) + '</span>';
       playBtn.addEventListener('click', function () { openPreview(it); });
       actions.appendChild(playBtn);
+
+      // 音乐行：歌词按钮（上传/替换 .lrc；已配歌词可移除，歌词存 media.lrc 随清单下发）
+      if (currentType === 'music') {
+        var lrcBtn = document.createElement('button');
+        lrcBtn.className = 'ghost';
+        lrcBtn.innerHTML = ICO.lrc + '<span>歌词' + (it.has_lrc ? '✓' : '') + '</span>';
+        lrcBtn.title = it.has_lrc ? '已配歌词，点击替换' : '上传 .lrc 歌词（与歌名对应）';
+        lrcBtn.addEventListener('click', function () { uploadLrc(it); });
+        actions.appendChild(lrcBtn);
+        if (it.has_lrc) {
+          var lrcDel = document.createElement('button');
+          lrcDel.className = 'ghost icon-btn-sm';
+          lrcDel.innerHTML = ICO.x;
+          lrcDel.title = '移除歌词';
+          lrcDel.addEventListener('click', function () { removeLrc(it); });
+          actions.appendChild(lrcDel);
+        }
+      }
 
       if (!filtering) {
         var up = document.createElement('button');
@@ -3395,8 +3466,15 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
       existing[t.replace(/\.[^.]+$/, '')] = true; // 同步进来的标题可能带扩展名，两种都算同名
     });
 
-    var queue = [], skipped = [], oversize = [], wrongType = 0;
+    // .lrc 歌词文件不单独入库：与同 basename 的歌曲配对，作为歌词附件随上传一起提交
+    var lrcFiles = [], mediaAll = [];
     all.forEach(function (f) {
+      if (currentType === 'music' && /\.lrc$/i.test(f.name || '')) lrcFiles.push(f);
+      else mediaAll.push(f);
+    });
+
+    var queue = [], skipped = [], oversize = [], wrongType = 0;
+    mediaAll.forEach(function (f) {
       if (!extAllowed(f)) { wrongType++; return; }
       if (f.size > MAX_SIZE) { oversize.push(f.name); return; }
       var base = (f.name || '').replace(/\.[^.]+$/, '').toLowerCase();
@@ -3404,11 +3482,23 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
       queue.push(f);
     });
 
+    // 歌词配对：只配本次队列里的同名歌曲（给已有歌曲补歌词用列表行的「歌词」按钮）
+    var lrcUnmatched = [];
+    lrcFiles.forEach(function (lf) {
+      if (lf.size > 200 * 1024) { lrcUnmatched.push(lf.name + '（超 200KB）'); return; }
+      var base = lf.name.replace(/\.lrc$/i, '').toLowerCase();
+      for (var q = 0; q < queue.length; q++) {
+        if ((queue[q].name || '').replace(/\.[^.]+$/, '').toLowerCase() === base) { queue[q]._lrc = lf; return; }
+      }
+      lrcUnmatched.push(lf.name);
+    });
+
     if (!queue.length) {
       var m = '没有需要上传的文件';
       if (skipped.length) m += '（跳过同名 ' + skipped.length + ' 个）';
       if (oversize.length) m += '（' + oversize.length + ' 个超过 24MB）';
       if (wrongType) m += '（' + wrongType + ' 个格式不符）';
+      if (lrcUnmatched.length) m += '；歌词 ' + lrcUnmatched.join('、') + ' 没有同名歌曲（可用歌曲行的「歌词」按钮补传）';
       toast(m, 'err');
       return;
     }
@@ -3427,10 +3517,14 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
         $('fileInput').value = '';
         $('titleInput').value = '';
         var msg = '上传完成 ' + okCount + ' 个';
+        var withLrc = 0;
+        queue.forEach(function (q) { if (q._lrc) withLrc++; });
+        if (withLrc) msg += '，其中 ' + withLrc + ' 首带歌词';
         if (failCount) msg += '，失败 ' + failCount + ' 个';
         if (skipped.length) msg += '，跳过同名 ' + skipped.length + ' 个';
         if (oversize.length) msg += '，' + oversize.length + ' 个超过 24MB';
         if (wrongType) msg += '，' + wrongType + ' 个格式不符';
+        if (lrcUnmatched.length) msg += '；歌词 ' + lrcUnmatched.join('、') + ' 未配对到歌曲（可用歌曲行的「歌词」按钮补传）';
         toast(msg, failCount ? 'err' : 'ok');
         loadList();
         return;
@@ -3443,6 +3537,7 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
       // 图片页选中了具体相册时，新上传直接归入该相册
       if (currentType === 'image' && albumFilter && albumFilter !== '__none__') form.append('album', albumFilter);
       form.append('file', f);
+      if (f._lrc) form.append('lrc', f._lrc); // 同名配对的歌词附件
 
       var xhr = new XMLHttpRequest();
       xhr.open('POST', '/api/admin/upload');

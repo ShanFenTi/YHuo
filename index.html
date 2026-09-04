@@ -2553,6 +2553,37 @@
 
     .profilev-sec-title:first-of-type { margin-top: 4px; }
 
+    /* 签到卡（个人主页）：等级徽标 + 进度条 + 连续天数 + 近 7 日圆点 */
+    .ck-head { display: flex; align-items: center; gap: 8px; }
+    .ck-lv {
+      flex: none; font-size: 12px; font-weight: 700; color: #fff;
+      background: var(--apple-primary); border-radius: 999px; padding: 3px 11px;
+      font-variant-numeric: tabular-nums;
+    }
+    .ck-lv.max { background: linear-gradient(135deg, #c99416, #e9b949); }
+    .ck-lvname { font-size: 14px; font-weight: 600; }
+    .ck-head .appear-btn { margin-left: auto; white-space: nowrap; }
+    .ck-btn-done { color: var(--apple-muted-foreground) !important; border-bottom-color: transparent !important; cursor: default; }
+    .ck-bar {
+      height: 8px; border-radius: 999px; overflow: hidden;
+      background: var(--apple-chip, var(--apple-secondary, rgba(128, 128, 128, 0.14)));
+      margin-top: 14px;
+    }
+    .ck-bar i { display: block; height: 100%; width: 0; border-radius: 999px; background: var(--apple-primary); transition: width .45s var(--ease-out, ease); }
+    .ck-bar-hint { font-size: 12px; color: var(--apple-muted-foreground); margin: 7px 0 0; }
+    .ck-stats { font-size: 13px; margin-top: 12px; }
+    .ck-week { display: flex; gap: 6px; margin-top: 10px; }
+    .ck-day { flex: 1; text-align: center; font-size: 11px; color: var(--apple-muted-foreground); }
+    .ck-day i {
+      display: flex; align-items: center; justify-content: center;
+      width: 28px; height: 28px; margin: 0 auto 4px;
+      border: 1px solid var(--apple-border); border-radius: 50%;
+      font-style: normal; font-size: 13px;
+    }
+    .ck-day.on i { background: var(--apple-primary); border-color: var(--apple-primary); color: #fff; }
+    .ck-day.today:not(.on) i { border-color: var(--apple-primary); color: var(--apple-primary); }
+    .ck-loading { font-size: 13px; color: var(--apple-muted-foreground); margin: 0; }
+
     /* 收藏照片网格：小方图，点击回相册大图 */
     .fav-photos {
       display: flex;
@@ -4881,6 +4912,22 @@
               <p class="profilev-sub" id="profilevSub">加载中…</p>
             </div>
           </div>
+        </div>
+      </div>
+
+      <!-- 签到（等级 0~6，按累计签到天数升level）；数据到达后才显示，管理员隐藏 -->
+      <div class="apple-card" id="checkinCard" style="display:none">
+        <div class="card-padding">
+          <p class="card-eyebrow">签到 · CHECK-IN</p>
+          <div class="ck-head">
+            <span class="ck-lv" id="ckLv">Lv.0</span>
+            <span class="ck-lvname" id="ckLvName">—</span>
+            <button class="appear-btn" id="ckBtn" type="button">签到</button>
+          </div>
+          <div class="ck-bar"><i id="ckBarFill"></i></div>
+          <p class="ck-bar-hint" id="ckBarHint">加载中…</p>
+          <p class="ck-stats" id="ckStats"></p>
+          <div class="ck-week" id="ckWeek" aria-label="近 7 天签到记录"></div>
         </div>
       </div>
 
@@ -8590,6 +8637,87 @@
       });
     }
 
+    // ---------- 签到（等级 0~6）：等级规则在服务端（functions/api/user/checkin.js），前端只渲染 ----------
+    var ckCard = document.getElementById('checkinCard');
+    var ckBtn = document.getElementById('ckBtn');
+    var CK_WEEK_CHARS = ['日', '一', '二', '三', '四', '五', '六'];
+    function ckRender(d) {
+      if (!d || !d.ok || !d.status || !ckCard) return;
+      var st = d.status;
+      var lv = st.level || {};
+      var lvEl = document.getElementById('ckLv');
+      var nameEl = document.getElementById('ckLvName');
+      var hintEl = document.getElementById('ckBarHint');
+      var statsEl = document.getElementById('ckStats');
+      var weekEl = document.getElementById('ckWeek');
+      var fill = document.getElementById('ckBarFill');
+      if (lvEl) {
+        lvEl.textContent = 'Lv.' + lv.lv;
+        lvEl.classList.toggle('max', lv.lv >= 6);
+        lvEl.title = lv.name || '';
+      }
+      if (nameEl) nameEl.textContent = lv.name || '—';
+      if (fill) {
+        // 进度 = 当前等级下限(prev) → 下一级阈值(next) 之间的位置；满级恒 100%
+        var pct = 100;
+        if (lv.next) pct = Math.max(0, Math.min(100, Math.round(((lv.total - (lv.prev || 0)) / (lv.next - (lv.prev || 0))) * 100)));
+        fill.style.width = pct + '%';
+      }
+      if (hintEl) {
+        if (!lv.next) hintEl.textContent = '已满级 · 累计签到 ' + lv.total + ' 天，感谢陪伴！';
+        else hintEl.textContent = '再签 ' + (lv.next - lv.total) + ' 天升到 Lv.' + (lv.lv + 1) + ' ' + (lv.nextName || '');
+      }
+      if (statsEl) statsEl.textContent = '累计 ' + st.total + ' 天 · 连续 ' + st.streak + ' 天' + (st.checkedToday ? ' · 今日已签' : ' · 今日未签');
+      if (weekEl) {
+        weekEl.textContent = '';
+        (st.week || []).forEach(function (w) {
+          var cell = document.createElement('div');
+          cell.className = 'ck-day' + (w.checked ? ' on' : '') + (w.today ? ' today' : '');
+          var dot = document.createElement('i');
+          dot.textContent = w.checked ? '✓' : '';
+          var lab = document.createElement('span');
+          lab.textContent = w.today ? '今' : CK_WEEK_CHARS[new Date(w.day + 'T00:00:00Z').getUTCDay()];
+          cell.title = w.day + (w.checked ? ' · 已签到' : ' · 未签到');
+          cell.appendChild(dot);
+          cell.appendChild(lab);
+          weekEl.appendChild(cell);
+        });
+      }
+      if (ckBtn) {
+        ckBtn.disabled = !!st.checkedToday;
+        ckBtn.textContent = st.checkedToday ? '已签到 ✓' : '签到';
+        ckBtn.classList.toggle('ck-btn-done', !!st.checkedToday);
+      }
+      ckCard.style.display = '';
+    }
+    function loadCheckin() {
+      if (!ckCard || profileIsAdmin) return;
+      fetch('/api/user/checkin', { credentials: 'same-origin' })
+        .then(function (r) { return r.json().catch(function () { return null; }); })
+        .then(ckRender)
+        .catch(function () {});
+    }
+    if (ckBtn) {
+      ckBtn.addEventListener('click', function () {
+        if (ckBtn.disabled) return;
+        ckBtn.disabled = true;
+        ckBtn.textContent = '签到中…';
+        fetch('/api/user/checkin', { method: 'POST', credentials: 'same-origin' })
+          .then(function (r) { return r.json().catch(function () { return null; }); })
+          .then(function (d) {
+            if (d && (d.ok || d.already)) ckRender(d);
+            else {
+              ckBtn.disabled = false;
+              ckBtn.textContent = '签到';
+            }
+          })
+          .catch(function () {
+            ckBtn.disabled = false;
+            ckBtn.textContent = '签到';
+          });
+      });
+    }
+
     function loadProfileData() {
       fetch('/api/user/profile', { credentials: 'same-origin' })
         .then(function (r) { return r.json().catch(function () { return { ok: false }; }); })
@@ -8600,8 +8728,9 @@
             if (profilevSub && d && d.error === '未登录') profilevSub.textContent = '登录已失效，请重新登录';
             return;
           }
-          // 管理员身份：显示管理头像/用户名，隐藏前台专属功能卡（收藏/课表/邮箱/改密/更换头像）
+          // 管理员身份：显示管理头像/用户名，隐藏前台专属功能卡（收藏/课表/邮箱/改密/更换头像/签到）
           applyProfileAdminMode(!!d.admin);
+          loadCheckin(); // 签到卡：仅前台注册账号（管理员由 applyProfileAdminMode 拦住不拉取）
           if (profilevName) profilevName.textContent = d.username;
           var sub = '';
           if (d.admin) {
@@ -8610,7 +8739,7 @@
               var ac = new Date(String(d.created_at).replace(' ', 'T') + 'Z');
               if (!isNaN(ac)) sub += ' · 创建于 ' + fmtDate(ac);
             }
-            sub += '（收藏、课表、邮箱、改密仅前台注册账号可用）';
+            sub += '（收藏、课表、邮箱、改密、签到仅前台注册账号可用）';
           } else {
             if (d.created_at) {
               var created = new Date(String(d.created_at).replace(' ', 'T') + 'Z');
@@ -8641,7 +8770,7 @@
     var profileIsAdmin = false;
     function applyProfileAdminMode(isAdmin) {
       profileIsAdmin = !!isAdmin;
-      var hidden = ['emailCard', 'pwdCard', 'favCard'];
+      var hidden = ['emailCard', 'pwdCard', 'favCard', 'checkinCard'];
       var shown = ['pwdCard', 'favCard', 'acctCard'];
       var avBtn = document.getElementById('profilevAvatarBtn');
       var avEl = document.getElementById('profilevAvatar');

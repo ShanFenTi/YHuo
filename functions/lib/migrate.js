@@ -159,6 +159,13 @@ const DDL = [
     err        TEXT NOT NULL DEFAULT '',
     created_at TEXT NOT NULL DEFAULT (datetime('now'))
   )`,
+  // 每日签到（北京时间 day；(user_id, day) 主键防同日重复，等级按累计天数在接口侧计算不入库）
+  `CREATE TABLE IF NOT EXISTS checkins (
+    user_id    INTEGER NOT NULL,
+    day        TEXT NOT NULL,
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    PRIMARY KEY (user_id, day)
+  )`,
 ];
 
 // 同一个隔离实例里只跑一次

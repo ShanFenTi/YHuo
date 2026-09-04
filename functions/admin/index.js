@@ -356,14 +356,54 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
   #visitChart svg { width: 100%; height: 170px; display: block; }
   #visitChart .gl { stroke: var(--border); stroke-width: 1; }
   #visitChart .gt { fill: var(--muted); font-size: 10px; font-family: inherit; }
-  #visitChart .bar { fill: var(--fg); opacity: .82; }
-  #visitChart .bar:hover { opacity: 1; }
+  #visitChart .bar {
+    fill: var(--fg); opacity: .82; cursor: pointer;
+    transition: transform .2s cubic-bezier(.2,.7,.3,1.25), opacity .2s ease, filter .2s ease;
+  }
+  #visitChart .bar:hover { opacity: 1; transform: translate(var(--dx, 0), var(--dy, -4px)) scale(1.02); }
+  #visitChart .bar.dim { opacity: .16; }
+  #visitChart .bar.hl { filter: brightness(1.18); }
   /* 环形图视图 */
-  #visitChart .donut-ring { fill: none; stroke: var(--chip); }
-  #visitChart .donut-seg { fill: none; stroke: var(--fg); opacity: .9; }
-  #visitChart .donut-seg:hover { opacity: 1; }
+  #visitChart { position: relative; } /* tooltip 定位基准 */
+  #visitChart .donut-seg { transition: transform .2s cubic-bezier(.2,.7,.3,1.25), opacity .2s ease, filter .2s ease; cursor: pointer; }
+  #visitChart .donut-seg:hover { transform: translate(var(--dx), var(--dy)) scale(1.06); }
+  #visitChart .donut-seg.dim { opacity: .16; }
+  #visitChart .donut-seg.hl { filter: brightness(1.18); }
   #visitChart .dkey { fill: var(--muted); font-size: 11px; font-family: inherit; }
-  #visitChart .dval { fill: var(--fg); font-size: 14px; font-weight: 700; font-family: inherit; text-anchor: end; }
+  #visitChart .dval { fill: var(--fg); font-family: inherit; }
+  #visitChart .dann { fill: var(--muted); font-size: 10px; font-family: inherit; }
+  .visit-legend { display: flex; flex-wrap: wrap; gap: 6px 14px; margin-top: 12px; }
+  .vlg-item {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-size: 12px; color: var(--muted); padding: 3px 8px; border-radius: 8px;
+    cursor: pointer; transition: background .15s, color .15s;
+  }
+  .vlg-item:hover, .vlg-item.hl { background: var(--hover); color: var(--fg); }
+  .vlg-cc { width: 10px; height: 10px; border-radius: 3px; flex: none; }
+  .vlg-ct { font-weight: 700; margin-left: 2px; }
+  .visit-tip {
+    position: absolute; left: 0; top: 0; pointer-events: none; z-index: 5;
+    background: var(--card); border: 1px solid var(--border); border-radius: 10px;
+    padding: 7px 11px; font-size: 12px; color: var(--fg); box-shadow: var(--shadow);
+    opacity: 0; transition: opacity .12s; white-space: nowrap;
+  }
+  .visit-tip.show { opacity: 1; }
+  /* 最近访问明细 */
+  #visitLogsBody .vl-row {
+    display: flex; align-items: center; gap: 12px; padding: 7px 0;
+    font-size: 13px; border-bottom: 1px solid var(--row-line);
+  }
+  #visitLogsBody .vl-row:last-child { border-bottom: none; }
+  #visitLogsBody .vl-time { flex: none; color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; }
+  #visitLogsBody .vl-ip { flex: none; font-family: ui-monospace, SFMono-Regular, Consolas, monospace; font-weight: 600; }
+  #visitLogsBody .vl-path {
+    flex: none; max-width: 160px; color: var(--muted); font-size: 12px;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  #visitLogsBody .vl-ua {
+    flex: 1; min-width: 0; color: var(--muted); font-size: 12px;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
   /* 相册管理 */
   select {
     padding: 8px 10px; border: 1px solid var(--border); border-radius: 10px;
@@ -631,6 +671,13 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
           </div>
           <div id="visitChart"></div>
           <p class="hint" id="visitHint" style="margin:10px 0 0" hidden>按天明细从上线开始积累，之前累积的总访问量没有逐日记录。</p>
+        </div>
+        <div class="card" id="visitLogsCard">
+          <div class="visit-head">
+            <strong>最近访问</strong>
+            <span class="meta2" id="visitLogsSumm"></span>
+          </div>
+          <div id="visitLogsBody"><p class="hint" style="margin:0">加载中…</p></div>
         </div>
         <div class="card" id="aiUsageCard">
           <div class="visit-head">
@@ -1217,6 +1264,8 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
   var visitData = { visits: 0, today: 0, yesterday: 0, daily: [] };
   var visitRange = 14;
   var visitView = 'bar'; // 访问趋势视图：bar 柱状 / donut 环形
+  // 环形图标配多色调色板（柔和高辨识，明度适中，深浅主题均可读），按日期顺序循环取色
+  var RING_COLORS = ['#4e79a7', '#f28e2b', '#e15759', '#76b7b2', '#59a14f', '#edc948', '#b07aa1', '#ff9da7', '#9c755f', '#86bcb6'];
 
   // ---------- AI token 用量（概览卡片） ----------
   function loadAiUsage() {
@@ -1292,6 +1341,34 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
       $('statToday').textContent = d.today;
       renderVisitChart();
     }).catch(function () {});
+    loadVisitLogs();
+  }
+
+  // 最近访问明细（IP/页面/UA），概览页卡片
+  function fmtLogTime(iso) {
+    var d = new Date(iso);
+    if (isNaN(d.getTime())) return '';
+    function p(x) { return x < 10 ? '0' + x : x; }
+    return (d.getMonth() + 1) + '-' + p(d.getDate()) + ' ' + p(d.getHours()) + ':' + p(d.getMinutes());
+  }
+  function loadVisitLogs() {
+    api('/api/admin/visit-logs').then(function (d) {
+      if (!d.ok) return;
+      var logs = d.logs || [];
+      $('visitLogsSumm').textContent = logs.length ? '最近 ' + logs.length + ' 次访问' : '暂无记录';
+      var body = $('visitLogsBody');
+      if (!logs.length) {
+        body.innerHTML = '<p class="hint" style="margin:0">暂无访问明细——上线并在前台访问过首页后，这里会显示最近访问的 IP / 页面 / 设备。</p>';
+        return;
+      }
+      body.innerHTML = logs.map(function (l) {
+        var t = '<span class="vl-time">' + fmtLogTime(l.created_at) + '</span>' +
+          '<span class="vl-ip">' + escapeHtml(l.ip || '-') + '</span>';
+        if (l.path) t += '<span class="vl-path" title="' + escapeHtml(l.path) + '">' + escapeHtml(l.path) + '</span>';
+        if (l.ua) t += '<span class="vl-ua" title="' + escapeHtml(l.ua) + '">' + escapeHtml(l.ua) + '</span>';
+        return '<div class="vl-row">' + t + '</div>';
+      }).join('');
+    }).catch(function () {});
   }
 
   function renderVisitChart() {
@@ -1315,41 +1392,62 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
     var W = 700, H = 170;
     var parts = [];
     if (visitView === 'donut') {
-      // 环形图：有访问的天各一个扇区（主题色 + 2px 间隙，顺时针从 12 点起），零流量天保留背景环；中心汇总 + 右侧关键指标
-      var cx = 150, cy = 85, R = 56, sw = 26;
-      var C = 2 * Math.PI * R;
-      var maxDay = null, maxCount = 0;
-      days.forEach(function (d) { if (d.count > maxCount) { maxCount = d.count; maxDay = d; } });
-      parts.push('<circle cx="' + cx + '" cy="' + cy + '" r="' + R + '" class="donut-ring" stroke-width="' + sw + '"/>');
-      var acc = 0;
-      days.forEach(function (d) {
-        var frac = totalInRange ? d.count / totalInRange : 0;
-        if (frac <= 0) return;
-        var len = frac * C;
-        var seg = Math.max(len - 2, 1);
-        parts.push('<circle cx="' + cx + '" cy="' + cy + '" r="' + R + '" class="donut-seg" stroke-width="' + sw +
-          '" stroke-linecap="butt" stroke-dasharray="' + seg.toFixed(2) + ' ' + (C - seg).toFixed(2) +
-          '" stroke-dashoffset="' + (-acc * C).toFixed(2) + '" transform="rotate(-90 ' + cx + ' ' + cy + ')">' +
-          '<title>' + d.day + '：' + d.count + ' 次</title></circle>');
-        acc += frac;
-      });
-      parts.push('<text x="' + cx + '" y="' + (cy + 5) + '" text-anchor="middle" class="dval" style="font-size:15px;text-anchor:middle">' + totalInRange + '</text>');
-      parts.push('<text x="' + cx + '" y="' + (cy + 21) + '" text-anchor="middle" class="dkey">次 / 近 ' + n + ' 天</text>');
-      var x1 = 250, x2 = 400, startY = 46, step = 27;
-      function drow(i, label, val) {
-        parts.push('<text x="' + x1 + '" y="' + (startY + i * step) + '" class="dkey">' + label + '</text>');
-        parts.push('<text x="' + x2 + '" y="' + (startY + i * step) + '" class="dval">' + val + '</text>');
+      // 环形图：有访问的天各一个环段（多色调色板循环取色、纯色无灰底、细缝分隔，顺时针从 12 点起），
+      // 零流量天留缺口；中心汇总 + 大段环外标注占比 + 下方图例列表（可 hover 联动）
+      var cx = 200, cy = 84, Rout = 62, Rin = 48; // 环居中在收纳画布，减少右侧留白
+      var maxC = 1;
+      days.forEach(function (d) { if (d.count > maxC) maxC = d.count; });
+      function pt(r, deg) {
+        var rad = (deg - 90) * Math.PI / 180;
+        return [cx + r * Math.cos(rad), cy + r * Math.sin(rad)];
       }
-      drow(0, '今日', visitData.today + ' 次');
-      drow(1, '昨日', visitData.yesterday + ' 次');
-      drow(2, '日均', Math.round(totalInRange / n * 10) / 10 + ' 次');
-      drow(3, '活跃天数', activeDays + ' / ' + n + ' 天');
-      if (maxDay) drow(4, '峰值', maxCount + ' 次（' + maxDay.day.slice(5) + '）');
-      $('visitChart').innerHTML = '<svg viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="近 ' + n + ' 天访问趋势（环形图）">' + parts.join('') + '</svg>';
+      function segFill(c, i) {
+        // 多色调色板循环取色，纯色不透明（无灰色底）
+        return RING_COLORS[i % RING_COLORS.length];
+      }
+      function segD(a, b) {
+        var p1 = pt(Rout, a), p2 = pt(Rout, b), p3 = pt(Rin, b), p4 = pt(Rin, a);
+        var lg = (b - a) > 180 ? 1 : 0;
+        return 'M' + p1[0].toFixed(2) + ' ' + p1[1].toFixed(2) +
+          'A' + Rout + ' ' + Rout + ' 0 ' + lg + ' 1 ' + p2[0].toFixed(2) + ' ' + p2[1].toFixed(2) +
+          'L' + p3[0].toFixed(2) + ' ' + p3[1].toFixed(2) +
+          'A' + Rin + ' ' + Rin + ' 0 ' + lg + ' 0 ' + p4[0].toFixed(2) + ' ' + p4[1].toFixed(2) + 'Z';
+      }
+      var acc = 0, idx = 0;
+      var legendHtml = '<div class="visit-legend">';
+      days.forEach(function (d) {
+        if (d.count <= 0) return;
+        var frac = d.count / totalInRange;
+        var span = frac * 360;
+        var adj = Math.min(0.8, span / 4); // 段两端各缩一点，形成细缝分隔（露出卡片底色，无灰环）
+        var a = acc * 360 + adj, b = (acc + frac) * 360 - adj;
+        var midDeg = (a + b) / 2, rad = (midDeg - 90) * Math.PI / 180;
+        var fill = segFill(d.count, idx);
+        var dx = Math.cos(rad) * 9, dy = Math.sin(rad) * 9;
+        parts.push('<path d="' + segD(a, b) + '" class="donut-seg" fill="' + fill + '" data-i="' + idx +
+          '" data-day="' + d.day + '" data-count="' + d.count + '" data-pct="' + (frac * 100).toFixed(1) +
+          '" data-max="' + (d.count === maxC ? '1' : '0') + '" style="--dx:' + dx.toFixed(2) + ';--dy:' + dy.toFixed(2) + '"></path>');
+        // 大段（占比 ≥10%）在环外标注百分比
+        if (frac >= 0.1) {
+          parts.push('<text x="' + (cx + Math.cos(rad) * (Rout + 13)).toFixed(1) + '" y="' + (cy + Math.sin(rad) * (Rout + 13) + 3).toFixed(1) +
+            '" class="dann" text-anchor="' + (Math.cos(rad) >= 0 ? 'start' : 'end') + '">' + Math.round(frac * 100) + '%</text>');
+        }
+        legendHtml += '<span class="vlg-item" data-i="' + idx + '"><i class="vlg-cc" style="background:' + fill + '"></i>' +
+          d.day.slice(5) + ' <b class="vlg-ct">' + d.count + '</b> 次 · ' + (frac * 100).toFixed(1) + '%</span>';
+        acc += frac; idx++;
+      });
+      legendHtml += '</div>';
+      // 中心：总量 + 日均
+      parts.push('<text x="' + cx + '" y="' + (cy - 4) + '" text-anchor="middle" class="dval" style="font-size:21px;font-weight:700">' + totalInRange + '</text>');
+      parts.push('<text x="' + cx + '" y="' + (cy + 15) + '" text-anchor="middle" class="dkey" style="font-size:11px">日均 ' + Math.round(totalInRange / n * 10) / 10 + ' 次</text>');
+      $('visitChart').classList.add('donut-mode');
+      $('visitChart').innerHTML = '<svg viewBox="0 0 400 170" role="img" aria-label="近 ' + n + ' 天访问趋势（环形图）">' + parts.join('') + '</svg>' +
+        '<div class="visit-tip"></div>' + legendHtml;
       return;
     }
 
     // 柱状图
+    $('visitChart').classList.remove('donut-mode');
     var padL = 34, padB = 22, padT = 14, padR = 10;
     var max = 1;
     days.forEach(function (d) { if (d.count > max) max = d.count; });
@@ -1364,14 +1462,17 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
       var h = Math.max(d.count > 0 ? 2 : 0, Math.round(d.count / max * innerH));
       var x = padL + i * bw + bw * 0.15;
       var y = H - padB - h;
+      var pct = totalInRange ? (d.count / totalInRange * 100).toFixed(1) : '0';
       parts.push('<rect x="' + x.toFixed(1) + '" y="' + y + '" width="' + (bw * 0.7).toFixed(1) +
-        '" height="' + h + '" rx="2" class="bar"><title>' + d.day + '：' + d.count + ' 次</title></rect>');
+        '" height="' + h + '" rx="2" class="bar" data-i="' + i + '" data-day="' + d.day + '" data-count="' + d.count +
+        '" data-pct="' + pct + '" data-max="' + (d.count === max ? '1' : '0') + '" style="--dx:0;--dy:-4px"></rect>');
       if (i % labelEvery === 0 || i === n - 1) {
         parts.push('<text x="' + (padL + i * bw + bw / 2).toFixed(1) + '" y="' + (H - 6) +
           '" class="gt" text-anchor="middle">' + d.day.slice(5) + '</text>');
       }
     });
-    $('visitChart').innerHTML = '<svg viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="近 ' + n + ' 天访问趋势">' + parts.join('') + '</svg>';
+    $('visitChart').innerHTML = '<svg viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="近 ' + n + ' 天访问趋势">' + parts.join('') + '</svg>' +
+      '<div class="visit-tip"></div>';
   }
 
   // ---------- 批量选择 / 搜索 ----------
@@ -3452,6 +3553,60 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
       renderVisitChart();
     });
   });
+
+  // 访问趋势交互：悬停柱/扇区/图例联动（抬起/径向外移、其余变淡、数值浮现）+ 点击弹出当日明细（事件委托，绑定一次）
+  function openDayModal(day, count, pct, isMax) {
+    var wd = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'][new Date(day + 'T00:00:00+08:00').getDay()];
+    $('previewTitle').textContent = '访问明细';
+    $('previewContent').innerHTML =
+      '<div style="line-height:2.1;font-size:14px">' +
+      '<div><strong style="font-size:16px">' + day + '</strong>（' + wd + '）</div>' +
+      '<div>访问次数：<b>' + count + '</b> 次</div>' +
+      '<div>占近 ' + visitRange + ' 天访问量：' + pct + '%</div>' +
+      (isMax ? '<div style="color:var(--ok)">当日为近 ' + visitRange + ' 天访问峰值</div>' : '') +
+      '</div>';
+    $('previewModal').hidden = false;
+  }
+  (function () {
+    var chart = $('visitChart');
+    function findSeg(e) { return e.target && e.target.closest ? e.target.closest('.donut-seg, .bar') : null; }
+    function findLi(e) { return e.target && e.target.closest ? e.target.closest('.vlg-item') : null; }
+    function setFocus(i) {
+      var segs = chart.querySelectorAll('.donut-seg, .bar');
+      for (var k = 0; k < segs.length; k++) {
+        segs[k].classList.toggle('dim', i !== null && k !== i);
+        segs[k].classList.toggle('hl', k === i);
+      }
+      var lis = chart.querySelectorAll('.vlg-item');
+      for (var m = 0; m < lis.length; m++) lis[m].classList.toggle('hl', m === i);
+    }
+    chart.addEventListener('mouseover', function (e) {
+      var seg = findSeg(e), li = findLi(e);
+      setFocus(seg ? Number(seg.getAttribute('data-i')) : (li ? Number(li.getAttribute('data-i')) : null));
+    });
+    chart.addEventListener('mousemove', function (e) {
+      var tip = chart.querySelector('.visit-tip');
+      if (!tip) return;
+      var seg = findSeg(e);
+      if (!seg) { tip.classList.remove('show'); return; }
+      var r = chart.getBoundingClientRect();
+      tip.innerHTML = '<b>' + seg.getAttribute('data-day') + '</b>　' + Number(seg.getAttribute('data-count')) + ' 次 · ' +
+        Number(seg.getAttribute('data-pct')) + '%<div style="margin-top:3px;color:var(--muted)">点击查看当日明细</div>';
+      tip.classList.add('show');
+      tip.style.left = (e.clientX - r.left + 12) + 'px';
+      tip.style.top = (e.clientY - r.top - tip.offsetHeight - 10) + 'px';
+    });
+    chart.addEventListener('mouseleave', function () {
+      setFocus(null);
+      var tip = chart.querySelector('.visit-tip');
+      if (tip) tip.classList.remove('show');
+    });
+    chart.addEventListener('click', function (e) {
+      var seg = findSeg(e); if (!seg) return;
+      openDayModal(seg.getAttribute('data-day'), Number(seg.getAttribute('data-count')),
+        Number(seg.getAttribute('data-pct')), seg.getAttribute('data-max') === '1');
+    });
+  })();
 
   // 用户列表：搜索 + 排序切换
   $('userSearch').addEventListener('input', renderUsers);

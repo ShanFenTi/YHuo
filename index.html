@@ -1033,7 +1033,7 @@
     .calc-pad button:active { transform: scale(0.94); }
     .calc-pad .calc-eq { background: var(--apple-primary); color: #fff; border-color: var(--apple-primary); }
 
-    /* 倒计时 */
+    /* 番茄钟 */
     .timer-display {
       font-variant-numeric: tabular-nums;
       font-size: 40px;
@@ -1055,9 +1055,182 @@
       margin-top: 8px;
     }
 
-    .timer-controls .appear-btn { flex: 1; padding-left: 0; padding-right: 0; text-align: center; }
+    .timer-controls .tool-btn { flex: 1; padding-left: 0; padding-right: 0; text-align: center; }
 
-    /* 密码生成 */
+    /* 工具通用：分段切换 / 按钮 / 表单 / 列表 */
+    .tool-tabs {
+      display: flex;
+      gap: 4px;
+      padding: 3px;
+      border: 1px solid var(--apple-border);
+      border-radius: 9px;
+      background: color-mix(in srgb, var(--apple-background) 80%, transparent);
+      margin-bottom: 10px;
+    }
+
+    .tool-tabs button {
+      flex: 1;
+      border: none;
+      background: none;
+      font-family: inherit;
+      font-size: 12px;
+      color: var(--apple-muted-foreground);
+      padding: 6px 0;
+      border-radius: 7px;
+      cursor: pointer;
+      transition: background-color 130ms var(--ease-out), color 130ms var(--ease-out);
+      white-space: nowrap;
+    }
+
+    .tool-tabs button.on {
+      background: var(--apple-card);
+      color: var(--apple-foreground);
+      font-weight: 600;
+    }
+
+    .tool-tabs-sub { margin-bottom: 8px; }
+
+    .tool-btn {
+      padding: 8px 14px;
+      border: 1px solid var(--apple-border);
+      border-radius: 9px;
+      background: var(--apple-card);
+      color: var(--apple-foreground);
+      font-size: 13px;
+      font-family: inherit;
+      cursor: pointer;
+      transition: background-color 130ms var(--ease-out), transform 130ms var(--ease-out);
+    }
+
+    .tool-btn:hover { background: var(--apple-chip, var(--apple-secondary)); }
+    .tool-btn:active { transform: scale(0.96); }
+    .tool-btn.primary { background: var(--apple-primary); color: #fff; border-color: var(--apple-primary); }
+    .tool-btn.primary:hover { background: var(--apple-primary); opacity: 0.88; }
+    .tool-btn:disabled { opacity: 0.5; cursor: default; }
+
+    .tool-form { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; }
+    .tool-form .profilev-input { margin-bottom: 0; }
+
+    .tool-row { display: flex; gap: 6px; }
+    .tool-row .profilev-input { margin-bottom: 0; flex: 1; min-width: 0; }
+    .tool-row select.profilev-input { flex: 0 0 96px; }
+
+    .tool-area {
+      width: 100%;
+      box-sizing: border-box;
+      resize: vertical;
+      min-height: 64px;
+      max-height: 180px;
+      padding: 9px 10px;
+      border: 1px solid var(--apple-border);
+      border-radius: 10px;
+      background: var(--apple-background);
+      color: var(--apple-foreground);
+      font-size: 13px;
+      font-family: inherit;
+      line-height: 1.5;
+      margin-bottom: 8px;
+    }
+
+    .tool-area:focus { outline: none; border-color: var(--apple-primary); }
+
+    .tool-list {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      max-height: 172px;
+      overflow-y: auto;
+      margin-top: 8px;
+    }
+
+    .tool-list-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+      padding: 7px 10px;
+      border: 1px solid var(--apple-border);
+      border-radius: 9px;
+      background: color-mix(in srgb, var(--apple-background) 80%, transparent);
+      min-width: 0;
+    }
+
+    .tool-list-item .grow { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; cursor: pointer; }
+    .tool-item-main { flex: 1; min-width: 0; }
+    .tool-item-main .nm { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .tool-list-item code { font-family: ui-monospace, monospace; font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .tool-list-item .sub { font-size: 11px; color: var(--apple-muted-foreground); }
+    .tool-badge { font-size: 12px; font-weight: 700; color: var(--apple-primary); flex: none; white-space: nowrap; }
+    .tool-empty { font-size: 12px; color: var(--apple-muted-foreground); margin: 8px 0 0; }
+    .tool-note { font-size: 12px; color: var(--apple-muted-foreground); margin: 8px 0 0; word-break: break-all; }
+    .tool-title-note { font-size: 11px; font-weight: 400; color: var(--apple-muted-foreground); margin-left: 6px; }
+
+    .tool-x {
+      border: none;
+      background: none;
+      color: var(--apple-muted-foreground);
+      cursor: pointer;
+      font-size: 14px;
+      line-height: 1;
+      padding: 2px 4px;
+      flex: none;
+    }
+
+    .tool-x:hover { color: #e5484d; }
+
+    /* 换算器 */
+    .conv-arrow { text-align: center; color: var(--apple-muted-foreground); font-size: 12px; margin: 6px 0; }
+    .base-hint { font-size: 11px; color: var(--apple-muted-foreground); margin: 8px 0 0; }
+
+    /* 文本工具 */
+    .text-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+
+    .text-stat {
+      border: 1px solid var(--apple-border);
+      border-radius: 9px;
+      padding: 7px 10px;
+      background: color-mix(in srgb, var(--apple-background) 80%, transparent);
+    }
+
+    .text-stat b { display: block; font-size: 15px; font-variant-numeric: tabular-nums; }
+    .text-stat span { font-size: 11px; color: var(--apple-muted-foreground); }
+    .text-btns { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+    .text-btns .tool-btn { padding-left: 0; padding-right: 0; text-align: center; }
+
+    /* 随机决策 */
+    .dice-result {
+      font-size: 17px;
+      font-weight: 700;
+      text-align: center;
+      margin: 10px 0 0;
+      min-height: 24px;
+      color: var(--apple-primary);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .dice-result.rolling { color: var(--apple-muted-foreground); font-weight: 400; }
+
+    /* 计算器历史 */
+    .calc-hist-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 11px;
+      color: var(--apple-muted-foreground);
+      margin-top: 10px;
+    }
+
+    .calc-hist-head .tool-x { font-size: 12px; }
+
+    /* 更多工具折叠 */
+    .tool-more { margin-top: 14px; }
+    .tool-more summary { cursor: pointer; font-size: 13px; color: var(--apple-muted-foreground); user-select: none; width: fit-content; }
+    .tool-more summary:hover { color: var(--apple-foreground); }
+    .tool-more[open] summary { margin-bottom: 10px; }
+
+    /* 密码生成（更多工具折叠区） */
     .pwd-out-row { display: flex; gap: 6px; margin-bottom: 10px; }
     .pwd-out-row .profilev-input { margin-bottom: 0; font-family: ui-monospace, monospace; font-size: 12px; }
     .pwd-out-row .appear-btn { flex: none; }
@@ -1074,21 +1247,6 @@
 
     .tool-check input[type="range"] { flex: 1; accent-color: var(--apple-primary); }
     .tool-check input[type="checkbox"] { accent-color: var(--apple-primary); }
-
-    /* 颜色工具 */
-    .color-row { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; }
-    .color-row input[type="color"] {
-      width: 46px; height: 46px; padding: 0; border: 1px solid var(--apple-border);
-      border-radius: 10px; background: none; cursor: pointer;
-    }
-    .color-preview {
-      flex: 1; height: 46px; border-radius: 10px;
-      border: 1px solid var(--apple-border);
-      background: #4f8ef7;
-    }
-    .color-val { font-size: 12px; color: var(--apple-muted-foreground); margin-top: 6px; }
-    .color-code { font-family: ui-monospace, monospace; color: var(--apple-foreground); cursor: pointer; }
-    .color-code:hover { text-decoration: underline; }
 
     /* ===== 文档区 ===== */
     .docs-grid {
@@ -4329,7 +4487,131 @@
           <div class="card-padding">
             <p class="card-eyebrow">工具合集 · TOOLBOX</p>
             <div class="tools-grid">
-              <!-- 计算器 -->
+              <!-- 重要日子 -->
+              <div class="tool-card" id="toolDays">
+                <p class="tool-card-title">🎯 重要日子</p>
+                <p class="tool-empty" id="daysEmpty" hidden></p>
+                <div class="tool-list" id="daysList"></div>
+                <div class="tool-form">
+                  <input class="profilev-input" id="daysName" type="text" maxlength="20" placeholder="名称（如：考研、生日）">
+                  <input class="profilev-input" id="daysDate" type="date" aria-label="日期">
+                  <button class="tool-btn primary" id="daysAdd" type="button">添加</button>
+                </div>
+              </div>
+
+              <!-- 番茄钟 -->
+              <div class="tool-card" id="toolPomo">
+                <p class="tool-card-title">🍅 番茄钟<span class="tool-title-note" id="pomoNote"></span></p>
+                <div class="tool-tabs" id="pomoTabs">
+                  <button type="button" data-m="work" class="on">专注 25</button>
+                  <button type="button" data-m="break">短休 5</button>
+                  <button type="button" data-m="long">长休 15</button>
+                </div>
+                <div class="timer-display" id="pomoDisplay">25:00</div>
+                <div class="timer-controls">
+                  <button class="tool-btn primary" id="pomoStart" type="button">开始</button>
+                  <button class="tool-btn" id="pomoReset" type="button">重置</button>
+                </div>
+              </div>
+
+              <!-- 换算器 -->
+              <div class="tool-card" id="toolConv">
+                <p class="tool-card-title">🔄 换算器</p>
+                <div class="tool-tabs" id="convTabs">
+                  <button type="button" data-t="unit" class="on">单位</button>
+                  <button type="button" data-t="base">进制</button>
+                </div>
+                <div id="convUnit">
+                  <div class="tool-tabs tool-tabs-sub" id="unitCats">
+                    <button type="button" data-c="len" class="on">长度</button>
+                    <button type="button" data-c="weight">重量</button>
+                    <button type="button" data-c="temp">温度</button>
+                    <button type="button" data-c="data">数据</button>
+                  </div>
+                  <div class="tool-row">
+                    <input class="profilev-input" id="unitIn" type="number" inputmode="decimal" value="1" aria-label="数值">
+                    <select class="profilev-input" id="unitFrom" aria-label="源单位"></select>
+                  </div>
+                  <p class="conv-arrow">↓</p>
+                  <div class="tool-row">
+                    <input class="profilev-input" id="unitOut" type="text" readonly aria-label="结果">
+                    <select class="profilev-input" id="unitTo" aria-label="目标单位"></select>
+                  </div>
+                </div>
+                <div id="convBase" hidden>
+                  <input class="profilev-input" id="baseIn" type="text" placeholder="非负整数，如 255">
+                  <div class="tool-tabs tool-tabs-sub" id="baseFrom">
+                    <button type="button" data-b="2">二进制</button>
+                    <button type="button" data-b="8">八进制</button>
+                    <button type="button" data-b="10" class="on">十进制</button>
+                    <button type="button" data-b="16">十六进制</button>
+                  </div>
+                  <div class="tool-list" id="baseRows">
+                    <div class="tool-list-item" data-copy="bin"><span class="sub">BIN</span><code class="grow" id="baseBin">—</code></div>
+                    <div class="tool-list-item" data-copy="oct"><span class="sub">OCT</span><code class="grow" id="baseOct">—</code></div>
+                    <div class="tool-list-item" data-copy="dec"><span class="sub">DEC</span><code class="grow" id="baseDec">—</code></div>
+                    <div class="tool-list-item" data-copy="hex"><span class="sub">HEX</span><code class="grow" id="baseHex">—</code></div>
+                  </div>
+                  <p class="base-hint">点击行可复制对应值</p>
+                </div>
+              </div>
+
+              <!-- 文本工具 -->
+              <div class="tool-card" id="toolText">
+                <p class="tool-card-title">📝 文本工具</p>
+                <div class="tool-tabs" id="textTabs">
+                  <button type="button" data-t="count" class="on">字数</button>
+                  <button type="button" data-t="clean">整理</button>
+                  <button type="button" data-t="ts">时间戳</button>
+                  <button type="button" data-t="json">JSON</button>
+                </div>
+                <div id="textCount">
+                  <textarea class="tool-area" id="tcIn" rows="4" placeholder="粘贴文本，实时统计"></textarea>
+                  <div class="text-stats">
+                    <div class="text-stat"><b id="tcChars">0</b><span>字符</span></div>
+                    <div class="text-stat"><b id="tcNoSpace">0</b><span>不含空格</span></div>
+                    <div class="text-stat"><b id="tcWords">0</b><span>词数（中文按字）</span></div>
+                    <div class="text-stat"><b id="tcLines">0</b><span>行数</span></div>
+                  </div>
+                </div>
+                <div id="textClean" hidden>
+                  <textarea class="tool-area" id="tlIn" rows="5" placeholder="每行一条，处理完直接复制走"></textarea>
+                  <div class="text-btns">
+                    <button class="tool-btn" type="button" data-clean="dedupe">去重</button>
+                    <button class="tool-btn" type="button" data-clean="sort">排序</button>
+                    <button class="tool-btn" type="button" data-clean="noblank">去空行</button>
+                    <button class="tool-btn" type="button" data-clean="trim">去首尾空格</button>
+                    <button class="tool-btn" type="button" data-clean="upper">转大写</button>
+                    <button class="tool-btn" type="button" data-clean="lower">转小写</button>
+                  </div>
+                </div>
+                <div id="textTs" hidden>
+                  <input class="profilev-input" id="tsIn" type="text" placeholder="Unix 时间戳，秒或毫秒都行">
+                  <div class="text-btns">
+                    <button class="tool-btn" id="tsTo" type="button">转日期</button>
+                    <button class="tool-btn" id="tsNow" type="button">现在的时间戳</button>
+                  </div>
+                  <p class="tool-note" id="tsOut">10 位以内按秒算，更长的按毫秒算</p>
+                </div>
+                <div id="textJson" hidden>
+                  <textarea class="tool-area" id="tjIn" rows="5" placeholder='{"a": 1, "b": [2, 3]}'></textarea>
+                  <div class="text-btns">
+                    <button class="tool-btn" id="tjFmt" type="button">格式化</button>
+                    <button class="tool-btn" id="tjMin" type="button">压缩</button>
+                  </div>
+                  <p class="tool-note" id="tjOut"></p>
+                </div>
+              </div>
+
+              <!-- 随机决策 -->
+              <div class="tool-card" id="toolDice">
+                <p class="tool-card-title">🎲 随机决策</p>
+                <textarea class="tool-area" id="diceIn" rows="3" placeholder="每行一个选项，自动保存"></textarea>
+                <button class="tool-btn primary" id="diceGo" type="button" style="width:100%;">抽一个</button>
+                <p class="dice-result" id="diceOut">—</p>
+              </div>
+
+              <!-- 计算器（带历史） -->
               <div class="tool-card" id="toolCalc">
                 <p class="tool-card-title">🧮 计算器</p>
                 <div class="calc-screen" id="calcScreen">0</div>
@@ -4355,24 +4637,17 @@
                   <button type="button" data-k="back">⌫</button>
                   <button type="button" data-k="=" class="calc-eq">=</button>
                 </div>
-              </div>
-
-              <!-- 倒计时 -->
-              <div class="tool-card" id="toolTimer">
-                <p class="tool-card-title">⏱️ 倒计时</p>
-                <div class="timer-display" id="timerDisplay">05:00</div>
-                <div class="timer-controls">
-                  <button class="appear-btn" type="button" data-t="60">1 分</button>
-                  <button class="appear-btn" type="button" data-t="300">5 分</button>
-                  <button class="appear-btn" type="button" data-t="1500">25 分</button>
+                <div class="calc-hist-head" id="calcHistHead" hidden>
+                  <span>历史 · 点一条填入结果</span>
+                  <button class="tool-x" id="calcHistClear" type="button">清空</button>
                 </div>
-                <div class="timer-controls">
-                  <button class="appear-btn" id="timerStartBtn" type="button">开始</button>
-                  <button class="appear-btn" id="timerResetBtn" type="button">重置</button>
-                </div>
+                <div class="tool-list" id="calcHist"></div>
               </div>
+            </div>
 
-              <!-- 密码生成 -->
+            <!-- 更多工具：低频工具收进折叠区 -->
+            <details class="tool-more">
+              <summary>更多工具 ▾</summary>
               <div class="tool-card" id="toolPwd">
                 <p class="tool-card-title">🔐 密码生成</p>
                 <div class="pwd-out-row">
@@ -4383,18 +4658,7 @@
                 <label class="tool-check"><input type="checkbox" id="pwdGenSym" checked> 含符号 !@#$%</label>
                 <button class="appear-btn" id="pwdGenBtn" type="button" style="width:100%;">生成</button>
               </div>
-
-              <!-- 颜色工具 -->
-              <div class="tool-card" id="toolColor">
-                <p class="tool-card-title">🎨 颜色转换</p>
-                <div class="color-row">
-                  <input type="color" id="colorPick" value="#4f8ef7" aria-label="选颜色">
-                  <div class="color-preview" id="colorPreview"></div>
-                </div>
-                <p class="color-val">HEX <span class="color-code" id="colorHex">#4f8ef7</span></p>
-                <p class="color-val">RGB <span class="color-code" id="colorRgb">rgb(79, 142, 247)</span></p>
-              </div>
-            </div>
+            </details>
           </div>
         </div>
       </div>
@@ -9591,15 +9855,45 @@
     initWeather();
 
     // =========================
-    // 工具合集：计算器 / 倒计时 / 密码生成 / 颜色转换（纯本地，无外部依赖）
+    // 工具合集：重要日子 / 番茄钟 / 换算器 / 文本工具 / 随机决策 / 计算器（纯本地，无外部依赖）
     // =========================
 
-    // ---- 计算器 ----
+    // ---- 计算器（带历史） ----
     (function initCalc() {
       var screen = document.getElementById('calcScreen');
       var pad = document.getElementById('calcPad');
+      var histEl = document.getElementById('calcHist');
+      var histHead = document.getElementById('calcHistHead');
+      var histClear = document.getElementById('calcHistClear');
       if (!screen || !pad) return;
       var expr = '';
+      var hist = [];
+      try {
+        var saved = JSON.parse(localStorage.getItem('yhuoCalcHist') || '[]');
+        if (Array.isArray(saved)) hist = saved.slice(0, 20);
+      } catch (e) {}
+      function saveHist() {
+        try { localStorage.setItem('yhuoCalcHist', JSON.stringify(hist.slice(0, 20))); } catch (e) {}
+      }
+      function renderHist() {
+        if (!histEl || !histHead) return;
+        histEl.textContent = '';
+        hist.forEach(function (r) {
+          var item = document.createElement('div');
+          item.className = 'tool-list-item';
+          var code = document.createElement('code');
+          code.className = 'grow';
+          code.textContent = r.e + ' = ' + r.r;
+          code.title = '点击填入结果';
+          item.appendChild(code);
+          item.addEventListener('click', function () {
+            expr = String(r.r);
+            render();
+          });
+          histEl.appendChild(item);
+        });
+        histHead.hidden = hist.length === 0;
+      }
       function render() {
         screen.textContent = expr || '0';
         screen.scrollLeft = screen.scrollWidth;
@@ -9626,31 +9920,81 @@
             expr = '';
             return;
           }
+          // 连续相同算式不重复入历史
+          if (!hist.length || hist[0].e !== expr) {
+            hist.unshift({ e: expr, r: v });
+            hist = hist.slice(0, 20);
+            saveHist();
+            renderHist();
+          }
           expr = String(v);
         } else expr += k;
         render();
       });
+      if (histClear) histClear.addEventListener('click', function () {
+        hist = [];
+        saveHist();
+        renderHist();
+      });
       render();
+      renderHist();
     })();
 
-    // ---- 倒计时 ----
-    (function initTimer() {
-      var display = document.getElementById('timerDisplay');
-      var startBtn = document.getElementById('timerStartBtn');
-      var resetBtn = document.getElementById('timerResetBtn');
+    // ---- 番茄钟（原倒计时升级：25/5/15 循环 + 今日完成数，响铃沿用） ----
+    (function initPomo() {
+      var display = document.getElementById('pomoDisplay');
+      var startBtn = document.getElementById('pomoStart');
+      var resetBtn = document.getElementById('pomoReset');
+      var tabs = document.getElementById('pomoTabs');
+      var note = document.getElementById('pomoNote');
       if (!display || !startBtn || !resetBtn) return;
-      var total = 300;
-      var left = 300;
+      var DUR = { work: 1500, break: 300, long: 900 };
+      var mode = 'work';
+      var total = DUR.work;
+      var left = total;
       var timer = null;
       function fmt(s) {
         var m = Math.floor(s / 60);
         var ss = s % 60;
         return (m < 10 ? '0' : '') + m + ':' + (ss < 10 ? '0' : '') + ss;
       }
+      function todayKey() {
+        var d = new Date();
+        var p = function (n) { return (n < 10 ? '0' : '') + n; };
+        return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate());
+      }
+      function loadCount() {
+        try {
+          var o = JSON.parse(localStorage.getItem('yhuoPomo') || '{}');
+          return o.day === todayKey() ? (Number(o.n) || 0) : 0;
+        } catch (e) { return 0; }
+      }
+      function renderNote() {
+        if (!note) return;
+        var n = loadCount();
+        note.textContent = n > 0 ? '今日完成 ' + n : '';
+      }
+      function addCount() {
+        try { localStorage.setItem('yhuoPomo', JSON.stringify({ day: todayKey(), n: loadCount() + 1 })); } catch (e) {}
+        renderNote();
+      }
       function render() { display.textContent = fmt(left); }
+      function setMode(m) {
+        mode = DUR[m] ? m : 'work';
+        total = DUR[mode];
+        left = total;
+        display.classList.remove('ringing');
+        if (tabs) {
+          tabs.querySelectorAll('button').forEach(function (b) {
+            b.classList.toggle('on', b.getAttribute('data-m') === mode);
+          });
+        }
+        startBtn.textContent = '开始';
+        render();
+      }
       function stop() {
         if (timer) { clearInterval(timer); timer = null; }
-        startBtn.textContent = '开始';
+        startBtn.textContent = left === total ? '开始' : '继续';
       }
       function beep() {
         try {
@@ -9668,15 +10012,14 @@
           });
         } catch (e) {}
       }
-      document.querySelectorAll('#toolTimer [data-t]').forEach(function (btn) {
-        btn.addEventListener('click', function () {
+      if (tabs) {
+        tabs.addEventListener('click', function (e) {
+          var btn = e.target.closest('button');
+          if (!btn) return;
           stop();
-          total = Number(btn.getAttribute('data-t')) || 300;
-          left = total;
-          display.classList.remove('ringing');
-          render();
+          setMode(btn.getAttribute('data-m'));
         });
-      });
+      }
       startBtn.addEventListener('click', function () {
         if (timer) { stop(); return; }
         if (left <= 0) left = total;
@@ -9688,21 +10031,366 @@
           if (left <= 0) {
             stop();
             left = 0;
-            display.classList.add('ringing');
+            render();
             beep();
+            if (mode === 'work') addCount();
+            // 自动切到下一阶段（不自动开始），数字闪烁提示
+            setMode(mode === 'work' ? 'break' : 'work');
+            display.classList.add('ringing');
           }
         }, 1000);
       });
       resetBtn.addEventListener('click', function () {
         stop();
-        left = total;
-        display.classList.remove('ringing');
+        setMode(mode);
+      });
+      renderNote();
+      render();
+    })();
+
+    // ---- 重要日子（倒计时天数，存 localStorage） ----
+    (function initDays() {
+      var listEl = document.getElementById('daysList');
+      var emptyEl = document.getElementById('daysEmpty');
+      var nameEl = document.getElementById('daysName');
+      var dateEl = document.getElementById('daysDate');
+      var addBtn = document.getElementById('daysAdd');
+      if (!listEl || !nameEl || !dateEl || !addBtn) return;
+      if (emptyEl && !emptyEl.textContent) emptyEl.textContent = '还没有记录，加一个吧';
+      function load() {
+        try {
+          var arr = JSON.parse(localStorage.getItem('yhuoDays') || '[]');
+          return Array.isArray(arr) ? arr : [];
+        } catch (e) { return []; }
+      }
+      function save(arr) {
+        try { localStorage.setItem('yhuoDays', JSON.stringify(arr)); } catch (e) {}
+      }
+      function parseDay(s) {
+        var p = String(s || '').split('-');
+        if (p.length !== 3) return null;
+        var d = new Date(Number(p[0]), Number(p[1]) - 1, Number(p[2]));
+        return isNaN(d.getTime()) ? null : d;
+      }
+      function diffText(diff) {
+        if (diff === 0) return '今天';
+        if (diff === 1) return '明天';
+        if (diff === -1) return '昨天';
+        return diff > 0 ? '还有 ' + diff + ' 天' : '已过 ' + (-diff) + ' 天';
+      }
+      function render() {
+        var now = new Date();
+        var today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        var items = load().map(function (it, i) {
+          var d = parseDay(it.d);
+          return { n: it.n, d: it.d, i: i, diff: d ? Math.round((d - today) / 864e5) : null };
+        }).sort(function (a, b) { return a.d < b.d ? -1 : a.d > b.d ? 1 : 0; });
+        listEl.textContent = '';
+        items.forEach(function (it) {
+          var item = document.createElement('div');
+          item.className = 'tool-list-item';
+          var box = document.createElement('div');
+          box.className = 'tool-item-main';
+          var nm = document.createElement('div');
+          nm.className = 'nm';
+          nm.textContent = it.n;
+          var sub = document.createElement('div');
+          sub.className = 'sub';
+          sub.textContent = it.d;
+          box.appendChild(nm);
+          box.appendChild(sub);
+          item.appendChild(box);
+          if (it.diff !== null) {
+            var badge = document.createElement('span');
+            badge.className = 'tool-badge';
+            badge.textContent = diffText(it.diff);
+            item.appendChild(badge);
+          }
+          var del = document.createElement('button');
+          del.type = 'button';
+          del.className = 'tool-x';
+          del.textContent = '✕';
+          del.setAttribute('aria-label', '删除 ' + it.n);
+          del.addEventListener('click', function () {
+            var arr = load();
+            arr.splice(it.i, 1);
+            save(arr);
+            render();
+          });
+          item.appendChild(del);
+          listEl.appendChild(item);
+        });
+        if (emptyEl) emptyEl.hidden = items.length > 0;
+      }
+      addBtn.addEventListener('click', function () {
+        var n = nameEl.value.trim();
+        var d = dateEl.value;
+        if (!n || !d) return;
+        var arr = load();
+        arr.push({ n: n, d: d });
+        save(arr);
+        nameEl.value = '';
         render();
+      });
+      [nameEl, dateEl].forEach(function (el) {
+        el.addEventListener('keydown', function (e) { if (e.key === 'Enter') addBtn.click(); });
       });
       render();
     })();
 
-    // ---- 密码生成 ----
+    // ---- 换算器（单位 + 进制，BigInt 保精度） ----
+    (function initConv() {
+      var tabs = document.getElementById('convTabs');
+      var cats = document.getElementById('unitCats');
+      var unitPane = document.getElementById('convUnit');
+      var basePane = document.getElementById('convBase');
+      var inEl = document.getElementById('unitIn');
+      var outEl = document.getElementById('unitOut');
+      var fromEl = document.getElementById('unitFrom');
+      var toEl = document.getElementById('unitTo');
+      var baseIn = document.getElementById('baseIn');
+      var baseTabs = document.getElementById('baseFrom');
+      var baseRows = document.getElementById('baseRows');
+      if (!tabs || !cats || !unitPane || !basePane || !inEl || !outEl || !fromEl || !toEl) return;
+      var UNITS = {
+        len: [['mm', '毫米', 0.001], ['cm', '厘米', 0.01], ['m', '米', 1], ['km', '千米', 1000], ['in', '英寸', 0.0254], ['ft', '英尺', 0.3048], ['mi', '英里', 1609.344]],
+        weight: [['mg', '毫克', 0.001], ['g', '克', 1], ['kg', '千克', 1000], ['t', '吨', 1000000], ['oz', '盎司', 28.3495], ['lb', '磅', 453.592]],
+        temp: [['°C', '摄氏度'], ['°F', '华氏度'], ['K', '开尔文']],
+        data: [['B', '字节', 1], ['KB', '千字节', 1024], ['MB', '兆字节', 1048576], ['GB', '吉字节', 1073741824], ['TB', '太字节', 1099511627776]]
+      };
+      var cat = 'len';
+      function factor(c, u) {
+        var list = UNITS[c];
+        for (var i = 0; i < list.length; i++) if (list[i][0] === u) return list[i][2];
+        return 1;
+      }
+      function convert(v, from, to) {
+        if (cat === 'temp') {
+          var c = from === '°C' ? v : from === '°F' ? (v - 32) * 5 / 9 : v - 273.15;
+          return to === '°C' ? c : to === '°F' ? c * 9 / 5 + 32 : c + 273.15;
+        }
+        return v * factor(cat, from) / factor(cat, to);
+      }
+      function fmtNum(v) {
+        if (!isFinite(v)) return '—';
+        if (v !== 0 && (Math.abs(v) >= 1e15 || Math.abs(v) < 1e-9)) return v.toExponential(6);
+        return String(Number(v.toPrecision(10)));
+      }
+      function fillSelect(sel, c, keep) {
+        sel.textContent = '';
+        UNITS[c].forEach(function (u) {
+          var opt = document.createElement('option');
+          opt.value = u[0];
+          opt.textContent = u[0] + (u[1] !== u[0] ? ' ' + u[1] : '');
+          sel.appendChild(opt);
+        });
+        sel.selectedIndex = Math.min(keep || 0, UNITS[c].length - 1);
+      }
+      function runUnit() {
+        var v = parseFloat(inEl.value);
+        if (isNaN(v)) { outEl.value = ''; return; }
+        outEl.value = fmtNum(convert(v, fromEl.value, toEl.value));
+      }
+      function setCat(c) {
+        if (!UNITS[c]) return;
+        cat = c;
+        cats.querySelectorAll('button').forEach(function (b) {
+          b.classList.toggle('on', b.getAttribute('data-c') === c);
+        });
+        fillSelect(fromEl, c, 0);
+        fillSelect(toEl, c, c === 'temp' ? 1 : Math.min(2, UNITS[c].length - 1));
+        runUnit();
+      }
+      tabs.addEventListener('click', function (e) {
+        var btn = e.target.closest('button');
+        if (!btn) return;
+        tabs.querySelectorAll('button').forEach(function (b) { b.classList.toggle('on', b === btn); });
+        var t = btn.getAttribute('data-t');
+        unitPane.hidden = t !== 'unit';
+        basePane.hidden = t !== 'base';
+      });
+      cats.addEventListener('click', function (e) {
+        var btn = e.target.closest('button');
+        if (btn) setCat(btn.getAttribute('data-c'));
+      });
+      inEl.addEventListener('input', runUnit);
+      fromEl.addEventListener('change', runUnit);
+      toEl.addEventListener('change', runUnit);
+
+      var RADIX = { bin: 2, oct: 8, dec: 10, hex: 16 };
+      var radix = 10;
+      function parseBig(s, r) {
+        s = String(s || '').trim().toLowerCase();
+        if (!s) return null;
+        if (!new RegExp('^[' + '0123456789abcdef'.slice(0, r) + ']+$').test(s)) return null;
+        var bn = 0n;
+        var rb = BigInt(r);
+        for (var i = 0; i < s.length; i++) bn = bn * rb + BigInt(parseInt(s.charAt(i), r));
+        return bn;
+      }
+      function runBase() {
+        var bn = parseBig(baseIn ? baseIn.value : '', radix);
+        Object.keys(RADIX).forEach(function (k) {
+          var el = document.getElementById('base' + k.charAt(0).toUpperCase() + k.slice(1));
+          if (el) el.textContent = bn === null ? '—' : bn.toString(RADIX[k]).toUpperCase();
+        });
+      }
+      if (baseTabs) {
+        baseTabs.addEventListener('click', function (e) {
+          var btn = e.target.closest('button');
+          if (!btn) return;
+          radix = Number(btn.getAttribute('data-b')) || 10;
+          baseTabs.querySelectorAll('button').forEach(function (b) { b.classList.toggle('on', b === btn); });
+          runBase();
+        });
+      }
+      if (baseIn) baseIn.addEventListener('input', runBase);
+      if (baseRows) {
+        baseRows.addEventListener('click', function (e) {
+          var row = e.target.closest('[data-copy]');
+          if (!row) return;
+          var code = row.querySelector('code');
+          if (!code || code.textContent === '—') return;
+          if (navigator.clipboard) navigator.clipboard.writeText(code.textContent).catch(function () {});
+        });
+      }
+      setCat('len');
+      runBase();
+    })();
+
+    // ---- 文本工具（字数 / 整理 / 时间戳 / JSON） ----
+    (function initText() {
+      var tabs = document.getElementById('textTabs');
+      if (!tabs) return;
+      var PANES = { count: 'textCount', clean: 'textClean', ts: 'textTs', json: 'textJson' };
+      tabs.addEventListener('click', function (e) {
+        var btn = e.target.closest('button');
+        if (!btn) return;
+        var t = btn.getAttribute('data-t');
+        tabs.querySelectorAll('button').forEach(function (b) { b.classList.toggle('on', b === btn); });
+        Object.keys(PANES).forEach(function (k) {
+          var el = document.getElementById(PANES[k]);
+          if (el) el.hidden = k !== t;
+        });
+      });
+      // 字数统计：词数口径 = 中文按字、英文/数字连续串按词
+      var tcIn = document.getElementById('tcIn');
+      var tcChars = document.getElementById('tcChars');
+      var tcNoSpace = document.getElementById('tcNoSpace');
+      var tcWords = document.getElementById('tcWords');
+      var tcLines = document.getElementById('tcLines');
+      if (tcIn && tcChars && tcNoSpace && tcWords && tcLines) {
+        tcIn.addEventListener('input', function () {
+          var s = tcIn.value;
+          tcChars.textContent = s.length;
+          tcNoSpace.textContent = s.replace(/\s/g, '').length;
+          tcWords.textContent = (s.match(/[\u4e00-\u9fff]|[A-Za-z0-9]+/g) || []).length;
+          tcLines.textContent = s ? s.split(/\r?\n/).length : 0;
+        });
+      }
+      // 整理：按行处理，结果写回输入框
+      var tlIn = document.getElementById('tlIn');
+      if (tlIn) {
+        document.querySelectorAll('#textClean [data-clean]').forEach(function (btn) {
+          btn.addEventListener('click', function () {
+            var kind = btn.getAttribute('data-clean');
+            var lines = tlIn.value.split(/\r?\n/);
+            if (kind === 'dedupe') {
+              var seen = {};
+              lines = lines.filter(function (l) {
+                var k = l.trim();
+                if (seen[k]) return false;
+                seen[k] = true;
+                return true;
+              });
+            } else if (kind === 'sort') lines = lines.slice().sort(function (a, b) { return a.localeCompare(b, 'zh-Hans-CN'); });
+            else if (kind === 'noblank') lines = lines.filter(function (l) { return l.trim() !== ''; });
+            else if (kind === 'trim') lines = lines.map(function (l) { return l.trim(); });
+            else if (kind === 'upper') lines = lines.map(function (l) { return l.toUpperCase(); });
+            else if (kind === 'lower') lines = lines.map(function (l) { return l.toLowerCase(); });
+            tlIn.value = lines.join('\n');
+          });
+        });
+      }
+      // 时间戳
+      var tsIn = document.getElementById('tsIn');
+      var tsOut = document.getElementById('tsOut');
+      function fmtDate(ms) {
+        var d = new Date(ms);
+        var p = function (n) { return (n < 10 ? '0' : '') + n; };
+        return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate()) + ' ' + p(d.getHours()) + ':' + p(d.getMinutes()) + ':' + p(d.getSeconds());
+      }
+      if (tsIn && tsOut) {
+        var toBtn = document.getElementById('tsTo');
+        var nowBtn = document.getElementById('tsNow');
+        if (toBtn) toBtn.addEventListener('click', function () {
+          var v = String(tsIn.value).trim();
+          if (!/^\d+$/.test(v)) { tsOut.textContent = '请输入纯数字时间戳'; return; }
+          // 10 位以内按秒，更长按毫秒
+          tsOut.textContent = fmtDate(v.length > 10 ? Number(v) : Number(v) * 1000);
+        });
+        if (nowBtn) nowBtn.addEventListener('click', function () {
+          tsIn.value = String(Math.floor(Date.now() / 1000));
+          tsOut.textContent = '当前时间：' + fmtDate(Date.now());
+        });
+      }
+      // JSON 格式化/压缩
+      var tjIn = document.getElementById('tjIn');
+      var tjOut = document.getElementById('tjOut');
+      if (tjIn && tjOut) {
+        function jsonRun(minify) {
+          try {
+            var obj = JSON.parse(tjIn.value);
+            tjIn.value = minify ? JSON.stringify(obj) : JSON.stringify(obj, null, 2);
+            tjOut.textContent = '✓ 合法 JSON';
+          } catch (e) {
+            tjOut.textContent = '解析失败：' + e.message;
+          }
+        }
+        var fmtBtn = document.getElementById('tjFmt');
+        var minBtn = document.getElementById('tjMin');
+        if (fmtBtn) fmtBtn.addEventListener('click', function () { jsonRun(false); });
+        if (minBtn) minBtn.addEventListener('click', function () { jsonRun(true); });
+      }
+    })();
+
+    // ---- 随机决策（滚灯式抽取，选项自动保存） ----
+    (function initDice() {
+      var input = document.getElementById('diceIn');
+      var goBtn = document.getElementById('diceGo');
+      var out = document.getElementById('diceOut');
+      if (!input || !goBtn || !out) return;
+      try {
+        var saved = localStorage.getItem('yhuoDice');
+        if (saved) input.value = saved;
+      } catch (e) {}
+      input.addEventListener('input', function () {
+        try { localStorage.setItem('yhuoDice', input.value); } catch (e) {}
+      });
+      function options() {
+        return input.value.split(/\r?\n/).map(function (l) { return l.trim(); }).filter(function (l) { return l !== ''; });
+      }
+      goBtn.addEventListener('click', function () {
+        var opts = options();
+        if (!opts.length) { out.textContent = '先在上面填几个选项'; return; }
+        if (opts.length === 1) { out.textContent = opts[0] + '（没得选）'; return; }
+        goBtn.disabled = true;
+        out.classList.add('rolling');
+        var n = 0;
+        var iv = setInterval(function () {
+          out.textContent = opts[Math.floor(Math.random() * opts.length)];
+          if (++n >= 14) {
+            clearInterval(iv);
+            out.textContent = opts[Math.floor(Math.random() * opts.length)];
+            out.classList.remove('rolling');
+            goBtn.disabled = false;
+            goBtn.textContent = '再抽一次';
+          }
+        }, 70);
+      });
+    })();
+
+    // ---- 密码生成（更多工具折叠区） ----
     (function initPwdGen() {
       var out = document.getElementById('pwdGenOut');
       var lenEl = document.getElementById('pwdGenLen');
@@ -9740,31 +10428,6 @@
         });
       }
       gen();
-    })();
-
-    // ---- 颜色转换 ----
-    (function initColor() {
-      var pick = document.getElementById('colorPick');
-      var preview = document.getElementById('colorPreview');
-      var hexEl = document.getElementById('colorHex');
-      var rgbEl = document.getElementById('colorRgb');
-      if (!pick || !hexEl || !rgbEl) return;
-      function render() {
-        var hex = pick.value;
-        var r = parseInt(hex.slice(1, 3), 16);
-        var g = parseInt(hex.slice(3, 5), 16);
-        var b = parseInt(hex.slice(5, 7), 16);
-        if (preview) preview.style.background = hex;
-        hexEl.textContent = hex;
-        rgbEl.textContent = 'rgb(' + r + ', ' + g + ', ' + b + ')';
-      }
-      pick.addEventListener('input', render);
-      [hexEl, rgbEl].forEach(function (el) {
-        el.addEventListener('click', function () {
-          if (navigator.clipboard) navigator.clipboard.writeText(el.textContent).catch(function () {});
-        });
-      });
-      render();
     })();
 
     // =========================

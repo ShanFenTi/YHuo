@@ -5074,6 +5074,8 @@
     var FF_APPLY_HOOKS = []; // flags 应用后要通知的启动期模块（画廊等在各自块级作用域里注册回调，规避坑 9）
     function fsOpen(id) {
       if (FLAGS_OFF[id]) return; // 被开关关掉的界面：不互斥、不接管高亮、不锁滚动（各 open 函数入口另有同款守卫）
+      // 先写路由再互斥关闭其他层：fsClose 清路由时看到的是新路由，不会误清（也避免产生中间历史记录）
+      if (FS_ROUTE[id] && location.hash !== '#/' + FS_ROUTE[id]) location.hash = '#/' + FS_ROUTE[id];
       FS_ALL.forEach(function (other) {
         if (other !== id) closeFullscreenOf(other); // 内部自判 hidden，没开就跳过
       });
@@ -5084,10 +5086,45 @@
     function fsClose(id) {
       var r = FS_REG[id];
       if (!r) return;
+      // ✕/Esc 主动关闭：若路由还指着本层就静默清掉（replaceState 不产生历史记录，返回键不会"重开"已手关的界面）
+      if (FS_ROUTE[id] && location.hash === '#/' + FS_ROUTE[id]) clearRouteHash();
       if (r.lockScroll !== false) document.body.style.overflow = '';
       if (r.btn) r.btn.classList.remove('active');
     }
     function fsCloseAll() { FS_ALL.forEach(closeFullscreenOf); }
+
+    // =========================
+    // hash 路由：顶栏五个界面与地址栏双向同步（#/tools 等）——浏览器前进/后退可用、刷新/分享直达对应界面。
+    // 仅路由顶层界面；docViewer（文档阅读层）与个人主页不参与。#home 等普通锚点视为"回到首页"。
+    // =========================
+    var FS_ROUTE = { toolsView: 'tools', docsView: 'docs', aiView: 'ai', albumView: 'album', miscView: 'misc' };
+    function routeFor(id) { return FS_ROUTE[id] ? '#/' + FS_ROUTE[id] : ''; }
+    function idForHash(h) {
+      if (!h || h.charAt(0) !== '#' || h.charAt(1) !== '/') return null;
+      var key = h.slice(2);
+      for (var id in FS_ROUTE) if (FS_ROUTE[id] === key) return id;
+      return null;
+    }
+    function clearRouteHash() {
+      if (idForHash(location.hash)) history.replaceState(null, '', location.pathname + location.search);
+    }
+    // 路由器：后退/前进/锚点点击统一从这里进。拉起用 fsOpen（hash 相同不重复入栈）；点击路径造成的
+    // hashchange 到达时界面已打开，靠 show 判断防重入。
+    window.addEventListener('hashchange', function () {
+      var id = idForHash(location.hash);
+      if (id && !FLAGS_OFF[id]) {
+        var reg = FS_REG[id];
+        // 界面的实际显示在各自 open 函数里（fsOpen 只管互斥/高亮/锁滚动），故注册表带 open 供路由拉起
+        if (reg && reg.el && !reg.el.classList.contains('show') && reg.open) reg.open();
+      } else if (id) {
+        clearRouteHash(); // 指向被功能开关关闭的界面：静默清掉
+      } else {
+        FS_TOP.forEach(function (tid) {
+          var reg = FS_REG[tid];
+          if (reg && reg.el && reg.el.classList.contains('show') && !FLAGS_OFF[tid] && reg.close) reg.close();
+        });
+      }
+    });
 
     // 应用功能开关：给 <html> 打/摘 ff-* 类（CSS 负责隐藏；head 内联脚本已按 localStorage 缓存提前打过，这里按最新配置校正）
     // 并刷新缓存供下次访问首屏预隐藏；天气/歌词条由各自渲染入口判 FLAGS_OFF
@@ -5118,6 +5155,13 @@
         if (hv) { try { hv.pause(); } catch (e) {} }
       }
       FF_APPLY_HOOKS.forEach(function (fn) { try { fn(); } catch (e) {} }); // 通知启动期模块按最新开关校正（如画廊补加载）
+      // 深链接打开的/正开着的界面被开关关闭：就地关闭并清掉路由
+      FS_TOP.forEach(function (tid) {
+        if (!FLAGS_OFF[tid]) return;
+        var reg = FS_REG[tid];
+        if (reg && reg.el && reg.el.classList.contains('show') && reg.close) reg.close();
+        if (location.hash === routeFor(tid)) clearRouteHash();
+      });
     }
 
     // =========================
@@ -5937,7 +5981,7 @@
 
       if (albumBtn) albumBtn.addEventListener('click', openAlbum);
       if (albumCloseBtn) albumCloseBtn.addEventListener('click', closeAlbum);
-      fsRegister('albumView', { el: albumView, btn: albumBtn, close: closeAlbum });
+      fsRegister('albumView', { el: albumView, btn: albumBtn, close: closeAlbum, open: openAlbum });
       // 在相册里点顶栏其他页面链接时，自动退出相册让页面可见
       sectionLinks.forEach(function (a) {
         a.addEventListener('click', function () {
@@ -10344,7 +10388,7 @@
     if (aiBtn) aiBtn.addEventListener('click', openAiView);
     var aiViewClose = document.getElementById('aiViewClose');
     if (aiViewClose) aiViewClose.addEventListener('click', closeAiView);
-    fsRegister('aiView', { el: aiView, btn: aiBtn, close: closeAiView });
+    fsRegister('aiView', { el: aiView, btn: aiBtn, close: closeAiView, open: openAiView });
     var aiNewChatBtn = document.getElementById('aiNewChatBtn');
     if (aiNewChatBtn) {
       aiNewChatBtn.addEventListener('click', function () {
@@ -10624,9 +10668,9 @@
     if (miscBtn) miscBtn.addEventListener('click', openMiscView);
     var miscViewClose = document.getElementById('miscViewClose');
     if (miscViewClose) miscViewClose.addEventListener('click', closeMiscView);
-    fsRegister('toolsView', { el: toolsView, btn: toolsBtn, close: closeToolsView });
-    fsRegister('docsView', { el: docsView, btn: docsBtn, close: closeDocsView });
-    fsRegister('miscView', { el: miscView, btn: miscBtn, close: closeMiscView });
+    fsRegister('toolsView', { el: toolsView, btn: toolsBtn, close: closeToolsView, open: openToolsView });
+    fsRegister('docsView', { el: docsView, btn: docsBtn, close: closeDocsView, open: openDocsView });
+    fsRegister('miscView', { el: miscView, btn: miscBtn, close: closeMiscView, open: openMiscView });
 
     document.addEventListener('keydown', function (e) {
       if (e.key !== 'Escape') return;
@@ -10636,6 +10680,17 @@
       if (docsView && !docsView.hidden) closeDocsView();
       if (miscView && !miscView.hidden) closeMiscView();
     });
+
+    // 深链接：以 #/xxx 打开页面时直接拉起对应界面（须在全部 fsRegister 之后执行；
+    // 缓存即知该界面被功能开关关闭时静默回首页，缓存未知（首访）先拉起，配置到达后由 applyFeatureFlags 校正）
+    (function () {
+      var id = idForHash(location.hash);
+      if (!id) return;
+      var c = window.__FF_CACHE;
+      if (c && c[FS_ROUTE[id]] === false) { clearRouteHash(); return; }
+      var reg = FS_REG[id];
+      if (reg && reg.open) reg.open(); // 显示动作在各自 open 函数里，直接调 fsOpen 不会显示（与路由器同理）
+    })();
   })();
   </script>
 </body>

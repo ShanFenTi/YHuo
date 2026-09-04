@@ -838,7 +838,8 @@
       .lyric-bar { padding: 14px 16px; gap: 10px; }
       .lyric-line { font-size: 14.5px; }
       .lyric-bar.placeholder .lyric-line { font-size: 13.5px; }
-      .lyric-eq { display: none; }
+      /* 左右装饰都隐藏：只藏右侧律动条的话，左侧待机点（opacity:0 但仍占位）会把居中歌词顶向右偏 */
+      .lyric-dots, .lyric-eq { display: none; }
     }
 
     @media (prefers-reduced-motion: reduce) {

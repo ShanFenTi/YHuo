@@ -258,6 +258,10 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
   .ai-test-err { color: var(--danger); font-weight: 600; }
   @keyframes aiFadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
   .ai-mgr-main.ai-enter { animation: aiFadeIn .2s ease; }
+  /* 功能界面切换动效：新面板淡入 + 轻微上移 */
+  @keyframes pageFadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+  .panel-enter { animation: pageFadeIn .22s ease; }
+  @media (prefers-reduced-motion: reduce) { .panel-enter { animation: none; } }
   /* 我的（管理员资料 + 头像） */
   .me-card { display: flex; gap: 24px; align-items: center; max-width: 620px; }
   .me-left { flex: none; text-align: center; }
@@ -906,6 +910,7 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
     image: '.jpg,.jpeg,.png,.gif,.webp,.svg,.avif,.bmp'
   };
   var currentType = 'music';
+  var lastEnterPanel = null; // 切换动效：上一个播放过进入动画的面板（避免媒体页内部来回切重复闪烁）
   var items = { music: [], video: [], image: [] };
   var users = [];
 
@@ -3308,6 +3313,19 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
       $('batchDelBtn').hidden = true;
       if (type !== 'image') albumFilter = '';
       renderList();
+    }
+    // 功能界面切换动效：给新显示的面板挂一次进入动画（与上一次不是同一面板时才播）
+    var targetPanel = isOverview ? $('overviewPanel') :
+      isUsers ? $('userPanel') :
+      isAppear ? $('appearancePanel') :
+      isAi ? $('aiPanel') :
+      isEmail ? $('emailPanel') :
+      isMe ? $('mePanel') : $('mediaPanel');
+    if (targetPanel && targetPanel !== lastEnterPanel) {
+      lastEnterPanel = targetPanel;
+      targetPanel.classList.remove('panel-enter');
+      void targetPanel.offsetWidth; // 强制 reflow 以重播动画
+      targetPanel.classList.add('panel-enter');
     }
   }
   navBtns.forEach(function (btn) {

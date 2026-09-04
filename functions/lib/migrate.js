@@ -148,6 +148,17 @@ const DDL = [
     ua         TEXT NOT NULL DEFAULT '',
     created_at TEXT NOT NULL DEFAULT (datetime('now'))
   )`,
+  // 邮件发送明细（每次 sendMail 记一条，成功/失败都记，ok=1 成功 0 失败 + 失败原因）：
+  // 概览页"邮件统计"卡片里的发送明细列表用；成功时与 email_usage_daily 同日入账
+  `CREATE TABLE IF NOT EXISTS email_logs (
+    id         INTEGER PRIMARY KEY AUTOINCREMENT,
+    kind       TEXT NOT NULL DEFAULT '',
+    to_email   TEXT NOT NULL DEFAULT '',
+    subject    TEXT NOT NULL DEFAULT '',
+    ok         INTEGER NOT NULL DEFAULT 1,
+    err        TEXT NOT NULL DEFAULT '',
+    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+  )`,
 ];
 
 // 同一个隔离实例里只跑一次

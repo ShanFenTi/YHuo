@@ -54,13 +54,19 @@ async function sendViaBrevo(cfg, to, subject, html) {
   if (!res.ok) throw new Error('brevo ' + res.status + ' ' + (await res.text()).slice(0, 200));
 }
 
-// 发送邮件并按天计账（kind=用途：code/t/custom/sched-daily/sched-class，概览统计用）。
-// 记账失败不影响发送结果（catch 吞掉）。
+// 发送邮件并按天计账（kind=用途：code/test/custom/sched-daily/sched-class，概览统计用）。
+// 记账失败不影响发送结果（catch 吞掉）；同时每条（成功/失败）写入 email_logs 明细（概览页"发送明细"列表用）。
 export async function sendMail(env, to, subject, html, kind) {
   const cfg = await getEmailConfig(env);
   if (!cfg.enabled) throw new Error('邮件服务未启用');
-  if (cfg.provider === 'brevo') await sendViaBrevo(cfg, to, subject, html);
-  else await sendViaResend(cfg, to, subject, html);
+  try {
+    if (cfg.provider === 'brevo') await sendViaBrevo(cfg, to, subject, html);
+    else await sendViaResend(cfg, to, subject, html);
+  } catch (e) {
+    await logEmail(env, kind, to, subject, 0, String((e && e.message) || e).slice(0, 500));
+    throw e;
+  }
+  await logEmail(env, kind, to, subject, 1, '');
   if (kind) {
     try {
       const day = new Date(Date.now() + 8 * 3600 * 1000).toISOString().slice(0, 10);
@@ -71,6 +77,21 @@ export async function sendMail(env, to, subject, html, kind) {
         .run();
     } catch {}
   }
+}
+
+// 写邮件发送明细（失败记录也在 await 链里，写库失败直接吞掉不影响发送结果）
+async function logEmail(env, kind, to, subject, ok, err) {
+  try {
+    await env.DB.prepare(
+      'INSERT INTO email_logs (kind, to_email, subject, ok, err) VALUES (?, ?, ?, ?, ?)'
+    ).bind(
+      String(kind || '').slice(0, 20),
+      String(to || '').slice(0, 200),
+      String(subject || '').slice(0, 200),
+      ok ? 1 : 0,
+      String(err || '').slice(0, 500),
+    ).run();
+  } catch {}
 }
 
 function codeHtml(code, minutes) {

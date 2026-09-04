@@ -47,17 +47,25 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
   }
   /* 收起态：只剩图标列 */
   body.nav-collapsed aside.sidenav { width: 64px; }
-  body.nav-collapsed .brand { padding-left: 4px; padding-right: 4px; }
-  body.nav-collapsed .brand h1, body.nav-collapsed .brand p { display: none; }
-  body.nav-collapsed nav.sidenav-links button { justify-content: center; padding: 10px 0; }
-  body.nav-collapsed nav.sidenav-links button span { display: none; }
-  body.nav-collapsed .sidenav-foot .icon-btn { justify-content: center; padding: 10px 0; }
-  body.nav-collapsed .sidenav-foot .icon-btn span { display: none; }
+  body.nav-collapsed .brand { padding-left: 4px; padding-right: 4px; gap: 0; }
+  body.nav-collapsed nav.sidenav-links button { justify-content: center; padding: 10px 0; gap: 0; }
+  body.nav-collapsed .sidenav-foot .icon-btn { justify-content: center; padding: 10px 0; gap: 0; }
+  /* 文字标签用「宽度收成 0 + 淡出」而不是 display:none，展开时与侧边栏宽度过渡完全同步，不闪烁 */
+  .brand-text, nav.sidenav-links button span, .sidenav-foot .icon-btn span {
+    white-space: nowrap; overflow: hidden; max-width: 200px; opacity: 1;
+    transition: max-width .22s ease, opacity .16s ease;
+  }
+  body.nav-collapsed .brand-text,
+  body.nav-collapsed nav.sidenav-links button span,
+  body.nav-collapsed .sidenav-foot .icon-btn span {
+    max-width: 0; opacity: 0;
+    transition: max-width .2s ease, opacity .12s ease;
+  }
   #navCollapseBtn svg { transition: transform .2s; }
   body.nav-collapsed #navCollapseBtn svg { transform: rotate(180deg); }
-  .brand { display: flex; align-items: center; gap: 10px; padding: 4px 10px 18px; position: relative; }
+  .brand { display: flex; align-items: center; gap: 10px; padding: 4px 10px 18px; position: relative; transition: padding .22s ease, gap .22s ease; }
   .brand .mark {
-    width: 38px; height: 38px; border-radius: 11px;
+    width: 38px; height: 38px; border-radius: 50%;
     background: var(--fg); color: var(--bg);
     font-weight: 700; font-size: 14px; letter-spacing: .05em;
     display: flex; align-items: center; justify-content: center; flex: none;
@@ -74,12 +82,14 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
     background: transparent; color: var(--fg);
     padding: 10px 12px; border-radius: 10px; font-size: 14px;
     text-align: left; border: none; cursor: pointer;
+    transition: background .15s ease, padding .22s ease, gap .22s ease;
   }
   nav.sidenav-links button:hover { background: var(--hover); opacity: 1; }
   nav.sidenav-links button.active { background: var(--fg); color: var(--bg); font-weight: 600; }
   nav.sidenav-links button svg { width: 17px; height: 17px; flex: none; }
   .sidenav-foot { margin-top: auto; padding-top: 12px; border-top: 1px solid var(--row-line); display: flex; flex-direction: column; gap: 4px; }
-  .sidenav-foot .icon-btn { justify-content: flex-start; }
+  .sidenav-foot .icon-btn { justify-content: flex-start; transition: background .15s ease, padding .22s ease, gap .22s ease; }
+  .sidenav-foot .icon-btn:hover { opacity: 1; }
   .main-col { flex: 1; min-width: 0; display: flex; flex-direction: column; }
   header.topbar {
     position: sticky; top: 0; z-index: 50;
@@ -261,7 +271,7 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
   /* 功能界面切换动效：新面板淡入 + 轻微上移 */
   @keyframes pageFadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
   .panel-enter { animation: pageFadeIn .22s ease; }
-  @media (prefers-reduced-motion: reduce) { .panel-enter { animation: none; } }
+  @media (prefers-reduced-motion: reduce) { .panel-enter, #mailUsageBody, #mailLogBox { animation: none !important; } }
   /* 我的（管理员资料 + 头像） */
   .me-card { display: flex; gap: 24px; align-items: center; max-width: 620px; }
   .me-left { flex: none; text-align: center; }
@@ -293,7 +303,16 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
     border: 1.5px dashed var(--border);
   }
   .upload-row input[type=text] { flex: 1 1 160px; margin: 0; }
-  .upload-row input[type=file] { font-size: 13px; max-width: 260px; color: var(--fg); }
+  /* 原生 file input 视觉隐藏（保留多选/文件夹/accept 能力），由自定义"选择文件"按钮触发 */
+  #fileInput { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+  .file-pick-btn { flex: none; display: inline-flex; align-items: center; gap: 6px; }
+  .file-pick-btn svg { display: block; }
+  .file-pick-info {
+    width: 100%; display: none; color: var(--muted); font-size: 12px; line-height: 1.5;
+    margin-top: 2px; animation: fpiIn .18s ease;
+  }
+  .file-pick-info.show { display: block; }
+  @keyframes fpiIn { from { opacity: 0; transform: translateY(-2px); } to { opacity: 1; transform: none; } }
   .progress { height: 4px; background: var(--chip); border-radius: 2px; margin-top: 12px; overflow: hidden; display: none; }
   .progress i { display: block; height: 100%; width: 0; background: var(--fg); transition: width .2s; }
   ul.list { list-style: none; padding: 0; margin-top: 14px; }
@@ -321,6 +340,9 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
   .icon-btn-sm svg { display: block; }
   ul.list li:hover { background: color-mix(in srgb, var(--hover) 55%, transparent); }
   .empty { color: var(--muted); font-size: 14px; text-align: center; padding: 34px 0; }
+  /* 相册/列表切换淡入动效（搜索输入不触发，仅在整表刷新与切相册时重播） */
+  @keyframes listSwap { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: none; } }
+  #list.list-swap { animation: listSwap .22s ease; }
   .upload-row.dragover { border-color: var(--fg); background: var(--chip); }
   .upload-hint { color: var(--muted); font-size: 12px; margin-top: 8px; line-height: 1.5; }
   .queue-info { font-size: 13px; color: var(--muted); margin-top: 8px; min-height: 0; }
@@ -424,6 +446,46 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
     flex: 1; min-width: 0; color: var(--muted); font-size: 12px;
     overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
   }
+  /* 邮件统计：趋势 + 发送明细 */
+  .mail-sec-title { font-size: 12px; color: var(--muted); margin: 14px 0 4px; }
+  #mailTrend svg { width: 100%; height: 70px; display: block; }
+  #mailTrend .mt-bar { fill: var(--fg); opacity: .78; }
+  #mailTrend .mt-bar:hover { opacity: 1; }
+  #mailTrend .mt-t { fill: var(--muted); font-size: 9px; font-family: inherit; }
+  .el-filters { display: flex; flex-wrap: wrap; gap: 6px; margin: 4px 0 8px; }
+  .el-chip {
+    padding: 3px 11px; font-size: 12px; border-radius: 999px; cursor: pointer;
+    border: 1px solid var(--border); background: none; color: var(--muted);
+    transition: background .15s, color .15s, border-color .15s;
+  }
+  .el-chip:hover { color: var(--fg); border-color: var(--muted); }
+  .el-chip.active { background: var(--fg); color: var(--bg); border-color: var(--fg); }
+  #mailLogBox .el-row {
+    display: flex; align-items: center; gap: 10px; padding: 7px 0;
+    font-size: 13px; border-bottom: 1px solid var(--row-line);
+  }
+  #mailLogBox .el-row:last-child { border-bottom: none; }
+  #mailLogBox .el-time { flex: none; color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; }
+  #mailLogBox .el-kind { flex: none; font-size: 11px; padding: 1px 8px; border-radius: 999px; background: var(--chip); color: var(--fg); }
+  #mailLogBox .el-to {
+    flex: none; font-family: ui-monospace, SFMono-Regular, Consolas, monospace; font-size: 12px;
+    max-width: 190px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  #mailLogBox .el-subj {
+    flex: 1; min-width: 0; color: var(--muted); font-size: 12px;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  #mailLogBox .el-status { flex: none; font-weight: 700; }
+  #mailLogBox .el-status.ok { color: var(--ok); }
+  #mailLogBox .el-status.bad { color: var(--danger); cursor: help; }
+  /* 邮件统计动效：进入淡入、趋势柱悬停抬起、明细行悬停高亮 */
+  @keyframes mailFadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: none; } }
+  #mailUsageBody { animation: mailFadeIn .25s ease; }
+  #mailLogBox { animation: mailFadeIn .2s ease; }
+  #mailTrend .mt-bar { transition: transform .16s ease, opacity .16s ease, filter .16s ease; }
+  #mailTrend .mt-bar:hover { transform: translateY(-3px); opacity: 1; filter: brightness(1.15); }
+  #mailLogBox .el-row { transition: background .15s ease; }
+  #mailLogBox .el-row:hover { background: var(--hover); }
   /* 相册管理 */
   select {
     padding: 8px 10px; border: 1px solid var(--border); border-radius: 10px;
@@ -543,12 +605,12 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
     .menu-btn { display: flex; align-items: center; }
     /* 窄屏抽屉永远显示完整侧边栏：覆盖桌面端收起态的图标模式 */
     body.nav-collapsed aside.sidenav { width: 220px; }
-    body.nav-collapsed .brand { padding: 4px 10px 18px; }
-    body.nav-collapsed .brand h1, body.nav-collapsed .brand p { display: block; }
-    body.nav-collapsed nav.sidenav-links button { justify-content: flex-start; padding: 10px 12px; }
-    body.nav-collapsed nav.sidenav-links button span { display: inline; }
-    body.nav-collapsed .sidenav-foot .icon-btn { justify-content: flex-start; padding: 8px 14px; }
-    body.nav-collapsed .sidenav-foot .icon-btn span { display: inline; }
+    body.nav-collapsed .brand { padding: 4px 10px 18px; gap: 10px; }
+    body.nav-collapsed .brand-text { max-width: 200px; opacity: 1; }
+    body.nav-collapsed nav.sidenav-links button { justify-content: flex-start; padding: 10px 12px; gap: 10px; }
+    body.nav-collapsed nav.sidenav-links button span { max-width: 200px; opacity: 1; }
+    body.nav-collapsed .sidenav-foot .icon-btn { justify-content: flex-start; padding: 8px 14px; gap: 6px; }
+    body.nav-collapsed .sidenav-foot .icon-btn span { max-width: 200px; opacity: 1; }
     header.topbar { padding: 10px 16px; }
     main.content { padding: 16px 16px 40px; }
     .card { padding: 16px; border-radius: 14px; }
@@ -629,9 +691,8 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
   <aside class="sidenav">
     <div class="brand">
       <div class="mark" id="brandMark" title="我的"><span id="brandMono">YH</span><img id="brandAvatarImg" hidden alt=""></div>
-      <div>
-        <h1>YHuo 管理后台</h1>
-        <p>内容与用户一站式管理</p>
+      <div class="brand-text">
+        <h1>管理界面</h1>
       </div>
     </div>
     <nav class="sidenav-links" id="sideNav">
@@ -676,8 +737,9 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
           <div class="stat"><div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M2 8h20M2 16h20M8 4v16M16 4v16"/></svg></div><div><div class="num" id="statVideo">0</div><div class="lbl">视频</div></div></div>
           <div class="stat"><div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m21 15-5-5L5 21"/></svg></div><div><div class="num" id="statImage">0</div><div class="lbl">图片</div></div></div>
           <div class="stat"><div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></div><div><div class="num" id="statUsers">0</div><div class="lbl">注册用户</div></div></div>
-          <div class="stat"><div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg></div><div><div class="num" id="statVisits">0</div><div class="lbl">访问量</div></div></div>
+          <div class="stat"><div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg></div><div><div class="num" id="statVisits">0</div><div class="lbl">总访问量（历史累计）</div></div></div>
           <div class="stat"><div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg></div><div><div class="num" id="statToday">0</div><div class="lbl">今日访问</div></div></div>
+          <div class="stat" style="justify-content:center"><div><div class="num" id="statUptime" style="font-size:15px;white-space:nowrap;font-variant-numeric:tabular-nums;text-align:center">0</div><div class="lbl" style="font-size:11px;text-align:center">网站运行</div></div></div>
         </div>
         <div class="card" id="visitCard">
           <div class="visit-head">
@@ -723,9 +785,14 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
       <div id="mediaPanel" hidden>
     <div class="upload-row" id="uploadRow">
       <input type="file" id="fileInput" multiple>
+      <button type="button" class="ghost file-pick-btn" id="filePickBtn">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M17 8l-5-5-5 5M12 3v12"/></svg>
+        选择文件
+      </button>
       <input type="text" id="titleInput" placeholder="显示名称（可选，仅单个文件时生效）">
       <button id="uploadBtn">上传</button>
     </div>
+    <p class="file-pick-info" id="filePickInfo"></p>
     <p class="upload-hint" id="uploadHint">支持一次选多个文件，也可以把文件或整个文件夹拖进来；与已有内容同名的自动跳过；单文件上限 24MB。</p>
     <div class="progress" id="progress"><i id="progressBar"></i></div>
     <div class="queue-info" id="queueInfo"></div>
@@ -1267,12 +1334,22 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
     return api('/api/admin/media').then(function (data) {
       if (data.ok) {
         items = data.items;
+        listSwap(); // 整表刷新（含相册重命名/解散/批量移入）时列表淡入
         renderList();
         refreshStats();
       } else if (data._status === 401) {
         show('login');
       }
     }).catch(function () {});
+  }
+
+  // 列表切换淡入动效：整表刷新（相册重命名/解散/批量移入等）或切相册时重播一次
+  function listSwap() {
+    var box = $('list');
+    if (!box) return;
+    box.classList.remove('list-swap');
+    void box.offsetWidth;
+    box.classList.add('list-swap');
   }
 
   function loadUsers() {
@@ -1291,6 +1368,20 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
   var visitView = 'bar'; // 访问趋势视图：bar 柱状 / donut 环形
   // 环形图标配多色调色板（柔和高辨识，明度适中，深浅主题均可读），按日期顺序循环取色
   var RING_COLORS = ['#4e79a7', '#f28e2b', '#e15759', '#76b7b2', '#59a14f', '#edc948', '#b07aa1', '#ff9da7', '#9c755f', '#86bcb6'];
+
+  // 网站运行时长：与前台 index.html 的 SITE_BIRTH 同源（改上线时间要两处同步）
+  var SITE_BIRTH = new Date('2026-08-29T12:42:07+08:00');
+  function renderUptime() {
+    var el = $('statUptime');
+    if (!el) return;
+    var s = Math.max(0, Math.floor((Date.now() - SITE_BIRTH.getTime()) / 1000));
+    var d = Math.floor(s / 86400);
+    var h = Math.floor(s % 86400 / 3600);
+    var m = Math.floor(s % 3600 / 60);
+    el.textContent = d + ' 天 ' + h + ' 时 ' + m + ' 分 ' + (s % 60) + ' 秒';
+  }
+  renderUptime();
+  setInterval(renderUptime, 1000);
 
   // ---------- AI token 用量（概览卡片） ----------
   function loadAiUsage() {
@@ -1325,7 +1416,7 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
     }).catch(function () {});
   }
 
-  // ---------- 邮件发送统计（概览卡片） ----------
+  // ---------- 邮件发送统计（概览卡片：汇总 + 近 14 天趋势 + 发送明细列表） ----------
   var MAIL_KIND_NAMES = {
     'code': '验证码',
     'test': '测试邮件',
@@ -1334,27 +1425,94 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
     'sched-class': '课表课前提醒',
     'sched-test': '课表提醒测试',
   };
+  function escAttr(s) { return escapeHtml(String(s == null ? '' : s)).replace(/"/g, '&quot;'); }
+  function maskEmail(e) {
+    if (!e) return '';
+    var at = e.indexOf('@');
+    if (at <= 1) return e.slice(0, 10);
+    return e.slice(0, 2) + '***' + e.slice(at);
+  }
+  function renderMailTrend(trend) {
+    var el = $('mailTrend');
+    if (!el || !trend || !trend.length) return;
+    var W = 460, H = 70, padB = 14, padT = 6;
+    var max = 1;
+    trend.forEach(function (t) { if (t.count > max) max = t.count; });
+    var bw = (W - 10) / trend.length;
+    var parts = [];
+    trend.forEach(function (t, i) {
+      var h = Math.max(t.count > 0 ? 2 : 0, Math.round(t.count / max * (H - padB - padT)));
+      var x = 5 + i * bw + bw * 0.2;
+      var y = H - padB - h;
+      parts.push('<rect x="' + x.toFixed(1) + '" y="' + y + '" width="' + (bw * 0.6).toFixed(1) +
+        '" height="' + h + '" rx="1.5" class="mt-bar"><title>' + t.day + '：' + t.count + ' 封</title></rect>');
+    });
+    parts.push('<text x="5" y="' + (H - 3) + '" class="mt-t">' + escapeHtml(trend[0].day) + '</text>');
+    parts.push('<text x="' + (W - 5) + '" y="' + (H - 3) + '" class="mt-t" text-anchor="end">' + escapeHtml(trend[trend.length - 1].day) + '</text>');
+    el.innerHTML = '<svg viewBox="0 0 ' + W + ' ' + H + '">' + parts.join('') + '</svg>';
+  }
+  var mailLogKind = '';
+  function bindLogChips() {
+    document.querySelectorAll('#mailLogBox .el-chip').forEach(function (c) {
+      c.onclick = function () {
+        mailLogKind = c.getAttribute('data-k');
+        loadMailLogs();
+      };
+    });
+  }
+  function loadMailLogs() {
+    api('/api/admin/email/logs?kind=' + encodeURIComponent(mailLogKind) + '&limit=20').then(function (d) {
+      if (!d.ok) return;
+      var kinds = [
+        ['', '全部'], ['code', '验证码'], ['test', '测试'], ['custom', '自定义'],
+        ['sched-daily', '早报'], ['sched-class', '课前提醒'], ['sched-test', '提醒测试'],
+      ];
+      var html = '<div class="el-filters">' + kinds.map(function (k) {
+        return '<button type="button" class="el-chip' + (mailLogKind === k[0] ? ' active' : '') + '" data-k="' + k[0] + '">' + k[1] + '</button>';
+      }).join('') + '</div>';
+      var logs = d.logs || [];
+      if (!logs.length) {
+        html += '<p class="hint" style="margin:4px 0 0">暂无发送记录。</p>';
+      } else {
+        html += logs.map(function (l) {
+          var subj = l.kind === 'code' ? '验证码邮件' : (l.subject || '');
+          return '<div class="el-row">' +
+            '<span class="el-time">' + fmtLogTime(l.created_at) + '</span>' +
+            '<span class="el-kind">' + (MAIL_KIND_NAMES[l.kind] || l.kind || '邮件') + '</span>' +
+            '<span class="el-to">' + escapeHtml(maskEmail(l.to_email)) + '</span>' +
+            '<span class="el-subj" title="' + escAttr(subj) + '">' + escapeHtml(subj) + '</span>' +
+            '<span class="el-status ' + (l.ok ? 'ok' : 'bad') + '" title="' + (l.ok ? '发送成功' : escAttr(l.err || '发送失败')) + '">' + (l.ok ? '✓' : '✕') + '</span>' +
+            '</div>';
+        }).join('');
+      }
+      $('mailLogBox').innerHTML = html;
+      bindLogChips();
+    }).catch(function () {});
+  }
   function loadMailUsage() {
     api('/api/admin/email/usage').then(function (d) {
       if (!d.ok) return;
-      var body = $('mailUsageBody');
-      if (!d.total) {
-        body.innerHTML = '<p class="hint" style="margin:0">还没有发送记录，发出第一封邮件后这里会有统计。</p>';
-        $('mailUsageSumm').textContent = '';
-        return;
-      }
       $('mailUsageSumm').textContent = '今日 ' + d.today + ' · 近 14 天 ' + d.d14 + ' · 近 30 天 ' + d.d30;
-      var html = '<table style="width:100%;border-collapse:collapse;font-size:13px">';
-      html += '<tr style="color:var(--muted)">' +
-        '<th style="text-align:left;padding:4px 6px;font-weight:600">用途</th>' +
-        '<th style="text-align:right;padding:4px 6px;font-weight:600">累计发送</th></tr>';
-      d.byKind.forEach(function (k) {
-        html += '<tr>' +
-          '<td style="padding:5px 6px;border-top:1px solid var(--row-line)">' + (MAIL_KIND_NAMES[k.kind] || k.kind) + '</td>' +
-          '<td style="padding:5px 6px;border-top:1px solid var(--row-line);text-align:right;white-space:nowrap">' + k.count + '</td></tr>';
-      });
-      html += '</table>';
-      body.innerHTML = html;
+      var html = '';
+      if (d.total) {
+        html = '<table style="width:100%;border-collapse:collapse;font-size:13px">';
+        html += '<tr style="color:var(--muted)">' +
+          '<th style="text-align:left;padding:4px 6px;font-weight:600">用途</th>' +
+          '<th style="text-align:right;padding:4px 6px;font-weight:600">累计发送</th></tr>';
+        (d.byKind || []).forEach(function (k) {
+          html += '<tr>' +
+            '<td style="padding:5px 6px;border-top:1px solid var(--row-line)">' + (MAIL_KIND_NAMES[k.kind] || k.kind || '—') + '</td>' +
+            '<td style="padding:5px 6px;border-top:1px solid var(--row-line);text-align:right;white-space:nowrap">' + k.count + '</td></tr>';
+        });
+        html += '</table>';
+      } else {
+        html = '<p class="hint" style="margin:0">还没有成功的发送记录，发出第一封邮件后这里会有统计（失败记录见下方明细）。</p>';
+      }
+      html += '<div class="mail-sec-title">近 14 天发送趋势</div><div id="mailTrend"></div>' +
+        '<div class="mail-sec-title">发送明细（最近 20 条）</div><div id="mailLogBox"><p class="hint" style="margin:0">加载中…</p></div>';
+      $('mailUsageBody').innerHTML = html;
+      renderMailTrend(d.d14days || []);
+      loadMailLogs();
     }).catch(function () {});
   }
 
@@ -1451,7 +1609,7 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
     }
     var totalInRange = days.reduce(function (a, d) { return a + d.count; }, 0);
     var activeDays = days.filter(function (d) { return d.count > 0; }).length;
-    $('visitSumm').textContent = '今日 ' + visitData.today + ' · 昨日 ' + visitData.yesterday +
+    $('visitSumm').textContent = '历史累计 ' + visitData.visits + ' 次 · 今日 ' + visitData.today + ' · 昨日 ' + visitData.yesterday +
       ' · 近 ' + n + ' 天共 ' + totalInRange + ' 次' +
       (activeDays ? '，日均 ' + Math.round(totalInRange / n * 10) / 10 + ' 次' : '');
     $('visitHint').hidden = activeDays > 0;
@@ -1734,6 +1892,7 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
           return;
         }
         albumFilter = value;
+        listSwap(); // 相册切换：列表淡入
         renderList();
       });
 
@@ -3811,6 +3970,7 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
         $('progressBar').style.width = '0';
         $('queueInfo').textContent = '';
         $('fileInput').value = '';
+        $('filePickInfo').classList.remove('show');
         $('titleInput').value = '';
         var msg = '上传完成 ' + okCount + ' 个';
         var withLrc = 0;
@@ -3904,6 +4064,19 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
       toast('请先选择文件', 'err'); return;
     }
     uploadFiles(fileEl.files);
+  });
+
+  // 自定义"选择文件"按钮：触发原生 input（功能完全等价：多选/文件夹/accept 限制）
+  $('filePickBtn').addEventListener('click', function () { $('fileInput').click(); });
+  $('fileInput').addEventListener('change', function () {
+    var files = this.files;
+    var info = $('filePickInfo');
+    if (!files || !files.length) { info.classList.remove('show'); return; }
+    var names = [];
+    for (var i = 0; i < Math.min(files.length, 3); i++) names.push(files[i].name);
+    if (files.length > 3) names.push('…');
+    info.textContent = '已选 ' + files.length + ' 个文件：' + names.join('、') + '（可再点按钮更换）';
+    info.classList.add('show');
   });
 
   // 拖拽上传：绑在整个媒体面板上；内部拖拽排序（dragFrom 有值）不抢

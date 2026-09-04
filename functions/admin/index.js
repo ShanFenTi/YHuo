@@ -412,7 +412,7 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
     transition: transform .2s cubic-bezier(.2,.7,.3,1.25), opacity .2s ease, filter .2s ease;
     transform-box: fill-box; transform-origin: center; /* 不设就绕 SVG 左上原点缩放，右侧的柱悬停会横向漂移 */
   }
-  #visitChart .bar:hover { opacity: 1; transform: translate(var(--dx, 0), var(--dy, -4px)) scale(1.02); }
+  #visitChart .bar:hover { opacity: 1; transition: none; transform: translate(var(--dx, 0), var(--dy, -4px)) scale(1.02); } /* 悬停瞬时到位（进即弹），移开后用基础规则的 .2s 缓回 */
   #visitChart .bar.dim { opacity: .16; }
   #visitChart .bar.hl { filter: brightness(1.18); }
   /* 环形图视图：环在左、图例在右双列，窄卡片自动换成上下（donut-mode 类由 renderVisitChart 增删） */
@@ -424,7 +424,7 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
     transform-box: fill-box; transform-origin: center; /* 同柱状图：scale 必须绕扇区自身，绕 SVG 原点会整体朝右下歪移 */
   }
   #visitChart .donut-seg.donut-today { transform: translate(var(--tx), var(--ty)); } /* 今天的段默认外移 5px 作锚点；写在 :hover 前面让悬停优先 */
-  #visitChart .donut-seg:hover { transform: translate(var(--dx), var(--dy)) scale(1.06); }
+  #visitChart .donut-seg:hover { transition: none; transform: translate(var(--dx), var(--dy)) scale(1.06); } /* 进即弹、离缓回（同柱状图） */
   #visitChart .donut-seg.dim { opacity: .16; }
   #visitChart .donut-seg.hl { filter: brightness(1.18); }
   #visitChart .dkey { fill: var(--muted); font-size: 11px; font-family: inherit; }

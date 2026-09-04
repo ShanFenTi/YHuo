@@ -132,15 +132,23 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
   button {
     padding: 9px 18px; border: none; border-radius: 10px; font-size: 14px;
     background: var(--fg); color: var(--bg); cursor: pointer;
-    transition: opacity .15s, transform .1s, background .15s;
+    transition: opacity .15s, transform .1s, background .15s, color .15s, border-color .15s;
   }
   button:hover { opacity: .82; }
   button:active { transform: scale(.97); }
   button.ghost { background: var(--chip); color: var(--fg); }
   button.ghost:hover { background: var(--chip-hover); opacity: 1; }
   button.danger { background: var(--chip); color: var(--fg); font-weight: 700; border: 1px solid var(--border); }
-  button.danger:hover { background: var(--chip-hover); opacity: 1; }
+  /* 删除类按钮：悬停转危险色（状态色走 --danger，别改回中性灰） */
+  button.danger:hover {
+    opacity: 1; color: var(--danger);
+    background: color-mix(in srgb, var(--danger) 10%, var(--chip-hover));
+    border-color: color-mix(in srgb, var(--danger) 40%, var(--border));
+  }
   button:disabled { opacity: .5; cursor: default; }
+  button:disabled:hover { opacity: .5; }
+  /* 键盘可达性：Tab 聚焦统一焦点环（鼠标点击不触发） */
+  :focus-visible { outline: 2px solid var(--fg); outline-offset: 2px; }
   .msg { min-height: 18px; font-size: 13px; margin-top: 10px; }
   .msg.err { color: var(--fg); font-weight: 700; }
   .msg.err::before { content: "✕ "; }
@@ -274,7 +282,19 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
   /* 功能界面切换动效：新面板淡入 + 轻微上移 */
   @keyframes pageFadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
   .panel-enter { animation: pageFadeIn .22s ease; }
-  @media (prefers-reduced-motion: reduce) { .panel-enter, #mailUsageBody, #mailLogBox { animation: none !important; } }
+  /* 登录门卡片切换（初始化/登录/找回密码/网络错误）与进入主界面的入场动效：同样靠 hidden 切换自动重播 */
+  #gateWrap .card:not([hidden]) { animation: pageFadeIn .24s ease; }
+  #appShell:not([hidden]) { animation: pageFadeIn .28s ease; }
+  /* 无障碍合规：系统开启"减弱动态效果"时压掉全部动画与过渡（面板/列表/弹窗/下拉/侧边栏一律瞬时完成），
+     不再逐个枚举——漏一个就还有动的。无 infinite 动画，iteration-count 收 1 安全 */
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: .01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: .01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
   /* 我的（管理员资料 + 头像） */
   .me-card { display: flex; gap: 24px; align-items: center; max-width: 620px; }
   .me-left { flex: none; text-align: center; }
@@ -392,6 +412,11 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
     border-radius: 16px; padding: 16px;
     width: min(760px, 92vw); max-height: 88vh; overflow: auto;
   }
+  /* 弹窗入场动效：hidden 切换（display none→flex）会自动重播，无需 JS 参与 */
+  @keyframes modalBackIn { from { opacity: 0; } to { opacity: 1; } }
+  @keyframes modalBodyIn { from { opacity: 0; transform: translateY(10px) scale(.98); } to { opacity: 1; transform: none; } }
+  .modal:not([hidden]) .modal-backdrop { animation: modalBackIn .16s ease; }
+  .modal:not([hidden]) .modal-body { animation: modalBodyIn .2s cubic-bezier(.2, .7, .3, 1.08); }
   .modal-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
   .modal-head strong { font-size: 15px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .modal-body audio { width: 100%; margin-top: 4px; }
@@ -578,7 +603,7 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
     font-size: 13px; color: var(--fg); border-radius: 8px; cursor: pointer;
   }
   .album-menu button:hover { background: var(--hover); }
-  .album-menu button.danger { color: #e0342b; }
+  .album-menu button.danger { color: var(--danger); }
   @media (max-width: 900px) {
     .image-shell { flex-direction: column; }
     .album-side { width: 100%; position: static; }
@@ -628,7 +653,8 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
   .ask-modal-body { width: min(420px, 92vw); }
   .ask-msg { font-size: 14px; line-height: 1.65; margin-bottom: 16px; }
   .ask-btns { display: flex; justify-content: flex-end; gap: 8px; }
-  #askOk.danger-ok { background: #d64545; color: #fff; }
+  /* 危险确认钮：状态色走 --danger（深浅主题各一档），文字取 --bg 保证两主题对比度（别写死 hex） */
+  #askOk.danger-ok { background: var(--danger); color: var(--bg); }
   #askOk.danger-ok:hover { opacity: .88; }
   /* 登录/初始化/网络错误：独立居中卡，不套框架 */
   .gate-wrap { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 24px; }

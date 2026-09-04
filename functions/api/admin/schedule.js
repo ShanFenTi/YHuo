@@ -72,15 +72,26 @@ async function runTest(env, body) {
     return json({ ok: false, error: '仅站长模式下只能发到站长邮箱 ' + cfg.ownerEmail }, 400);
   }
 
-  // 收件人须是绑定了已验证邮箱、启用过课表的前台账号（测试的意义就是验证真实数据链路）
+  // 收件人须是绑定了已验证邮箱、启用过课表的前台账号（测试的意义就是验证真实数据链路）；
+  // 管理员课表（site_settings 'admin_schedule'）也可测：邮箱命中管理员绑定邮箱/站长邮箱即可
   const row = await env.DB
     .prepare('SELECT s.data FROM schedules s JOIN users u ON u.id = s.user_id WHERE lower(u.email) = ? AND u.email_verified = 1 AND u.banned = 0')
     .bind(email).first();
   if (!row) {
+    const adminRow = await env.DB
+      .prepare("SELECT value FROM site_settings WHERE key = 'admin_schedule'").first();
+    if (adminRow && adminRow.value) {
+      return await runTestFor(env, email, JSON.parse(adminRow.value));
+    }
     return json({ ok: false, error: '该邮箱没有可测试的课表：需要在前台个人主页启用课表，且账号已绑定此邮箱并完成验证' }, 404);
   }
+  return await runTestFor(env, email, row.data);
+}
+
+// 用一份课表数据发测试提醒（用户课表或管理员课表共用）
+async function runTestFor(env, email, rawData) {
   let data;
-  try { data = normSchedule(JSON.parse(row.data)); } catch {
+  try { data = normSchedule(JSON.parse(rawData)); } catch {
     return json({ ok: false, error: '课表数据无法解析，请重新导入' }, 500);
   }
 

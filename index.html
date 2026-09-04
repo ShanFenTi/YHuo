@@ -8123,24 +8123,32 @@
         });
     }
 
-    // 管理员前台个人主页模式：隐藏前台专属功能卡、禁用更换头像
+    // 管理员前台个人主页模式：隐藏前台专属功能卡、禁用更换头像；
+    // 课表卡对管理员开放（管理员也能配早报/课前提醒，提醒发到后台绑定邮箱/站长邮箱）
     var profileIsAdmin = false;
     function applyProfileAdminMode(isAdmin) {
       profileIsAdmin = !!isAdmin;
-      ['schedCard', 'emailCard', 'pwdCard', 'favCard'].forEach(function (id) {
-        var el = document.getElementById(id);
-        if (el) el.style.display = isAdmin ? 'none' : '';
-      });
-      var acct = document.getElementById('acctCard');
+      var hidden = ['emailCard', 'pwdCard', 'favCard'];
+      var shown = ['pwdCard', 'favCard', 'acctCard'];
       var avBtn = document.getElementById('profilevAvatarBtn');
-      if (acct) acct.style.display = isAdmin ? 'block' : '';
-      if (avBtn) avBtn.style.display = isAdmin ? 'none' : '';
       var avEl = document.getElementById('profilevAvatar');
       var mask = avEl && avEl.querySelector('.profile-avatar-mask');
-      if (avEl) {
-        avEl.title = isAdmin ? '' : '更换头像';
-        avEl.setAttribute('role', isAdmin ? '' : 'button');
-        if (mask) mask.style.display = isAdmin ? 'none' : '';
+      if (isAdmin) {
+        hidden.forEach(function (id) { var el = document.getElementById(id); if (el) el.style.display = 'none'; });
+        var acct = document.getElementById('acctCard');
+        if (acct) acct.style.display = 'block';
+        if (avBtn) avBtn.style.display = 'none';
+        if (avEl) { avEl.title = ''; avEl.setAttribute('role', ''); if (mask) mask.style.display = 'none'; }
+        // 管理员课表卡提示：提醒发给后台绑定邮箱（没有则站长邮箱）
+        var hint = document.getElementById('schedEmailHint');
+        if (hint) { hint.textContent = '管理员课表提醒将发送到后台绑定的管理员邮箱（未绑定则发站长邮箱）。'; hint.hidden = false; }
+      } else {
+        // 还原各卡初始显隐（emailCard 由邮件服务开关控制，初始隐藏；其余常显）
+        var emailCard = document.getElementById('emailCard');
+        if (emailCard) emailCard.style.display = 'none';
+        shown.forEach(function (id) { var el = document.getElementById(id); if (el) el.style.display = ''; });
+        if (avBtn) avBtn.style.display = '';
+        if (avEl) { avEl.title = '更换头像'; avEl.setAttribute('role', 'button'); if (mask) mask.style.display = ''; }
       }
     }
 
@@ -8613,8 +8621,10 @@
       }
     });
 
-    // 提示语：提醒依赖邮件服务 + 已验证邮箱（GitHub Pages 静态模式下接口 404 → 整卡隐藏）
+    // 提示语：提醒依赖邮件服务 + 已验证邮箱（GitHub Pages 静态模式下接口 404 → 整卡隐藏）；
+    // 管理员课表提示由 applyProfileAdminMode 统一设置（/api/user/email 不识别管理员会话）
     function renderSchedEmailHint() {
+      if (profileIsAdmin) return;
       if (!schedEmailHint) return;
       fetch('/api/user/email', { credentials: 'same-origin' })
         .then(function (r) { return r.ok ? r.json() : null; })

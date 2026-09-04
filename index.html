@@ -1212,6 +1212,8 @@
     }
 
     .ai-view.show, .tools-view.show, .docs-view.show { opacity: 1; visibility: visible; }
+    /* 切换界面时被新层覆盖的旧层：保持不透明垫底 + 禁点击，等新层完全不透明后再真正关闭（主页不闪） */
+    .fs-covered { pointer-events: none; }
     .ai-view.show .album-bar, .tools-view.show .album-bar, .docs-view.show .album-bar { transform: none; opacity: 1; }
 
     .tools-scroll, .docs-scroll {
@@ -5076,8 +5078,25 @@
       if (FLAGS_OFF[id]) return; // 被开关关掉的界面：不互斥、不接管高亮、不锁滚动（各 open 函数入口另有同款守卫）
       // 先写路由再互斥关闭其他层：fsClose 清路由时看到的是新路由，不会误清（也避免产生中间历史记录）
       if (FS_ROUTE[id] && location.hash !== '#/' + FS_ROUTE[id]) location.hash = '#/' + FS_ROUTE[id];
+      // 新打开的层提到最上（151）：被切换的旧层保持不透明垫在下面，主页不会从两层毛玻璃缝隙里闪出来
+      FS_TOP.forEach(function (tid) {
+        var r0 = FS_REG[tid];
+        if (r0 && r0.el) r0.el.style.zIndex = '';
+      });
+      var rTop = FS_REG[id];
+      if (rTop && rTop.el) rTop.el.style.zIndex = '151';
+      if (FS_COVER_TIMER[id]) { clearTimeout(FS_COVER_TIMER[id]); FS_COVER_TIMER[id] = null; } // 快速切回被覆盖层：撤销覆盖，原样留住
+      var rCv = FS_REG[id];
+      if (rCv && rCv.el) rCv.el.classList.remove('fs-covered');
       FS_ALL.forEach(function (other) {
-        if (other !== id) closeFullscreenOf(other); // 内部自判 hidden，没开就跳过
+        if (other === id) return;
+        if (FS_TOP.indexOf(other) !== -1) {
+          var reg = FS_REG[other];
+          if (reg && reg.el && reg.el.classList.contains('show')) coverLayer(other); // 开着的旧层：垫底盖住，新层完全不透明后再真正关闭
+          else closeFullscreenOf(other); // 没开着的：兜底清理
+        } else {
+          closeFullscreenOf(other); // docViewer 等非顶层：照旧关闭
+        }
       });
       var r = FS_REG[id] || {};
       if (r.lockScroll !== false) document.body.style.overflow = 'hidden';
@@ -5088,10 +5107,36 @@
       if (!r) return;
       // ✕/Esc 主动关闭：若路由还指着本层就静默清掉（replaceState 不产生历史记录，返回键不会"重开"已手关的界面）
       if (FS_ROUTE[id] && location.hash === '#/' + FS_ROUTE[id]) clearRouteHash();
-      if (r.lockScroll !== false) document.body.style.overflow = '';
+      if (r.lockScroll !== false) {
+        document.body.style.overflow = '';
+        // 被覆盖层的延迟关闭可能发生在别的层仍开着时：此时必须保持滚动锁（排除正在关闭的本层——它还没摘 .show）
+        for (var i = 0; i < FS_ALL.length; i++) {
+          if (FS_ALL[i] === id) continue;
+          var o = FS_REG[FS_ALL[i]];
+          if (o && o.el && o.el.classList.contains('show') && o.lockScroll !== false) {
+            document.body.style.overflow = 'hidden';
+            break;
+          }
+        }
+      }
       if (r.btn) r.btn.classList.remove('active');
     }
     function fsCloseAll() { FS_ALL.forEach(closeFullscreenOf); }
+
+    // 切换界面时的"垫底覆盖"：旧层不淡出（那会让主页从两层毛玻璃缝隙里透出来），而是原样压在新层下面，
+    // 等新层过渡完（完全不透明）再在遮盖下走正常关闭流程
+    var FS_COVER_TIMER = {}; // 界面 id → 延迟真正关闭的定时器
+    function coverLayer(id) {
+      var reg = FS_REG[id];
+      if (!reg || !reg.el) return;
+      if (FS_COVER_TIMER[id]) clearTimeout(FS_COVER_TIMER[id]);
+      reg.el.classList.add('fs-covered'); // 垫底层禁点击
+      FS_COVER_TIMER[id] = setTimeout(function () {
+        FS_COVER_TIMER[id] = null;
+        reg.el.classList.remove('fs-covered');
+        if (reg.close) reg.close(); // 此刻新层已压在上面，这里的淡出用户看不见
+      }, 320);
+    }
 
     // =========================
     // hash 路由：顶栏五个界面与地址栏双向同步（#/tools 等）——浏览器前进/后退可用、刷新/分享直达对应界面。

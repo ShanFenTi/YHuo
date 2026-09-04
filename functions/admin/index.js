@@ -388,6 +388,25 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
     opacity: 0; transition: opacity .12s; white-space: nowrap;
   }
   .visit-tip.show { opacity: 1; }
+  /* 归属地滑动开关（最近访问卡片头部） */
+  .geo-toggle {
+    display: inline-flex; align-items: center; gap: 8px;
+    background: none; border: 0; cursor: pointer; padding: 4px 0;
+  }
+  .geo-toggle .gt-label { font-size: 12px; color: var(--muted); transition: color .15s; }
+  .geo-toggle.on .gt-label { color: var(--fg); }
+  .geo-toggle .gt-track {
+    width: 34px; height: 20px; border-radius: 999px; position: relative;
+    background: var(--chip); border: 1px solid var(--border);
+    transition: background .18s ease, border-color .18s ease;
+  }
+  .geo-toggle.on .gt-track { background: var(--ok); border-color: var(--ok); }
+  .geo-toggle .gt-thumb {
+    position: absolute; top: 50%; left: 2px; width: 14px; height: 14px;
+    border-radius: 50%; background: var(--card); box-shadow: var(--shadow);
+    transform: translateY(-50%); transition: transform .18s cubic-bezier(.2,.7,.3,1.2);
+  }
+  .geo-toggle.on .gt-thumb { transform: translate(16px, -50%); }
   /* 最近访问明细 */
   #visitLogsBody .vl-row {
     display: flex; align-items: center; gap: 12px; padding: 7px 0;
@@ -396,6 +415,7 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
   #visitLogsBody .vl-row:last-child { border-bottom: none; }
   #visitLogsBody .vl-time { flex: none; color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; }
   #visitLogsBody .vl-ip { flex: none; font-family: ui-monospace, SFMono-Regular, Consolas, monospace; font-weight: 600; }
+  #visitLogsBody .vl-geo { flex: none; color: var(--muted); font-size: 12px; min-width: 34px; }
   #visitLogsBody .vl-path {
     flex: none; max-width: 160px; color: var(--muted); font-size: 12px;
     overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
@@ -676,6 +696,11 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
           <div class="visit-head">
             <strong>最近访问</strong>
             <span class="meta2" id="visitLogsSumm"></span>
+            <span class="spacer"></span>
+            <button type="button" class="geo-toggle on" id="visitGeoToggle" role="switch" aria-checked="true" title="显示/隐藏 IP 归属地查询">
+              <span class="gt-label">归属地</span>
+              <span class="gt-track"><i class="gt-thumb"></i></span>
+            </button>
           </div>
           <div id="visitLogsBody"><p class="hint" style="margin:0">加载中…</p></div>
         </div>
@@ -1344,32 +1369,74 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
     loadVisitLogs();
   }
 
-  // 最近访问明细（IP/页面/UA），概览页卡片
+  // 最近访问明细（IP/页面/UA），概览页卡片；IP 归属地可按开关启用（site_settings.visit_geo，默认开）
+  var geoEnabled = true;
+  var geoCache = {}; // 会话内去重：ip → '查询中'/geo/'—'
+  function setGeoToggle() {
+    var b = $('visitGeoToggle');
+    if (!b) return;
+    b.classList.toggle('on', geoEnabled);
+    b.setAttribute('aria-checked', geoEnabled ? 'true' : 'false');
+    b.title = geoEnabled ? '点击关闭 IP 归属地查询' : '点击开启 IP 归属地查询';
+  }
   function fmtLogTime(iso) {
     var d = new Date(iso);
     if (isNaN(d.getTime())) return '';
     function p(x) { return x < 10 ? '0' + x : x; }
     return (d.getMonth() + 1) + '-' + p(d.getDate()) + ' ' + p(d.getHours()) + ':' + p(d.getMinutes());
   }
+  function loadGeo() {
+    if (!geoEnabled) return;
+    var els = document.querySelectorAll('#visitLogsBody .vl-geo[data-ip]');
+    els.forEach(function (el) {
+      var ip = el.getAttribute('data-ip');
+      if (!ip) { el.remove(); return; }
+      var cached = geoCache[ip];
+      if (cached) { el.textContent = cached; return; }
+      geoCache[ip] = '…';
+      api('/api/admin/geoip?ip=' + encodeURIComponent(ip)).then(function (d) {
+        var txt = (d && d.ok && d.geo) ? d.geo : '—';
+        geoCache[ip] = txt;
+        if (el.parentNode) el.textContent = txt;
+      }).catch(function () { geoCache[ip] = '—'; if (el.parentNode) el.textContent = '—'; });
+    });
+  }
   function loadVisitLogs() {
     api('/api/admin/visit-logs').then(function (d) {
       if (!d.ok) return;
       var logs = d.logs || [];
+      if (typeof d.geoEnabled === 'boolean') { geoEnabled = d.geoEnabled; setGeoToggle(); }
       $('visitLogsSumm').textContent = logs.length ? '最近 ' + logs.length + ' 次访问' : '暂无记录';
       var body = $('visitLogsBody');
       if (!logs.length) {
-        body.innerHTML = '<p class="hint" style="margin:0">暂无访问明细——上线并在前台访问过首页后，这里会显示最近访问的 IP / 页面 / 设备。</p>';
+        body.innerHTML = '<p class="hint" style="margin:0">暂无访问明细——上线并在前台访问过首页后，这里会显示最近访问的 IP / 归属地 / 页面 / 设备。</p>';
         return;
       }
       body.innerHTML = logs.map(function (l) {
         var t = '<span class="vl-time">' + fmtLogTime(l.created_at) + '</span>' +
-          '<span class="vl-ip">' + escapeHtml(l.ip || '-') + '</span>';
+          '<span class="vl-ip">' + escapeHtml(l.ip || '-') + '</span>' +
+          (geoEnabled && l.ip ? '<span class="vl-geo" data-ip="' + escapeHtml(l.ip) + '"></span>' : '');
         if (l.path) t += '<span class="vl-path" title="' + escapeHtml(l.path) + '">' + escapeHtml(l.path) + '</span>';
         if (l.ua) t += '<span class="vl-ua" title="' + escapeHtml(l.ua) + '">' + escapeHtml(l.ua) + '</span>';
         return '<div class="vl-row">' + t + '</div>';
       }).join('');
+      loadGeo();
     }).catch(function () {});
   }
+  // 归属地开关：只控制前端是否查询，不删数据
+  $('visitGeoToggle').addEventListener('click', function () {
+    api('/api/admin/geoip', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ enabled: !geoEnabled }),
+    }).then(function (d) {
+      if (d && d.ok) {
+        geoEnabled = d.enabled;
+        setGeoToggle();
+        loadVisitLogs();
+      }
+    }).catch(function () { toast('切换失败', 'err'); });
+  });
 
   function renderVisitChart() {
     var n = visitRange;

@@ -352,11 +352,18 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
   .visit-head .spacer { flex: 1; }
   .range-btn { padding: 5px 12px; font-size: 12px; border-radius: 8px; }
   .range-btn.active { background: var(--fg); color: var(--bg); }
+  .range-btn svg { display: block; } /* 图标型视图切换按钮 */
   #visitChart svg { width: 100%; height: 170px; display: block; }
   #visitChart .gl { stroke: var(--border); stroke-width: 1; }
   #visitChart .gt { fill: var(--muted); font-size: 10px; font-family: inherit; }
   #visitChart .bar { fill: var(--fg); opacity: .82; }
   #visitChart .bar:hover { opacity: 1; }
+  /* 环形图视图 */
+  #visitChart .donut-ring { fill: none; stroke: var(--chip); }
+  #visitChart .donut-seg { fill: none; stroke: var(--fg); opacity: .9; }
+  #visitChart .donut-seg:hover { opacity: 1; }
+  #visitChart .dkey { fill: var(--muted); font-size: 11px; font-family: inherit; }
+  #visitChart .dval { fill: var(--fg); font-size: 14px; font-weight: 700; font-family: inherit; text-anchor: end; }
   /* 相册管理 */
   select {
     padding: 8px 10px; border: 1px solid var(--border); border-radius: 10px;
@@ -617,8 +624,10 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
             <strong>访问趋势</strong>
             <span class="meta2" id="visitSumm"></span>
             <span class="spacer"></span>
-            <button class="ghost range-btn active" data-range="14">近 14 天</button>
-            <button class="ghost range-btn" data-range="30">近 30 天</button>
+            <button type="button" class="ghost range-btn" data-range="14">近 14 天</button>
+            <button type="button" class="ghost range-btn" data-range="30">近 30 天</button>
+            <button type="button" class="ghost range-btn vbar active" data-view="bar" title="柱状图" aria-label="切换为柱状图"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 20V10M12 20V4M18 20v-8M3 20h18"/></svg></button>
+            <button type="button" class="ghost range-btn vdonut" data-view="donut" title="环形图" aria-label="切换为环形图"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="8"/><path d="M12 4a8 8 0 0 1 8 8" stroke-dasharray="1.6 4"/></svg></button>
           </div>
           <div id="visitChart"></div>
           <p class="hint" id="visitHint" style="margin:10px 0 0" hidden>按天明细从上线开始积累，之前累积的总访问量没有逐日记录。</p>
@@ -1207,6 +1216,7 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
   // ---------- 访问统计：今日卡 + 近 N 天柱状趋势图（纯 SVG，无依赖） ----------
   var visitData = { visits: 0, today: 0, yesterday: 0, daily: [] };
   var visitRange = 14;
+  var visitView = 'bar'; // 访问趋势视图：bar 柱状 / donut 环形
 
   // ---------- AI token 用量（概览卡片） ----------
   function loadAiUsage() {
@@ -1302,12 +1312,49 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
       (activeDays ? '，日均 ' + Math.round(totalInRange / n * 10) / 10 + ' 次' : '');
     $('visitHint').hidden = activeDays > 0;
 
-    var W = 700, H = 170, padL = 34, padB = 22, padT = 14, padR = 10;
+    var W = 700, H = 170;
+    var parts = [];
+    if (visitView === 'donut') {
+      // 环形图：有访问的天各一个扇区（主题色 + 2px 间隙，顺时针从 12 点起），零流量天保留背景环；中心汇总 + 右侧关键指标
+      var cx = 150, cy = 85, R = 56, sw = 26;
+      var C = 2 * Math.PI * R;
+      var maxDay = null, maxCount = 0;
+      days.forEach(function (d) { if (d.count > maxCount) { maxCount = d.count; maxDay = d; } });
+      parts.push('<circle cx="' + cx + '" cy="' + cy + '" r="' + R + '" class="donut-ring" stroke-width="' + sw + '"/>');
+      var acc = 0;
+      days.forEach(function (d) {
+        var frac = totalInRange ? d.count / totalInRange : 0;
+        if (frac <= 0) return;
+        var len = frac * C;
+        var seg = Math.max(len - 2, 1);
+        parts.push('<circle cx="' + cx + '" cy="' + cy + '" r="' + R + '" class="donut-seg" stroke-width="' + sw +
+          '" stroke-linecap="butt" stroke-dasharray="' + seg.toFixed(2) + ' ' + (C - seg).toFixed(2) +
+          '" stroke-dashoffset="' + (-acc * C).toFixed(2) + '" transform="rotate(-90 ' + cx + ' ' + cy + ')">' +
+          '<title>' + d.day + '：' + d.count + ' 次</title></circle>');
+        acc += frac;
+      });
+      parts.push('<text x="' + cx + '" y="' + (cy + 5) + '" text-anchor="middle" class="dval" style="font-size:15px;text-anchor:middle">' + totalInRange + '</text>');
+      parts.push('<text x="' + cx + '" y="' + (cy + 21) + '" text-anchor="middle" class="dkey">次 / 近 ' + n + ' 天</text>');
+      var x1 = 250, x2 = 400, startY = 46, step = 27;
+      function drow(i, label, val) {
+        parts.push('<text x="' + x1 + '" y="' + (startY + i * step) + '" class="dkey">' + label + '</text>');
+        parts.push('<text x="' + x2 + '" y="' + (startY + i * step) + '" class="dval">' + val + '</text>');
+      }
+      drow(0, '今日', visitData.today + ' 次');
+      drow(1, '昨日', visitData.yesterday + ' 次');
+      drow(2, '日均', Math.round(totalInRange / n * 10) / 10 + ' 次');
+      drow(3, '活跃天数', activeDays + ' / ' + n + ' 天');
+      if (maxDay) drow(4, '峰值', maxCount + ' 次（' + maxDay.day.slice(5) + '）');
+      $('visitChart').innerHTML = '<svg viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="近 ' + n + ' 天访问趋势（环形图）">' + parts.join('') + '</svg>';
+      return;
+    }
+
+    // 柱状图
+    var padL = 34, padB = 22, padT = 14, padR = 10;
     var max = 1;
     days.forEach(function (d) { if (d.count > max) max = d.count; });
     var innerW = W - padL - padR, innerH = H - padT - padB;
     var bw = innerW / n;
-    var parts = [];
     parts.push('<line x1="' + padL + '" y1="' + padT + '" x2="' + (W - padR) + '" y2="' + padT + '" class="gl"/>');
     parts.push('<line x1="' + padL + '" y1="' + (H - padB) + '" x2="' + (W - padR) + '" y2="' + (H - padB) + '" class="gl"/>');
     parts.push('<text x="' + (padL - 6) + '" y="' + (padT + 4) + '" class="gt" text-anchor="end">' + max + '</text>');
@@ -3388,11 +3435,20 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
   });
 
   // 访问趋势：14/30 天切换
-  document.querySelectorAll('.range-btn').forEach(function (btn) {
+  document.querySelectorAll('.range-btn[data-range]').forEach(function (btn) {
     btn.addEventListener('click', function () {
-      document.querySelectorAll('.range-btn').forEach(function (b) { b.classList.remove('active'); });
+      document.querySelectorAll('.range-btn[data-range]').forEach(function (b) { b.classList.remove('active'); });
       btn.classList.add('active');
       visitRange = Number(btn.getAttribute('data-range')) || 14;
+      renderVisitChart();
+    });
+  });
+  // 访问趋势：柱状 / 环形视图切换
+  document.querySelectorAll('.range-btn[data-view]').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      document.querySelectorAll('.range-btn[data-view]').forEach(function (b) { b.classList.remove('active'); });
+      btn.classList.add('active');
+      visitView = btn.getAttribute('data-view');
       renderVisitChart();
     });
   });

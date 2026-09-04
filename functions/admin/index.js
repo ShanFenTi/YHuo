@@ -344,6 +344,17 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
   @keyframes listSwap { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: none; } }
   #list.list-swap { animation: listSwap .22s ease; }
   .upload-row.dragover { border-color: var(--fg); background: var(--chip); }
+  /* 状态页：存储分区条 / 邮件额度 */
+  .st-row { display: flex; align-items: center; gap: 10px; padding: 9px 0; font-size: 13px; border-bottom: 1px solid var(--row-line); }
+  .st-row:last-child { border-bottom: none; }
+  .st-row .st-name { flex: none; width: 64px; color: var(--muted); }
+  .st-row .st-bar { flex: 1; height: 8px; border-radius: 999px; background: var(--chip); overflow: hidden; }
+  .st-row .st-bar i { display: block; height: 100%; background: var(--fg); border-radius: 999px; transition: width .3s ease; }
+  .st-row .st-bar i.warn { background: var(--warn); }
+  .st-row .st-bar i.danger { background: var(--danger); }
+  .st-row .st-meta { flex: none; font-size: 12px; color: var(--muted); white-space: nowrap; }
+  .mail-quota { display: flex; flex-direction: column; gap: 8px; font-size: 13px; }
+  .mq-line { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
   .upload-hint { color: var(--muted); font-size: 12px; margin-top: 8px; line-height: 1.5; }
   .queue-info { font-size: 13px; color: var(--muted); margin-top: 8px; min-height: 0; }
   .storage-line { margin-top: 16px; }
@@ -705,6 +716,7 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
       <button data-type="ai" title="AI 设置"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="8" width="16" height="12" rx="2"/><path d="M12 8V4"/><path d="M9 4h6"/><circle cx="9" cy="13" r="1" fill="currentColor" stroke="none"/><circle cx="15" cy="13" r="1" fill="currentColor" stroke="none"/><path d="M9 17h6"/></svg><span>AI</span></button>
       <button data-type="email" title="邮件"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg><span>邮件</span></button>
       <button data-type="me" title="我的"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg><span>我的</span></button>
+      <button data-type="status" title="状态"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20a8 8 0 1 1 8-8"/><path d="M12 12l3.5-3.5"/><circle cx="12" cy="12" r="1.4" fill="currentColor" stroke="none"/><path d="M20 12a8 8 0 0 0-8-8"/></svg><span>状态</span></button>
     </nav>
     <div class="sidenav-foot">
       <button id="themeBtn" class="ghost icon-btn" title="切换浅色/深色">
@@ -1013,6 +1025,16 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
         </div>
         <p class="meta2" id="meEmailMsg" style="margin:8px 0 0"></p>
       </div>
+    </div>
+  </div>
+  <div id="statusPanel" hidden>
+    <div class="card" id="stStorageCard" style="margin-top:16px">
+      <div class="visit-head"><strong>存储空间</strong><span class="meta2" id="stStorageSumm"></span></div>
+      <div id="stStorageBody"><p class="hint" style="margin:0">加载中…</p></div>
+    </div>
+    <div class="card" id="stMailCard" style="margin-top:16px">
+      <div class="visit-head"><strong>邮件发送额度</strong><span class="meta2" id="stMailSumm"></span></div>
+      <div id="stMailBody"><p class="hint" style="margin:0">加载中…</p></div>
     </div>
   </div>
     </main>
@@ -1369,16 +1391,18 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
   // 环形图标配多色调色板（柔和高辨识，明度适中，深浅主题均可读），按日期顺序循环取色
   var RING_COLORS = ['#4e79a7', '#f28e2b', '#e15759', '#76b7b2', '#59a14f', '#edc948', '#b07aa1', '#ff9da7', '#9c755f', '#86bcb6'];
 
-  // 网站运行时长：与前台 index.html 的 SITE_BIRTH 同源（改上线时间要两处同步）
+  // 网站运行时长：与前台 index.html 的 SITE_BIRTH 同源（改上线时间要两处同步）；概览统计卡 + 状态页共用
   var SITE_BIRTH = new Date('2026-08-29T12:42:07+08:00');
   function renderUptime() {
-    var el = $('statUptime');
-    if (!el) return;
     var s = Math.max(0, Math.floor((Date.now() - SITE_BIRTH.getTime()) / 1000));
     var d = Math.floor(s / 86400);
     var h = Math.floor(s % 86400 / 3600);
     var m = Math.floor(s % 3600 / 60);
-    el.textContent = d + ' 天 ' + h + ' 时 ' + m + ' 分 ' + (s % 60) + ' 秒';
+    var txt = d + ' 天 ' + h + ' 时 ' + m + ' 分 ' + (s % 60) + ' 秒';
+    var el = $('statUptime');
+    if (el) el.textContent = txt;
+    var se = $('statusUptime');
+    if (se) se.textContent = txt;
   }
   renderUptime();
   setInterval(renderUptime, 1000);
@@ -2197,6 +2221,81 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
     $('storageText').textContent = '存储已用 ' + fmtSize(total) + ' / 1 GB' +
       (pct >= 80 ? '（快满了，建议清理大文件）' : '');
     $('storageBar').firstElementChild.style.width = Math.min(100, pct).toFixed(2) + '%';
+  }
+
+  // ---------- 状态页：系统信息 / 存储空间分区 / 邮件发送额度 ----------
+  var MAIL_DAILY_CAP = { resend: 100, brevo: 300 }; // 服务商免费额度（封/天）
+  function storageDetail() {
+    var out = { total: 0, items: [] };
+    ['music', 'video', 'image'].forEach(function (t) {
+      var size = 0;
+      (items[t] || []).forEach(function (it) { size += it.size || 0; });
+      out.items.push({ type: t, name: { music: '音乐', video: '视频', image: '图片' }[t], count: (items[t] || []).length, size: size });
+      out.total += size;
+    });
+    return out;
+  }
+  function renderStatus() {
+    // 存储空间：总量条 + 三类分区条
+    var sd = storageDetail();
+    var CAP = 1024 * 1024 * 1024; // 本地常量（renderStorage 里的 CAP 是它函数内的局部变量，这里不能复用）
+    var stPct = sd.total / CAP * 100;
+    $('stStorageSumm').textContent = fmtSize(sd.total) + ' / 1 GB（' + stPct.toFixed(1) + '%）' + (stPct >= 80 ? '，快满了请清理' : '');
+    function srow(name, size, pct2, count) {
+      var b = pct2 >= 90 ? ' danger' : (pct2 >= 80 ? ' warn' : '');
+      return '<div class="st-row"><span class="st-name">' + name + '</span>' +
+        '<div class="st-bar"><i class="' + b + '" style="width:' + Math.min(100, pct2).toFixed(1) + '%"></i></div>' +
+        '<span class="st-meta">' + fmtSize(size) + (count ? ' · ' + count + ' 个' : '') + '</span></div>';
+    }
+    $('stStorageBody').innerHTML =
+      srow('全部', sd.total, stPct, sd.items.reduce(function (a, x) { return a + x.count; }, 0)) +
+      sd.items.map(function (x) { return srow(x.name, x.size, x.size / CAP * 100, x.count); }).join('');
+
+    // 邮件发送额度：服务商上限 - 今日已发（本地计数估算）
+    $('stMailBody').innerHTML = '<p class="hint" style="margin:0">加载中…</p>';
+    $('stMailSumm').textContent = '';
+    api('/api/admin/email').then(function (cfg) {
+      var cOk = cfg && cfg.ok;
+      if (!cOk) {
+        $('stMailBody').innerHTML = '<p class="hint" style="margin:0">读取失败，请稍后重试。</p>';
+        return;
+      }
+      if (!cfg.enabled) {
+        $('stMailSumm').textContent = '未启用';
+        $('stMailBody').innerHTML = '<p class="hint" style="margin:0">邮件服务未启用，请到「邮件」页配置并开启后再查看额度。</p>';
+        return;
+      }
+      api('/api/admin/email/usage').then(function (u) {
+        if (!u || !u.ok) {
+          $('stMailBody').innerHTML = '<p class="hint" style="margin:0">读取失败，请稍后重试。</p>';
+          return;
+        }
+        var pname = cfg.provider === 'brevo' ? 'Brevo（300 封/天）' : 'Resend（100 封/天）';
+        var cap = MAIL_DAILY_CAP[cfg.provider] || 100;
+        var today = u.today || 0;
+        var left = Math.max(0, cap - today);
+        $('stMailSumm').textContent = '今日已发 ' + today + ' 封';
+        var html = '<div class="mail-quota">' +
+          '<div class="mq-line"><span class="meta2">服务商</span><span>' + pname + '</span></div>' +
+          '<div class="st-row" style="padding-left:0"><span class="st-name">今日已发</span>' +
+          '<div class="st-bar"><i class="' + (today / cap >= 0.8 ? ' warn' : '') + '" style="width:' + Math.min(100, today / cap * 100).toFixed(1) + '%"></i></div>' +
+          '<span class="st-meta">' + today + ' / ' + cap + ' 封</span></div>' +
+          '<div class="mq-line"><span class="meta2">剩余免费额度</span><span><strong style="font-size:16px">' + left + '</strong> 封</span></div>' +
+          '</div>';
+        // 近 7 天每日发送（迷你柱状）
+        var d7 = (u.d14days || []).slice(-7);
+        if (d7.length) {
+          var m7 = 1;
+          d7.forEach(function (d) { if (d.count > m7) m7 = d.count; });
+          html += '<div class="mail-sec-title">近 7 天每日发送</div><div style="display:flex;align-items:flex-end;gap:6px;height:48px;padding-top:6px">' +
+            d7.map(function (d) {
+              var h = Math.max(d.count > 0 ? 3 : 1, Math.round(d.count / m7 * 38));
+              return '<div style="flex:1;text-align:center"><div style="background:var(--fg);opacity:.85;border-radius:3px;height:' + h + 'px" title="' + d.day + '：' + d.count + ' 封"></div><div style="font-size:10px;color:var(--muted);margin-top:3px">' + d.day.slice(5) + '</div></div>';
+            }).join('') + '</div>';
+        }
+        $('stMailBody').innerHTML = html;
+      }).catch(function () {});
+    }).catch(function () {});
   }
 
   // ---------- 拖拽排序 ----------
@@ -3482,7 +3581,7 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
   $('aiProtocol').addEventListener('change', function () { fetchAiModels(false); });
 
   // ---------- 侧边栏导航 ----------
-  var PAGE_TITLES = { overview: '概览', music: '音乐', video: '视频', image: '图片', users: '用户', appearance: '外观', ai: 'AI 设置', email: '邮件', me: '我的' };
+  var PAGE_TITLES = { overview: '概览', music: '音乐', video: '视频', image: '图片', users: '用户', appearance: '外观', ai: 'AI 设置', email: '邮件', me: '我的', status: '状态' };
   var navBtns = document.querySelectorAll('#sideNav button');
   // ---------- 我的（管理员资料 + 头像；头像 KV 键存 site_settings 'admin_avatar'） ----------
   function applyAdminAvatar(key) {
@@ -3644,13 +3743,15 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
     var isAi = type === 'ai';
     var isEmail = type === 'email';
     var isMe = type === 'me';
+    var isStatus = type === 'status';
     $('overviewPanel').hidden = !isOverview;
-    $('mediaPanel').hidden = isOverview || isUsers || isAppear || isAi || isEmail || isMe;
+    $('mediaPanel').hidden = isOverview || isUsers || isAppear || isAi || isEmail || isMe || isStatus;
     $('userPanel').hidden = !isUsers;
     $('appearancePanel').hidden = !isAppear;
     $('aiPanel').hidden = !isAi;
     $('emailPanel').hidden = !isEmail;
     $('mePanel').hidden = !isMe;
+    $('statusPanel').hidden = !isStatus;
     // 列表对所有媒体类型常显（列表/工具/存储条都在 image-shell 里，隐藏它会连列表一起藏掉）；
     // 只收起左侧相册侧栏
     $('imageShell').hidden = false;
@@ -3674,11 +3775,14 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
     if (isMe) {
       loadMe();
     }
+    if (isStatus) {
+      renderStatus();
+    }
     if (isUsers) {
       $('userSearch').value = ''; // 换进来重置搜索
       loadUsers();
     }
-    if (!isOverview && !isUsers && !isAppear && !isAi && !isEmail && !isMe) {
+    if (!isOverview && !isUsers && !isAppear && !isAi && !isEmail && !isMe && !isStatus) {
       $('fileInput').accept = TYPE_EXT[type];
       $('titleInput').value = '';
       selected = {}; // 换标签页清空勾选和搜索
@@ -3694,7 +3798,8 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
       isAppear ? $('appearancePanel') :
       isAi ? $('aiPanel') :
       isEmail ? $('emailPanel') :
-      isMe ? $('mePanel') : $('mediaPanel');
+      isMe ? $('mePanel') :
+      isStatus ? $('statusPanel') : $('mediaPanel');
     if (targetPanel && targetPanel !== lastEnterPanel) {
       lastEnterPanel = targetPanel;
       targetPanel.classList.remove('panel-enter');

@@ -790,10 +790,41 @@
 
     @keyframes lyricBlink { 50% { opacity: 0; } }
 
-    .lyric-note {
+    /* 歌词条右侧律动条：与底部音乐播放器（.mini-eq）同款，播放=主题色跳动；暂停/待机=灰色静止 */
+    .lyric-eq {
       flex: none;
       display: inline-flex;
+      align-items: flex-end;
+      gap: 3px;
+      height: 18px;
+      padding-bottom: 1px;
+    }
+
+    .lyric-eq i {
+      width: 3.5px;
+      border-radius: 2px;
+      background: currentColor;
       opacity: 0.55;
+      transform-origin: bottom;
+    }
+
+    .lyric-eq i:nth-child(1) { height: 55%; }
+    .lyric-eq i:nth-child(2) { height: 100%; }
+    .lyric-eq i:nth-child(3) { height: 75%; }
+
+    .lyric-bar.playing .lyric-eq i {
+      background: var(--apple-primary);
+      opacity: 1;
+      animation: lyricEq 0.9s ease-in-out infinite;
+    }
+
+    .lyric-bar.playing .lyric-eq i:nth-child(1) { animation-delay: -0.3s; }
+    .lyric-bar.playing .lyric-eq i:nth-child(2) { animation-delay: -0.15s; }
+    .lyric-bar.playing .lyric-eq i:nth-child(3) { animation-delay: -0.45s; }
+
+    @keyframes lyricEq {
+      0%, 100% { transform: scaleY(0.3); }
+      50% { transform: scaleY(1); }
     }
 
     /* 歌词条占位文案（歌名/待机提示）样式弱化 */
@@ -807,7 +838,7 @@
       .lyric-bar { padding: 14px 16px; gap: 10px; }
       .lyric-line { font-size: 14.5px; }
       .lyric-bar.placeholder .lyric-line { font-size: 13.5px; }
-      .lyric-note { display: none; }
+      .lyric-eq { display: none; }
     }
 
     @media (prefers-reduced-motion: reduce) {
@@ -4209,7 +4240,7 @@
         <div class="lyric-bar" id="lyricBar" hidden role="status" aria-live="polite">
           <span class="lyric-dots" id="lyricDots" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></span>
           <span class="lyric-line"><span id="lyricText"></span><i class="lyric-cursor" id="lyricCursor" aria-hidden="true"></i></span>
-          <span class="lyric-note" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg></span>
+          <span class="lyric-eq" aria-hidden="true"><i></i><i></i><i></i></span>
         </div>
       </section>
 
@@ -6063,6 +6094,7 @@
       var playSvg = '<path d="M9 9.003a1 1 0 0 1 1.517-.859l4.997 2.997a1 1 0 0 1 0 1.718l-4.997 2.997A1 1 0 0 1 9 14.996z"/><circle cx="12" cy="12" r="10"/>';
       if (miniPlayIcon) miniPlayIcon.innerHTML = playing ? pauseSvg : playSvg;
       if (miniPlayer) miniPlayer.classList.toggle('playing', playing);
+      if (lyricBar) lyricBar.classList.toggle('playing', playing); // 歌词条右侧律动条：播放原地跳动，暂停静止
     }
 
     var pendingPlay = false; // 曲库加载期间点击过播放：加载完成后自动开始

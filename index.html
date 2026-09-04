@@ -485,6 +485,131 @@
       outline-offset: 2px;
     }
 
+    /* 顶栏搜索按钮（与 theme-toggle 同款观感） */
+    .search-toggle {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 36px;
+      height: 36px;
+      border: 1px solid var(--apple-border);
+      border-radius: 999px;
+      background: var(--apple-card);
+      color: var(--apple-foreground);
+      cursor: pointer;
+      transition: transform 160ms var(--ease-out, ease), background 160ms;
+    }
+
+    .search-toggle:hover { background: var(--apple-secondary); transform: scale(1.06); }
+    .search-toggle:focus-visible { outline: 2px solid var(--apple-ring); outline-offset: 2px; }
+
+    @media (max-width: 700px) {
+      .search-toggle { width: 32px; height: 32px; }
+    }
+
+    /* 全站搜索面板（Ctrl+K / 顶栏放大镜）：独立浮层，z-index 350——高于灯箱 200 低于登录卡 400，
+       不参与全屏层互斥（打开时盖在当前界面上，关闭回到原界面） */
+    .cmdk { position: fixed; inset: 0; z-index: 350; }
+
+    .cmdk-backdrop {
+      position: absolute; inset: 0;
+      background: color-mix(in srgb, var(--apple-background) 40%, transparent);
+      backdrop-filter: blur(6px);
+      -webkit-backdrop-filter: blur(6px);
+      opacity: 0;
+      transition: opacity .18s ease;
+    }
+
+    .cmdk.show .cmdk-backdrop { opacity: 1; }
+
+    .cmdk-panel {
+      position: absolute; left: 50%; top: 13vh;
+      transform: translate(-50%, 10px) scale(.98);
+      width: min(580px, calc(100vw - 32px));
+      max-height: 70vh;
+      display: flex; flex-direction: column;
+      background: color-mix(in srgb, var(--apple-background) 92%, transparent);
+      backdrop-filter: blur(24px);
+      -webkit-backdrop-filter: blur(24px);
+      border: 1px solid var(--apple-border);
+      border-radius: 18px;
+      box-shadow: 0 24px 70px rgba(0, 0, 0, .28);
+      overflow: hidden;
+      opacity: 0;
+      transition: opacity .18s ease, transform .18s var(--ease-out, ease);
+    }
+
+    .cmdk.show .cmdk-panel { opacity: 1; transform: translate(-50%, 0) scale(1); }
+
+    .cmdk-input-row {
+      display: flex; align-items: center; gap: 10px;
+      padding: 14px 16px;
+      border-bottom: 1px solid var(--apple-border);
+      color: var(--apple-muted-foreground);
+      flex: none;
+    }
+
+    .cmdk-input-row input {
+      flex: 1; min-width: 0;
+      border: none; outline: none; background: none;
+      color: var(--apple-foreground);
+      font-size: 15px; font-family: inherit;
+    }
+
+    .cmdk-esc {
+      flex: none; font-size: 11px; color: var(--apple-muted-foreground);
+      border: 1px solid var(--apple-border); border-radius: 6px; padding: 2px 6px;
+    }
+
+    .cmdk-results { overflow-y: auto; overscroll-behavior: contain; padding: 8px; flex: 1; min-height: 0; }
+
+    .cmdk-group {
+      font-size: 11px; font-weight: 700; letter-spacing: .08em;
+      color: var(--apple-muted-foreground);
+      margin: 10px 8px 4px;
+    }
+
+    .cmdk-item {
+      display: flex; align-items: center; gap: 10px; width: 100%;
+      border: none; background: none; font-family: inherit; text-align: left;
+      padding: 9px 10px; border-radius: 10px; cursor: pointer;
+      color: var(--apple-foreground); font-size: 14px;
+    }
+
+    .cmdk-item .cmdk-tag {
+      flex: none; font-size: 11px; font-weight: 600;
+      color: var(--apple-muted-foreground);
+      border: 1px solid var(--apple-border); border-radius: 6px;
+      padding: 1px 6px; min-width: 36px; text-align: center;
+    }
+
+    .cmdk-item .cmdk-title { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .cmdk-item .cmdk-sub { flex: none; font-size: 11px; color: var(--apple-muted-foreground); }
+    .cmdk-item mark { background: none; color: var(--apple-primary); font-weight: 700; padding: 0; }
+    .cmdk-item.active { background: var(--apple-chip, var(--apple-secondary, rgba(128, 128, 128, 0.14))); }
+    .cmdk-item:disabled { opacity: .45; cursor: default; }
+    .cmdk-empty { padding: 28px 0 32px; text-align: center; font-size: 13px; color: var(--apple-muted-foreground); }
+
+    .cmdk-foot {
+      flex: none; display: flex; gap: 14px;
+      padding: 8px 14px;
+      border-top: 1px solid var(--apple-border);
+      font-size: 11px; color: var(--apple-muted-foreground);
+    }
+
+    /* 搜索跳转工具卡时的高亮脉冲 */
+    @keyframes cmdkFlash {
+      0%, 55% { outline: 2px solid var(--apple-primary); outline-offset: 3px; }
+      100% { outline: 2px solid transparent; outline-offset: 3px; }
+    }
+
+    .cmdk-flash { animation: cmdkFlash 1.5s ease; }
+
+    @media (prefers-reduced-motion: reduce) {
+      .cmdk-backdrop, .cmdk-panel { transition: none; }
+      .cmdk-flash { animation: none; }
+    }
+
     /* ===== Main Content ===== */
     .page-main {
       max-width: 1080px;
@@ -4417,6 +4542,9 @@
       <button class="nav-link" id="miscBtn" type="button" aria-haspopup="dialog" aria-controls="miscView">杂项</button>
     </nav>
     <div class="header-actions">
+      <button class="search-toggle" id="searchToggle" type="button" aria-label="搜索（Ctrl+K）" title="搜索（Ctrl+K）">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+      </button>
       <button class="login-toggle" id="loginToggle" type="button" aria-label="登录选项" title="登录选项">
         <svg class="login-default-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
         <span class="avatar-letter" id="avatarLetter" aria-hidden="true"></span>
@@ -5187,6 +5315,20 @@
     </header>
     <div class="doc-scroll">
       <article class="apple-card doc-article" id="docArticle"></article>
+    </div>
+  </div>
+
+  <!-- 全站搜索（Ctrl+K / 顶栏放大镜）：独立浮层不参与互斥，任何界面里唤起，关闭回到原界面 -->
+  <div class="cmdk" id="cmdk" hidden role="dialog" aria-modal="true" aria-label="全站搜索">
+    <div class="cmdk-backdrop" id="cmdkBackdrop"></div>
+    <div class="cmdk-panel">
+      <div class="cmdk-input-row">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+        <input id="cmdkInput" type="text" placeholder="搜索界面、工具、文档、音乐、图片、视频…" autocomplete="off" spellcheck="false" aria-label="搜索关键词">
+        <span class="cmdk-esc" aria-hidden="true">Esc</span>
+      </div>
+      <div class="cmdk-results" id="cmdkResults"></div>
+      <div class="cmdk-foot"><span>↑↓ 选择</span><span>Enter 打开</span><span>Esc 关闭</span></div>
     </div>
   </div>
 
@@ -11517,6 +11659,294 @@
       if (docsView && !docsView.hidden) closeDocsView();
       if (miscView && !miscView.hidden) closeMiscView();
     });
+
+    // ---------- 全站搜索（Ctrl+K / 顶栏放大镜）：命令面板 ----------
+    // 数据源：界面/工具静态清单 + /api/playlist（失败回退 music|video|images 三个静态清单）+ docs/docs.json，60 秒缓存。
+    // 动作全部复用现有机制：界面走 hash 路由（fsOpen 自带开关守卫）、文档 openDoc、音乐按歌名回 tracks 定位 playIndex、
+    // 图片派发 yhuo:open-photo（相册自动开大图）、视频/首页回 home。被功能开关关闭的界面/模块不出现在结果里。
+    (function initCmdk() {
+      var root = document.getElementById('cmdk');
+      var input = document.getElementById('cmdkInput');
+      var listEl = document.getElementById('cmdkResults');
+      var toggleBtn = document.getElementById('searchToggle');
+      if (!root || !input || !listEl) return;
+      var opened = false;
+      var hideTimer = null;
+      var items = [];   // 当前渲染的扁平结果
+      var active = 0;
+      var data = { at: 0, docs: [], music: [], images: [], videos: [] };
+
+      function loadData() {
+        if (Date.now() - data.at < 60000) return;
+        data.at = Date.now();
+        fetch('/docs/docs.json', { credentials: 'same-origin' })
+          .then(function (r) { return r.ok ? r.json() : []; })
+          .then(function (l) { data.docs = Array.isArray(l) ? l : []; })
+          .catch(function () { data.docs = []; });
+        var useStatic = function () {
+          data.music = []; data.images = []; data.videos = [];
+          fetch('music/playlist.json').then(function (r) { return r.ok ? r.json() : []; }).then(function (a) {
+            (Array.isArray(a) ? a : []).forEach(function (n) {
+              var name = String(n);
+              data.music.push({ name: name, url: 'music/' + encodeURIComponent(name) });
+            });
+          }).catch(function () {});
+          fetch('video/playlist.json').then(function (r) { return r.ok ? r.json() : []; }).then(function (a) {
+            (Array.isArray(a) ? a : []).forEach(function (n) {
+              data.videos.push({ name: String(n), url: 'video/' + encodeURIComponent(String(n)) });
+            });
+          }).catch(function () {});
+          fetch('images/manifest.json').then(function (r) { return r.ok ? r.json() : null; }).then(function (m) {
+            ((m && m.files) || []).forEach(function (f) {
+              data.images.push({ title: f.title || '', url: f.url || '', album: '' });
+            });
+          }).catch(function () {});
+        };
+        fetch('/api/playlist', { credentials: 'same-origin' })
+          .then(function (r) { return r.ok ? r.json() : Promise.reject(new Error('http ' + r.status)); })
+          .then(function (d) {
+            // 坑 2：非 ok（SPA 回退伪 200）也要走静态兜底，不能静默 return
+            if (!d || !d.ok) { useStatic(); return; }
+            data.music = (d.music || []).map(function (m) { return { name: m.name || '', url: m.url || '' }; });
+            data.images = (d.images || []).map(function (m) { return { title: m.title || m.name || '', url: m.url || '', album: m.album || '' }; });
+            data.videos = (d.video || []).map(function (m) { return { name: m.name || m.title || '', url: m.url || '' }; });
+          })
+          .catch(useStatic);
+      }
+
+      function aiOn() { return !(aiConfig && aiConfig.enabled === false); }
+
+      function stripExt(name) {
+        return String(name || '').replace(/\.[^.]+$/, '');
+      }
+
+      function buildItems(q) {
+        var ql = (q || '').trim().toLowerCase();
+        var out = [];
+        function push(group, tag, label, run, opts) {
+          opts = opts || {};
+          var hl = ql ? String(label || '').toLowerCase().indexOf(ql) : 0;
+          // 相册名可再从 sub 里匹配
+          if (hl < 0 && opts.sub && String(opts.sub).toLowerCase().indexOf(ql) >= 0) hl = 0;
+          if (ql && hl < 0) return;
+          out.push({ group: group, tag: tag, label: label, sub: opts.sub, run: run, disabled: !!opts.disabled, hl: hl });
+        }
+        // 界面（功能开关过滤：关闭的界面搜不到，AI 跟随其全局开关）
+        push('界面', '界面', '首页', function () { location.hash = '#home'; });
+        if (!FLAGS_OFF.toolsView) push('界面', '界面', '工具', function () { location.hash = '#/tools'; });
+        if (!FLAGS_OFF.docsView) push('界面', '界面', '文档', function () { location.hash = '#/docs'; });
+        if (aiOn()) push('界面', '界面', 'AI 助手', function () { location.hash = '#/ai'; });
+        if (!FLAGS_OFF.albumView) push('界面', '界面', '相册', function () { location.hash = '#/album'; });
+        if (!FLAGS_OFF.miscView) push('界面', '界面', '杂项', function () { location.hash = '#/misc'; });
+        // 工具卡（打开工具界面并定位到卡片）
+        if (!FLAGS_OFF.toolsView) {
+          var TOOLS = [
+            { label: '计算器', id: 'toolCalc' },
+            { label: '番茄钟', id: 'toolPomo' },
+            { label: '换算器', id: 'toolConv' },
+            { label: '文本工具', id: 'toolText' },
+            { label: '随机决策', id: 'toolDice' },
+            { label: '重要日子', id: 'toolDays' },
+            { label: '密码生成', id: 'toolPwd', fold: true }
+          ];
+          TOOLS.forEach(function (t) {
+            push('工具', t.label, t.label, function () {
+              location.hash = '#/tools';
+              setTimeout(function () {
+                var fold = document.querySelector('.tool-more');
+                if (fold && t.fold) fold.open = true;
+                var el = document.getElementById(t.id);
+                if (!el) return;
+                el.scrollIntoView({ block: 'center', behavior: 'smooth' });
+                el.classList.add('cmdk-flash');
+                setTimeout(function () { el.classList.remove('cmdk-flash'); }, 1600);
+              }, 380);
+            });
+          });
+        }
+        // 文档
+        if (!FLAGS_OFF.docsView) {
+          data.docs.forEach(function (d) {
+            var title = d.title || d.file || '';
+            push('文档', '文档', title, function () {
+              location.hash = '#/docs';
+              // 等 hash 路由把文档界面拉起后再开阅读层——立即开会被 fsOpen 互斥收掉（docViewer 不发起互斥但会被其他层关闭）
+              setTimeout(function () { openDoc(title, d.file); }, 400);
+            }, { sub: d.date || '' });
+          });
+        }
+        // 音乐：按歌名回当前曲库定位播放（与收藏同机制；曲库里没有则禁用）
+        data.music.forEach(function (m) {
+          var idx = -1;
+          for (var i = 0; i < tracks.length; i++) { if (tracks[i].name === m.name) { idx = i; break; } }
+          push('音乐', '音乐', m.name, function () { playIndex(idx); }, { disabled: idx < 0 });
+        });
+        // 图片 / 相册 / 视频
+        if (!FLAGS_OFF.albumView) {
+          var albums = {};
+          data.images.forEach(function (im) {
+            push('图片', '图片', im.title || im.url, function () {
+              document.dispatchEvent(new CustomEvent('yhuo:open-photo', { detail: im.url }));
+            }, { sub: im.album || '' });
+            if (im.album) albums[im.album] = true;
+          });
+          Object.keys(albums).forEach(function (a) {
+            push('相册', '相册', a, function () { location.hash = '#/album'; });
+          });
+        }
+        if (!FLAGS_OFF.video) {
+          data.videos.forEach(function (v) {
+            push('视频', '视频', stripExt(v.name), function () { location.hash = '#home'; }, { sub: '回首页播放' });
+          });
+        }
+        // 组内按命中位置排序，组间按各组最佳命中排序（组保持整体，不交错——渲染按组变化插组头）
+        var groupOrder = [];
+        var byGroup = {};
+        out.forEach(function (it) {
+          if (ql && it.hl < 0) return;
+          if (!ql && it.group !== '界面' && it.group !== '工具') return;
+          if (!byGroup[it.group]) { byGroup[it.group] = []; groupOrder.push(it.group); }
+          byGroup[it.group].push(it);
+        });
+        if (ql) {
+          groupOrder.forEach(function (g) { byGroup[g].sort(function (a, b) { return a.hl - b.hl; }); });
+          groupOrder.sort(function (a, b) {
+            var ma = 9999, mb = 9999;
+            byGroup[a].forEach(function (it) { if (it.hl < ma) ma = it.hl; });
+            byGroup[b].forEach(function (it) { if (it.hl < mb) mb = it.hl; });
+            return ma - mb;
+          });
+        }
+        var flat = [];
+        groupOrder.forEach(function (g) { byGroup[g].forEach(function (it) { flat.push(it); }); });
+        return flat.slice(0, 40);
+      }
+
+      function appendHighlighted(el, text, hl) {
+        text = String(text || '');
+        var qlen = input.value.trim().length;
+        if (hl == null || hl < 0 || !qlen) { el.textContent = text; return; }
+        el.appendChild(document.createTextNode(text.slice(0, hl)));
+        var mark = document.createElement('mark');
+        mark.textContent = text.slice(hl, hl + qlen);
+        el.appendChild(mark);
+        el.appendChild(document.createTextNode(text.slice(hl + qlen)));
+      }
+
+      function setActive(i) {
+        if (!items.length) return;
+        active = Math.max(0, Math.min(items.length - 1, i));
+        var nodes = listEl.querySelectorAll('.cmdk-item');
+        nodes.forEach(function (n, k) { n.classList.toggle('active', k === active); });
+        var cur = nodes[active];
+        if (cur && cur.scrollIntoView) cur.scrollIntoView({ block: 'nearest' });
+      }
+
+      function render() {
+        items = buildItems(input.value);
+        active = 0;
+        listEl.textContent = '';
+        if (!items.length) {
+          var empty = document.createElement('p');
+          empty.className = 'cmdk-empty';
+          empty.textContent = input.value.trim() ? '没有匹配的结果' : '这里什么都没有——搜个歌名、文档或工具试试';
+          listEl.appendChild(empty);
+          return;
+        }
+        var lastGroup = null;
+        items.forEach(function (it, i) {
+          if (it.group !== lastGroup) {
+            lastGroup = it.group;
+            var h = document.createElement('p');
+            h.className = 'cmdk-group';
+            h.textContent = it.group;
+            listEl.appendChild(h);
+          }
+          var b = document.createElement('button');
+          b.type = 'button';
+          b.className = 'cmdk-item' + (i === active ? ' active' : '');
+          if (it.disabled) b.disabled = true;
+          var tag = document.createElement('span');
+          tag.className = 'cmdk-tag';
+          tag.textContent = it.tag;
+          b.appendChild(tag);
+          var title = document.createElement('span');
+          title.className = 'cmdk-title';
+          appendHighlighted(title, it.label, it.hl);
+          b.appendChild(title);
+          if (it.sub) {
+            var s = document.createElement('span');
+            s.className = 'cmdk-sub';
+            s.textContent = it.sub;
+            b.appendChild(s);
+          }
+          b.addEventListener('click', function () { runItem(it); });
+          b.addEventListener('mousemove', function () { if (active !== i) setActive(i); });
+          listEl.appendChild(b);
+        });
+      }
+
+      function runItem(it) {
+        if (!it || it.disabled) return;
+        closePanel();
+        setTimeout(function () {
+          try { it.run(); } catch (e) {}
+        }, 90);
+      }
+
+      function showPanel() {
+        if (opened) return;
+        opened = true;
+        clearTimeout(hideTimer);
+        loadData();
+        root.hidden = false;
+        void root.offsetWidth;
+        root.classList.add('show');
+        input.value = '';
+        render();
+        setTimeout(function () { input.focus(); }, 60);
+      }
+
+      function closePanel() {
+        if (!opened) return;
+        opened = false;
+        root.classList.remove('show');
+        hideTimer = setTimeout(function () { root.hidden = true; }, 190);
+      }
+
+      if (toggleBtn) toggleBtn.addEventListener('click', function () { showPanel(); });
+      document.getElementById('cmdkBackdrop').addEventListener('click', closePanel);
+      root.addEventListener('wheel', function (e) {
+        if (e.target && e.target.classList && e.target.classList.contains('cmdk-backdrop')) e.preventDefault();
+      }, { passive: false });
+
+      input.addEventListener('input', render);
+      input.addEventListener('keydown', function (e) {
+        if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+          e.preventDefault();
+          if (items.length) setActive(active + (e.key === 'ArrowDown' ? 1 : -1));
+        } else if (e.key === 'Enter') {
+          e.preventDefault();
+          runItem(items[active]);
+        }
+      });
+
+      // 捕获阶段接管：面板打开时 Esc/箭头/Enter 不再漏给其他全屏层；Ctrl/Cmd+K 全局唤起
+      document.addEventListener('keydown', function (e) {
+        if ((e.ctrlKey || e.metaKey) && (e.key === 'k' || e.key === 'K')) {
+          e.preventDefault();
+          e.stopPropagation();
+          if (opened) closePanel(); else showPanel();
+          return;
+        }
+        if (!opened) return;
+        if (e.key === 'Escape') {
+          e.preventDefault();
+          e.stopPropagation();
+          closePanel();
+        }
+      }, true);
+    })();
 
     // 深链接：以 #/xxx 打开页面时直接拉起对应界面（须在全部 fsRegister 之后执行；
     // 缓存即知该界面被功能开关关闭时静默回首页，缓存未知（首访）先拉起，配置到达后由 applyFeatureFlags 校正）

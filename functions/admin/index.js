@@ -407,13 +407,20 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
   #visitChart .bar {
     fill: var(--fg); opacity: .82; cursor: pointer;
     transition: transform .2s cubic-bezier(.2,.7,.3,1.25), opacity .2s ease, filter .2s ease;
+    transform-box: fill-box; transform-origin: center; /* 不设就绕 SVG 左上原点缩放，右侧的柱悬停会横向漂移 */
   }
   #visitChart .bar:hover { opacity: 1; transform: translate(var(--dx, 0), var(--dy, -4px)) scale(1.02); }
   #visitChart .bar.dim { opacity: .16; }
   #visitChart .bar.hl { filter: brightness(1.18); }
-  /* 环形图视图 */
+  /* 环形图视图：环在左、图例在右双列，窄卡片自动换成上下（donut-mode 类由 renderVisitChart 增删） */
   #visitChart { position: relative; } /* tooltip 定位基准 */
-  #visitChart .donut-seg { transition: transform .2s cubic-bezier(.2,.7,.3,1.25), opacity .2s ease, filter .2s ease; cursor: pointer; }
+  #visitChart.donut-mode { display: flex; align-items: center; flex-wrap: wrap; gap: 4px 22px; }
+  #visitChart.donut-mode svg { width: 400px; max-width: 100%; flex: none; }
+  #visitChart.donut-mode .visit-legend { flex: 1; min-width: 230px; flex-direction: column; align-items: flex-start; gap: 2px 14px; margin-top: 0; }
+  #visitChart .donut-seg { transition: transform .2s cubic-bezier(.2,.7,.3,1.25), opacity .2s ease, filter .2s ease; cursor: pointer;
+    transform-box: fill-box; transform-origin: center; /* 同柱状图：scale 必须绕扇区自身，绕 SVG 原点会整体朝右下歪移 */
+  }
+  #visitChart .donut-seg.donut-today { transform: translate(var(--tx), var(--ty)); } /* 今天的段默认外移 5px 作锚点；写在 :hover 前面让悬停优先 */
   #visitChart .donut-seg:hover { transform: translate(var(--dx), var(--dy)) scale(1.06); }
   #visitChart .donut-seg.dim { opacity: .16; }
   #visitChart .donut-seg.hl { filter: brightness(1.18); }
@@ -429,6 +436,7 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
   .vlg-item:hover, .vlg-item.hl { background: var(--hover); color: var(--fg); }
   .vlg-cc { width: 10px; height: 10px; border-radius: 3px; flex: none; }
   .vlg-ct { font-weight: 700; margin-left: 2px; }
+  .vlg-today { font-style: normal; font-size: 10px; line-height: 1; background: var(--fg); color: var(--bg); border-radius: 6px; padding: 2px 5px; }
   .visit-tip {
     position: absolute; left: 0; top: 0; pointer-events: none; z-index: 5;
     background: var(--card); border: 1px solid var(--border); border-radius: 10px;
@@ -1663,18 +1671,26 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
     var W = 700, H = 170;
     var parts = [];
     if (visitView === 'donut') {
-      // 环形图：有访问的天各一个环段（多色调色板循环取色、纯色无灰底、细缝分隔，顺时针从 12 点起），
-      // 零流量天留缺口；中心汇总 + 大段环外标注占比 + 下方图例列表（可 hover 联动）
-      var cx = 200, cy = 84, Rout = 62, Rin = 48; // 环居中在收纳画布，减少右侧留白
+      // 环形图：有访问的天各一段，按日期顺时针从 12 点排（细缝分隔、纯色无灰底；零流量天不画段，占比按有访问的天计）。
+      // 活动日 ≤8 个全画；更多时只画占比 Top 7、其余合并成灰色「其他」段——10 色循环取色段一多颜色就复用失指，
+      // 封顶后颜色恒唯一。今天的段默认径向外移 5px 作锚点（.donut-today）。
+      // 注意 --dx/--dy 等变量必须带 px：translate() 收到无单位数字整条 transform 会失效
+      var cx = 200, cy = 84, Rout = 62, Rin = 48;
+      var TOP_N = 7;
+      var today = days[days.length - 1].day;
       var maxC = 1;
       days.forEach(function (d) { if (d.count > maxC) maxC = d.count; });
+      var act = days.filter(function (d) { return d.count > 0; });
+      var segsData = act, restDays = null;
+      if (act.length > TOP_N + 1) { // 只在聚掉的 >1 天时才聚合，避免出现「其他 1 天」
+        var topSet = act.slice().sort(function (a, b) { return b.count - a.count; }).slice(0, TOP_N);
+        restDays = act.filter(function (d) { return topSet.indexOf(d) < 0; });
+        segsData = act.filter(function (d) { return topSet.indexOf(d) >= 0; });
+        segsData.push({ other: true, count: restDays.reduce(function (s, d) { return s + d.count; }, 0) });
+      }
       function pt(r, deg) {
         var rad = (deg - 90) * Math.PI / 180;
         return [cx + r * Math.cos(rad), cy + r * Math.sin(rad)];
-      }
-      function segFill(c, i) {
-        // 多色调色板循环取色，纯色不透明（无灰色底）
-        return RING_COLORS[i % RING_COLORS.length];
       }
       function segD(a, b) {
         var p1 = pt(Rout, a), p2 = pt(Rout, b), p3 = pt(Rin, b), p4 = pt(Rin, a);
@@ -1686,25 +1702,33 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
       }
       var acc = 0, idx = 0;
       var legendHtml = '<div class="visit-legend">';
-      days.forEach(function (d) {
-        if (d.count <= 0) return;
+      segsData.forEach(function (d) {
         var frac = d.count / totalInRange;
         var span = frac * 360;
         var adj = Math.min(0.8, span / 4); // 段两端各缩一点，形成细缝分隔（露出卡片底色，无灰环）
         var a = acc * 360 + adj, b = (acc + frac) * 360 - adj;
         var midDeg = (a + b) / 2, rad = (midDeg - 90) * Math.PI / 180;
-        var fill = segFill(d.count, idx);
+        var isToday = !d.other && d.day === today;
+        var fill = d.other ? 'var(--chip)' : RING_COLORS[idx % RING_COLORS.length];
         var dx = Math.cos(rad) * 9, dy = Math.sin(rad) * 9;
-        parts.push('<path d="' + segD(a, b) + '" class="donut-seg" fill="' + fill + '" data-i="' + idx +
-          '" data-day="' + d.day + '" data-count="' + d.count + '" data-pct="' + (frac * 100).toFixed(1) +
-          '" data-max="' + (d.count === maxC ? '1' : '0') + '" style="--dx:' + dx.toFixed(2) + ';--dy:' + dy.toFixed(2) + '"></path>');
+        // fill 走 style 而非 fill 属性：表示属性里不能用 var()
+        parts.push('<path d="' + segD(a, b) + '" class="donut-seg' + (isToday ? ' donut-today' : '') +
+          '" style="fill:' + fill + ';--dx:' + dx.toFixed(2) + 'px;--dy:' + dy.toFixed(2) + 'px' +
+          (isToday ? ';--tx:' + (Math.cos(rad) * 5).toFixed(2) + 'px;--ty:' + (Math.sin(rad) * 5).toFixed(2) + 'px' : '') +
+          '" data-i="' + idx + '" data-day="' + (d.other ? '其余 ' + restDays.length + ' 天' : d.day) +
+          '" data-count="' + d.count + '" data-pct="' + (frac * 100).toFixed(1) +
+          '" data-max="' + (!d.other && d.count === maxC ? '1' : '0') + '"' +
+          (d.other ? ' data-other="1" data-list="' + restDays.map(function (r) { return r.day + ':' + r.count; }).join('|') + '"' : '') +
+          '></path>');
         // 大段（占比 ≥10%）在环外标注百分比
         if (frac >= 0.1) {
           parts.push('<text x="' + (cx + Math.cos(rad) * (Rout + 13)).toFixed(1) + '" y="' + (cy + Math.sin(rad) * (Rout + 13) + 3).toFixed(1) +
             '" class="dann" text-anchor="' + (Math.cos(rad) >= 0 ? 'start' : 'end') + '">' + Math.round(frac * 100) + '%</text>');
         }
         legendHtml += '<span class="vlg-item" data-i="' + idx + '"><i class="vlg-cc" style="background:' + fill + '"></i>' +
-          d.day.slice(5) + ' <b class="vlg-ct">' + d.count + '</b> 次 · ' + (frac * 100).toFixed(1) + '%</span>';
+          (d.other ? '其他 ' + restDays.length + ' 天' : d.day.slice(5)) +
+          (isToday ? ' <i class="vlg-today">今</i>' : '') +
+          ' <b class="vlg-ct">' + d.count + '</b> 次 · ' + (frac * 100).toFixed(1) + '%</span>';
         acc += frac; idx++;
       });
       legendHtml += '</div>';
@@ -3974,16 +3998,28 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
   });
 
   // 访问趋势交互：悬停柱/扇区/图例联动（抬起/径向外移、其余变淡、数值浮现）+ 点击弹出当日明细（事件委托，绑定一次）
-  function openDayModal(day, count, pct, isMax) {
-    var wd = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'][new Date(day + 'T00:00:00+08:00').getDay()];
+  function openDayModal(day, count, pct, isMax, listStr) {
+    var WD = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
     $('previewTitle').textContent = '访问明细';
-    $('previewContent').innerHTML =
-      '<div style="line-height:2.1;font-size:14px">' +
-      '<div><strong style="font-size:16px">' + day + '</strong>（' + wd + '）</div>' +
-      '<div>访问次数：<b>' + count + '</b> 次</div>' +
-      '<div>占近 ' + visitRange + ' 天访问量：' + pct + '%</div>' +
-      (isMax ? '<div style="color:var(--ok)">当日为近 ' + visitRange + ' 天访问峰值</div>' : '') +
-      '</div>';
+    var html = '<div style="line-height:2.1;font-size:14px">';
+    if (listStr) {
+      // 环形图「其他」聚合段：逐日列出包含的日期
+      html += '<div style="margin-bottom:6px"><strong style="font-size:16px">' + day + '</strong>　共 <b>' + count + '</b> 次 · 占近 ' + visitRange + ' 天 ' + pct + '%</div>';
+      listStr.split('|').forEach(function (s) {
+        var p = s.split(':');
+        var w = WD[new Date(p[0] + 'T00:00:00+08:00').getDay()];
+        html += '<div style="display:flex;justify-content:space-between;gap:24px;border-top:1px solid var(--row-line)">' +
+          '<span>' + p[0] + '（' + w + '）</span><b>' + p[1] + ' 次</b></div>';
+      });
+    } else {
+      var wd = WD[new Date(day + 'T00:00:00+08:00').getDay()];
+      html += '<div><strong style="font-size:16px">' + day + '</strong>（' + wd + '）</div>' +
+        '<div>访问次数：<b>' + count + '</b> 次</div>' +
+        '<div>占近 ' + visitRange + ' 天访问量：' + pct + '%</div>' +
+        (isMax ? '<div style="color:var(--ok)">当日为近 ' + visitRange + ' 天访问峰值</div>' : '');
+    }
+    html += '</div>';
+    $('previewContent').innerHTML = html;
     $('previewModal').hidden = false;
   }
   (function () {
@@ -4010,7 +4046,8 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
       if (!seg) { tip.classList.remove('show'); return; }
       var r = chart.getBoundingClientRect();
       tip.innerHTML = '<b>' + seg.getAttribute('data-day') + '</b>　' + Number(seg.getAttribute('data-count')) + ' 次 · ' +
-        Number(seg.getAttribute('data-pct')) + '%<div style="margin-top:3px;color:var(--muted)">点击查看当日明细</div>';
+        Number(seg.getAttribute('data-pct')) + '%<div style="margin-top:3px;color:var(--muted)">' +
+        (seg.getAttribute('data-other') === '1' ? '点击查看包含的日期' : '点击查看当日明细') + '</div>';
       tip.classList.add('show');
       tip.style.left = (e.clientX - r.left + 12) + 'px';
       tip.style.top = (e.clientY - r.top - tip.offsetHeight - 10) + 'px';
@@ -4023,7 +4060,7 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
     chart.addEventListener('click', function (e) {
       var seg = findSeg(e); if (!seg) return;
       openDayModal(seg.getAttribute('data-day'), Number(seg.getAttribute('data-count')),
-        Number(seg.getAttribute('data-pct')), seg.getAttribute('data-max') === '1');
+        Number(seg.getAttribute('data-pct')), seg.getAttribute('data-max') === '1', seg.getAttribute('data-list'));
     });
   })();
 

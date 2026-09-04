@@ -5035,7 +5035,9 @@
     var FS_ALL = FS_TOP.concat(['docViewer']);
     var FS_REG = {}; // id → { el, btn, close, lockScroll }
     function fsRegister(id, opts) { FS_REG[id] = opts || {}; }
+    var FLAGS_OFF = {}; // 功能开关（后台「外观 → 功能开关」，/api/settings 下发，缺省全开）：true 的界面/模块前台直接隐藏
     function fsOpen(id) {
+      if (FLAGS_OFF[id]) return; // 被开关关掉的界面：不互斥、不接管高亮、不锁滚动（各 open 函数入口另有同款守卫）
       FS_ALL.forEach(function (other) {
         if (other !== id) closeFullscreenOf(other); // 内部自判 hidden，没开就跳过
       });
@@ -5050,6 +5052,30 @@
       if (r.btn) r.btn.classList.remove('active');
     }
     function fsCloseAll() { FS_ALL.forEach(closeFullscreenOf); }
+
+    // 应用功能开关：顶栏界面藏导航按钮，视频轮播整块隐藏；天气/歌词条由各自渲染入口判 FLAGS_OFF
+    function applyFeatureFlags(flags) {
+      flags = flags || {};
+      FLAGS_OFF = {
+        toolsView: flags.tools === false,
+        docsView: flags.docs === false,
+        albumView: flags.album === false,
+        miscView: flags.misc === false,
+        weather: flags.weather === false,
+        lyric: flags.lyric === false,
+        video: flags.video === false
+      };
+      FS_TOP.forEach(function (id) {
+        var r = FS_REG[id];
+        if (r && r.btn && FLAGS_OFF[id]) r.btn.style.display = 'none';
+      });
+      if (FLAGS_OFF.video) {
+        var vb = document.querySelector('.video-box');
+        if (vb) vb.style.display = 'none';
+        var hv = document.getElementById('homeVideo');
+        if (hv) { try { hv.pause(); } catch (e) {} }
+      }
+    }
 
     // =========================
     // 平滑滚动导航
@@ -5828,7 +5854,7 @@
       }
 
       function openAlbum() {
-        if (!albumView) return;
+        if (!albumView || FLAGS_OFF.albumView) return;
         fsOpen('albumView'); // 互斥收起其他全屏层 + 接管顶栏高亮 + 锁背景滚动（统一管理器）
         if (albumEmpty) albumEmpty.hidden = loadedImgs.length > 0;
         renderAlbums();
@@ -5947,7 +5973,7 @@
       return item.url || 'video/' + encodeURIComponent(item.name);
     }
     function playVideoAt(i) {
-      if (!homeVideo || !videoList.length) return;
+      if (!homeVideo || FLAGS_OFF.video || !videoList.length) return;
       videoIndex = ((i % videoList.length) + videoList.length) % videoList.length;
       homeVideo.src = videoSrcOf(videoList[videoIndex]);
       var p = homeVideo.play();
@@ -6190,7 +6216,7 @@
     var lyricFetchSeq = 0;     // 切歌取消上一次未完成的加载
 
     function lyricShowPlaceholder(text, waiting) {
-      if (!lyricBar) return;
+      if (!lyricBar || FLAGS_OFF.lyric) return;
       clearInterval(lyricTypeTimer);
       lyricTypeTimer = null;
       lyricFull = '';
@@ -6277,6 +6303,7 @@
     }
 
     function lyricStartTyping(text, lineDurMs) {
+      if (!lyricBar || FLAGS_OFF.lyric) return;
       clearInterval(lyricTypeTimer);
       lyricTypeTimer = null;
       lyricFull = text;
@@ -7081,6 +7108,7 @@
       .then(function (r) { return r.ok ? r.json() : null; })
       .then(function (d) {
         if (!d || !d.ok) return;
+        applyFeatureFlags(d.flags); // 功能开关：关掉的界面/首页模块直接隐藏（缺省全开，接口失败不裁功能）
         if (d.accent && !savedAccent) applyAccent(d.accent);
         // 站点默认背景模糊：访客本地没自己调过滑杆（无 bgBlur 存档）才采用
         if (d.blur !== null && d.blur !== undefined) {
@@ -9192,6 +9220,7 @@
 
     function renderWeather(loc, data) {
       if (!weatherChip || !weatherIcon || !weatherText) return;
+      if (FLAGS_OFF.weather) return; // 功能开关：天气胶囊已关闭
       var info = wmoInfo(data.code);
       weatherIcon.textContent = info.icon;
       weatherText.textContent = loc.city + ' ' + Math.round(data.temp) + '°C · ' + info.text +
@@ -9863,14 +9892,17 @@
     function fetchAiConfig(force) {
       if (aiConfig && !force) return Promise.resolve(aiConfig);
       return fetch('/api/ai/config', { credentials: 'same-origin' })
-        .then(function (r) { return r.ok ? r.json() : { enabled: false, models: [], model: null }; })
-        .catch(function () { return { enabled: false, models: [], model: null }; })
+        .then(function (r) { return r.ok ? r.json() : { enabled: false, models: [], model: null, _miss: true }; })
+        .catch(function () { return { enabled: false, models: [], model: null, _miss: true }; })
         .then(function (d) {
           aiConfig = { enabled: !!(d && d.enabled), models: (d && d.models) || [], model: (d && d.model) || null };
+          // 全局开关关=顶栏入口直接隐藏；请求失败（_miss）不动按钮，避免网络抖动误隐藏且无法恢复
+          if (aiBtn && !(d && d._miss)) aiBtn.style.display = aiConfig.enabled ? '' : 'none';
           aiSyncModelSwitcher();
           return aiConfig;
         });
     }
+    fetchAiConfig(false); // 启动即拉一次配置：AI 被后台全局开关关掉时，顶栏入口直接消失（而不是打开后才看到"接入中"）
 
     function aiStopBusy() {
       aiBusy = false;
@@ -10457,7 +10489,7 @@
     }
 
     function openToolsView() {
-      if (!toolsView) return;
+      if (!toolsView || FLAGS_OFF.toolsView) return;
       fsOpen('toolsView'); // 互斥收起其他全屏层 + 接管顶栏高亮 + 锁背景滚动（统一管理器）
       setProfileOpen(false);
       toolsView.hidden = false;
@@ -10475,7 +10507,7 @@
     }
 
     function openDocsView() {
-      if (!docsView) return;
+      if (!docsView || FLAGS_OFF.docsView) return;
       fsOpen('docsView'); // 互斥收起其他全屏层 + 接管顶栏高亮 + 锁背景滚动（统一管理器）
       setProfileOpen(false);
       docsView.hidden = false;
@@ -10493,7 +10525,7 @@
     }
 
     function openMiscView() {
-      if (!miscView) return;
+      if (!miscView || FLAGS_OFF.miscView) return;
       fsOpen('miscView'); // 互斥收起其他全屏层 + 接管顶栏高亮 + 锁背景滚动（统一管理器）
       setProfileOpen(false);
       miscView.hidden = false;

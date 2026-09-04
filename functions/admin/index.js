@@ -467,6 +467,8 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
     transform: translateY(-50%); transition: transform .18s cubic-bezier(.2,.7,.3,1.2);
   }
   .geo-toggle.on .gt-thumb { transform: translate(16px, -50%); }
+  /* 功能开关（外观页）：复用 geo-toggle 滑动开关样式 */
+  #flagRows { display: flex; flex-wrap: wrap; gap: 6px 22px; max-width: 640px; }
   /* 最近访问明细 */
   #visitLogsBody .vl-row {
     display: flex; align-items: center; gap: 12px; padding: 7px 0;
@@ -898,6 +900,12 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
     <div class="bgset-row" style="margin-top:8px">
       <button id="quoteAddBtn" class="ghost" type="button">添加一条</button>
       <button id="quoteSaveBtn" class="ghost" type="button">保存寄语</button>
+    </div>
+    <p class="appear-label2">功能开关（关闭的界面前台直接隐藏，保存后访客下次进页面生效）</p>
+    <div id="flagRows"></div>
+    <div class="bgset-row" style="margin-top:8px">
+      <button id="flagSaveBtn" class="ghost" type="button">保存功能开关</button>
+      <span class="meta2">AI 界面跟随「AI」页的全局启用开关，不在这里控制。</span>
     </div>
     <p class="appear-label2">备份</p>
     <div class="bgset-row">
@@ -2730,6 +2738,8 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
         $('bgBlurAdminVal').textContent = d.blur === null || d.blur === undefined
           ? '未设置（访客不模糊）'
           : '当前默认 ' + blur + 'px';
+        flagState = d.flags || {};
+        renderFlagRows();
       } else if (d._status === 401) {
         show('login');
       }
@@ -2802,6 +2812,51 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
         quoteRows = d.quotes.slice();
         renderQuoteRows();
         toast(d.quotes.length ? '已保存 ' + d.quotes.length + ' 条寄语，前台随机显示' : '已清空寄语，前台恢复每日一言', 'ok');
+      } else toast(d.error || '保存失败', 'err');
+    }).catch(function () { toast('网络错误', 'err'); });
+  });
+
+  // ---------- 功能开关（前台界面/首页模块显隐；/api/settings 下发，缺省全开） ----------
+  var FLAG_DEFS = [
+    { key: 'tools', label: '工具界面' },
+    { key: 'docs', label: '文档界面' },
+    { key: 'album', label: '相册界面' },
+    { key: 'misc', label: '杂项界面' },
+    { key: 'weather', label: '天气胶囊' },
+    { key: 'lyric', label: '歌词横条' },
+    { key: 'video', label: '首页视频' }
+  ];
+  var flagState = {};
+
+  function renderFlagRows() {
+    var box = $('flagRows');
+    box.innerHTML = '';
+    FLAG_DEFS.forEach(function (f) {
+      var b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'geo-toggle' + (flagState[f.key] !== false ? ' on' : '');
+      b.setAttribute('role', 'switch');
+      b.innerHTML = '<span class="gt-label">' + f.label + '</span><span class="gt-track"><span class="gt-thumb"></span></span>';
+      b.addEventListener('click', function () {
+        flagState[f.key] = flagState[f.key] === false; // 开→关 / 关→开（缺省视为开）
+        b.classList.toggle('on', flagState[f.key] !== false);
+      });
+      box.appendChild(b);
+    });
+  }
+
+  $('flagSaveBtn').addEventListener('click', function () {
+    var payload = {};
+    FLAG_DEFS.forEach(function (f) { payload[f.key] = flagState[f.key] !== false; });
+    api('/api/admin/appearance', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ flags: payload })
+    }).then(function (d) {
+      if (d.ok) {
+        flagState = d.flags || payload;
+        renderFlagRows();
+        toast('功能开关已保存，访客下次进页面生效', 'ok');
       } else toast(d.error || '保存失败', 'err');
     }).catch(function () { toast('网络错误', 'err'); });
   });

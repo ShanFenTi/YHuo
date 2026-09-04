@@ -1,13 +1,25 @@
-// GET /api/admin/appearance → 当前站点默认外观（accent/bg/quote/blur）
-// PUT  /api/admin/appearance { accent } | { quote } | { blur } → 分字段设置（哪个字段在就处理哪个）
+// GET /api/admin/appearance → 当前站点默认外观（accent/bg/quote/blur/flags）
+// PUT  /api/admin/appearance { accent } | { quote } | { blur } | { flags } → 分字段设置（哪个字段在就处理哪个）
 import { json } from '../../lib/util.js';
 import { ensureSchema } from '../../lib/migrate.js';
 
 const ACCENTS = ['blue', 'purple', 'pink', 'green', 'orange'];
 
+// 功能开关白名单（true=显示，缺省开）。ai 不在此列——跟随 AI 页全局开关（site_settings.ai_enabled）
+const FLAG_KEYS = ['tools', 'docs', 'album', 'misc', 'weather', 'lyric', 'video'];
+
 async function getSetting(env, key) {
   const row = await env.DB.prepare('SELECT value FROM site_settings WHERE key = ?').bind(key).first();
   return row ? row.value : null;
+}
+
+async function readFlags(env) {
+  let raw = {};
+  try { raw = JSON.parse((await getSetting(env, 'feature_flags')) || '{}'); } catch {}
+  if (!raw || typeof raw !== 'object') raw = {};
+  const flags = {};
+  for (const k of FLAG_KEYS) flags[k] = raw[k] !== false; // 缺省/未知值一律视为开
+  return flags;
 }
 
 export async function onRequestGet({ env }) {
@@ -16,7 +28,8 @@ export async function onRequestGet({ env }) {
   const bg = await getSetting(env, 'bg');
   const quotes = await readQuotes(env);
   const blur = await getSetting(env, 'bg_blur');
-  return json({ ok: true, accent: accent || null, bg: bg || null, quotes, blur: blur === null ? null : parseInt(blur, 10) || 0 });
+  const flags = await readFlags(env);
+  return json({ ok: true, accent: accent || null, bg: bg || null, quotes, blur: blur === null ? null : parseInt(blur, 10) || 0, flags });
 }
 
 // 寄语列表：优先读新的 quotes（JSON 数组），旧的单条 quote 自动并入
@@ -38,6 +51,22 @@ export async function onRequestPut({ request, env }) {
     body = await request.json();
   } catch {
     return json({ ok: false, error: '请求格式错误' }, 400);
+  }
+  // 功能开关：只收白名单键的布尔值，未传的键视为开；全部为开时清键（保持缺省态）
+  if (body.flags !== undefined) {
+    if (!body.flags || typeof body.flags !== 'object' || Array.isArray(body.flags)) return json({ ok: false, error: 'flags 需为对象' }, 400);
+    const clean = {};
+    for (const k of FLAG_KEYS) if (typeof body.flags[k] === 'boolean') clean[k] = body.flags[k];
+    const allOn = FLAG_KEYS.every((k) => clean[k] !== false);
+    if (allOn) {
+      await env.DB.prepare("DELETE FROM site_settings WHERE key = 'feature_flags'").run();
+    } else {
+      await env.DB
+        .prepare('INSERT INTO site_settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value')
+        .bind('feature_flags', JSON.stringify(clean))
+        .run();
+    }
+    return json({ ok: true, flags: await readFlags(env) });
   }
   // 默认背景模糊：0 = 清除设置（恢复默认不模糊）
   if (body.blur !== undefined) {

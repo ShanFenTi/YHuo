@@ -4169,7 +4169,40 @@
       color: var(--apple-primary);
       border-bottom-color: currentColor;
     }
+  /* 功能开关首屏预隐藏：类由 head 内联脚本按 localStorage 缓存在渲染前打上（无闪现），
+     applyFeatureFlags / fetchAiConfig 拉到最新配置后会增删同样的类做校正 */
+  .ff-tools-off #toolsBtn, .ff-docs-off #docsBtn, .ff-album-off #albumBtn,
+  .ff-misc-off #miscBtn, .ff-ai-off #aiBtn { display: none !important; }
+  .ff-video-off .video-box { display: none !important; }
+  /* 首访无缓存：可选功能先藏（默认先藏、配置到了再放行；接口失败或超时兜底放行） */
+  .ff-boot-hide #toolsBtn, .ff-boot-hide #docsBtn, .ff-boot-hide #albumBtn,
+  .ff-boot-hide #miscBtn, .ff-boot-hide .video-box { display: none !important; }
+  .ff-ai-boot-hide #aiBtn { display: none !important; }
   </style>
+  <script>
+    // 功能开关首屏预隐藏：读上次缓存的 flags，在 body 渲染前给 <html> 打 ff-* 类，关掉的界面/模块从第一帧就不出现。
+    // 缓存由 applyFeatureFlags（/api/settings）与 fetchAiConfig（/api/ai/config）每次成功拉取后刷新；
+    // 首次到访无缓存：先打 ff-*-boot-hide 把可选功能藏住（默认先藏、配置到了再放行），
+    // settings/AI 配置到达后由 applyFeatureFlags/fetchAiConfig 摘掉；接口失败或 3 秒超时兜底放行。
+    try {
+      var _ff = JSON.parse(localStorage.getItem('yhuoFlags') || 'null');
+      var _fc = document.documentElement.classList;
+      var _hasFlags = false;
+      if (_ff && typeof _ff === 'object') {
+        _hasFlags = true;
+        if (_ff.tools === false) _fc.add('ff-tools-off');
+        if (_ff.docs === false) _fc.add('ff-docs-off');
+        if (_ff.album === false) _fc.add('ff-album-off');
+        if (_ff.misc === false) _fc.add('ff-misc-off');
+        if (_ff.video === false) _fc.add('ff-video-off');
+      }
+      var _ai = localStorage.getItem('yhuoAiOff');
+      if (_ai === '1') _fc.add('ff-ai-off');
+      if (!_hasFlags) _fc.add('ff-boot-hide');
+      if (_ai !== '0' && _ai !== '1') _fc.add('ff-ai-boot-hide');
+      setTimeout(function () { _fc.remove('ff-boot-hide', 'ff-ai-boot-hide'); }, 3000); // 兜底：接口无响应也放行
+    } catch (e) {}
+  </script>
 </head>
 <body>
 
@@ -5053,7 +5086,8 @@
     }
     function fsCloseAll() { FS_ALL.forEach(closeFullscreenOf); }
 
-    // 应用功能开关：顶栏界面藏导航按钮，视频轮播整块隐藏；天气/歌词条由各自渲染入口判 FLAGS_OFF
+    // 应用功能开关：给 <html> 打/摘 ff-* 类（CSS 负责隐藏；head 内联脚本已按 localStorage 缓存提前打过，这里按最新配置校正）
+    // 并刷新缓存供下次访问首屏预隐藏；天气/歌词条由各自渲染入口判 FLAGS_OFF
     function applyFeatureFlags(flags) {
       flags = flags || {};
       FLAGS_OFF = {
@@ -5065,10 +5099,14 @@
         lyric: flags.lyric === false,
         video: flags.video === false
       };
-      FS_TOP.forEach(function (id) {
-        var r = FS_REG[id];
-        if (r && r.btn && FLAGS_OFF[id]) r.btn.style.display = 'none';
-      });
+      var fc = document.documentElement.classList;
+      fc.remove('ff-boot-hide'); // 配置已到达，首访的"先藏后放"状态按真实 flags 放行
+      fc.toggle('ff-tools-off', FLAGS_OFF.toolsView);
+      fc.toggle('ff-docs-off', FLAGS_OFF.docsView);
+      fc.toggle('ff-album-off', FLAGS_OFF.albumView);
+      fc.toggle('ff-misc-off', FLAGS_OFF.miscView);
+      fc.toggle('ff-video-off', FLAGS_OFF.video);
+      try { localStorage.setItem('yhuoFlags', JSON.stringify(flags)); } catch (e) {}
       if (FLAGS_OFF.video) {
         var vb = document.querySelector('.video-box');
         if (vb) vb.style.display = 'none';
@@ -7107,6 +7145,7 @@
     fetch('/api/settings', { credentials: 'same-origin' })
       .then(function (r) { return r.ok ? r.json() : null; })
       .then(function (d) {
+        document.documentElement.classList.remove('ff-boot-hide'); // 有响应就放行首访预藏（off 类由 applyFeatureFlags 按 flags 决定）
         if (!d || !d.ok) return;
         applyFeatureFlags(d.flags); // 功能开关：关掉的界面/首页模块直接隐藏（缺省全开，接口失败不裁功能）
         if (d.accent && !savedAccent) applyAccent(d.accent);
@@ -7128,7 +7167,9 @@
           }).catch(function () {});
         }
       })
-      .catch(function () {});
+      .catch(function () {
+        document.documentElement.classList.remove('ff-boot-hide'); // 接口失败：全部放行（缺省全开）
+      });
 
     if (bgUploadBtn) {
       bgUploadBtn.addEventListener('click', openBgPicker);
@@ -9895,9 +9936,17 @@
         .then(function (r) { return r.ok ? r.json() : { enabled: false, models: [], model: null, _miss: true }; })
         .catch(function () { return { enabled: false, models: [], model: null, _miss: true }; })
         .then(function (d) {
+          document.documentElement.classList.remove('ff-ai-boot-hide'); // 配置到达（开/关/失败都放行首访预藏，开关状态由下面决定）
           aiConfig = { enabled: !!(d && d.enabled), models: (d && d.models) || [], model: (d && d.model) || null };
-          // 全局开关关=顶栏入口直接隐藏；请求失败（_miss）不动按钮，避免网络抖动误隐藏且无法恢复
-          if (aiBtn && !(d && d._miss)) aiBtn.style.display = aiConfig.enabled ? '' : 'none';
+          // 全局开关关=顶栏入口直接隐藏（CSS 类 + 内联样式双保险，并写缓存供下次首屏预隐藏）；
+          // 请求失败（_miss）不动，避免网络抖动误隐藏且无法恢复
+          if (aiBtn && !(d && d._miss)) {
+            aiBtn.style.display = aiConfig.enabled ? '' : 'none';
+            try {
+              localStorage.setItem('yhuoAiOff', aiConfig.enabled ? '0' : '1');
+              document.documentElement.classList.toggle('ff-ai-off', !aiConfig.enabled);
+            } catch (e) {}
+          }
           aiSyncModelSwitcher();
           return aiConfig;
         });

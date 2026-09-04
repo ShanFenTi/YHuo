@@ -407,12 +407,12 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
   #visitChart svg { width: 100%; height: 170px; display: block; }
   #visitChart .gl { stroke: var(--border); stroke-width: 1; }
   #visitChart .gt { fill: var(--muted); font-size: 10px; font-family: inherit; }
-  #visitChart .bar {
-    fill: var(--fg); opacity: .82; cursor: pointer;
+  #visitChart .bar-hit { fill: transparent; pointer-events: all; cursor: pointer; } /* 命中层固定静止，柱子上浮不再丢 hover */
+  #visitChart .bar { fill: var(--fg); opacity: .82;
     transition: transform .2s cubic-bezier(.2,.7,.3,1.25), opacity .2s ease, filter .2s ease;
-    transform-box: fill-box; transform-origin: center; /* 不设就绕 SVG 左上原点缩放，右侧的柱悬停会横向漂移 */
+    transform-box: fill-box; transform-origin: center; pointer-events: none; /* 不设就绕 SVG 左上原点缩放，右侧的柱悬停会横向漂移 */
   }
-  #visitChart .bar:hover { opacity: 1; transition: none; transform: translate(var(--dx, 0), var(--dy, -4px)) scale(1.02); } /* 悬停瞬时到位（进即弹），移开后用基础规则的 .2s 缓回 */
+  #visitChart .bar-hit:hover + .bar { opacity: 1; transition: none; transform: translate(var(--dx, 0), var(--dy, -4px)) scale(1.02); } /* 悬停瞬时到位（进即弹），移开后用基础规则的 .2s 缓回 */
   #visitChart .bar.dim { opacity: .16; }
   #visitChart .bar.hl { filter: brightness(1.18); }
   /* 环形图视图：环在左、图例在右双列，窄卡片自动换成上下（donut-mode 类由 renderVisitChart 增删） */
@@ -420,11 +420,12 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
   #visitChart.donut-mode { display: flex; align-items: center; flex-wrap: wrap; gap: 4px 22px; }
   #visitChart.donut-mode svg { width: 400px; max-width: 100%; flex: none; }
   #visitChart.donut-mode .visit-legend { flex: 1; min-width: 230px; flex-direction: column; align-items: flex-start; gap: 2px 14px; margin-top: 0; }
-  #visitChart .donut-seg { transition: transform .2s cubic-bezier(.2,.7,.3,1.25), opacity .2s ease, filter .2s ease; cursor: pointer;
-    transform-box: fill-box; transform-origin: center; /* 同柱状图：scale 必须绕扇区自身，绕 SVG 原点会整体朝右下歪移 */
+  #visitChart .donut-hit { fill: transparent; pointer-events: all; cursor: pointer; } /* 命中层：静止几何接管 hover，视觉层怎么弹都不丢事件 */
+  #visitChart .donut-seg { transition: transform .2s cubic-bezier(.2,.7,.3,1.25), opacity .2s ease, filter .2s ease;
+    transform-box: fill-box; transform-origin: center; pointer-events: none; /* scale 必须绕扇区自身，绕 SVG 原点会整体朝右下歪移 */
   }
-  #visitChart .donut-seg.donut-today { transform: translate(var(--tx), var(--ty)); } /* 今天的段默认外移 5px 作锚点；写在 :hover 前面让悬停优先 */
-  #visitChart .donut-seg:hover { transition: none; transform: translate(var(--dx), var(--dy)) scale(1.06); } /* 进即弹、离缓回（同柱状图） */
+  #visitChart .donut-seg.donut-today { transform: translate(var(--tx), var(--ty)); } /* 今天的段默认外移 5px 作锚点 */
+  #visitChart .donut-hit:hover + .donut-seg { transition: none; transform: translate(var(--dx), var(--dy)) scale(1.06); } /* 进即弹、离缓回（同柱状图） */
   #visitChart .donut-seg.dim { opacity: .16; }
   #visitChart .donut-seg.hl { filter: brightness(1.18); }
   #visitChart .dkey { fill: var(--muted); font-size: 11px; font-family: inherit; }
@@ -1714,15 +1715,18 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
         var isToday = !d.other && d.day === today;
         var fill = d.other ? 'var(--chip)' : RING_COLORS[idx % RING_COLORS.length];
         var dx = Math.cos(rad) * 9, dy = Math.sin(rad) * 9;
-        // fill 走 style 而非 fill 属性：表示属性里不能用 var()
-        parts.push('<path d="' + segD(a, b) + '" class="donut-seg' + (isToday ? ' donut-today' : '') +
-          '" style="fill:' + fill + ';--dx:' + dx.toFixed(2) + 'px;--dy:' + dy.toFixed(2) + 'px' +
-          (isToday ? ';--tx:' + (Math.cos(rad) * 5).toFixed(2) + 'px;--ty:' + (Math.sin(rad) * 5).toFixed(2) + 'px' : '') +
-          '" data-i="' + idx + '" data-day="' + (d.other ? '其余 ' + restDays.length + ' 天' : d.day) +
+        // 命中层(hit)与视觉层分离：弹出/缩放动的若是被悬停元素自己，贴内缘悬停时「弹出→鼠标悬空→回落→再弹出」会抖个不停；
+        // hit 固定在静止几何上接管指针事件，视觉层 pointer-events:none 纯展示，随便弹也不会丢 hover
+        parts.push('<path d="' + segD(a, b) + '" class="donut-hit" fill="transparent" data-i="' + idx +
+          '" data-day="' + (d.other ? '其余 ' + restDays.length + ' 天' : d.day) +
           '" data-count="' + d.count + '" data-pct="' + (frac * 100).toFixed(1) +
           '" data-max="' + (!d.other && d.count === maxC ? '1' : '0') + '"' +
           (d.other ? ' data-other="1" data-list="' + restDays.map(function (r) { return r.day + ':' + r.count; }).join('|') + '"' : '') +
-          '></path>');
+          '></path>' +
+          '<path d="' + segD(a, b) + '" class="donut-seg' + (isToday ? ' donut-today' : '') +
+          '" style="fill:' + fill + ';pointer-events:none;--dx:' + dx.toFixed(2) + 'px;--dy:' + dy.toFixed(2) + 'px' +
+          (isToday ? ';--tx:' + (Math.cos(rad) * 5).toFixed(2) + 'px;--ty:' + (Math.sin(rad) * 5).toFixed(2) + 'px' : '') +
+          '"></path>');
         // 大段（占比 ≥10%）在环外标注百分比
         if (frac >= 0.1) {
           parts.push('<text x="' + (cx + Math.cos(rad) * (Rout + 13)).toFixed(1) + '" y="' + (cy + Math.sin(rad) * (Rout + 13) + 3).toFixed(1) +
@@ -1762,8 +1766,10 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
       var y = H - padB - h;
       var pct = totalInRange ? (d.count / totalInRange * 100).toFixed(1) : '0';
       parts.push('<rect x="' + x.toFixed(1) + '" y="' + y + '" width="' + (bw * 0.7).toFixed(1) +
-        '" height="' + h + '" rx="2" class="bar" data-i="' + i + '" data-day="' + d.day + '" data-count="' + d.count +
-        '" data-pct="' + pct + '" data-max="' + (d.count === max ? '1' : '0') + '" style="--dx:0;--dy:-4px"></rect>');
+        '" height="' + h + '" rx="2" class="bar-hit" data-i="' + i + '" data-day="' + d.day + '" data-count="' + d.count +
+        '" data-pct="' + pct + '" data-max="' + (d.count === max ? '1' : '0') + '"></rect>' +
+        '<rect x="' + x.toFixed(1) + '" y="' + y + '" width="' + (bw * 0.7).toFixed(1) +
+        '" height="' + h + '" rx="2" class="bar" data-i="' + i + '" style="--dx:0;--dy:-4px;pointer-events:none"></rect>');
       if (i % labelEvery === 0 || i === n - 1) {
         parts.push('<text x="' + (padL + i * bw + bw / 2).toFixed(1) + '" y="' + (H - 6) +
           '" class="gt" text-anchor="middle">' + d.day.slice(5) + '</text>');
@@ -4027,7 +4033,7 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
   }
   (function () {
     var chart = $('visitChart');
-    function findSeg(e) { return e.target && e.target.closest ? e.target.closest('.donut-seg, .bar') : null; }
+    function findSeg(e) { return e.target && e.target.closest ? e.target.closest('.donut-hit, .donut-seg, .bar-hit, .bar') : null; }
     function findLi(e) { return e.target && e.target.closest ? e.target.closest('.vlg-item') : null; }
     function setFocus(i) {
       var segs = chart.querySelectorAll('.donut-seg, .bar');

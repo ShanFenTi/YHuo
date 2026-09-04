@@ -4644,7 +4644,7 @@
           </div>
         </div>
         <!-- 修改密码 -->
-        <div class="apple-card">
+        <div class="apple-card" id="pwdCard">
           <div class="card-padding">
             <p class="card-eyebrow">修改密码 · PASSWORD</p>
             <form id="pwdForm" autocomplete="off">
@@ -4657,7 +4657,7 @@
           </div>
         </div>
         <!-- 账号操作 -->
-        <div class="apple-card">
+        <div class="apple-card" id="acctCard">
           <div class="card-padding">
             <p class="card-eyebrow">账号 · ACCOUNT</p>
             <div class="profile-actions">
@@ -4672,7 +4672,7 @@
       </div>
 
       <!-- 我的收藏 -->
-      <div class="apple-card">
+      <div class="apple-card" id="favCard">
         <div class="card-padding">
           <p class="card-eyebrow">我的收藏 · FAVORITES</p>
           <p class="profilev-sec-title">照片</p>
@@ -8082,23 +8082,34 @@
         .then(function (r) { return r.json().catch(function () { return { ok: false }; }); })
         .then(function (d) {
           if (!d || !d.ok) {
-            // 管理员账号能登前台但不在 users 表里，这里会 401
+            // 会话失效或异常
             if (profilevName) profilevName.textContent = d && d.error === '未登录' ? '未登录' : (profilevName.textContent || '—');
             if (profilevSub && d && d.error === '未登录') profilevSub.textContent = '登录已失效，请重新登录';
             return;
           }
+          // 管理员身份：显示管理头像/用户名，隐藏前台专属功能卡（收藏/课表/邮箱/改密/更换头像）
+          applyProfileAdminMode(!!d.admin);
           if (profilevName) profilevName.textContent = d.username;
           var sub = '';
-          if (d.created_at) {
-            var created = new Date(String(d.created_at).replace(' ', 'T') + 'Z');
-            if (!isNaN(created)) {
-              var days = Math.max(1, Math.floor((Date.now() - created.getTime()) / 86400000) + 1);
-              sub = '已加入 ' + days + ' 天 · 注册于 ' + fmtDate(created);
+          if (d.admin) {
+            sub = '管理员账号';
+            if (d.created_at) {
+              var ac = new Date(String(d.created_at).replace(' ', 'T') + 'Z');
+              if (!isNaN(ac)) sub += ' · 创建于 ' + fmtDate(ac);
             }
-          }
-          if (d.last_seen_at) {
-            var ls = new Date(String(d.last_seen_at).replace(' ', 'T') + 'Z');
-            if (!isNaN(ls)) sub += (sub ? ' · ' : '') + '上次活跃 ' + fmtDate(ls);
+            sub += '（收藏、课表、邮箱、改密仅前台注册账号可用）';
+          } else {
+            if (d.created_at) {
+              var created = new Date(String(d.created_at).replace(' ', 'T') + 'Z');
+              if (!isNaN(created)) {
+                var days = Math.max(1, Math.floor((Date.now() - created.getTime()) / 86400000) + 1);
+                sub = '已加入 ' + days + ' 天 · 注册于 ' + fmtDate(created);
+              }
+            }
+            if (d.last_seen_at) {
+              var ls = new Date(String(d.last_seen_at).replace(' ', 'T') + 'Z');
+              if (!isNaN(ls)) sub += (sub ? ' · ' : '') + '上次活跃 ' + fmtDate(ls);
+            }
           }
           if (profilevSub) profilevSub.textContent = sub || '—';
           if (profilevAvatar) {
@@ -8110,6 +8121,27 @@
         .catch(function () {
           if (profilevSub) profilevSub.textContent = '资料加载失败';
         });
+    }
+
+    // 管理员前台个人主页模式：隐藏前台专属功能卡、禁用更换头像
+    var profileIsAdmin = false;
+    function applyProfileAdminMode(isAdmin) {
+      profileIsAdmin = !!isAdmin;
+      ['schedCard', 'emailCard', 'pwdCard', 'favCard'].forEach(function (id) {
+        var el = document.getElementById(id);
+        if (el) el.style.display = isAdmin ? 'none' : '';
+      });
+      var acct = document.getElementById('acctCard');
+      var avBtn = document.getElementById('profilevAvatarBtn');
+      if (acct) acct.style.display = isAdmin ? 'block' : '';
+      if (avBtn) avBtn.style.display = isAdmin ? 'none' : '';
+      var avEl = document.getElementById('profilevAvatar');
+      var mask = avEl && avEl.querySelector('.profile-avatar-mask');
+      if (avEl) {
+        avEl.title = isAdmin ? '' : '更换头像';
+        avEl.setAttribute('role', isAdmin ? '' : 'button');
+        if (mask) mask.style.display = isAdmin ? 'none' : '';
+      }
     }
 
     // ---------- 课表卡：周视图 / WakeUp 导入 / 手动编辑 / 邮件提醒设置 ----------
@@ -8874,6 +8906,7 @@
 
     // 主页大头像更换：复用下拉菜单那套 avatarInput 流程
     function openAvatarPickerFromView() {
+      if (profileIsAdmin) return; // 管理员头像在后台改
       if (isMember() && avatarInput) avatarInput.click();
     }
     if (profilevAvatar) {

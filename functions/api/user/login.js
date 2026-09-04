@@ -98,7 +98,9 @@ export async function onRequestPost({ request, env }) {
       await clearLoginFails(env, throttleKey);
       await env.DB.prepare('DELETE FROM sessions WHERE expires_at < ?').bind(new Date().toISOString()).run();
       const token = await createSession(env);
-      return json({ ok: true, admin: true, username: admin.username }, 200, { 'Set-Cookie': sessionCookie(token) });
+      // 管理员用前台入口登录：带上后台设置的管理头像（site_settings.admin_avatar 存 KV 键）
+      const avRow = await env.DB.prepare("SELECT value FROM site_settings WHERE key = 'admin_avatar'").first();
+      return json({ ok: true, admin: true, username: admin.username, avatar: (avRow && avRow.value) || null }, 200, { 'Set-Cookie': sessionCookie(token) });
     }
     await recordLoginFail(env, throttleKey);
     return json({ ok: false, error: '用户名或密码错误' }, 401);

@@ -4186,6 +4186,7 @@
     // settings/AI 配置到达后由 applyFeatureFlags/fetchAiConfig 摘掉；接口失败或 3 秒超时兜底放行。
     try {
       var _ff = JSON.parse(localStorage.getItem('yhuoFlags') || 'null');
+      window.__FF_CACHE = (_ff && typeof _ff === 'object') ? _ff : null; // 同步暴露：画廊等启动期代码按缓存决定是否加载资源
       var _fc = document.documentElement.classList;
       var _hasFlags = false;
       if (_ff && typeof _ff === 'object') {
@@ -5069,6 +5070,7 @@
     var FS_REG = {}; // id → { el, btn, close, lockScroll }
     function fsRegister(id, opts) { FS_REG[id] = opts || {}; }
     var FLAGS_OFF = {}; // 功能开关（后台「外观 → 功能开关」，/api/settings 下发，缺省全开）：true 的界面/模块前台直接隐藏
+    var FF_APPLY_HOOKS = []; // flags 应用后要通知的启动期模块（画廊等在各自块级作用域里注册回调，规避坑 9）
     function fsOpen(id) {
       if (FLAGS_OFF[id]) return; // 被开关关掉的界面：不互斥、不接管高亮、不锁滚动（各 open 函数入口另有同款守卫）
       FS_ALL.forEach(function (other) {
@@ -5101,6 +5103,7 @@
       };
       var fc = document.documentElement.classList;
       fc.remove('ff-boot-hide'); // 配置已到达，首访的"先藏后放"状态按真实 flags 放行
+      window.__FF_CACHE = flags; // 同步缓存镜像刷新为最新值（启动期代码判断用）
       fc.toggle('ff-tools-off', FLAGS_OFF.toolsView);
       fc.toggle('ff-docs-off', FLAGS_OFF.docsView);
       fc.toggle('ff-album-off', FLAGS_OFF.albumView);
@@ -5113,6 +5116,7 @@
         var hv = document.getElementById('homeVideo');
         if (hv) { try { hv.pause(); } catch (e) {} }
       }
+      FF_APPLY_HOOKS.forEach(function (fn) { try { fn(); } catch (e) {} }); // 通知启动期模块按最新开关校正（如画廊补加载）
     }
 
     // =========================
@@ -5610,12 +5614,31 @@
           tryImage(n, 0);
         });
       }
+      // 功能开关：杂项和相册都关了就一张图都不加载（相册照片墙与画廊共用这批图，只关其一时仍属正当展示）。
+      // 画廊跑得比 settings 早：先看 head 内联脚本同步存的 window.__FF_CACHE，配置到达后经 FF_APPLY_HOOKS 校正补加载。
+      // 首访（无任何缓存）无从得知开关，与首屏"先藏后放"同一取舍。
+      var galleryStarted = false;
+      var pendingApiImages = null;
+      function galleryGated() {
+        // settings 已应用过：以实时 flags 为准（misc 与 album 都关才不加载）
+        if (FLAGS_OFF.miscView !== undefined) return FLAGS_OFF.miscView && FLAGS_OFF.albumView;
+        // 尚未应用（启动早期）：按 head 内联脚本存的同步缓存决定
+        var c = window.__FF_CACHE;
+        return !!(c && c.misc === false && c.album === false);
+      }
+      function startGalleryIfAllowed(apiImages) {
+        pendingApiImages = apiImages || null;
+        if (galleryStarted || galleryGated()) return;
+        galleryStarted = true;
+        startGallery(pendingApiImages);
+      }
+      FF_APPLY_HOOKS.push(function () { startGalleryIfAllowed(pendingApiImages); });
       fetch('/api/playlist', { credentials: 'same-origin' })
         .then(function (res) { return res.ok ? res.json() : Promise.reject(new Error('无后台接口')); })
         .then(function (data) {
-          startGallery(data && data.ok ? data.images : null);
+          startGalleryIfAllowed(data && data.ok ? data.images : null);
         })
-        .catch(function () { startGallery(null); });
+        .catch(function () { startGalleryIfAllowed(null); });
 
       function imgDone() {
         imgPending--;

@@ -2,6 +2,9 @@
 // 黑白主题（浅色/深色可切换，本地记住）；页面只是壳，所有数据操作都要过 /api/admin/* 的会话校验
 import { html } from '../lib/util.js';
 
+// ⚠️ 下面整页 HTML+CSS+JS 包在模板字符串里：内联代码的正则反斜杠必须双写（\\d、\\.），
+//    单写会被模板转义吃掉——/^\d{6}$/ 到浏览器里就成了 /^d{6}$/（匹配 6 个字母 d），
+//    管理员绑定邮箱 + 忘记密码重置的验证码校验因此从未通过过（2026-08-31 起，2026-09-04 根治）。改内联正则时务必双写。
 const PAGE = `<!DOCTYPE html>
 <html lang="zh-CN" data-theme="light">
 <head>
@@ -1292,7 +1295,7 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
     var email = $('arEmail').value.trim();
     var code = $('arCode').value.trim();
     var np = $('arNewPass').value;
-    if (!email || !/^\d{6}$/.test(code)) { arMsg('请填写邮箱和 6 位验证码', true); return; }
+    if (!email || !/^\\d{6}$/.test(code)) { arMsg('请填写邮箱和 6 位验证码', true); return; }
     if (np.length < 6) { arMsg('新密码至少 6 位', true); return; }
     var btn = this; btn.disabled = true;
     api('/api/auth/reset', {
@@ -2026,7 +2029,7 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
     inp.onchange = function () {
       var f = inp.files && inp.files[0];
       if (!f) return;
-      if (!/\.lrc$/i.test(f.name)) { toast('请选择 .lrc 歌词文件', 'err'); return; }
+      if (!/\\.lrc$/i.test(f.name)) { toast('请选择 .lrc 歌词文件', 'err'); return; }
       if (f.size > 200 * 1024) { toast('歌词文件超过 200KB', 'err'); return; }
       f.text().then(function (txt) {
         if (!txt.trim()) { toast('歌词文件是空的', 'err'); return; }
@@ -3760,7 +3763,7 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
     var email = $('meEmailInput').value.trim() || meEmailSentTo;
     var code = $('meEmailCode').value.trim();
     if (!email) { meEmailMsg('请填写邮箱地址', true); return; }
-    if (!/^\d{6}$/.test(code)) { meEmailMsg('请填写 6 位验证码', true); return; }
+    if (!/^\\d{6}$/.test(code)) { meEmailMsg('请填写 6 位验证码', true); return; }
     if (meEmailSentTo && email !== meEmailSentTo) {
       meEmailMsg('邮箱与发送验证码的地址不一致，请改回 ' + meEmailSentTo + ' 或重新发送', true);
       return;
@@ -4148,13 +4151,13 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
     (items[currentType] || []).forEach(function (it) {
       var t = (it.title || '').toLowerCase();
       existing[t] = true;
-      existing[t.replace(/\.[^.]+$/, '')] = true; // 同步进来的标题可能带扩展名，两种都算同名
+      existing[t.replace(/\\.[^.]+$/, '')] = true; // 同步进来的标题可能带扩展名，两种都算同名
     });
 
     // .lrc 歌词文件不单独入库：与同 basename 的歌曲配对，作为歌词附件随上传一起提交
     var lrcFiles = [], mediaAll = [];
     all.forEach(function (f) {
-      if (currentType === 'music' && /\.lrc$/i.test(f.name || '')) lrcFiles.push(f);
+      if (currentType === 'music' && /\\.lrc$/i.test(f.name || '')) lrcFiles.push(f);
       else mediaAll.push(f);
     });
 
@@ -4162,7 +4165,7 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
     mediaAll.forEach(function (f) {
       if (!extAllowed(f)) { wrongType++; return; }
       if (f.size > MAX_SIZE) { oversize.push(f.name); return; }
-      var base = (f.name || '').replace(/\.[^.]+$/, '').toLowerCase();
+      var base = (f.name || '').replace(/\\.[^.]+$/, '').toLowerCase();
       if (existing[base] || existing[(f.name || '').toLowerCase()]) { skipped.push(f.name); return; }
       queue.push(f);
     });
@@ -4171,9 +4174,9 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
     var lrcUnmatched = [];
     lrcFiles.forEach(function (lf) {
       if (lf.size > 200 * 1024) { lrcUnmatched.push(lf.name + '（超 200KB）'); return; }
-      var base = lf.name.replace(/\.lrc$/i, '').toLowerCase();
+      var base = lf.name.replace(/\\.lrc$/i, '').toLowerCase();
       for (var q = 0; q < queue.length; q++) {
-        if ((queue[q].name || '').replace(/\.[^.]+$/, '').toLowerCase() === base) { queue[q]._lrc = lf; return; }
+        if ((queue[q].name || '').replace(/\\.[^.]+$/, '').toLowerCase() === base) { queue[q]._lrc = lf; return; }
       }
       lrcUnmatched.push(lf.name);
     });

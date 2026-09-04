@@ -5898,6 +5898,15 @@
     var homeVideo = document.getElementById('homeVideo');
     var videoList = [];
     var videoIndex = 0;
+    // 首页视频播放模式（后台视频页可设置）：seq 顺序循环 / single 单视频循环 / random 随机
+    var videoMode = { mode: 'seq', url: '' };
+    fetch('/api/settings', { credentials: 'same-origin' })
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (d) {
+        if (d && d.ok && d.videoMode) videoMode = d.videoMode;
+        if (videoList.length) applyVideoModeStart();
+      })
+      .catch(function () {});
 
     function isVideoName(n) {
       return /\.(mp4|webm|mov|m4v|ogv)$/i.test(n);
@@ -5913,9 +5922,22 @@
       var p = homeVideo.play();
       if (p && p.catch) p.catch(function () {});
     }
+    // 列表就绪后按当前播放模式选初始视频
+    function applyVideoModeStart() {
+      if (!videoList.length) return;
+      if (videoMode.mode === 'single' && videoMode.url) {
+        for (var i = 0; i < videoList.length; i++) {
+          if (videoSrcOf(videoList[i]) === videoMode.url) { playVideoAt(i); return; }
+        }
+      } else if (videoMode.mode === 'random') {
+        playVideoAt(Math.floor(Math.random() * videoList.length));
+        return;
+      }
+      playVideoAt(0);
+    }
     function playVideoList(list) {
       videoList = list;
-      playVideoAt(0);
+      applyVideoModeStart();
     }
     // 后台清单 + 静态文件夹合并显示：后台的排前面，同名去重
     function autoLoadVideoFolder() {
@@ -5979,6 +6001,19 @@
     }
     if (homeVideo) {
       homeVideo.addEventListener('ended', function () {
+        // 单视频循环：还在独占当前视频就重播（currentTime 清零不重新加载）；否则按当前模式切下一个
+        if (videoMode.mode === 'single' && videoMode.url === videoSrcOf(videoList[videoIndex])) {
+          homeVideo.currentTime = 0;
+          var p1 = homeVideo.play();
+          if (p1 && p1.catch) p1.catch(function () {});
+          return;
+        }
+        if (videoMode.mode === 'random') {
+          var nxt = Math.floor(Math.random() * videoList.length);
+          if (videoList.length > 1 && nxt === videoIndex) nxt = (nxt + 1) % videoList.length;
+          playVideoAt(nxt);
+          return;
+        }
         playVideoAt(videoIndex + 1); // 播完自动切下一个，到末尾回到第一个
       });
       autoLoadVideoFolder();

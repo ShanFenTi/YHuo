@@ -357,6 +357,21 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
   .mq-line { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
   .upload-hint { color: var(--muted); font-size: 12px; margin-top: 8px; line-height: 1.5; }
   .queue-info { font-size: 13px; color: var(--muted); margin-top: 8px; min-height: 0; }
+  /* 首页视频播放模式栏 */
+  .video-mode-bar {
+    display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+    margin-top: 10px; padding: 10px 12px; border-radius: 12px;
+    background: var(--hover); border: 1px dashed var(--border); font-size: 13px;
+  }
+  .vm-chip {
+    padding: 3px 12px; font-size: 12px; border-radius: 999px; cursor: pointer;
+    border: 1px solid var(--border); background: none; color: var(--muted);
+    transition: background .15s, color .15s, border-color .15s;
+  }
+  .vm-chip:hover { color: var(--fg); border-color: var(--muted); }
+  .vm-chip.active { background: var(--fg); color: var(--bg); border-color: var(--fg); }
+  .vm-single { color: var(--ok); font-size: 12px; }
+  .row-actions button.vm-set { color: var(--warn); }
   .storage-line { margin-top: 16px; }
   .storage-line > span { font-size: 12px; color: var(--muted); }
   .storage-bar { height: 6px; background: var(--chip); border-radius: 3px; overflow: hidden; margin-top: 6px; }
@@ -806,6 +821,13 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
     </div>
     <p class="file-pick-info" id="filePickInfo"></p>
     <p class="upload-hint" id="uploadHint">支持一次选多个文件，也可以把文件或整个文件夹拖进来；与已有内容同名的自动跳过；单文件上限 24MB。</p>
+    <div class="video-mode-bar" id="videoModeBar" hidden>
+      <span class="meta2">首页视频播放</span>
+      <button type="button" class="ghost vm-chip" data-m="seq">顺序循环</button>
+      <button type="button" class="ghost vm-chip" data-m="single">单视频循环</button>
+      <button type="button" class="ghost vm-chip" data-m="random">随机播放</button>
+      <span class="vm-single" id="vmSingleText"></span>
+    </div>
     <div class="progress" id="progress"><i id="progressBar"></i></div>
     <div class="queue-info" id="queueInfo"></div>
     <div class="image-shell" id="imageShell" hidden>
@@ -2156,6 +2178,18 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
       playBtn.addEventListener('click', function () { openPreview(it); });
       actions.appendChild(playBtn);
 
+      // 视频行：设为首页单视频循环（独播）——选中项高亮星标
+      if (currentType === 'video') {
+        var vmBtn = document.createElement('button');
+        vmBtn.className = 'ghost icon-btn-sm';
+        vmBtn.title = '设为首页单视频循环（独播）';
+        var vmActive = videoMode.mode === 'single' && videoMode.url === videoItemUrl(it);
+        if (vmActive) vmBtn.classList.add('vm-set');
+        vmBtn.innerHTML = vmActive ? ICO.starOn : ICO.starOff;
+        vmBtn.addEventListener('click', function () { saveVideoMode('single', videoItemUrl(it)); });
+        actions.appendChild(vmBtn);
+      }
+
       // 音乐行：歌词按钮（上传/替换 .lrc；已配歌词可移除，歌词存 media.lrc 随清单下发）
       if (currentType === 'music') {
         var lrcBtn = document.createElement('button');
@@ -2222,6 +2256,56 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
       (pct >= 80 ? '（快满了，建议清理大文件）' : '');
     $('storageBar').firstElementChild.style.width = Math.min(100, pct).toFixed(2) + '%';
   }
+
+  // ---------- 首页视频播放模式（视频页顶部设置：顺序/单视频/随机，影响前台首页视频轮播） ----------
+  var videoMode = { mode: 'seq', url: '' };
+  function videoItemUrl(it) { return '/media/' + (it.r2_key || it.id || ''); }
+  function applyVideoModeUI() {
+    document.querySelectorAll('.vm-chip').forEach(function (c) {
+      c.classList.toggle('active', c.getAttribute('data-m') === videoMode.mode);
+    });
+    var t = $('vmSingleText');
+    if (t) {
+      if (videoMode.mode === 'single') {
+        var hit = null;
+        (items.video || []).forEach(function (it) { if (videoItemUrl(it) === videoMode.url) hit = it; });
+        t.textContent = hit ? '独播：' + hit.title : (videoMode.url ? '独播视频已被删除' : '在列表点「设为独播」选择');
+      } else t.textContent = '';
+    }
+    if (currentType === 'video') renderList(); // 刷新行的"设为独播"高亮
+  }
+  function loadVideoMode() {
+    api('/api/admin/video-mode').then(function (d) {
+      if (!d || !d.ok) return;
+      videoMode = { mode: d.mode, url: d.url || '' };
+      applyVideoModeUI();
+    }).catch(function () {});
+  }
+  function saveVideoMode(mode, url) {
+    api('/api/admin/video-mode', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ mode: mode, url: url || '' })
+    }).then(function (d) {
+      if (d && d.ok) {
+        videoMode = { mode: d.mode, url: d.url || '' };
+        applyVideoModeUI();
+        toast('首页视频播放已更新', 'ok');
+      } else toast((d && d.error) || '保存失败', 'err');
+    }).catch(function () { toast('保存失败', 'err'); });
+  }
+  document.querySelectorAll('.vm-chip').forEach(function (c) {
+    c.addEventListener('click', function () {
+      var m = c.getAttribute('data-m');
+      var url = videoMode.url;
+      // 切到单视频模式且还没选中过：默认第一个视频
+      if (m === 'single' && !url) {
+        var first = (items.video || [])[0];
+        if (first) url = videoItemUrl(first);
+      }
+      saveVideoMode(m, url);
+    });
+  });
 
   // ---------- 状态页：系统信息 / 存储空间分区 / 邮件发送额度 ----------
   var MAIL_DAILY_CAP = { resend: 100, brevo: 300 }; // 服务商免费额度（封/天）
@@ -3792,6 +3876,10 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
       if (type !== 'image') albumFilter = '';
       renderList();
     }
+    // 首页视频播放模式栏：仅视频页显示，进入时加载设置
+    var vbar = $('videoModeBar');
+    if (vbar) vbar.hidden = type !== 'video';
+    if (type === 'video') loadVideoMode();
     // 功能界面切换动效：给新显示的面板挂一次进入动画（与上一次不是同一面板时才播）
     var targetPanel = isOverview ? $('overviewPanel') :
       isUsers ? $('userPanel') :

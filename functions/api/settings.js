@@ -24,6 +24,17 @@ export async function onRequestGet({ env }) {
       emailEnabled = !!(c && c.enabled && c.api_key && c.from);
       emailRegister = emailEnabled && !c.admin_only;
     } catch {}
+    // 首页视频播放模式：{mode:'seq'|'single'|'random', url}（前台首页视频轮播用）
+    let videoMode = { mode: 'seq', url: '' };
+    try {
+      const vm = JSON.parse(map.video_mode || 'null');
+      if (vm && typeof vm === 'object') {
+        videoMode = {
+          mode: vm.mode === 'single' ? 'single' : (vm.mode === 'random' ? 'random' : 'seq'),
+          url: String(vm.url || ''),
+        };
+      }
+    } catch {}
     return json({
       ok: true,
       accent: map.accent || null,
@@ -33,6 +44,7 @@ export async function onRequestGet({ env }) {
       blur: map.bg_blur !== undefined && map.bg_blur !== null ? parseInt(map.bg_blur, 10) || 0 : null,
       emailEnabled,
       emailRegister,
+      videoMode,
     }, 200, { 'Cache-Control': 'public, max-age=60' });
   } catch {
     return json({ ok: true, accent: null, background: null, quotes: [], quote: null, blur: null, emailEnabled: false, emailRegister: false }, 200, { 'Cache-Control': 'no-store' });

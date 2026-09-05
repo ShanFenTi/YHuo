@@ -1602,18 +1602,35 @@
       top: 0;
       bottom: 0;
       z-index: 20;
-      width: min(280px, 82vw);
+      width: min(300px, 84vw);
       display: flex;
       flex-direction: column;
       min-height: 0;
-      padding: 14px 14px 14px 18px;
+      padding: 16px 14px 14px 18px;
       background: var(--apple-background);
       transform: translateX(-100%);
       transition: transform 250ms var(--ease-out);
       box-shadow: 8px 0 32px rgba(0, 0, 0, 0.12);
+      border-radius: 0 18px 18px 0;
     }
 
     .ai-history.open { transform: none; }
+
+    /* 抽屉遮罩：与抽屉同开合同步淡入淡出，点击关闭 */
+    .ai-history-scrim {
+      position: fixed;
+      left: 0;
+      top: 0;
+      right: 0;
+      bottom: 0;
+      z-index: 19;
+      background: rgba(0, 0, 0, 0.32);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 250ms var(--ease-out);
+    }
+
+    .ai-history-scrim.show { opacity: 1; pointer-events: auto; }
 
     .ai-history-new {
       display: flex;
@@ -1621,18 +1638,28 @@
       justify-content: center;
       gap: 6px;
       flex: none;
-      padding: 8px 12px;
-      margin-bottom: 12px;
-      border: 1px solid var(--apple-border);
+      padding: 9px 12px;
+      border: none;
       border-radius: 999px;
-      background: none;
-      color: var(--apple-foreground);
+      background: var(--apple-primary);
+      color: #ffffff;
       font-size: 13px;
+      font-weight: 600;
       cursor: pointer;
-      transition: border-color 150ms var(--ease-out), background-color 150ms var(--ease-out);
+      transition: filter 150ms var(--ease-out), transform 150ms var(--ease-out);
     }
 
-    .ai-history-new:hover { border-color: var(--apple-primary); }
+    .ai-history-new:hover { filter: brightness(1.08); }
+    .ai-history-new:active { transform: scale(0.97); }
+
+    .ai-history-title {
+      flex: none;
+      margin: 16px 2px 6px;
+      font-size: 11px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--apple-muted-foreground);
+    }
 
     .ai-history-list {
       flex: 1;
@@ -1652,10 +1679,9 @@
       gap: 6px;
       padding: 8px 10px;
       border: none;
-      border-radius: 10px;
+      border-radius: 12px;
       background: none;
       color: var(--apple-muted-foreground);
-      font-size: 13px;
       text-align: left;
       cursor: pointer;
       transition: background-color 150ms var(--ease-out), color 150ms var(--ease-out);
@@ -1663,11 +1689,34 @@
 
     .ai-history-item:hover { background: var(--apple-secondary, rgba(128, 128, 128, 0.12)); color: var(--apple-foreground); }
 
-    .ai-history-item.active { background: var(--apple-secondary, rgba(128, 128, 128, 0.16)); color: var(--apple-foreground); font-weight: 600; }
+    .ai-history-item.active {
+      background: color-mix(in srgb, var(--apple-primary) 12%, transparent);
+      color: var(--apple-foreground);
+    }
 
-    .ai-history-item .hi-title {
+    .ai-history-item.active .hi-title {
+      font-weight: 600;
+      color: var(--apple-primary);
+    }
+
+    .ai-history-item .hi-main {
       flex: 1;
       min-width: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .ai-history-item .hi-title {
+      font-size: 13px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .ai-history-item .hi-meta {
+      font-size: 11px;
+      color: var(--apple-muted-foreground);
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
@@ -1676,21 +1725,45 @@
     .ai-history-item .hi-del {
       flex: none;
       display: none;
-      width: 22px;
-      height: 22px;
+      width: 24px;
+      height: 24px;
       align-items: center;
       justify-content: center;
       border: none;
-      border-radius: 6px;
+      border-radius: 7px;
       background: none;
       color: var(--apple-muted-foreground);
       cursor: pointer;
+      transition: background-color 150ms var(--ease-out), color 150ms var(--ease-out);
     }
 
+    /* 桌面悬停浮现；触屏没有 hover，常显否则删不掉（后台同款约定） */
     .ai-history-item:hover .hi-del { display: inline-flex; }
-    .ai-history-item .hi-del:hover { color: #e5484d; }
 
-    .ai-history-empty { font-size: 12px; color: var(--apple-muted-foreground); padding: 8px 10px; }
+    @media (hover: none) {
+      .ai-history-item .hi-del { display: inline-flex; }
+    }
+
+    .ai-history-item .hi-del:hover { color: #e5484d; background: color-mix(in srgb, #e5484d 12%, transparent); }
+
+    /* 两段式确认武装态：红底白图标，非悬停也保持可见 */
+    .ai-history-item .hi-del.armed {
+      display: inline-flex;
+      background: #e5484d;
+      color: #ffffff;
+    }
+
+    .ai-history-empty {
+      padding: 28px 10px;
+      text-align: center;
+      color: var(--apple-muted-foreground);
+    }
+
+    .ai-history-empty svg { opacity: 0.5; margin-bottom: 8px; }
+
+    .ai-history-empty .he-main { font-size: 13px; margin: 0 0 4px; }
+
+    .ai-history-empty .he-sub { font-size: 12px; opacity: 0.75; margin: 0; }
 
     .ai-history-toggle {
       display: inline-flex;
@@ -1704,9 +1777,18 @@
       background: none;
       color: var(--apple-muted-foreground);
       cursor: pointer;
+      transition: color 150ms var(--ease-out), background-color 150ms var(--ease-out);
     }
 
-    .ai-history-toggle:hover { color: var(--apple-foreground); }
+    .ai-history-toggle:hover { color: var(--apple-foreground); background: var(--apple-secondary, rgba(128, 128, 128, 0.12)); }
+
+    /* 抽屉开着时唤出按钮高亮提示状态 */
+    .ai-history-toggle.open { color: var(--apple-primary); }
+
+    @media (prefers-reduced-motion: reduce) {
+      .ai-history,
+      .ai-history-scrim { transition: none; }
+    }
 
     .ai-chat {
       flex: 1;
@@ -5405,7 +5487,7 @@
       <p class="album-title">AI 助手</p>
       <div class="ai-bar-actions">
         <button class="album-close" id="aiNewChatBtn" type="button" aria-label="新对话" title="新对话">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
         </button>
         <button class="album-close" id="aiViewClose" type="button" aria-label="关闭 AI 界面">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>
@@ -5418,8 +5500,11 @@
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
           新对话
         </button>
+        <p class="ai-history-title">历史对话</p>
         <div class="ai-history-list" id="aiHistoryList"></div>
       </aside>
+      <!-- 抽屉遮罩：半透明压暗聊天区，点击关闭抽屉 -->
+      <div class="ai-history-scrim" id="aiHistoryScrim" aria-hidden="true"></div>
       <div class="ai-chat">
       <div class="ai-messages" id="aiMessages"></div>
       <form class="ai-input-bar" id="aiForm">
@@ -11439,9 +11524,11 @@
       if (!list) return;
       list.innerHTML = '';
       if (!aiConvs.length) {
-        var empty = document.createElement('p');
+        var empty = document.createElement('div');
         empty.className = 'ai-history-empty';
-        empty.textContent = '还没有历史对话';
+        empty.innerHTML = '<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>'
+          + '<p class="he-main">还没有历史对话</p>'
+          + '<p class="he-sub">开启新对话后自动保存在这里</p>';
         list.appendChild(empty);
         return;
       }
@@ -11449,10 +11536,18 @@
         var it = document.createElement('button');
         it.type = 'button';
         it.className = 'ai-history-item' + (c.id === aiConvId ? ' active' : '');
+        var main = document.createElement('span');
+        main.className = 'hi-main';
         var t = document.createElement('span');
         t.className = 'hi-title';
         t.textContent = c.title || '新对话';
-        it.appendChild(t);
+        var meta = document.createElement('span');
+        meta.className = 'hi-meta';
+        var n = Number(c.msgs) || 0;
+        meta.textContent = (n ? n + ' 条' : '空') + (c.updated_at ? ' · ' + aiConvTime(c.updated_at) : '');
+        main.appendChild(t);
+        main.appendChild(meta);
+        it.appendChild(main);
         var del = document.createElement('span');
         del.className = 'hi-del';
         del.title = '删除对话';
@@ -11461,7 +11556,19 @@
         del.innerHTML = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="m19 6-1 14H6L5 6"/></svg>';
         del.addEventListener('click', function (e) {
           e.stopPropagation();
-          aiDeleteConv(c);
+          // 两段式确认（留言板同款）：首点变红武装，2.5 秒内再点才真删；不用原生 confirm
+          if (del.dataset.armed === '1') { doDeleteConv(c.id); return; }
+          var armed = list.querySelector('.hi-del[data-armed="1"]');
+          if (armed) { armed.dataset.armed = ''; armed.classList.remove('armed'); armed.title = '删除对话'; }
+          del.dataset.armed = '1';
+          del.classList.add('armed');
+          del.title = '再点一次确认删除';
+          setTimeout(function () {
+            if (!del.isConnected) return;
+            del.dataset.armed = '';
+            del.classList.remove('armed');
+            del.title = '删除对话';
+          }, 2500);
         });
         it.appendChild(del);
         it.addEventListener('click', function () { aiOpenConv(c.id); });
@@ -11494,19 +11601,6 @@
         .catch(function () {});
     }
 
-    // 删除对话（自定义确认弹窗）
-    function aiDeleteConv(c) {
-      if (typeof ask === 'function') {
-        ask({
-          title: '删除对话',
-          msg: '删除「' + (c.title || '新对话') + '」？对话内容将不可恢复。',
-          okText: '删除', danger: true,
-          cb: function (ok) { if (ok) doDeleteConv(c.id); },
-        });
-      } else if (window.confirm('删除「' + (c.title || '新对话') + '」？对话内容将不可恢复。')) {
-        doDeleteConv(c.id);
-      }
-    }
     function doDeleteConv(id) {
       fetch('/api/ai/conversations?id=' + id, { method: 'DELETE', credentials: 'same-origin' })
         .then(function (r) { return r.ok ? r.json() : null; })
@@ -11556,10 +11650,39 @@
         .catch(function () {});
     }
 
-    // 窄屏历史抽屉开合
+    // 历史抽屉开合：遮罩同步 + 唤出按钮高亮 + aria-expanded
+    function aiHistoryEls() {
+      return {
+        drawer: document.getElementById('aiHistory'),
+        scrim: document.getElementById('aiHistoryScrim'),
+        toggle: document.getElementById('aiHistoryToggle'),
+      };
+    }
+    function aiDrawerOpen() {
+      var h = aiHistoryEls().drawer;
+      return !!(h && h.classList.contains('open'));
+    }
+    function aiOpenHistoryDrawer() {
+      var els = aiHistoryEls();
+      if (!els.drawer) return;
+      els.drawer.classList.add('open');
+      if (els.scrim) els.scrim.classList.add('show');
+      if (els.toggle) {
+        els.toggle.classList.add('open');
+        els.toggle.setAttribute('aria-expanded', 'true');
+      }
+    }
     function aiCloseHistoryDrawer() {
-      var h = document.getElementById('aiHistory');
-      if (h) h.classList.remove('open');
+      var els = aiHistoryEls();
+      if (els.drawer) els.drawer.classList.remove('open');
+      if (els.scrim) els.scrim.classList.remove('show');
+      if (els.toggle) {
+        els.toggle.classList.remove('open');
+        els.toggle.setAttribute('aria-expanded', 'false');
+      }
+      // 关抽屉顺手解除未完成的删除确认
+      var armed = document.querySelector('.hi-del[data-armed="1"]');
+      if (armed) { armed.dataset.armed = ''; armed.classList.remove('armed'); armed.title = '删除对话'; }
     }
 
     // 打开界面时恢复最近对话（登录用户）
@@ -11752,10 +11875,11 @@
         aiResetChat();
         // 无论之前有没有聊天记录，都给出可见反馈（否则只有欢迎语时点击像"没反应"）
         addAiMsg('bot', '🆕 已开启新对话，有什么想问的～');
+        aiCloseHistoryDrawer(); // 抽屉开着时同步收起
         if (aiInput) aiInput.focus();
       });
     }
-    // 侧栏"新对话"：同款行为 + 关抽屉
+    // 抽屉内"新对话"：同款行为 + 关抽屉
     var aiHistNewBtn = document.getElementById('aiHistNewBtn');
     if (aiHistNewBtn) {
       aiHistNewBtn.addEventListener('click', function () {
@@ -11766,14 +11890,17 @@
         if (aiInput) aiInput.focus();
       });
     }
-    // 窄屏：顶栏按钮唤出历史抽屉；点遮罩区域（聊天区）关闭
+    // 历史抽屉：顶栏气泡按钮开合；点遮罩/聊天区关闭
     var aiHistoryToggle = document.getElementById('aiHistoryToggle');
     if (aiHistoryToggle) {
+      aiHistoryToggle.setAttribute('aria-expanded', 'false');
       aiHistoryToggle.addEventListener('click', function () {
-        var h = document.getElementById('aiHistory');
-        if (h) h.classList.toggle('open');
+        if (aiDrawerOpen()) aiCloseHistoryDrawer();
+        else aiOpenHistoryDrawer();
       });
     }
+    var aiHistoryScrim = document.getElementById('aiHistoryScrim');
+    if (aiHistoryScrim) aiHistoryScrim.addEventListener('click', aiCloseHistoryDrawer);
     var aiChatEl = aiView ? aiView.querySelector('.ai-chat') : null;
     if (aiChatEl) {
       aiChatEl.addEventListener('click', function () { aiCloseHistoryDrawer(); });
@@ -11793,6 +11920,7 @@
     document.addEventListener('keydown', function (e) {
       if (e.key === 'Escape' && aiView && !aiView.hidden && lightbox.hidden) {
         if (aiModelMenu && !aiModelMenu.hidden) { aiModelMenu.hidden = true; return; } // Esc 先收模型菜单
+        if (aiDrawerOpen()) { aiCloseHistoryDrawer(); return; } // 抽屉开着先只关抽屉
         closeAiView();
       }
     });

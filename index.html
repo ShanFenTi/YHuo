@@ -6988,7 +6988,7 @@
           showQuote(texts[0], 3000); // 一言：3 秒切一句
         });
       };
-      fetch('/api/settings', { credentials: 'same-origin' })
+      fetch('/api/settings?t=' + Date.now(), { credentials: 'same-origin' }) // 时间戳穿透浏览器 60s 缓存：后台改完设置（播放器款式等）下次进页面立即生效，不等缓存过期
         .then(function (res) { return res.ok ? res.json() : Promise.reject(new Error('无接口')); })
         .then(function (s) {
           var qs = s && s.ok && Array.isArray(s.quotes) ? s.quotes : [];
@@ -7655,7 +7655,7 @@
     var videoIndex = 0;
     // 首页视频播放模式（后台视频页可设置）：seq 顺序循环 / single 单视频循环 / random 随机
     var videoMode = { mode: 'seq', url: '' };
-    fetch('/api/settings', { credentials: 'same-origin' })
+    fetch('/api/settings?t=' + Date.now(), { credentials: 'same-origin' }) // 时间戳穿透浏览器 60s 缓存：后台改完设置（播放器款式等）下次进页面立即生效，不等缓存过期
       .then(function (r) { return r.ok ? r.json() : null; })
       .then(function (d) {
         if (d && d.ok && d.videoMode) videoMode = d.videoMode;
@@ -8856,7 +8856,7 @@
     }
 
     // 站点默认外观（管理员后台设置）：访客本地没自己选过主题色/背景时才采用
-    fetch('/api/settings', { credentials: 'same-origin' })
+    fetch('/api/settings?t=' + Date.now(), { credentials: 'same-origin' }) // 时间戳穿透浏览器 60s 缓存：后台改完设置（播放器款式等）下次进页面立即生效，不等缓存过期
       .then(function (r) { return r.ok ? r.json() : null; })
       .then(function (d) {
         document.documentElement.classList.remove('ff-boot-hide'); // 有响应就放行首访预藏（off 类由 applyFeatureFlags 按 flags 决定）
@@ -9357,7 +9357,7 @@
 
       // 邮箱功能开关：跟随站点配置（后台未配邮件服务时相关 UI 全部隐藏；
       // 仅站长模式下注册不要邮箱，但找回密码入口保留——服务端只放行站长邮箱）
-      fetch('/api/settings', { credentials: 'same-origin' })
+      fetch('/api/settings?t=' + Date.now(), { credentials: 'same-origin' }) // 时间戳穿透浏览器 60s 缓存：后台改完设置（播放器款式等）下次进页面立即生效，不等缓存过期
         .then(function (r) { return r.ok ? r.json() : null; })
         .then(function (d) {
           var was = gateEmailEnabled;

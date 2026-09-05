@@ -252,6 +252,19 @@
       /* 长内容兜底：横向溢出一律裁掉，不让页面被撑宽（fixed 定位弹层在移动端会随布局视口位移）；
          用 clip 不产生滚动容器，不影响 sticky/fixed 与页面内横向滚动区 */
       overflow-x: clip;
+      /* 顶部暖橙光晕（参考博客站同款观感）：铺在视口顶部 540px、随主题换色。
+         注意必须做成 body 背景的第一层——不能用 body::before z-index:-1（html 自带背景见下，
+         body 的不透明底色属于普通盒背景，绘制在负 z 伪元素之上会把光晕盖没）。
+         设了自定义背景时 body.has-custom-bg 的 background:transparent 整体覆盖，光晕自然消失 */
+      background:
+        radial-gradient(62% 100% at 50% -8%, rgba(204, 116, 66, 0.16), rgba(204, 116, 66, 0) 62%) top center / 100% 540px no-repeat fixed,
+        var(--apple-background);
+    }
+
+    .dark body {
+      background:
+        radial-gradient(62% 100% at 50% -8%, rgba(231, 163, 124, 0.12), rgba(231, 163, 124, 0) 62%) top center / 100% 540px no-repeat fixed,
+        var(--apple-background);
     }
 
     ::selection {

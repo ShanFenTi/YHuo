@@ -1003,21 +1003,22 @@
       background: currentColor;
       opacity: 0.55;
       transform-origin: bottom;
+      /* 与 .mini-eq 同款：动画常驻、play-state 控制启停，暂停冻结当前姿态不弹回；
+         正 delay 让待机态停在基础高度，颜色/透明度走过渡淡出 */
+      transition: background-color 300ms var(--ease-out), opacity 300ms var(--ease-out);
+      animation: lyricEq 0.9s ease-in-out infinite;
+      animation-play-state: paused;
     }
 
-    .lyric-eq i:nth-child(1) { height: 55%; }
-    .lyric-eq i:nth-child(2) { height: 100%; }
-    .lyric-eq i:nth-child(3) { height: 75%; }
+    .lyric-eq i:nth-child(1) { height: 55%; animation-delay: 0.3s; }
+    .lyric-eq i:nth-child(2) { height: 100%; animation-delay: 0.15s; }
+    .lyric-eq i:nth-child(3) { height: 75%; animation-delay: 0.45s; }
 
     .lyric-bar.playing .lyric-eq i {
       background: var(--apple-primary);
       opacity: 1;
-      animation: lyricEq 0.9s ease-in-out infinite;
+      animation-play-state: running;
     }
-
-    .lyric-bar.playing .lyric-eq i:nth-child(1) { animation-delay: -0.3s; }
-    .lyric-bar.playing .lyric-eq i:nth-child(2) { animation-delay: -0.15s; }
-    .lyric-bar.playing .lyric-eq i:nth-child(3) { animation-delay: -0.45s; }
 
     @keyframes lyricEq {
       0%, 100% { transform: scaleY(0.3); }
@@ -1041,6 +1042,8 @@
 
     @media (prefers-reduced-motion: reduce) {
       .lyric-cursor { animation: none; }
+      /* 减少动态效果：律动条不跳动，静止在基础高度 */
+      .mini-eq i, .lyric-eq i { animation: none; }
       /* 系统开了"减少动态效果"：弹窗直接显隐，不做缩放回弹 */
       .sched-editor-panel,
       .sched-editor-overlay.show .sched-editor-panel {
@@ -3038,20 +3041,21 @@
       border-radius: 2px;
       background: var(--apple-muted-foreground);
       transform-origin: bottom;
+      /* 动画常驻、用 play-state 控制启停：暂停冻结在当前姿态，不会瞬间弹回原始高度；
+         正 delay 让未播放过的待机态停在基础高度（动画未启动时显示元素本身样式） */
+      transition: background-color 300ms var(--ease-out);
+      animation: eq 0.9s ease-in-out infinite;
+      animation-play-state: paused;
     }
 
-    .mini-eq i:nth-child(1) { height: 55%; }
-    .mini-eq i:nth-child(2) { height: 100%; }
-    .mini-eq i:nth-child(3) { height: 75%; }
+    .mini-eq i:nth-child(1) { height: 55%; animation-delay: 0.3s; }
+    .mini-eq i:nth-child(2) { height: 100%; animation-delay: 0.15s; }
+    .mini-eq i:nth-child(3) { height: 75%; animation-delay: 0.45s; }
 
     .mini-player.playing .mini-eq i {
       background: var(--apple-primary);
-      animation: eq 0.9s ease-in-out infinite;
+      animation-play-state: running;
     }
-
-    .mini-player.playing .mini-eq i:nth-child(1) { animation-delay: -0.3s; }
-    .mini-player.playing .mini-eq i:nth-child(2) { animation-delay: -0.15s; }
-    .mini-player.playing .mini-eq i:nth-child(3) { animation-delay: -0.45s; }
 
     @keyframes eq {
       0%, 100% { transform: scaleY(0.3); }
@@ -6868,6 +6872,12 @@
     var current = -1;
     // 当前曲目按歌名追踪：列表合并/重排后按下标会错位，先记名再重新定位
     var currentName = null;
+
+    // 歌名展示名：去掉音频格式后缀（播放条/播放列表/搜索显示用）；
+    // tracks[].name 本身保持原名——收藏定位与搜索匹配都靠它，别在数据上剥后缀
+    function musicDisplayName(name) {
+      return String(name || '').replace(/\.(mp3|wav|m4a|flac|ogg|aac|opus)$/i, '');
+    }
     // 上次会话的播放进度（等文件夹扫描完成后尝试接续；读不到文件夹时用于缓存兜底）
     var pendingMeta = null;
 
@@ -6884,7 +6894,7 @@
       currentName = tracks[i].name;
       audio.src = tracks[i].src;
       audio.play().catch(function () {});
-      if (miniTitle) miniTitle.textContent = tracks[i].name;
+      if (miniTitle) miniTitle.textContent = musicDisplayName(tracks[i].name);
       updateMiniCover(); // 迷你播放器封面跟随切歌
       musicLyricsLoad(tracks[i].name, tracks[i].src, tracks[i].lrc); // 歌词横条跟随切歌
       renderPlaylist();
@@ -7201,7 +7211,7 @@
       if (idx < 0) return false;
       current = idx;
       currentName = tracks[idx].name;
-      if (miniTitle) miniTitle.textContent = tracks[idx].name;
+      if (miniTitle) miniTitle.textContent = musicDisplayName(tracks[idx].name);
       updateMiniCover(); // 迷你播放器封面跟随恢复的曲目
       musicLyricsLoad(tracks[idx].name, tracks[idx].src, tracks[idx].lrc); // 歌词横条跟随切歌
       audio.src = tracks[idx].src;
@@ -7274,7 +7284,7 @@
         idx.textContent = String(i + 1).padStart(2, '0');
         var name = document.createElement('span');
         name.className = 'pl-name';
-        name.textContent = t.name;
+        name.textContent = musicDisplayName(t.name);
         li.appendChild(idx);
         li.appendChild(name);
         // 收藏心形：只对站点内路径的曲目显示（本地文件夹的 blob 地址不可收藏）
@@ -7429,7 +7439,7 @@
         currentName = meta.names[meta.current] || null;
         current = 0;
         syncCurrentByName();
-        if (miniTitle) miniTitle.textContent = tracks[current].name;
+        if (miniTitle) miniTitle.textContent = musicDisplayName(tracks[current].name);
           updateMiniCover(); // 迷你播放器封面跟随恢复的曲目
           musicLyricsLoad(tracks[current].name, tracks[current].src, tracks[current].lrc); // 歌词横条跟随切歌
         audio.src = tracks[current].src;
@@ -12321,11 +12331,11 @@
             }, { sub: d.date || '' });
           });
         }
-        // 音乐：按歌名回当前曲库定位播放（与收藏同机制；曲库里没有则禁用）
+        // 音乐：按歌名回当前曲库定位播放（与收藏同机制；曲库里没有则禁用）；展示名去掉格式后缀
         data.music.forEach(function (m) {
           var idx = -1;
           for (var i = 0; i < tracks.length; i++) { if (tracks[i].name === m.name) { idx = i; break; } }
-          push('音乐', '音乐', m.name, function () { playIndex(idx); }, { disabled: idx < 0 });
+          push('音乐', '音乐', musicDisplayName(m.name), function () { playIndex(idx); }, { disabled: idx < 0 });
         });
         // 图片 / 相册 / 视频
         if (!FLAGS_OFF.albumView) {

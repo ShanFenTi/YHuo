@@ -237,6 +237,28 @@
       if (h < 18) return '下午好 🌤️';
       return '晚上好 🌙';
     }
+    function updateClock() {
+      var d = new Date();
+      var s = pad2(d.getSeconds());
+      if (clockHEl) clockHEl.textContent = pad2(d.getHours());
+      if (clockMEl) clockMEl.textContent = pad2(d.getMinutes());
+      if (clockSEl && s !== lastSecond) {
+        clockSEl.textContent = s;
+        if (lastSecond !== null) {
+          // 秒位跳动脉冲
+          clockSEl.classList.remove('tick');
+          void clockSEl.offsetWidth;
+          clockSEl.classList.add('tick');
+        }
+        lastSecond = s;
+      }
+      if (clockDateEl) {
+        clockDateEl.textContent = d.getFullYear() + '.' + pad2(d.getMonth() + 1) + '.' + pad2(d.getDate()) + '  周' + WEEK[d.getDay()];
+      }
+      if (heroGreeting) {
+        heroGreeting.textContent = greetingText(d.getHours());
+      }
+    }
     var heroGreeting = null;
     var lastSecond = null;
     var homeClockTimers = [];

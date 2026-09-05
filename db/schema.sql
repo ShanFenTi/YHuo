@@ -38,6 +38,7 @@ CREATE TABLE IF NOT EXISTS users (
   password_hash TEXT NOT NULL,
   salt          TEXT NOT NULL,
   banned        INTEGER NOT NULL DEFAULT 0,
+  nickname      TEXT NOT NULL DEFAULT '',       -- 昵称（展示名，空 = 用用户名）
   created_at    TEXT NOT NULL DEFAULT (datetime('now'))
 );
 

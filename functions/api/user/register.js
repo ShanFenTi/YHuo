@@ -60,5 +60,5 @@ export async function onRequestPost({ request, env }) {
 
   // 注册完直接登录
   const token = await createUserSession(env, result.meta.last_row_id);
-  return json({ ok: true, username }, 200, { 'Set-Cookie': userCookie(token) });
+  return json({ ok: true, username, nickname: '' }, 200, { 'Set-Cookie': userCookie(token) });
 }

@@ -220,6 +220,10 @@ export async function ensureSchema(env) {
   try {
     await env.DB.prepare("ALTER TABLE users ADD COLUMN twofa_enabled INTEGER NOT NULL DEFAULT 0").run();
   } catch {}
+  // 昵称（展示名，空 = 用用户名；留言板/个人主页/顶栏展示用，登录账号名不变）
+  try {
+    await env.DB.prepare("ALTER TABLE users ADD COLUMN nickname TEXT NOT NULL DEFAULT ''").run();
+  } catch {}
   // 老库补列：AI 历史表加 conv_id（列已存在时报错忽略）
   try {
     await env.DB.prepare("ALTER TABLE ai_chat_history ADD COLUMN conv_id INTEGER NOT NULL DEFAULT 0").run();

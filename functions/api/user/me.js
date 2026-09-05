@@ -8,9 +8,9 @@ export async function onRequestGet({ request, env }) {
     await ensureSchema(env);
     const user = await getUserSession(env, getCookie(request, USER_COOKIE));
     if (user) {
-      // 最后活跃时间：超过 1 小时才刷新一次，避免每次进首页都写库；顺带带出头像键
+      // 最后活跃时间：超过 1 小时才刷新一次，避免每次进首页都写库；顺带带出头像键与昵称
       const row = await env.DB
-        .prepare('SELECT last_seen_at, avatar_key FROM users WHERE id = ?')
+        .prepare('SELECT last_seen_at, avatar_key, nickname FROM users WHERE id = ?')
         .bind(user.userId)
         .first();
       const last = row && row.last_seen_at ? Date.parse(row.last_seen_at.replace(' ', 'T') + 'Z') : 0;
@@ -19,7 +19,7 @@ export async function onRequestGet({ request, env }) {
       }
       // alsoAdmin：同一浏览器还带着有效管理员会话（留言板删除等管理动作据此显示入口）
       const alsoAdmin = await isValidSession(env, getCookie(request, SESSION_COOKIE));
-      return json({ ok: true, authenticated: true, username: user.username, avatar: (row && row.avatar_key) || null, admin: false, alsoAdmin });
+      return json({ ok: true, authenticated: true, username: user.username, nickname: (row && row.nickname) || '', avatar: (row && row.avatar_key) || null, admin: false, alsoAdmin });
     }
     // 前台用户会话没有：识别管理员会话（后台登录后在前台刷新时静默恢复管理员身份与头像）
     if (await isValidSession(env, getCookie(request, SESSION_COOKIE))) {

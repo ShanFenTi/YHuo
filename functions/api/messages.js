@@ -24,7 +24,8 @@ export async function onRequestGet({ request, env }) {
   const url = new URL(request.url);
   const offset = Math.max(0, parseInt(url.searchParams.get('offset') || '0', 10) || 0);
   const res = await env.DB.prepare(
-    'SELECT m.id, m.content, m.created_at, m.is_admin, m.user_id, u.username ' +
+    'SELECT m.id, m.content, m.created_at, m.is_admin, m.user_id, ' +
+    "COALESCE(NULLIF(u.nickname, ''), u.username) AS username " +
     'FROM messages m LEFT JOIN users u ON u.id = m.user_id ' +
     'ORDER BY m.id DESC LIMIT ? OFFSET ?'
   ).bind(PAGE_SIZE + 1, offset).all();

@@ -8,7 +8,7 @@ export async function onRequestGet({ request, env }) {
   const sess = await getUserSession(env, getCookie(request, USER_COOKIE));
   if (sess) {
     const row = await env.DB
-      .prepare('SELECT username, avatar_key, created_at, last_seen_at FROM users WHERE id = ?')
+      .prepare('SELECT username, nickname, avatar_key, created_at, last_seen_at FROM users WHERE id = ?')
       .bind(sess.userId)
       .first();
     if (!row) return json({ ok: false, error: '账号不存在' }, 404);
@@ -16,6 +16,7 @@ export async function onRequestGet({ request, env }) {
       ok: true,
       admin: false,
       username: row.username,
+      nickname: row.nickname || '',
       avatar: row.avatar_key || null,
       created_at: row.created_at || null,
       last_seen_at: row.last_seen_at || null,

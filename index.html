@@ -2740,6 +2740,10 @@
       border-color: var(--apple-primary);
     }
 
+    .profilev-name-row { display: flex; align-items: center; gap: 10px; min-width: 0; }
+    .profilev-name-row .profilev-name { margin: 0; }
+    .profilev-name-row .appear-btn { flex: none; }
+
     .profilev-sec-title {
       font-size: 12px;
       font-weight: 600;
@@ -5109,7 +5113,17 @@
               <span class="profile-avatar-mask" aria-hidden="true">更换</span>
             </div>
             <div class="profile-info">
-              <p class="profilev-name" id="profilevName">—</p>
+              <div class="profilev-name-row">
+                <p class="profilev-name" id="profilevName">—</p>
+                <button class="appear-btn" id="profilevNameEdit" type="button" style="flex:none;">改昵称</button>
+              </div>
+              <div id="profilevNameEditBox" hidden>
+                <input class="profilev-input" id="profilevNameInput" type="text" maxlength="20" placeholder="昵称（1~20 字，留空 = 恢复显示用户名）" style="max-width:280px;margin-bottom:6px;">
+                <div style="display:flex;gap:12px;">
+                  <button class="appear-btn" id="profilevNameSave" type="button">保存</button>
+                  <button class="appear-btn" id="profilevNameCancel" type="button">取消</button>
+                </div>
+              </div>
               <p class="profilev-sub" id="profilevSub">加载中…</p>
             </div>
           </div>
@@ -8332,7 +8346,7 @@
         // 管理员账密验证通过时响应才带 admin:true，据此弹欢迎浮窗（含"进入后台"按钮）；
         // 不能查 /api/auth/status 判断登录身份——它只看浏览器有无管理员会话 Cookie，
         // 浏览器残留后台登录态时普通账号也会被误判（坑 11，欢迎浮窗也曾因此误弹）
-        passGate(d.username || fallbackUser);
+        passGate(d.nickname || d.username || fallbackUser);
         favLoad(); // 拉取该账号的收藏
         setGateMode('login');
         try {
@@ -8419,7 +8433,7 @@
             }, function (d) {
               if (d.ok) {
                 setLoginAvatar(null); // 新注册没有头像
-                passGate(u);
+                passGate(d.nickname || u);
                 favLoad(); // 新账号收藏为空，同时清掉内存里的残留
                 setGateMode('login');
               } else showLoginMsg(d.error);
@@ -8966,6 +8980,64 @@
       });
     }
 
+    // ---- 昵称（身份卡编辑）：展示名优先，登录账号名不变 ----
+    var profileNickname = '';
+    var profileUsername = '';
+    var profileNameEditBtn = document.getElementById('profilevNameEdit');
+    var profileNameEditBox = document.getElementById('profilevNameEditBox');
+    var profileNameInput = document.getElementById('profilevNameInput');
+    var profileNameCancel = document.getElementById('profilevNameCancel');
+    var profileNameSave = document.getElementById('profilevNameSave');
+    function closeNameEdit() {
+      if (profileNameEditBox) profileNameEditBox.hidden = true;
+      if (profileNameEditBtn) profileNameEditBtn.hidden = false;
+    }
+    if (profileNameEditBtn) {
+      profileNameEditBtn.addEventListener('click', function () {
+        profileNameInput.value = profileNickname;
+        profileNameEditBtn.hidden = true;
+        profileNameEditBox.hidden = false;
+        profileNameInput.focus();
+      });
+    }
+    if (profileNameCancel) profileNameCancel.addEventListener('click', closeNameEdit);
+    if (profileNameSave) {
+      profileNameSave.addEventListener('click', function () {
+        var nick = profileNameInput.value.trim().replace(/\s+/g, ' ');
+        var btn = profileNameSave;
+        btn.disabled = true;
+        fetch('/api/user/nickname', {
+          method: 'POST',
+          credentials: 'same-origin',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ nickname: nick })
+        }).then(function (r) { return r.json().catch(function () { return { ok: false, error: '响应异常' }; }); })
+          .then(function (d) {
+            btn.disabled = false;
+            if (!d.ok) { profileNameInput.value = profileNickname; alertProfileName(d.error || '保存失败'); return; }
+            profileNickname = d.nickname || '';
+            var shown = profileNickname || profileUsername || '已登录';
+            try { sessionStorage.setItem('demoLoginName', shown); } catch (e) {}
+            // 顶栏字母与菜单名即时同步（这些元素在别的块里，直接改 DOM）
+            var letterEl = document.getElementById('avatarLetter');
+            var menuLetter = document.getElementById('profileAvatarLetter');
+            var menuName = document.getElementById('profileName');
+            var shown = profileNickname || profileUsername || '已登录';
+            if (letterEl) letterEl.textContent = shown.slice(0, 1).toUpperCase();
+            if (menuLetter) menuLetter.textContent = shown.slice(0, 1).toUpperCase();
+            if (menuName) menuName.textContent = shown;
+            closeNameEdit();
+            if (profilevName) profilevName.textContent = shown;
+          })
+          .catch(function () { btn.disabled = false; alertProfileName('网络错误', true); });
+      });
+    }
+    function alertProfileName(msg, err) {
+      // 昵称表单内联提示：输入框 placeholder 兼职展示（无需额外元素）
+      profileNameInput.placeholder = (err ? '⚠ ' : '') + msg;
+      setTimeout(function () { profileNameInput.placeholder = '昵称（1~20 字，留空 = 恢复显示用户名）'; }, 2500);
+    }
+
     function loadProfileData() {
       fetch('/api/user/profile', { credentials: 'same-origin' })
         .then(function (r) { return r.json().catch(function () { return { ok: false }; }); })
@@ -8979,7 +9051,21 @@
           // 管理员身份：显示管理头像/用户名，隐藏前台专属功能卡（收藏/课表/邮箱/改密/更换头像/签到）
           applyProfileAdminMode(!!d.admin);
           loadCheckin(); // 签到卡：仅前台注册账号（管理员由 applyProfileAdminMode 拦住不拉取）
-          if (profilevName) profilevName.textContent = d.username;
+          // 昵称：展示名优先，登录账号名只作登录用
+          var displayName = d.nickname || d.username;
+          profileNickname = d.nickname || '';
+          profileUsername = d.username || '';
+          if (profilevName) profilevName.textContent = displayName;
+          try {
+            if (!d.admin) sessionStorage.setItem('demoLoginName', displayName); // 顶栏字母/欢迎语取这里
+          } catch (e) {}
+          var letterEl = document.getElementById('avatarLetter');
+          var menuLetter = document.getElementById('profileAvatarLetter');
+          var menuName = document.getElementById('profileName');
+          if (letterEl && !d.avatar) letterEl.textContent = displayName.slice(0, 1).toUpperCase();
+          if (menuLetter && !d.avatar) menuLetter.textContent = displayName.slice(0, 1).toUpperCase();
+          if (menuName && !d.admin) menuName.textContent = displayName;
+          if (profilevName) profilevName.textContent = displayName;
           var sub = '';
           if (d.admin) {
             sub = '管理员账号';
@@ -9018,7 +9104,7 @@
     var profileIsAdmin = false;
     function applyProfileAdminMode(isAdmin) {
       profileIsAdmin = !!isAdmin;
-      var hidden = ['emailCard', 'pwdCard', 'favCard', 'checkinCard'];
+      var hidden = ['emailCard', 'pwdCard', 'favCard', 'checkinCard', 'profilevNameEdit', 'profilevNameEditBox'];
       var shown = ['pwdCard', 'favCard', 'acctCard'];
       var avBtn = document.getElementById('profilevAvatarBtn');
       var avEl = document.getElementById('profilevAvatar');

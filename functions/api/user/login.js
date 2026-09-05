@@ -51,7 +51,7 @@ export async function onRequestPost({ request, env }) {
       return json({ ok: true, admin: true, username: admin.username, avatar: (avAdm && avAdm.value) || null }, 200, { 'Set-Cookie': sessionCookie(token) });
     }
     const u = await env.DB
-      .prepare('SELECT id, username, banned, email FROM users WHERE id = ?')
+      .prepare('SELECT id, username, banned, email, nickname FROM users WHERE id = ?')
       .bind(userId).first();
     if (!u || u.banned) return json({ ok: false, error: '该账号已被禁用' }, 403);
     try {
@@ -66,13 +66,13 @@ export async function onRequestPost({ request, env }) {
     ]);
     const token = await createUserSession(env, u.id);
     const av = await env.DB.prepare('SELECT avatar_key FROM users WHERE id = ?').bind(u.id).first();
-    return json({ ok: true, username: u.username, avatar: (av && av.avatar_key) || null }, 200, { 'Set-Cookie': userCookie(token) });
+    return json({ ok: true, username: u.username, nickname: u.nickname || '', avatar: (av && av.avatar_key) || null }, 200, { 'Set-Cookie': userCookie(token) });
   }
 
   if (!username || !password) return json({ ok: false, error: '请输入用户名和密码' }, 400);
 
   const row = await env.DB
-    .prepare('SELECT id, banned, password_hash, salt, email, email_verified, twofa_enabled FROM users WHERE username = ?')
+    .prepare('SELECT id, banned, password_hash, salt, email, email_verified, twofa_enabled, nickname FROM users WHERE username = ?')
     .bind(username)
     .first();
 
@@ -97,7 +97,7 @@ export async function onRequestPost({ request, env }) {
       ]);
       const token = await createUserSession(env, row.id);
       const av = await env.DB.prepare('SELECT avatar_key FROM users WHERE id = ?').bind(row.id).first();
-      return json({ ok: true, username, avatar: (av && av.avatar_key) || null }, 200, { 'Set-Cookie': userCookie(token) });
+      return json({ ok: true, username, nickname: row.nickname || '', avatar: (av && av.avatar_key) || null }, 200, { 'Set-Cookie': userCookie(token) });
     }
     return json({ ok: false, error: '用户名或密码错误' }, 401);
   }

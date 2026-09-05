@@ -5168,6 +5168,7 @@
               </label>
               <button class="appear-btn" id="schedImportBtn" type="button">导入 WakeUp</button>
               <input type="file" id="schedImportFile" accept=".json,.csv,application/json,text/csv" hidden>
+              <button class="appear-btn" id="schedExportBtn" type="button">导出课表</button>
               <button class="appear-btn" id="schedAddBtn" type="button">＋ 添加课程</button>
             </div>
           </div>
@@ -9683,6 +9684,43 @@
       reader.readAsText(file);
     });
     if (schedAddBtn) schedAddBtn.addEventListener('click', function () { schedOpenEditor(-1); });
+    // 导出课表：纯前端生成 WakeUp 兼容 JSON 下载——本站「导入 WakeUp」可直接导回，
+    // WakeUp App 也认这个格式。weeks 转布尔数组（下标 0 = 第 1 周），step = 节次跨度
+    var schedExportBtn = document.getElementById('schedExportBtn');
+    if (schedExportBtn) schedExportBtn.addEventListener('click', function () {
+      if (!schedData || !schedData.courses || !schedData.courses.length) {
+        showSchedMsg('还没有课程可导出', true); return;
+      }
+      var maxWeek = 1;
+      schedData.courses.forEach(function (c) {
+        (c.weeks && c.weeks.length ? c.weeks : [1]).forEach(function (w) { if (w > maxWeek) maxWeek = w; });
+      });
+      var courses = schedData.courses.map(function (c) {
+        var weeks = [];
+        for (var i = 1; i <= maxWeek; i++) {
+          // 内部 weeks 为空数组 = 每周都上，导出为全 true 才能无损导回
+          weeks.push(!c.weeks || !c.weeks.length || c.weeks.indexOf(i) !== -1);
+        }
+        return {
+          courseName: c.name, roomName: c.place || '', teacherName: c.teacher || '',
+          day: c.day, startNode: c.startNode, endNode: c.endNode,
+          step: Math.max(1, c.endNode - c.startNode + 1), weeks: weeks,
+        };
+      });
+      var out = { courses: courses };
+      if (schedData.termStart) out.termStart = schedData.termStart; // 本站导回时保留学期起始（WakeUp 忽略未知字段）
+      var blob = new Blob([JSON.stringify(out, null, 2)], { type: 'application/json' });
+      var a = document.createElement('a');
+      var pad2 = function (n) { return (n < 10 ? '0' : '') + n; };
+      var now = new Date();
+      a.href = URL.createObjectURL(blob);
+      a.download = 'WakeUp课表导出-' + now.getFullYear() + pad2(now.getMonth() + 1) + pad2(now.getDate()) + '.json';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(function () { URL.revokeObjectURL(a.href); }, 1000);
+      showSchedMsg('已导出 ' + courses.length + ' 门课程（WakeUp JSON，可再导入）');
+    });
     // 点遮罩空白处关闭（点面板内部不关）
     if (schedEditor) schedEditor.addEventListener('click', function (e) {
       if (e.target === schedEditor) schedCloseEditor();

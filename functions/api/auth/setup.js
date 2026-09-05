@@ -27,6 +27,6 @@ export async function onRequestPost({ request, env }) {
     .run();
 
   // 创建完直接登录
-  const token = await createSession(env);
+  const token = await createSession(env, request);
   return json({ ok: true }, 200, { 'Set-Cookie': sessionCookie(token) });
 }

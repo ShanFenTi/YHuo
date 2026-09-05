@@ -727,6 +727,8 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
     <p class="hint">请登录管理后台。</p>
     <input type="text" id="loginUser" placeholder="用户名" autocomplete="username">
     <input type="password" id="loginPass" placeholder="密码" autocomplete="current-password">
+    <!-- 管理员 2FA：开启后密码通过还要输邮箱验证码（此行默认隐藏，needCode 时出现） -->
+    <input type="text" id="loginCode" placeholder="6 位邮箱验证码" inputmode="numeric" maxlength="6" autocomplete="one-time-code" style="display:none">
     <button id="loginBtn">登录</button>
     <!-- 忘记密码：管理员邮箱验证码重置（未绑邮箱/未启用邮件服务时隐藏，由前端拉 /api/settings 判断） -->
     <button id="adminForgotBtn" class="ghost" type="button" style="width:100%;margin-top:8px;display:none">忘记密码？</button>
@@ -1094,6 +1096,33 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
         <p class="meta2" id="meEmailMsg" style="margin:8px 0 0"></p>
       </div>
     </div>
+    <div class="card" id="meSecCard" style="margin-top:16px">
+      <p class="appear-label2" style="margin-top:0">安全 · SECURITY</p>
+
+      <p class="appear-label2">修改密码</p>
+      <input type="password" id="mePwdOld" placeholder="当前密码" autocomplete="current-password" style="max-width:280px">
+      <input type="password" id="mePwdNew" placeholder="新密码（6-100 位）" autocomplete="new-password" style="max-width:280px">
+      <div class="bgset-row" style="margin-top:8px">
+        <button id="mePwdBtn" type="button">修改密码</button>
+      </div>
+      <p class="meta2" id="mePwdMsg" style="margin:8px 0 0">改密后其他设备会被退出登录，当前设备保持不变。</p>
+
+      <p class="appear-label2">登录二次验证（邮箱验证码）</p>
+      <div class="bgset-row">
+        <input type="checkbox" id="me2faOn" style="width:auto;accent-color:var(--fg)">
+        <span class="meta2">登录时向绑定的管理员邮箱发送验证码</span>
+      </div>
+      <p class="meta2" id="me2faMsg" style="margin:8px 0 0"></p>
+
+      <p class="appear-label2">登录设备</p>
+      <div id="meSessions"></div>
+      <div class="bgset-row" style="margin-top:8px">
+        <button id="meRevokeBtn" class="danger" type="button">退出其他设备</button>
+      </div>
+
+      <p class="appear-label2">最近登录（成功与失败，最多 10 条）</p>
+      <div id="meLogins"></div>
+    </div>
   </div>
   <div id="statusPanel" hidden>
     <div class="card" id="stStorageCard" style="margin-top:16px">
@@ -1381,18 +1410,32 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
     }).catch(function () { btn.disabled = false; showMsg($('setupMsg'), '网络错误', 'err'); });
   });
 
+  var loginTicket = ''; // 管理员 2FA 中间票据（needCode 时服务端下发，验码时带回）
   $('loginBtn').addEventListener('click', function () {
     var btn = this; btn.disabled = true;
+    var body = { username: $('loginUser').value, password: $('loginPass').value };
+    if (loginTicket) { body.ticket = loginTicket; body.code = $('loginCode').value.trim(); }
     api('/api/auth/login', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ username: $('loginUser').value, password: $('loginPass').value })
+      body: JSON.stringify(body)
     }).then(function (data) {
       btn.disabled = false;
-      if (data.ok) enterMain();
-      else showMsg($('loginMsg'), data.error || '登录失败', 'err');
+      if (data.ok) { loginTicket = ''; $('loginCode').style.display = 'none'; $('loginBtn').textContent = '登录'; enterMain(); return; }
+      if (data.needCode && data.ticket) {
+        loginTicket = data.ticket;
+        $('loginCode').style.display = '';
+        $('loginCode').value = '';
+        $('loginBtn').textContent = '验证并登录';
+        showMsg($('loginMsg'), data.error || '验证码已发送', 'ok');
+        $('loginCode').focus();
+        return;
+      }
+      showMsg($('loginMsg'), data.error || '登录失败', 'err');
     }).catch(function () { btn.disabled = false; showMsg($('loginMsg'), '网络错误', 'err'); });
   });
+
+  $('loginCode').addEventListener('keydown', function (e) { if (e.key === 'Enter') $('loginBtn').click(); });
 
   $('loginPass').addEventListener('keydown', function (e) { if (e.key === 'Enter') $('loginBtn').click(); });
   $('setupPass2').addEventListener('keydown', function (e) { if (e.key === 'Enter') $('setupBtn').click(); });
@@ -3893,8 +3936,162 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
       $('meEmailCard').hidden = !d.emailEnabled;
       meAdminEmail = d.email || null;
       renderMeEmail();
+      renderSec(d);
     }).catch(function () {});
   }
+
+  // ---- 安全卡：登录设备 / 最近登录 / 改密 / 2FA 开关 ----
+  function fmtShortTime(s) {
+    // created_at 是 UTC 'YYYY-MM-DD HH:MM:SS'，转本地展示（只取到分钟）
+    var d = new Date(String(s || '').replace(' ', 'T') + 'Z');
+    if (isNaN(d.getTime())) return String(s || '');
+    var p = function (n) { return (n < 10 ? '0' : '') + n; };
+    return (d.getMonth() + 1) + '月' + d.getDate() + '日 ' + p(d.getHours()) + ':' + p(d.getMinutes());
+  }
+
+  function renderSec(d) {
+    // 2FA 开关：未启邮件服务 / 未绑邮箱时禁用
+    var two = $('me2faOn');
+    two.checked = !!d.twoFa;
+    two.disabled = !d.emailEnabled || !d.email;
+    $('me2faMsg').textContent = !d.emailEnabled
+      ? '需先在「邮件」页启用邮件服务'
+      : !d.email
+        ? '需先在上方绑定管理员邮箱'
+        : '开启后，后台与前台入口的管理员登录都需输入邮箱验证码。';
+    // 登录设备列表
+    var sess = $('meSessions');
+    sess.textContent = '';
+    (d.sessions || []).forEach(function (s) {
+      var row = document.createElement('div');
+      row.className = 'st-row';
+      var name = document.createElement('span');
+      name.className = 'st-name';
+      name.textContent = s.current ? '本设备' : '其他';
+      if (s.current) { name.style.color = 'var(--ok)'; name.style.fontWeight = '700'; }
+      row.appendChild(name);
+      var mid = document.createElement('span');
+      mid.className = 'meta2';
+      mid.style.flex = '1';
+      mid.style.minWidth = '0';
+      mid.style.overflow = 'hidden';
+      mid.style.textOverflow = 'ellipsis';
+      mid.style.whiteSpace = 'nowrap';
+      mid.textContent = s.ua || '未知设备';
+      mid.title = s.ua || '';
+      row.appendChild(mid);
+      var meta = document.createElement('span');
+      meta.className = 'st-meta';
+      meta.textContent = (s.ip || 'IP 未知') + ' · ' + fmtShortTime(s.created_at);
+      row.appendChild(meta);
+      sess.appendChild(row);
+    });
+    if (!(d.sessions || []).length) {
+      var pe = document.createElement('p');
+      pe.className = 'meta2';
+      pe.textContent = '暂无有效会话';
+      sess.appendChild(pe);
+    }
+    // 最近登录列表
+    var logs = $('meLogins');
+    logs.textContent = '';
+    (d.logins || []).forEach(function (l) {
+      var row = document.createElement('div');
+      row.className = 'st-row';
+      var mark = document.createElement('span');
+      mark.className = 'st-name';
+      mark.textContent = l.ok ? '✓' : '✕';
+      mark.style.color = l.ok ? 'var(--ok)' : 'var(--danger)';
+      mark.style.fontWeight = '700';
+      row.appendChild(mark);
+      var mid = document.createElement('span');
+      mid.className = 'meta2';
+      mid.style.flex = '1';
+      mid.style.minWidth = '0';
+      mid.style.overflow = 'hidden';
+      mid.style.textOverflow = 'ellipsis';
+      mid.style.whiteSpace = 'nowrap';
+      mid.textContent = (l.note ? l.note + ' · ' : '') + (l.ip || '');
+      mid.title = l.ua || '';
+      row.appendChild(mid);
+      var meta = document.createElement('span');
+      meta.className = 'st-meta';
+      meta.textContent = fmtShortTime(l.created_at);
+      row.appendChild(meta);
+      logs.appendChild(row);
+    });
+    if (!(d.logins || []).length) {
+      var p2 = document.createElement('p');
+      p2.className = 'meta2';
+      p2.textContent = '暂无记录（本次上线后开始积累）';
+      logs.appendChild(p2);
+    }
+  }
+
+  function mePwdMsg(text, err) { showMsg($('mePwdMsg'), text, err ? 'err' : 'ok'); }
+
+  $('mePwdBtn').addEventListener('click', function () {
+    var btn = this;
+    var oldP = $('mePwdOld').value;
+    var newP = $('mePwdNew').value;
+    if (!oldP) { mePwdMsg('请输入当前密码', true); return; }
+    if (newP.length < 6) { mePwdMsg('新密码至少 6 位', true); return; }
+    btn.disabled = true;
+    api('/api/admin/me', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'password', oldPassword: oldP, newPassword: newP })
+    }).then(function (d) {
+      btn.disabled = false;
+      if (d.ok) {
+        $('mePwdOld').value = '';
+        $('mePwdNew').value = '';
+        mePwdMsg('密码已修改，其他设备已退出登录。');
+        toast('密码已修改', 'ok');
+        loadMe(); // 刷新设备列表（其他会话已被踢）
+      } else mePwdMsg(d.error || '修改失败', true);
+    }).catch(function () { btn.disabled = false; mePwdMsg('网络错误', true); });
+  });
+
+  $('me2faOn').addEventListener('change', function () {
+    var box = this;
+    var on = box.checked;
+    box.disabled = true;
+    api('/api/admin/me', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: '2fa', enabled: on })
+    }).then(function (d) {
+      box.disabled = false;
+      if (d.ok) {
+        toast(on ? '二次验证已开启，下次登录需输入邮箱验证码' : '二次验证已关闭', 'ok');
+        $('me2faMsg').textContent = on ? '已开启：后台与前台入口的管理员登录都需输入邮箱验证码。' : '已关闭。';
+      } else {
+        box.checked = !on;
+        toast(d.error || '操作失败', 'err');
+      }
+    }).catch(function () { box.disabled = false; box.checked = !on; toast('网络错误', 'err'); });
+  });
+
+  $('meRevokeBtn').addEventListener('click', function () {
+    ask({
+      title: '退出其他设备',
+      msg: '确定退出其他所有设备的登录？当前设备保持登录状态。',
+      okText: '退出',
+      danger: true,
+      cb: function (okVal) {
+        if (!okVal) return;
+        api('/api/admin/me', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'sessions-revoke-others' })
+        }).then(function (d) {
+          if (d.ok) { toast('已退出 ' + (d.revoked || 0) + ' 个其他会话', 'ok'); loadMe(); }
+          else toast(d.error || '操作失败', 'err');
+        }).catch(function () { toast('网络错误', 'err'); });
+      }
+    });
+  });
   $('brandMark').addEventListener('click', function () { switchPage('me'); });
   $('meAvatarUploadBtn').addEventListener('click', function () { $('meAvatarInput').click(); });
   $('meAvatarInput').addEventListener('change', function () {

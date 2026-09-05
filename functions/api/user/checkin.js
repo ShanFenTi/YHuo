@@ -4,17 +4,7 @@
 import { json, getCookie } from '../../lib/util.js';
 import { getUserSession, USER_COOKIE } from '../../lib/auth.js';
 import { ensureSchema } from '../../lib/migrate.js';
-
-// 等级阈值：累计签到天数达到 need 即为对应 Lv；next 计算进度条与剩余天数
-const LEVELS = [
-  { lv: 0, name: '初来乍到', need: 0 },
-  { lv: 1, name: '渐入佳境', need: 5 },
-  { lv: 2, name: '常客', need: 15 },
-  { lv: 3, name: '老朋友', need: 40 },
-  { lv: 4, name: '中坚力量', need: 80 },
-  { lv: 5, name: '镇站之宝', need: 150 },
-  { lv: 6, name: '传奇', need: 300 },
-];
+import { levelOf } from '../../lib/levels.js';
 
 // Workers 跑 UTC，站点按北京时间计天（同 functions/api/visit.js）
 function bjDay(offsetDays) {
@@ -24,23 +14,6 @@ function bjDay(offsetDays) {
 // day 字符串按 UTC 锚定推前一天（'YYYY-MM-DD' 只做日期运算，安全）
 function prevDay(day) {
   return new Date(Date.parse(day + 'T00:00:00Z') - 86400e3).toISOString().slice(0, 10);
-}
-
-function levelOf(total) {
-  let cur = LEVELS[0];
-  let next = null;
-  for (let i = 0; i < LEVELS.length; i++) {
-    if (total >= LEVELS[i].need) cur = LEVELS[i];
-    else if (!next) next = LEVELS[i];
-  }
-  return {
-    lv: cur.lv,
-    name: cur.name,
-    total,
-    prev: cur.need,
-    next: next ? next.need : null,
-    nextName: next ? next.name : null,
-  };
 }
 
 // 签到状态：今天是否已签 / 累计 / 连续 / 近 7 天圆点 / 等级进度

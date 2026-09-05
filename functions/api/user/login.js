@@ -8,6 +8,7 @@ import {
   createUserSession, userCookie,
   createSession, sessionCookie,
   loginKey, loginLockedFor, recordLoginFail, clearLoginFails,
+  logAdminLogin,
 } from '../../lib/auth.js';
 import { ensureSchema } from '../../lib/migrate.js';
 import { verifyCode, issueCode, createLoginPending, consumeLoginPending } from '../../lib/email.js';
@@ -30,6 +31,25 @@ export async function onRequestPost({ request, env }) {
   if (ticket && code) {
     const userId = await consumeLoginPending(env, ticket);
     if (!userId) return json({ ok: false, error: '验证已过期，请重新登录' }, 401);
+    // user_id 为负数 = 管理员票（管理员 id 取负，与 schedule_sent 的 -1 约定同源）
+    if (userId < 0) {
+      const admin = await env.DB
+        .prepare('SELECT id, username FROM admin_users WHERE id = ?')
+        .bind(-userId).first();
+      if (!admin) return json({ ok: false, error: '验证已过期，请重新登录' }, 401);
+      const aeRow = await env.DB.prepare("SELECT value FROM site_settings WHERE key = 'admin_email'").first();
+      try {
+        await verifyCode(env, (aeRow && aeRow.value) || '', 'admin2fa', code);
+      } catch (e) {
+        await logAdminLogin(env, request, 0, '2FA 验证码错误（前台入口）');
+        return json({ ok: false, error: (e && e.message) || '验证码校验失败，请重新登录' }, 400);
+      }
+      await env.DB.prepare('DELETE FROM sessions WHERE expires_at < ?').bind(new Date().toISOString()).run();
+      const token = await createSession(env, request);
+      await logAdminLogin(env, request, 1, '前台入口密码 + 验证码');
+      const avAdm = await env.DB.prepare("SELECT value FROM site_settings WHERE key = 'admin_avatar'").first();
+      return json({ ok: true, admin: true, username: admin.username, avatar: (avAdm && avAdm.value) || null }, 200, { 'Set-Cookie': sessionCookie(token) });
+    }
     const u = await env.DB
       .prepare('SELECT id, username, banned, email FROM users WHERE id = ?')
       .bind(userId).first();
@@ -96,13 +116,31 @@ export async function onRequestPost({ request, env }) {
     }
     if (await verifyPassword(password, admin.salt, admin.password_hash)) {
       await clearLoginFails(env, throttleKey);
+      // 管理员 2FA（与后台登录页同口径）：开启且已绑邮箱 → 发码要求二次验证
+      const t2 = await env.DB.prepare("SELECT value FROM site_settings WHERE key = 'admin_2fa'").first();
+      const ae2 = t2 && t2.value === '1' ? await env.DB.prepare("SELECT value FROM site_settings WHERE key = 'admin_email'").first() : null;
+      if (ae2 && ae2.value) {
+        const pending = await createLoginPending(env, -admin.id);
+        try {
+          await issueCode(env, ae2.value, 'admin2fa');
+        } catch (e) {
+          const msg = String(e && e.message) || '';
+          if (msg.indexOf('发送太频繁') >= 0) {
+            return json({ ok: false, needCode: true, ticket: pending, error: '验证码已发送过，请查收邮箱后输入（约 1 分钟后才能重发）' });
+          }
+          return json({ ok: false, error: msg || '验证码发送失败' }, 500);
+        }
+        return json({ ok: false, needCode: true, ticket: pending, error: '验证码已发送到管理员邮箱' });
+      }
       await env.DB.prepare('DELETE FROM sessions WHERE expires_at < ?').bind(new Date().toISOString()).run();
-      const token = await createSession(env);
+      const token = await createSession(env, request);
+      await logAdminLogin(env, request, 1, '前台入口密码登录');
       // 管理员用前台入口登录：带上后台设置的管理头像（site_settings.admin_avatar 存 KV 键）
       const avRow = await env.DB.prepare("SELECT value FROM site_settings WHERE key = 'admin_avatar'").first();
       return json({ ok: true, admin: true, username: admin.username, avatar: (avRow && avRow.value) || null }, 200, { 'Set-Cookie': sessionCookie(token) });
     }
     await recordLoginFail(env, throttleKey);
+    await logAdminLogin(env, request, 0, '密码错误（前台入口）');
     return json({ ok: false, error: '用户名或密码错误' }, 401);
   }
 

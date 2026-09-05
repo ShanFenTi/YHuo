@@ -17,7 +17,9 @@ export async function onRequestGet({ request, env }) {
       if (!last || Date.now() - last > 3600e3) {
         await env.DB.prepare("UPDATE users SET last_seen_at = datetime('now') WHERE id = ?").bind(user.userId).run();
       }
-      return json({ ok: true, authenticated: true, username: user.username, avatar: (row && row.avatar_key) || null, admin: false });
+      // alsoAdmin：同一浏览器还带着有效管理员会话（留言板删除等管理动作据此显示入口）
+      const alsoAdmin = await isValidSession(env, getCookie(request, SESSION_COOKIE));
+      return json({ ok: true, authenticated: true, username: user.username, avatar: (row && row.avatar_key) || null, admin: false, alsoAdmin });
     }
     // 前台用户会话没有：识别管理员会话（后台登录后在前台刷新时静默恢复管理员身份与头像）
     if (await isValidSession(env, getCookie(request, SESSION_COOKIE))) {

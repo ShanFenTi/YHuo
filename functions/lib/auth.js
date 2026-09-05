@@ -48,11 +48,32 @@ export async function verifyPassword(password, saltHex, hashHex) {
   return timingSafeEqual(h, hashHex);
 }
 
-export async function createSession(env) {
+export async function createSession(env, request) {
   const token = randomHex(32);
   const expires = new Date(Date.now() + SESSION_DAYS * 86400000).toISOString();
-  await env.DB.prepare('INSERT INTO sessions (token, expires_at) VALUES (?, ?)').bind(token, expires).run();
+  // 记录登录来源（「我的」页登录设备列表展示用）；request 缺省（如 setup 初始化）时留空
+  let ip = '';
+  let ua = '';
+  if (request) {
+    ip = request.headers.get('CF-Connecting-IP') || '';
+    ua = String(request.headers.get('User-Agent') || '').slice(0, 180);
+  }
+  await env.DB.prepare('INSERT INTO sessions (token, expires_at, ip, ua) VALUES (?, ?, ?, ?)').bind(token, expires, ip, ua).run();
   return token;
+}
+
+// 管理员登录记录（成功/失败都记）。「我的」页安全卡展示；只留最近 100 条
+export async function logAdminLogin(env, request, ok, note) {
+  try {
+    const ip = request && request.headers ? (request.headers.get('CF-Connecting-IP') || '') : '';
+    const ua = request && request.headers ? String(request.headers.get('User-Agent') || '').slice(0, 180) : '';
+    await env.DB.batch([
+      env.DB.prepare('INSERT INTO admin_login_logs (ok, ip, ua, note) VALUES (?, ?, ?, ?)').bind(ok ? 1 : 0, ip, ua, String(note || '').slice(0, 80)),
+      env.DB.prepare("DELETE FROM admin_login_logs WHERE id < (SELECT COALESCE(MIN(id), 0) FROM (SELECT id FROM admin_login_logs ORDER BY id DESC LIMIT 100))"),
+    ]);
+  } catch (e) {
+    // 日志失败不影响登录主流程
+  }
 }
 
 export async function isValidSession(env, token) {

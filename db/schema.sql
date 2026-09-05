@@ -54,3 +54,20 @@ CREATE TABLE IF NOT EXISTS site_settings (
   key   TEXT PRIMARY KEY,
   value TEXT NOT NULL
 );
+
+-- 前台用户每日签到（北京时间 day；(user_id, day) 主键防同日重复，等级按累计天数接口侧计算）
+CREATE TABLE IF NOT EXISTS checkins (
+  user_id    INTEGER NOT NULL,
+  day        TEXT NOT NULL,
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  PRIMARY KEY (user_id, day)
+);
+
+-- 留言板（is_admin=1 为站长留言 user_id=0；60 秒一条由接口侧限制；等级徽标按 checkins 实时算）
+CREATE TABLE IF NOT EXISTS messages (
+  id         INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id    INTEGER NOT NULL DEFAULT 0,
+  content    TEXT NOT NULL,
+  is_admin   INTEGER NOT NULL DEFAULT 0,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);

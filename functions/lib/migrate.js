@@ -166,6 +166,23 @@ const DDL = [
     created_at TEXT NOT NULL DEFAULT (datetime('now')),
     PRIMARY KEY (user_id, day)
   )`,
+  // 管理员登录记录（成功/失败都记；「我的」页安全卡展示，只留最近 100 条）
+  `CREATE TABLE IF NOT EXISTS admin_login_logs (
+    id         INTEGER PRIMARY KEY AUTOINCREMENT,
+    ok         INTEGER NOT NULL DEFAULT 1,
+    ip         TEXT NOT NULL DEFAULT '',
+    ua         TEXT NOT NULL DEFAULT '',
+    note       TEXT NOT NULL DEFAULT '',
+    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+  )`,
+  // 留言板（前台用户 user_id；is_admin=1 为站长留言 user_id=0；60 秒一条由接口侧限制）
+  `CREATE TABLE IF NOT EXISTS messages (
+    id         INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id    INTEGER NOT NULL DEFAULT 0,
+    content    TEXT NOT NULL,
+    is_admin   INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+  )`,
 ];
 
 // 同一个隔离实例里只跑一次
@@ -206,6 +223,13 @@ export async function ensureSchema(env) {
   // 老库补列：AI 历史表加 conv_id（列已存在时报错忽略）
   try {
     await env.DB.prepare("ALTER TABLE ai_chat_history ADD COLUMN conv_id INTEGER NOT NULL DEFAULT 0").run();
+  } catch {}
+  // 会话表补 ip/ua：「我的」页登录设备列表展示用（老库补列，报错忽略即可）
+  try {
+    await env.DB.prepare("ALTER TABLE sessions ADD COLUMN ip TEXT NOT NULL DEFAULT ''").run();
+  } catch {}
+  try {
+    await env.DB.prepare("ALTER TABLE sessions ADD COLUMN ua TEXT NOT NULL DEFAULT ''").run();
   } catch {}
   // 旧数据迁移：conv_id=0 的孤儿消息归入自动创建的"历史对话"（一次性，幂等）
   try {

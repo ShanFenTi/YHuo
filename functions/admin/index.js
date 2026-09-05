@@ -158,6 +158,7 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
   .accent-row { display: flex; gap: 10px; }
   .accent-dot { width: 34px; height: 34px; border-radius: 50%; border: 3px solid transparent; padding: 0; }
   .accent-dot.active { border-color: var(--fg); }
+  .player-mode-btn.active { border-color: var(--fg); color: var(--fg); }
   .bgset-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
   .bg-preview { width: 160px; height: 90px; object-fit: cover; border-radius: 10px; border: 1px solid var(--border); }
   .meta2 { color: var(--muted); font-size: 13px; }
@@ -934,6 +935,12 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
     <div class="bgset-row" style="margin-top:8px">
       <button id="flagSaveBtn" class="ghost" type="button">保存功能开关</button>
       <span class="meta2">AI 界面跟随「AI」页的全局启用开关，不在这里控制。</span>
+    </div>
+    <p class="appear-label2">底部音乐播放器样式（两种款式共用站内曲库，访客下次进页面生效）</p>
+    <div class="bgset-row">
+      <button id="playerModeMini" class="ghost player-mode-btn" type="button">迷你播放条（原版）</button>
+      <button id="playerModeBlog" class="ghost player-mode-btn" type="button">悬浮播放器（博客款）</button>
+      <button id="playerSaveBtn" class="ghost" type="button">保存播放器设置</button>
     </div>
     <p class="appear-label2">备份</p>
     <div class="bgset-row">
@@ -2867,6 +2874,8 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
           : '当前默认 ' + blur + 'px';
         flagState = d.flags || {};
         renderFlagRows();
+        playerCfg = d.player || playerCfg;
+        renderPlayerMode();
       } else if (d._status === 401) {
         show('login');
       }
@@ -2984,6 +2993,29 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
         flagState = d.flags || payload;
         renderFlagRows();
         toast('功能开关已保存，访客下次进页面生效', 'ok');
+      } else toast(d.error || '保存失败', 'err');
+    }).catch(function () { toast('网络错误', 'err'); });
+  });
+
+  // ---------- 播放器样式（迷你播放条 / 悬浮播放器，共用站内曲库；/api/settings 下发 playerMode） ----------
+  var playerCfg = { mode: 'mini' };
+
+  function renderPlayerMode() {
+    $('playerModeMini').classList.toggle('active', playerCfg.mode !== 'blog');
+    $('playerModeBlog').classList.toggle('active', playerCfg.mode === 'blog');
+  }
+  $('playerModeMini').addEventListener('click', function () { playerCfg.mode = 'mini'; renderPlayerMode(); });
+  $('playerModeBlog').addEventListener('click', function () { playerCfg.mode = 'blog'; renderPlayerMode(); });
+  $('playerSaveBtn').addEventListener('click', function () {
+    api('/api/admin/appearance', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ player: playerCfg })
+    }).then(function (d) {
+      if (d.ok) {
+        playerCfg = d.player || playerCfg;
+        renderPlayerMode();
+        toast('播放器设置已保存，访客下次进页面生效', 'ok');
       } else toast(d.error || '保存失败', 'err');
     }).catch(function () { toast('网络错误', 'err'); });
   });

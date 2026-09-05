@@ -22,6 +22,14 @@ async function readFlags(env) {
   return flags;
 }
 
+// 底部播放器样式：{mode:'mini'|'blog'}（blog=悬浮播放器；两种款式共用站内曲库，无外部音源）
+async function readPlayer(env) {
+  let raw = {};
+  try { raw = JSON.parse((await getSetting(env, 'player_config')) || '{}'); } catch {}
+  if (!raw || typeof raw !== 'object') raw = {};
+  return { mode: raw.mode === 'blog' ? 'blog' : 'mini' };
+}
+
 export async function onRequestGet({ env }) {
   await ensureSchema(env);
   const accent = await getSetting(env, 'accent');
@@ -29,7 +37,8 @@ export async function onRequestGet({ env }) {
   const quotes = await readQuotes(env);
   const blur = await getSetting(env, 'bg_blur');
   const flags = await readFlags(env);
-  return json({ ok: true, accent: accent || null, bg: bg || null, quotes, blur: blur === null ? null : parseInt(blur, 10) || 0, flags });
+  const player = await readPlayer(env);
+  return json({ ok: true, accent: accent || null, bg: bg || null, quotes, blur: blur === null ? null : parseInt(blur, 10) || 0, flags, player });
 }
 
 // 寄语列表：优先读新的 quotes（JSON 数组），旧的单条 quote 自动并入
@@ -67,6 +76,17 @@ export async function onRequestPut({ request, env }) {
         .run();
     }
     return json({ ok: true, flags: await readFlags(env) });
+  }
+  // 播放器样式：mode 仅 mini/blog
+  if (body.player !== undefined) {
+    const p = body.player || {};
+    if (typeof p !== 'object' || Array.isArray(p)) return json({ ok: false, error: 'player 需为对象' }, 400);
+    const clean = { mode: p.mode === 'blog' ? 'blog' : 'mini' };
+    await env.DB
+      .prepare("INSERT INTO site_settings (key, value) VALUES ('player_config', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value")
+      .bind(JSON.stringify(clean))
+      .run();
+    return json({ ok: true, player: clean });
   }
   // 默认背景模糊：0 = 清除设置（恢复默认不模糊）
   if (body.blur !== undefined) {

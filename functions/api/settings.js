@@ -44,6 +44,12 @@ export async function onRequestGet({ env }) {
         for (const k of Object.keys(flags)) if (f[k] === false) flags[k] = false;
       }
     } catch {}
+    // 底部播放器样式：mini=迷你播放条（默认）/ blog=悬浮播放器（两种款式共用站内曲库）
+    let playerMode = 'mini';
+    try {
+      const pc = JSON.parse(map.player_config || 'null');
+      if (pc && typeof pc === 'object' && pc.mode === 'blog') playerMode = 'blog';
+    } catch {}
     return json({
       ok: true,
       accent: map.accent || null,
@@ -54,10 +60,11 @@ export async function onRequestGet({ env }) {
       emailEnabled,
       emailRegister,
       videoMode,
+      playerMode,
       flags,
     }, 200, { 'Cache-Control': 'public, max-age=60' });
   } catch {
     const flags = { tools: true, docs: true, album: true, misc: true, weather: true, lyric: true, video: true };
-    return json({ ok: true, accent: null, background: null, quotes: [], quote: null, blur: null, emailEnabled: false, emailRegister: false, flags }, 200, { 'Cache-Control': 'no-store' });
+    return json({ ok: true, accent: null, background: null, quotes: [], quote: null, blur: null, emailEnabled: false, emailRegister: false, playerMode: 'mini', flags }, 200, { 'Cache-Control': 'no-store' });
   }
 }

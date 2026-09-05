@@ -3,7 +3,7 @@
 import { json } from '../../lib/util.js';
 import { ensureSchema } from '../../lib/migrate.js';
 
-const ACCENTS = ['blue', 'purple', 'pink', 'green', 'orange'];
+const ACCENTS = ['terracotta', 'purple', 'pink', 'green', 'orange'];
 
 // 功能开关白名单（true=显示，缺省开）。ai 不在此列——跟随 AI 页全局开关（site_settings.ai_enabled）
 const FLAG_KEYS = ['tools', 'docs', 'album', 'misc', 'weather', 'lyric', 'video'];
@@ -100,7 +100,7 @@ export async function onRequestPut({ request, env }) {
     await env.DB.prepare("DELETE FROM site_settings WHERE key = 'quote'").run(); // 迁移到新键后清掉旧单条
     return json({ ok: true, quotes: list });
   }
-  // accent 传 null/空 表示恢复站点默认（blue）
+  // accent 传 null/空 表示恢复站点默认（terracotta）
   if (body.accent === null || body.accent === '') {
     await env.DB.prepare('DELETE FROM site_settings WHERE key = ?').bind('accent').run();
     return json({ ok: true, accent: null });

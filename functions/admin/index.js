@@ -2815,7 +2815,7 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
 
   // ---------- 外观设置（站点默认主题色 / 默认背景图） ----------
   var ACCENTS = [
-    { name: 'blue', label: '蓝色', color: '#0a84ff' },
+    { name: 'terracotta', label: '陶土', color: '#b0532b' },
     { name: 'purple', label: '紫色', color: '#8b5cf6' },
     { name: 'pink', label: '粉色', color: '#ec4899' },
     { name: 'green', label: '绿色', color: '#10b981' },

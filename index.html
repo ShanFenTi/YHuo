@@ -105,17 +105,17 @@
       --apple-input: var(--input, var(--border));
       --apple-ring: var(--ring, var(--primary));
 
-      /* Primitive palette */
-      --brand-50: #e8f2ff;
-      --brand-100: #cfe5ff;
-      --brand-200: #9fcbff;
-      --brand-300: #66abff;
-      --brand-400: #2e8dff;
-      --brand-500: #007aff;
-      --brand-600: #0064d6;
-      --brand-700: #004fad;
-      --brand-800: #003b82;
-      --brand-900: #00275a;
+      /* Primitive palette（默认强调色 = 陶土色，取自参考博客站 yyyyolo7a79 的品牌色 #b0532b） */
+      --brand-50: #fdf3ee;
+      --brand-100: #f9e0d4;
+      --brand-200: #f0c0aa;
+      --brand-300: #e09a76;
+      --brand-400: #c96a42;
+      --brand-500: #b0532b;
+      --brand-600: #93421f;
+      --brand-700: #743318;
+      --brand-800: #562512;
+      --brand-900: #3a180b;
 
       --background-50: #ffffff;
       --background-100: #f7f7fa;
@@ -139,28 +139,29 @@
       --text-800: #1d1d1f;
       --text-900: #000000;
 
-      /* Semantic roles - light */
-      --background: var(--background-50);
-      --foreground: var(--text-800);
-      --card: var(--background-50);
-      --card-foreground: var(--text-800);
-      --popover: var(--background-50);
-      --popover-foreground: var(--text-900);
+      /* Semantic roles - light（默认白色主题对齐参考博客站的暖白纸感配色：
+         底 #f8f7f4 / 面 #fff / 文字 #1b1c1e / 次级面 #f0ede6 / 边框 #e6e3da；只覆盖浅色，暗色在 .dark 全量重定义不受影响） */
+      --background: #f8f7f4;
+      --foreground: #1b1c1e;
+      --card: #ffffff;
+      --card-foreground: #1b1c1e;
+      --popover: #ffffff;
+      --popover-foreground: #1b1c1e;
 
       --primary: var(--brand-500);
-      --primary-foreground: var(--background-50);
-      --secondary: var(--background-200);
-      --secondary-foreground: var(--text-800);
-      --muted: var(--background-200);
-      --muted-foreground: var(--text-400);
-      --accent: var(--background-100);
-      --accent-foreground: var(--text-800);
+      --primary-foreground: #ffffff;
+      --secondary: #f0ede6;
+      --secondary-foreground: #1b1c1e;
+      --muted: #f0ede6;
+      --muted-foreground: #5f6166;
+      --accent: #efece4;
+      --accent-foreground: #1b1c1e;
       --destructive: #ff3b30;
       --destructive-foreground: #ffffff;
       --success: #34c759;
       --success-foreground: #ffffff;
-      --border: var(--background-300);
-      --input: var(--background-400);
+      --border: #e6e3da;
+      --input: #d3cfc3;
       --ring: var(--brand-500);
 
       /* Typography */
@@ -5167,7 +5168,7 @@
 
         <p class="appear-label">主题色</p>
         <div class="swatch-row">
-          <button class="swatch active" data-accent="blue" style="--sw: #007aff" type="button" aria-label="蓝色主题"></button>
+          <button class="swatch active" data-accent="terracotta" style="--sw: #b0532b" type="button" aria-label="陶土色主题"></button>
           <button class="swatch" data-accent="purple" style="--sw: #8b5cf6" type="button" aria-label="紫色主题"></button>
           <button class="swatch" data-accent="pink" style="--sw: #ec4899" type="button" aria-label="粉色主题"></button>
           <button class="swatch" data-accent="green" style="--sw: #10b981" type="button" aria-label="绿色主题"></button>
@@ -8021,6 +8022,7 @@
     var bgDimSlider = document.getElementById('bgDim');
 
     function applyAccent(name) {
+      if (name === 'blue') name = 'terracotta'; // 蓝色默认已退役：旧 localStorage/后台存档统一归一到新默认陶土色
       document.documentElement.setAttribute('data-accent', name);
       swatches.forEach(function (b) {
         b.classList.toggle('active', b.getAttribute('data-accent') === name);
@@ -8028,7 +8030,7 @@
     }
     var savedAccent = null;
     try { savedAccent = localStorage.getItem('accent'); } catch (e) {}
-    applyAccent(savedAccent || 'blue');
+    applyAccent(savedAccent || 'terracotta');
     swatches.forEach(function (b) {
       b.addEventListener('click', function () {
         var name = b.getAttribute('data-accent');

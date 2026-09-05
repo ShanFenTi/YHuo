@@ -2960,37 +2960,6 @@
     .ck-day.today:not(.on) i { border-color: var(--apple-primary); color: var(--apple-primary); }
     .ck-loading { font-size: 13px; color: var(--apple-muted-foreground); margin: 0; }
 
-    /* 收藏照片网格：小方图，点击回相册大图 */
-    .fav-photos {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 10px;
-    }
-
-    .fav-photo {
-      width: 108px;
-      height: 108px;
-      padding: 0;
-      border: 1px solid var(--apple-border);
-      border-radius: 12px;
-      overflow: hidden;
-      cursor: pointer;
-      background: var(--apple-secondary, var(--apple-card));
-      transition: transform 180ms var(--ease-out), box-shadow 180ms var(--ease-out);
-    }
-
-    .fav-photo:hover {
-      transform: translateY(-2px) scale(1.03);
-      box-shadow: var(--shadow-md);
-    }
-
-    .fav-photo img {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-      display: block;
-    }
-
     /* 收藏音乐行 */
     .fav-music { list-style: none; margin: 0; padding: 0; }
 
@@ -3517,53 +3486,6 @@
       padding: 24px 0 8px;
     }
 
-    /* ===== Lightbox ===== */
-    .lightbox {
-      position: fixed;
-      inset: 0;
-      z-index: 200;
-      background: rgba(0, 0, 0, 0.85);
-      backdrop-filter: blur(8px);
-      -webkit-backdrop-filter: blur(8px);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      cursor: zoom-out;
-      padding: 5vw;
-      opacity: 0;
-      visibility: hidden;
-      transition: opacity 250ms var(--ease-out), visibility 250ms var(--ease-out);
-    }
-
-    .lightbox.show {
-      opacity: 1;
-      visibility: visible;
-    }
-
-    /* ===== 相册独立界面：顶栏"相册"按钮进入 ===== */
-    .album-view {
-      position: fixed;
-      /* 从顶栏(52px)下方开始，进入相册后顶栏保持可见可导航 */
-      top: 52px;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      z-index: 150; /* 低于灯箱(200)，相册里点图可正常打开大图预览 */
-      display: flex;
-      flex-direction: column;
-      background: color-mix(in srgb, var(--apple-background) 88%, transparent);
-      backdrop-filter: blur(20px);
-      -webkit-backdrop-filter: blur(20px);
-      opacity: 0;
-      visibility: hidden;
-      transition: opacity 250ms var(--ease-out), visibility 250ms var(--ease-out);
-    }
-
-    .album-view.show {
-      opacity: 1;
-      visibility: visible;
-    }
-
     .album-bar {
       display: flex;
       align-items: center;
@@ -3575,11 +3497,6 @@
       transform: translateY(-10px);
       opacity: 0;
       transition: transform 350ms var(--ease-out), opacity 250ms var(--ease-out);
-    }
-
-    .album-view.show .album-bar {
-      transform: none;
-      opacity: 1;
     }
 
     .album-title {
@@ -3616,138 +3533,6 @@
       transform: translateY(28px);
       opacity: 0;
       transition: transform 400ms var(--ease-out) 60ms, opacity 300ms var(--ease-out) 60ms;
-    }
-
-    .album-view.show .album-scroll {
-      transform: none;
-      opacity: 1;
-    }
-
-    /* 相册卡片占满整行（主页半宽卡片的样式不带入相册） */
-    .album-view .gallery-card {
-      width: 100%;
-      min-width: 0;
-    }
-
-    /* ===== 相册三层结构：牌堆封面 → 点击展开 → 照片墙 → 灯箱 ===== */
-    .album-list {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 28px;
-      user-select: none;
-    }
-    @media (max-width: 1024px) { .album-list { grid-template-columns: repeat(2, 1fr); } }
-    @media (max-width: 640px)  { .album-list { grid-template-columns: 1fr; } }
-
-    .album-entry {
-      border-radius: calc(var(--radius) - 2px);
-      cursor: pointer;
-      transition: opacity .35s var(--ease-out), transform .35s var(--ease-out);
-    }
-    .album-entry.expanded { grid-column: 1 / -1; cursor: default; }
-    /* 展开某个相册时，其它相册缩小退场 */
-    .album-list.has-expanded .album-entry:not(.expanded) { opacity: 0; transform: scale(.92); pointer-events: none; }
-    .album-list.has-expanded .album-entry:not(.expanded).gone { display: none; }
-
-    /* 牌堆封面：三张微旋转叠放，悬停/展开时扇形张开 */
-    .album-cover { padding: 22px 16px 8px; text-align: center; }
-    .album-stack { position: relative; height: 176px; max-width: 240px; margin: 0 auto; }
-    .stack-photo {
-      position: absolute; inset: 0;
-      transform-origin: center;
-      transition: transform .5s var(--spring), opacity .35s ease;
-      will-change: transform;
-    }
-    .stack-photo .img-wrap {
-      position: relative;
-      width: 100%; height: 100%;
-      border-radius: 10px; overflow: hidden;
-      border: 6px solid var(--apple-card);
-      box-shadow: var(--shadow-md);
-      background: var(--apple-card);
-    }
-    /* 两张图叠在一起做交叉淡入淡出（幻灯片式换图，不做位移避免割裂感） */
-    .stack-photo .img-wrap img {
-      position: absolute; inset: 0;
-      width: 100%; height: 100%; object-fit: cover; display: block;
-      transition: opacity .7s ease;
-    }
-    .stack-photo .img-wrap img.under { opacity: 0; }
-    .stack-photo:nth-child(1) { transform: rotate(-4deg) translateY(0)    scale(1);    z-index: 1; }
-    .stack-photo:nth-child(2) { transform: rotate(0deg)  translateY(12px) scale(.96); z-index: 2; }
-    .stack-photo:nth-child(3) { transform: rotate(3deg)  translateY(24px) scale(.92); z-index: 3; }
-    .album-entry:hover .stack-photo:nth-child(1),
-    .album-entry.expanded .stack-photo:nth-child(1) { transform: rotate(-12deg) translateY(-4px)  scale(.95); }
-    .album-entry:hover .stack-photo:nth-child(2),
-    .album-entry.expanded .stack-photo:nth-child(2) { transform: rotate(0deg)   translateY(-10px) scale(1); }
-    .album-entry:hover .stack-photo:nth-child(3),
-    .album-entry.expanded .stack-photo:nth-child(3) { transform: rotate(12deg)  translateY(-4px)  scale(.95); }
-
-    .album-count-badge {
-      position: absolute; bottom: -6px; right: 0; z-index: 4;
-      padding: 3px 12px; border-radius: 999px;
-      background: var(--apple-primary); color: var(--apple-primary-foreground);
-      font-size: 11px; font-weight: 700;
-      box-shadow: var(--shadow-md);
-    }
-
-    .album-info { margin-top: 20px; padding-bottom: 6px; }
-    .album-info h3 { font-size: 17px; font-weight: 700; }
-    .album-info p { font-size: 12px; color: var(--apple-muted-foreground); margin-top: 4px; letter-spacing: .05em; }
-
-    /* 照片墙：max-height 0 → 撑开 */
-    .album-photos {
-      overflow: hidden;
-      max-height: 0; opacity: 0;
-      transition: max-height .45s var(--ease-out), opacity .4s ease;
-    }
-    .album-entry.expanded .album-photos { max-height: 4000px; opacity: 1; }
-    .album-photos-inner { padding: 4px 22px 24px; }
-    .wall {
-      display: grid;
-      grid-template-columns: repeat(var(--cols, 3), 1fr);
-      gap: 26px 24px;
-      padding-top: 14px;
-    }
-
-    /* 拍立得照片卡：白框 + 随机倾斜 + 错落入场 + spring 回正 */
-    .wall-item {
-      position: relative;
-      cursor: zoom-in;
-      opacity: 0;
-      /* 入场前：下移 30px、双倍倾斜；入场后由 .in 归位 */
-      transform: translateY(var(--ey, 30px)) rotate(var(--er, calc(var(--tilt, 0deg) * 2))) scale(var(--es, 1))
-        perspective(700px) rotateX(var(--ix, 0deg)) rotateY(var(--iy, 0deg));
-      transform-origin: center;
-      transition: transform .6s var(--ease-out), opacity .6s ease;
-      transition-delay: var(--d, 0s);
-    }
-    .wall-item.in {
-      --ey: 0px; --er: var(--tilt, 0deg); --es: 1;
-      opacity: 1;
-    }
-    /* 悬停 spring 回正 + 微放大（transition-delay 归零才跟手） */
-    .wall-item.in:hover {
-      --er: 0deg; --es: 1.03;
-      transition: transform .45s var(--spring);
-      transition-delay: 0s;
-      z-index: 10;
-    }
-    .wall-item .frame {
-      background: var(--apple-card);
-      padding: 8px 8px 26px;
-      border-radius: 3px;
-      box-shadow: var(--shadow-md);
-      transition: box-shadow .3s ease;
-    }
-    .wall-item:hover .frame { box-shadow: var(--shadow-xl); }
-    .wall-item .img-wrap { overflow: hidden; border-radius: 2px; aspect-ratio: 4 / 3; }
-    .wall-item .img-wrap.portrait { aspect-ratio: 4 / 5; }
-    .wall-item img { width: 100%; height: 100%; object-fit: cover; display: block; }
-
-    /* 顶栏"相册"入口：复用导航链接外观，按钮需要显式继承字体 */
-    .album-entry {
-      font-family: inherit;
     }
 
     /* ===== 背景图选择器：从站内图片中挑选 ===== */
@@ -3826,70 +3611,6 @@
       align-items: center;
       justify-content: space-between;
       margin-top: 14px;
-    }
-
-    .lightbox[hidden] {
-      display: none;
-    }
-
-    .lightbox img {
-      max-width: 100%;
-      max-height: 90vh;
-      border-radius: calc(var(--radius) * 0.8);
-      box-shadow: var(--shadow-2xl);
-      transform: scale(0.95);
-      transition: transform 300ms var(--ease-out);
-    }
-
-    .lightbox.show img {
-      transform: scale(1);
-    }
-
-    /* 灯箱左右翻页按钮 + 张数指示 */
-    .lb-nav {
-      position: absolute;
-      top: 50%;
-      width: 44px;
-      height: 44px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      border: none;
-      border-radius: 999px;
-      background: rgba(255, 255, 255, 0.15);
-      color: #ffffff;
-      cursor: pointer;
-      -webkit-backdrop-filter: blur(8px);
-      backdrop-filter: blur(8px);
-      transition: background-color 180ms var(--ease-out), transform 180ms var(--ease-out);
-    }
-
-    .lb-nav:hover {
-      background: rgba(255, 255, 255, 0.3);
-      transform: translateY(-50%) scale(1.08);
-    }
-
-    .lb-prev {
-      left: 24px;
-    }
-
-    .lb-next {
-      right: 24px;
-    }
-
-    .lb-nav[hidden] {
-      display: none;
-    }
-
-    .lb-counter {
-      position: absolute;
-      bottom: 22px;
-      left: 50%;
-      transform: translateX(-50%);
-      font-family: var(--font-mono);
-      font-size: 13px;
-      letter-spacing: 0.15em;
-      color: rgba(255, 255, 255, 0.8);
     }
 
     /* ===== Footer ===== */
@@ -4493,10 +4214,6 @@
         font-size: 12px;
       }
 
-      .album-view {
-        top: 50px;
-      }
-
       .page-main {
         padding: 0 4vw;
       }
@@ -4873,11 +4590,11 @@
     }
   /* 功能开关首屏预隐藏：类由 head 内联脚本按 localStorage 缓存在渲染前打上（无闪现），
      applyFeatureFlags / fetchAiConfig 拉到最新配置后会增删同样的类做校正 */
-  .ff-tools-off #toolsBtn, .ff-docs-off #docsBtn, .ff-album-off #albumBtn,
+  .ff-tools-off #toolsBtn, .ff-docs-off #docsBtn,
   .ff-misc-off #miscBtn, .ff-ai-off #aiBtn { display: none !important; }
   .ff-video-off .video-box { display: none !important; }
   /* 首访无缓存：可选功能先藏（默认先藏、配置到了再放行；接口失败或超时兜底放行） */
-  .ff-boot-hide #toolsBtn, .ff-boot-hide #docsBtn, .ff-boot-hide #albumBtn,
+  .ff-boot-hide #toolsBtn, .ff-boot-hide #docsBtn,
   .ff-boot-hide #miscBtn, .ff-boot-hide .video-box { display: none !important; }
   .ff-ai-boot-hide #aiBtn { display: none !important; }
     /* ===== 悬浮音乐播放器（参考博客站款，后台「外观」可选替换迷你播放条） =====
@@ -5470,8 +5187,7 @@
         _hasFlags = true;
         if (_ff.tools === false) _fc.add('ff-tools-off');
         if (_ff.docs === false) _fc.add('ff-docs-off');
-        if (_ff.album === false) _fc.add('ff-album-off');
-        if (_ff.misc === false) _fc.add('ff-misc-off');
+          if (_ff.misc === false) _fc.add('ff-misc-off');
         if (_ff.video === false) _fc.add('ff-video-off');
       }
       var _ai = localStorage.getItem('yhuoAiOff');
@@ -5503,7 +5219,6 @@
         <button class="nav-link" id="toolsBtn" type="button" aria-haspopup="dialog" aria-controls="toolsView">工具</button>
         <button class="nav-link" id="docsBtn" type="button" aria-haspopup="dialog" aria-controls="docsView">文档</button>
         <button class="nav-link ai-entry" id="aiBtn" type="button" aria-haspopup="dialog" aria-controls="aiView">AI</button>
-        <button class="nav-link album-entry" id="albumBtn" type="button" aria-haspopup="dialog" aria-controls="albumView">相册</button>
         <button class="nav-link" id="miscBtn" type="button" aria-haspopup="dialog" aria-controls="miscView">杂项</button>
         <button class="nav-link" id="boardBtn" type="button" aria-haspopup="dialog" aria-controls="boardView">留言</button>
       </nav>
@@ -5954,40 +5669,6 @@
     </div>
   </div>
 
-  <!-- 灯箱大图预览 -->
-  <div class="lightbox" id="lightbox" hidden role="dialog" aria-modal="true" aria-label="图片预览">
-    <img id="lightboxImg" alt="大图预览">
-    <button class="lb-fav" id="lbFav" type="button" aria-label="收藏这张照片" aria-pressed="false">
-      <svg width="18" height="18" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
-    </button>
-    <button class="lb-nav lb-prev" id="lbPrev" type="button" aria-label="上一张">
-      <svg class="svg-icon" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg>
-    </button>
-    <button class="lb-nav lb-next" id="lbNext" type="button" aria-label="下一张">
-      <svg class="svg-icon" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>
-    </button>
-    <span class="lb-counter" id="lbCounter"></span>
-  </div>
-
-  <!-- 相册独立界面：顶栏"相册"按钮进入，Esc 或右上角按钮退出；点图片打开大图预览 -->
-  <div class="album-view" id="albumView" hidden role="dialog" aria-modal="true" aria-label="相册">
-    <header class="album-bar">
-      <p class="album-title">相册 · ALBUM</p>
-      <button class="album-close" id="albumCloseBtn" type="button" aria-label="关闭相册">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>
-      </button>
-    </header>
-    <div class="album-scroll">
-      <div class="apple-card gallery-card">
-        <div class="card-padding">
-          <p class="card-eyebrow">图片 · IMAGES</p>
-          <div class="album-list" id="albumList"></div>
-          <p class="empty-hint" id="albumEmpty" hidden>images 文件夹里还没有图片，放入后刷新即可显示。</p>
-        </div>
-      </div>
-    </div>
-  </div>
-
   <!-- 个人主页界面：头像下拉菜单"我的主页"进入，Esc 或右上角按钮退出 -->
   <div class="profile-view" id="profileView" hidden role="dialog" aria-modal="true" aria-label="个人主页">
     <header class="album-bar">
@@ -6164,11 +5845,9 @@
       <div class="apple-card" id="favCard">
         <div class="card-padding">
           <p class="card-eyebrow">我的收藏 · FAVORITES</p>
-          <p class="profilev-sec-title">照片</p>
-          <div class="fav-photos" id="favPhotos"></div>
           <p class="profilev-sec-title">音乐</p>
           <ul class="fav-music" id="favMusic"></ul>
-          <p class="empty-hint" id="favEmpty" hidden>还没有收藏。相册大图右上角的 ♥ 收藏照片，播放列表里的 ♥ 收藏音乐。</p>
+          <p class="empty-hint" id="favEmpty" hidden>还没有收藏。播放列表里的 ♥ 可以收藏音乐。</p>
         </div>
       </div>
     </div>
@@ -6549,7 +6228,7 @@
       var id = current ? current.id : '';
       // 全屏界面打开期间高亮由各自的 open 函数接管，滚动监听不抢回
       if (
-        (albumView && !albumView.hidden) || (aiView && !aiView.hidden) ||
+        (aiView && !aiView.hidden) ||
         (toolsView && !toolsView.hidden) || (docsView && !docsView.hidden) ||
         (miscView && !miscView.hidden)
       ) return;
@@ -6573,7 +6252,7 @@
     // fsRegister 一次 + open 函数开头调 fsOpen(id)，不再需要任何互斥清单。
     // FS_TOP：顶层互斥组；docViewer 叠在 docsView 上（Esc 逐层退），不参与互斥但会被其他层关闭。
     // =========================
-    var FS_TOP = ['profileView', 'albumView', 'toolsView', 'docsView', 'aiView', 'miscView', 'boardView'];
+    var FS_TOP = ['profileView', 'toolsView', 'docsView', 'aiView', 'miscView', 'boardView'];
     var FS_ALL = FS_TOP.concat(['docViewer']);
     var FS_REG = {}; // id → { el, btn, close, lockScroll }
     function fsRegister(id, opts) { FS_REG[id] = opts || {}; }
@@ -6655,8 +6334,8 @@
     // 仅路由顶层界面；docViewer（文档阅读层）与个人主页不参与。#home 等普通锚点仍走原生锚点（视为"回到首页"）。
     // 兼容：旧链接的 #/tools 形式自动归一化成 /tools（不产生多余历史记录）。
     // =========================
-    var FS_ROUTE = { toolsView: 'tools', docsView: 'docs', aiView: 'ai', albumView: 'album', miscView: 'misc', boardView: 'board' };
-    var FS_TITLES = { toolsView: '工具合集', docsView: '文档', aiView: 'AI 助手', albumView: '相册', miscView: '杂项', boardView: '留言板' };
+    var FS_ROUTE = { toolsView: 'tools', docsView: 'docs', aiView: 'ai', miscView: 'misc', boardView: 'board' };
+    var FS_TITLES = { toolsView: '工具合集', docsView: '文档', aiView: 'AI 助手', miscView: '杂项', boardView: '留言板' };
     var BASE_TITLE = document.title;
     function routePathFor(id) { return FS_ROUTE[id] ? '/' + FS_ROUTE[id] : ''; }
     function idForPath(p) {
@@ -6725,7 +6404,6 @@
       FLAGS_OFF = {
         toolsView: flags.tools === false,
         docsView: flags.docs === false,
-        albumView: flags.album === false,
         miscView: flags.misc === false,
         weather: flags.weather === false,
         lyric: flags.lyric === false,
@@ -6736,7 +6414,6 @@
       window.__FF_CACHE = flags; // 同步缓存镜像刷新为最新值（启动期代码判断用）
       fc.toggle('ff-tools-off', FLAGS_OFF.toolsView);
       fc.toggle('ff-docs-off', FLAGS_OFF.docsView);
-      fc.toggle('ff-album-off', FLAGS_OFF.albumView);
       fc.toggle('ff-misc-off', FLAGS_OFF.miscView);
       fc.toggle('ff-video-off', FLAGS_OFF.video);
       try { localStorage.setItem('yhuoFlags', JSON.stringify(flags)); } catch (e) {}
@@ -7150,62 +6827,11 @@
         galleryCard.addEventListener('mouseleave', resetCardMouse);
       }
 
-      var lbPrev = document.getElementById('lbPrev');
-      var lbNext = document.getElementById('lbNext');
-      var lbCounter = document.getElementById('lbCounter');
-      var lbFav = document.getElementById('lbFav');
-      var lightboxIndex = 0;
-
-      function updateLbCounter() {
-        var many = loadedImgs.length > 1;
-        if (lbCounter) lbCounter.textContent = many ? (lightboxIndex + 1) + ' / ' + loadedImgs.length : '';
-        if (lbPrev) lbPrev.hidden = !many;
-        if (lbNext) lbNext.hidden = !many;
-      }
-
-      // 收藏心形：状态存在 IIFE 级的 favSet（键=站点内路径），这里只读
-      function currentLbPath() {
-        var img = loadedImgs[lightboxIndex];
-        if (!img) return null;
-        try { return new URL(img.src, location.href).pathname; } catch (e) { return null; }
-      }
-
-      function updateLbFav() {
-        if (!lbFav) return;
-        var p = currentLbPath();
-        var on = !!(p && favHas(p));
-        lbFav.classList.toggle('faved', on);
-        lbFav.setAttribute('aria-pressed', on ? 'true' : 'false');
-      }
-
-      function openLightbox(index) {
-        if (!loadedImgs.length) return;
-        lightboxIndex = index;
-        lightboxImg.src = loadedImgs[lightboxIndex].src;
-        updateLbCounter();
-        updateLbFav();
-        lightbox.hidden = false;
-        // 触发重排以启用过渡动画
-        void lightbox.offsetWidth;
-        lightbox.classList.add('show');
-      }
-
-      function lbStep(delta) {
-        if (loadedImgs.length < 2) return;
-        lightboxIndex = (lightboxIndex + delta + loadedImgs.length) % loadedImgs.length;
-        lightboxImg.src = loadedImgs[lightboxIndex].src;
-        updateLbCounter();
-        updateLbFav();
-      }
-
       function addGalleryImg(img, n) {
         // 每张图带一点确定性倾斜/抖动，保留照片随手摆放的感觉
         img.style.setProperty('--tilt', (((n * 47) % 17) - 8) + 'deg');
         img.style.setProperty('--jx', (((n * 29) % 21) - 10) + 'px');
         img.style.setProperty('--jy', (((n * 13) % 15) - 7) + 'px');
-        img.addEventListener('click', function () {
-          openAlbum(); // 点击当前照片：展开所有图片平铺浏览（与"相册"按钮一致）
-        });
         loadedImgs.push(img);
         gallery.appendChild(img);
         layoutGallery();
@@ -7240,7 +6866,6 @@
         apiPart.forEach(function (m, i) {
           var img = new Image();
           img.alt = m.name;
-          img.dataset.album = m.album || ''; // 相册归属，相册界面分组用
           img.onload = function () {
             addGalleryImg(img, i + 1);
           };
@@ -7251,400 +6876,14 @@
           tryImage(n, 0);
         });
       }
-      // 功能开关：杂项和相册都关了就一张图都不加载（相册照片墙与画廊共用这批图，只关其一时仍属正当展示）。
-      // 画廊跑得比 settings 早：先看 head 内联脚本同步存的 window.__FF_CACHE，配置到达后经 FF_APPLY_HOOKS 校正补加载。
-      // 首访（无任何缓存）无从得知开关，与首屏"先藏后放"同一取舍。
-      var galleryStarted = false;
-      var pendingApiImages = null;
       function galleryGated() {
-        // settings 已应用过：以实时 flags 为准（misc 与 album 都关才不加载）
-        if (FLAGS_OFF.miscView !== undefined) return FLAGS_OFF.miscView && FLAGS_OFF.albumView;
-        // 尚未应用（启动早期）：按 head 内联脚本存的同步缓存决定
+        // 相册界面已移除：画廊只看杂项开关（settings 已应用过以实时 flags 为准）
+        if (FLAGS_OFF.miscView !== undefined) return FLAGS_OFF.miscView;
+        // 画廊跑得比 settings 早：先看 head 内联脚本同步存的 window.__FF_CACHE，配置到达后经 FF_APPLY_HOOKS 校正补加载
         var c = window.__FF_CACHE;
-        return !!(c && c.misc === false && c.album === false);
-      }
-      function startGalleryIfAllowed(apiImages) {
-        pendingApiImages = apiImages || null;
-        if (galleryStarted || galleryGated()) return;
-        galleryStarted = true;
-        startGallery(pendingApiImages);
-      }
-      FF_APPLY_HOOKS.push(function () { startGalleryIfAllowed(pendingApiImages); });
-      fetch('/api/playlist', { credentials: 'same-origin' })
-        .then(function (res) { return res.ok ? res.json() : Promise.reject(new Error('无后台接口')); })
-        .then(function (data) {
-          startGalleryIfAllowed(data && data.ok ? data.images : null);
-        })
-        .catch(function () { startGalleryIfAllowed(null); });
-
-      function imgDone() {
-        imgPending--;
-        if (imgPending === 0 && gallery.children.length === 0) {
-          galleryEmpty.hidden = false;
-        }
+        return !!(c && c.misc === false);
       }
 
-      // 灯箱关闭（点按钮不关闭，点遮罩或大图关闭）
-      function closeLightbox() {
-        lightbox.classList.remove('show');
-        setTimeout(function () {
-          lightbox.hidden = true;
-        }, 250);
-      }
-
-      lightbox.addEventListener('click', closeLightbox);
-      if (lbFav) {
-        lbFav.addEventListener('click', function (e) {
-          e.stopPropagation();
-          var p = currentLbPath();
-          if (!p) return;
-          var img = loadedImgs[lightboxIndex];
-          favToggle('image', p, img.alt || '', updateLbFav);
-        });
-      }
-      // 收藏集合变化（可在别处增删）时同步心形；个人主页点收藏照片 → 回相册打开大图
-      document.addEventListener('yhuo:favs-changed', updateLbFav);
-      document.addEventListener('yhuo:open-photo', function (e) {
-        var url = e && e.detail;
-        if (!url) return;
-        var idx = -1;
-        for (var i = 0; i < loadedImgs.length; i++) {
-          try {
-            if (new URL(loadedImgs[i].src, location.href).pathname === url) { idx = i; break; }
-          } catch (err) {}
-        }
-        if (idx >= 0) {
-          openAlbum();
-          openLightbox(idx);
-        }
-      });
-      if (lbPrev) {
-        lbPrev.addEventListener('click', function (e) {
-          e.stopPropagation();
-          lbStep(-1);
-        });
-      }
-      if (lbNext) {
-        lbNext.addEventListener('click', function (e) {
-          e.stopPropagation();
-          lbStep(1);
-        });
-      }
-      document.addEventListener('keydown', function (e) {
-        if (lightbox.hidden) return;
-        if (e.key === 'Escape') {
-          closeLightbox();
-        } else if (e.key === 'ArrowLeft') {
-          lbStep(-1);
-        } else if (e.key === 'ArrowRight') {
-          lbStep(1);
-        }
-      });
-
-      // =========================
-      // 相册独立界面：顶栏"相册"按钮进入；复用上面已加载的图片（克隆节点，外观与主页画廊一致）
-      // =========================
-      var albumView = document.getElementById('albumView');
-      var albumList = document.getElementById('albumList');
-      var albumBtn = document.getElementById('albumBtn');
-      var albumCloseBtn = document.getElementById('albumCloseBtn');
-      var albumEmpty = document.getElementById('albumEmpty');
-
-      // =========================
-      // 相册三层结构：牌堆封面 → 点击展开照片墙 → 灯箱
-      // 按 img.dataset.album 分组（后台里配置的相册），未分组的归入第一组；
-      // 没有任何相册时整站只有一个"全部照片"
-      // =========================
-      function albumGroups() {
-        var groups = [];
-        var byName = {};
-        var ungrouped = null;
-        loadedImgs.forEach(function (img) {
-          var a = (img.dataset && img.dataset.album) ? img.dataset.album : '';
-          if (!a) {
-            if (!ungrouped) {
-              ungrouped = { title: '', imgs: [] };
-              groups.unshift(ungrouped); // 未分组的排最前（与后台清单优先的口径一致）
-            }
-            ungrouped.imgs.push(img);
-          } else {
-            if (!byName[a]) {
-              byName[a] = { title: a, imgs: [] };
-              groups.push(byName[a]);
-            }
-            byName[a].imgs.push(img);
-          }
-        });
-        if (!groups.length) groups.push({ title: '全部照片', imgs: loadedImgs });
-        if (ungrouped) ungrouped.title = groups.length > 1 ? '未分组' : '全部照片';
-        return groups;
-      }
-
-      function wallCols(w) {
-        return Math.max(1, Math.min(4, Math.round(w / 320)));
-      }
-
-      function layoutAlbums() {
-        albumList.querySelectorAll('.wall').forEach(function (wall) {
-          wall.style.setProperty('--cols', wallCols(wall.clientWidth || 800));
-        });
-      }
-      window.addEventListener('resize', layoutAlbums);
-
-      // 随机角度沿用主页写入的 --tilt；克隆会丢内联样式，这里显式带过去
-      function tiltOf(img, i) {
-        return img.style.getPropertyValue('--tilt') || (((i * 47) % 17) - 8) + 'deg';
-      }
-
-      // 封面幻灯片轮播的定时器，重渲染/关闭相册时统一清掉
-      var albumTimers = [];
-      function stopAlbumCycles() {
-        albumTimers.forEach(function (t) { clearInterval(t); });
-        albumTimers = [];
-      }
-
-      function renderAlbums() {
-        stopAlbumCycles();
-        albumList.innerHTML = '';
-        albumGroups().forEach(function (group) {
-          var entry = document.createElement('div');
-          entry.className = 'album-entry';
-
-          // 牌堆封面：前 3 张微旋转叠放 + 数量徽章，悬停扇形张开
-          var cover = document.createElement('div');
-          cover.className = 'album-cover';
-          var stack = document.createElement('div');
-          stack.className = 'album-stack';
-          group.imgs.slice(0, 3).forEach(function (img) {
-            var photo = document.createElement('div');
-            photo.className = 'stack-photo';
-            var wrap = document.createElement('div');
-            wrap.className = 'img-wrap';
-            var clone = img.cloneNode(false);
-            clone.className = '';
-            clone.removeAttribute('style'); // 主页的倾斜/牌堆类不带入封面
-            wrap.appendChild(clone);
-            photo.appendChild(wrap);
-            stack.appendChild(photo);
-          });
-          var badge = document.createElement('div');
-          badge.className = 'album-count-badge';
-          badge.textContent = group.imgs.length + ' 张';
-          stack.appendChild(badge);
-          var info = document.createElement('div');
-          info.className = 'album-info';
-          var h3 = document.createElement('h3');
-          h3.textContent = group.title;
-          var p = document.createElement('p');
-          p.textContent = '点击展开照片墙';
-          info.appendChild(h3);
-          info.appendChild(p);
-          cover.appendChild(stack);
-          cover.appendChild(info);
-
-          // 照片墙：白框拍立得卡
-          var photos = document.createElement('div');
-          photos.className = 'album-photos';
-          var inner = document.createElement('div');
-          inner.className = 'album-photos-inner';
-          var wall = document.createElement('div');
-          wall.className = 'wall';
-          group.imgs.forEach(function (img) {
-            var item = document.createElement('div');
-            item.className = 'wall-item';
-            item.style.setProperty('--tilt', tiltOf(img, loadedImgs.indexOf(img)));
-            var frame = document.createElement('div');
-            frame.className = 'frame';
-            var wrap = document.createElement('div');
-            wrap.className = 'img-wrap';
-            if (img.naturalHeight > img.naturalWidth) wrap.classList.add('portrait');
-            var clone = img.cloneNode(false);
-            clone.className = '';
-            clone.removeAttribute('style');
-            wrap.appendChild(clone);
-            frame.appendChild(wrap);
-            item.appendChild(frame);
-            item.addEventListener('click', function (e) {
-              e.stopPropagation(); // 点照片开灯箱，别冒泡成收起相册
-              openLightbox(loadedImgs.indexOf(img));
-            });
-            wall.appendChild(item);
-          });
-          inner.appendChild(wall);
-          photos.appendChild(inner);
-
-          entry.appendChild(cover);
-          entry.appendChild(photos);
-          entry.addEventListener('click', function () { toggleAlbum(entry, wall); });
-          albumList.appendChild(entry);
-
-          // 封面幻灯片：每 4 秒最前面一张交叉淡入淡出换下一张（悬停/展开时跳过）
-          if (!reduceMotion && group.imgs.length > 3) {
-            var frontWrap = stack.children[2] && stack.children[2].querySelector('.img-wrap');
-            if (frontWrap) {
-              var imgA = frontWrap.querySelector('img');
-              var imgB = document.createElement('img');
-              imgB.className = 'under';
-              imgB.alt = '';
-              frontWrap.appendChild(imgB);
-              var aOnTop = true;
-              var nextIdx = 3; // 前 3 张已摆在牌堆里，从第 4 张开始轮
-              var timer = setInterval(function () {
-                if (document.hidden || entry.classList.contains('expanded') || entry.matches(':hover')) return;
-                var next = group.imgs[nextIdx % group.imgs.length];
-                nextIdx++;
-                var showing = aOnTop ? imgA : imgB;  // 当前可见的
-                var standby = aOnTop ? imgB : imgA;  // 准备淡入的
-                standby.src = next.src;
-                standby.alt = next.alt || '';
-                standby.classList.remove('under');   // 新图淡入
-                showing.classList.add('under');      // 旧图淡出
-                aOnTop = !aOnTop;
-              }, 4000);
-              albumTimers.push(timer);
-            }
-          }
-        });
-        layoutAlbums();
-      }
-
-      function toggleAlbum(entry, wall) {
-        var wasExpanded = entry.classList.contains('expanded');
-        albumList.querySelectorAll('.album-entry.expanded').forEach(function (el) {
-          el.classList.remove('expanded');
-        });
-        albumList.classList.remove('has-expanded');
-        if (!wasExpanded) {
-          entry.classList.add('expanded');
-          albumList.classList.add('has-expanded');
-          enterWall(wall);
-          setTimeout(function () {
-            albumList.querySelectorAll('.album-entry:not(.expanded)').forEach(function (el) {
-              el.classList.add('gone');
-            });
-          }, 360);
-          entry.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        } else {
-          albumList.querySelectorAll('.album-entry.gone').forEach(function (el) {
-            el.classList.remove('gone');
-          });
-        }
-      }
-
-      // 照片错落入场：先整体回到入场前状态，再带 stagger 依次进场
-      function enterWall(wall) {
-        var items = wall.querySelectorAll('.wall-item');
-        if (!items.length) return;
-        items.forEach(function (el) { el.classList.remove('in'); });
-        if (reduceMotion) {
-          items.forEach(function (el) { el.style.setProperty('--d', '0s'); el.classList.add('in'); });
-          return;
-        }
-        void wall.offsetWidth; // 重排让初始态生效，否则不会重放过渡
-        items.forEach(function (el, i) {
-          el.style.setProperty('--d', (i * 70) + 'ms');
-          el.classList.add('in');
-        });
-        // 入场结束后清掉延迟，悬停回正才跟手
-        setTimeout(function () {
-          items.forEach(function (el) { el.style.setProperty('--d', '0s'); });
-        }, items.length * 70 + 700);
-      }
-
-      function openAlbum() {
-        if (!albumView || FLAGS_OFF.albumView) return;
-        fsOpen('albumView'); // 互斥收起其他全屏层 + 接管顶栏高亮 + 锁背景滚动（统一管理器）
-        if (albumEmpty) albumEmpty.hidden = loadedImgs.length > 0;
-        renderAlbums();
-        albumView.hidden = false;
-        void albumView.offsetWidth; // 触发重排以启用过渡动画
-        albumView.classList.add('show');
-      }
-
-      function closeAlbum() {
-        fsClose('albumView'); // 解锁滚动 + 摘高亮（统一管理器）
-        albumView.classList.remove('show');
-        stopAlbumCycles();
-        setTimeout(function () {
-          albumView.hidden = true;
-          onScroll(); // 相册完全关闭后，恢复按滚动位置的导航高亮
-        }, 250);
-      }
-
-      if (albumBtn) albumBtn.addEventListener('click', openAlbum);
-      if (albumCloseBtn) albumCloseBtn.addEventListener('click', closeAlbum);
-      fsRegister('albumView', { el: albumView, btn: albumBtn, close: closeAlbum, open: openAlbum });
-      // 在相册里点顶栏其他页面链接时，自动退出相册让页面可见
-      sectionLinks.forEach(function (a) {
-        a.addEventListener('click', function () {
-          if (!albumView.hidden) closeAlbum();
-          // 其他全屏界面也一并收起（首页是唯一滚动锚点）
-          fsCloseAll();
-        });
-      });
-      // Esc 逐层退出：灯箱先关（见上方处理器），灯箱关完再按 Esc 才退出相册
-      document.addEventListener('keydown', function (e) {
-        if (e.key === 'Escape' && !albumView.hidden && lightbox.hidden) closeAlbum();
-      });
-
-      // =========================
-      // 相册卡片动效：卡片3D倾斜 + 聚光灯 + 照片卡悬停倾斜（受外观开关控制）
-      // =========================
-      var albumCard = albumList.closest('.apple-card');
-      var albumRaf = null;
-      var albumLast = null;
-      var albumHover = null;
-      if (albumCard && !reduceMotion) {
-        function applyAlbumMouse() {
-          albumRaf = null;
-          if (!albumLast) return;
-          var r = albumCard.getBoundingClientRect();
-          var nx = (albumLast.clientX - r.left) / r.width * 2 - 1;
-          var ny = (albumLast.clientY - r.top) / r.height * 2 - 1;
-          if (cardMouseOn) {
-            albumCard.style.setProperty('--cx', (ny * -2.5).toFixed(2) + 'deg');
-            albumCard.style.setProperty('--cy', (nx * 2.5).toFixed(2) + 'deg');
-            albumCard.style.setProperty('--mx', ((nx + 1) / 2 * 100).toFixed(1) + '%');
-            albumCard.style.setProperty('--my', ((ny + 1) / 2 * 100).toFixed(1) + '%');
-          }
-          var t = albumLast.target && albumLast.target.closest ? albumLast.target.closest('.wall-item') : null;
-          if (t !== albumHover) {
-            if (albumHover) {
-              albumHover.style.setProperty('--ix', '0deg');
-              albumHover.style.setProperty('--iy', '0deg');
-            }
-            albumHover = t;
-          }
-          if (albumHover) {
-            if (imgTiltOn) {
-              var ir = albumHover.getBoundingClientRect();
-              var ix = (albumLast.clientX - ir.left) / ir.width * 2 - 1;
-              var iy = (albumLast.clientY - ir.top) / ir.height * 2 - 1;
-              albumHover.style.setProperty('--ix', (iy * -10).toFixed(2) + 'deg');
-              albumHover.style.setProperty('--iy', (ix * 10).toFixed(2) + 'deg');
-            } else {
-              albumHover.style.setProperty('--ix', '0deg');
-              albumHover.style.setProperty('--iy', '0deg');
-            }
-          }
-        }
-        albumCard.addEventListener('mousemove', function (e) {
-          if (!cardMouseOn && !imgTiltOn) return;
-          albumLast = e;
-          if (albumRaf === null) {
-            albumRaf = requestAnimationFrame(applyAlbumMouse);
-          }
-        });
-        albumCard.addEventListener('mouseleave', function () {
-          albumCard.style.setProperty('--cx', '0deg');
-          albumCard.style.setProperty('--cy', '0deg');
-          if (albumHover) {
-            albumHover.style.setProperty('--ix', '0deg');
-            albumHover.style.setProperty('--iy', '0deg');
-            albumHover = null;
-          }
-        });
-      }
     }
 
     // =========================
@@ -9711,7 +8950,6 @@
     var pwdNew2 = document.getElementById('pwdNew2');
     var pwdMsg = document.getElementById('pwdMsg');
     var pwdSubmit = document.getElementById('pwdSubmit');
-    var favPhotosEl = document.getElementById('favPhotos');
     var favMusicEl = document.getElementById('favMusic');
     var favEmptyEl = document.getElementById('favEmpty');
 
@@ -10852,40 +10090,18 @@
 
     function updateFavEmpty() {
       if (!favEmptyEl) return;
-      var n = favPhotosEl ? favPhotosEl.children.length : 0;
       var m = favMusicEl ? favMusicEl.children.length : 0;
-      favEmptyEl.hidden = !!(n + m);
+      favEmptyEl.hidden = !!m;
     }
 
     function renderFavorites() {
-      if (!favPhotosEl || !favMusicEl) return;
-      favPhotosEl.innerHTML = '';
+      if (!favMusicEl) return;
       favMusicEl.innerHTML = '';
-      var photos = [];
       var music = [];
       Object.keys(favSet).forEach(function (u) {
         var f = favSet[u];
         if (f.type === 'image') photos.push(f);
         else if (f.type === 'music') music.push(f);
-      });
-
-      photos.forEach(function (f) {
-        var b = document.createElement('button');
-        b.className = 'fav-photo';
-        b.type = 'button';
-        b.title = f.title || '查看照片';
-        var img = document.createElement('img');
-        img.src = f.url;
-        img.alt = f.title || '收藏照片';
-        img.loading = 'lazy';
-        img.onerror = function () { b.remove(); updateFavEmpty(); }; // 媒体已删除的失效收藏
-        b.appendChild(img);
-        b.addEventListener('click', function () {
-          // 关掉主页，让相册界面接收 yhuo:open-photo 打开大图（图已不在相册则无动作）
-          closeProfileView();
-          document.dispatchEvent(new CustomEvent('yhuo:open-photo', { detail: f.url }));
-        });
-        favPhotosEl.appendChild(b);
       });
 
       music.forEach(function (f) {
@@ -12928,7 +12144,6 @@
     // 各全屏层真正的关闭按钮 id（不能靠 .album-close 类找：AI 顶栏的"新对话"按钮
     // 也用了这个样式类且排在关闭按钮前面，querySelector 会取到它导致互斥失效）
     var FULLSCREEN_CLOSE_IDS = {
-      albumView: 'albumCloseBtn',
       profileView: 'profileViewClose',
       docViewer: 'docViewerClose',
       toolsView: 'toolsViewClose',
@@ -13205,7 +12420,7 @@
     // ---------- 全站搜索（Ctrl+K / 顶栏放大镜）：命令面板 ----------
     // 数据源：界面/工具静态清单 + /api/playlist（失败回退 music|video|images 三个静态清单）+ docs/docs.json，60 秒缓存。
     // 动作全部复用现有机制：界面走 hash 路由（fsOpen 自带开关守卫）、文档 openDoc、音乐按歌名回 tracks 定位 playIndex、
-    // 图片派发 yhuo:open-photo（相册自动开大图）、视频/首页回 home。被功能开关关闭的界面/模块不出现在结果里。
+    // 视频/首页回 home。被功能开关关闭的界面/模块不出现在结果里。
     (function initCmdk() {
       var root = document.getElementById('cmdk');
       var input = document.getElementById('cmdkInput');
@@ -13268,7 +12483,7 @@
         function push(group, tag, label, run, opts) {
           opts = opts || {};
           var hl = ql ? String(label || '').toLowerCase().indexOf(ql) : 0;
-          // 相册名可再从 sub 里匹配
+          // 副文本（如文档日期）也可匹配
           if (hl < 0 && opts.sub && String(opts.sub).toLowerCase().indexOf(ql) >= 0) hl = 0;
           if (ql && hl < 0) return;
           out.push({ group: group, tag: tag, label: label, sub: opts.sub, run: run, disabled: !!opts.disabled, hl: hl });
@@ -13278,7 +12493,6 @@
         if (!FLAGS_OFF.toolsView) push('界面', '界面', '工具', function () { fsNavigate('toolsView'); });
         if (!FLAGS_OFF.docsView) push('界面', '界面', '文档', function () { fsNavigate('docsView'); });
         if (aiOn()) push('界面', '界面', 'AI 助手', function () { fsNavigate('aiView'); });
-        if (!FLAGS_OFF.albumView) push('界面', '界面', '相册', function () { fsNavigate('albumView'); });
         if (!FLAGS_OFF.miscView) push('界面', '界面', '杂项', function () { fsNavigate('miscView'); });
         push('界面', '界面', '留言板', function () { fsNavigate('boardView'); });
         // 工具卡（打开工具界面并定位到卡片）
@@ -13324,19 +12538,7 @@
           for (var i = 0; i < tracks.length; i++) { if (tracks[i].name === m.name) { idx = i; break; } }
           push('音乐', '音乐', musicDisplayName(m.name), function () { playIndex(idx); }, { disabled: idx < 0 });
         });
-        // 图片 / 相册 / 视频
-        if (!FLAGS_OFF.albumView) {
-          var albums = {};
-          data.images.forEach(function (im) {
-            push('图片', '图片', im.title || im.url, function () {
-              document.dispatchEvent(new CustomEvent('yhuo:open-photo', { detail: im.url }));
-            }, { sub: im.album || '' });
-            if (im.album) albums[im.album] = true;
-          });
-          Object.keys(albums).forEach(function (a) {
-            push('相册', '相册', a, function () { fsNavigate('albumView'); });
-          });
-        }
+        // 视频
         if (!FLAGS_OFF.video) {
           data.videos.forEach(function (v) {
             push('视频', '视频', stripExt(v.name), function () { location.hash = '#home'; }, { sub: '回首页播放' });

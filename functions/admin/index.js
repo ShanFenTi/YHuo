@@ -2957,7 +2957,6 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
   var FLAG_DEFS = [
     { key: 'tools', label: '工具界面' },
     { key: 'docs', label: '文档界面' },
-    { key: 'album', label: '相册界面' },
     { key: 'misc', label: '杂项界面' },
     { key: 'weather', label: '天气胶囊' },
     { key: 'lyric', label: '歌词横条' },

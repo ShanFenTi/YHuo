@@ -6,7 +6,8 @@ import { ensureSchema } from '../../lib/migrate.js';
 const ACCENTS = ['terracotta', 'purple', 'pink', 'green', 'orange'];
 
 // 功能开关白名单（true=显示，缺省开）。ai 不在此列——跟随 AI 页全局开关（site_settings.ai_enabled）
-const FLAG_KEYS = ['tools', 'docs', 'album', 'misc', 'weather', 'lyric', 'video'];
+// album（相册界面）已随功能移除：旧库存量里的 album:false 会被忽略
+const FLAG_KEYS = ['tools', 'docs', 'misc', 'weather', 'lyric', 'video'];
 
 async function getSetting(env, key) {
   const row = await env.DB.prepare('SELECT value FROM site_settings WHERE key = ?').bind(key).first();

@@ -243,7 +243,6 @@
 
     body {
       font-family: var(--font-sans);
-      background: var(--apple-background);
       color: var(--apple-foreground);
       line-height: 1.6;
       -webkit-font-smoothing: antialiased;
@@ -252,19 +251,10 @@
       /* 长内容兜底：横向溢出一律裁掉，不让页面被撑宽（fixed 定位弹层在移动端会随布局视口位移）；
          用 clip 不产生滚动容器，不影响 sticky/fixed 与页面内横向滚动区 */
       overflow-x: clip;
-      /* 顶部暖橙光晕（参考博客站同款观感）：铺在视口顶部 540px、随主题换色。
-         注意必须做成 body 背景的第一层——不能用 body::before z-index:-1（html 自带背景见下，
-         body 的不透明底色属于普通盒背景，绘制在负 z 伪元素之上会把光晕盖没）。
-         设了自定义背景时 body.has-custom-bg 的 background:transparent 整体覆盖，光晕自然消失 */
-      background:
-        radial-gradient(62% 100% at 50% -8%, rgba(204, 116, 66, 0.16), rgba(204, 116, 66, 0) 62%) top center / 100% 540px no-repeat fixed,
-        var(--apple-background);
-    }
-
-    .dark body {
-      background:
-        radial-gradient(62% 100% at 50% -8%, rgba(231, 163, 124, 0.12), rgba(231, 163, 124, 0) 62%) top center / 100% 540px no-repeat fixed,
-        var(--apple-background);
+      /* body 必须保持透明：底色+顶部暖橙光晕都在 html（画布层）上，
+         流星层（.fx-meteors，z-index:-1）与自定义背景层（.bg-layer）才能透出来——
+         body 若有不透明底色，普通盒背景会绘制在负 z 层之上把它们全盖住（接入流星时踩过） */
+      background: transparent;
     }
 
     ::selection {
@@ -4205,7 +4195,73 @@
 
     /* ===== 自定义背景层 ===== */
     html {
-      background: var(--apple-background);
+      /* 底色 + 顶部暖橙光晕（参考博客站观感）放在画布层：光晕铺视口顶部 540px、随主题换色；
+         原先底色在 body 上会盖住 z-index:-1 的流星/自定义背景层，见 body 处注释。
+         自定义背景（.bg-layer，同为负 z）绘制在画布之上，自然盖住光晕 */
+      background:
+        radial-gradient(62% 100% at 50% -8%, rgba(204, 116, 66, 0.16), rgba(204, 116, 66, 0) 62%) top center / 100% 540px no-repeat fixed,
+        var(--apple-background);
+      transition: background-color 300ms var(--ease-out);
+    }
+
+    html.dark {
+      background:
+        radial-gradient(62% 100% at 50% -8%, rgba(231, 163, 124, 0.12), rgba(231, 163, 124, 0) 62%) top center / 100% 540px no-repeat fixed,
+        var(--apple-background);
+    }
+
+    /* ===== 流星（参考博客站 fx 特效接入）：负 z 固定层，浅色也显示（原站仅暗色，demo 版强制双主题可见）；
+         主题切换 View Transitions 快照期间隐藏防半截流星入快照 ===== */
+    .fx-meteors {
+      position: fixed;
+      inset: 0;
+      z-index: -1;
+      overflow: hidden;
+      pointer-events: none;
+    }
+
+    .theme-vt .fx-meteors {
+      visibility: hidden;
+      opacity: 0;
+    }
+
+    .fx-meteor {
+      position: absolute;
+      top: -4rem;
+      left: var(--left);
+      width: 2px;
+      height: 2px;
+      border-radius: 9999px;
+      background: rgba(148, 163, 184, 0.95);
+      box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.08);
+      transform: rotate(215deg) translate(0);
+      opacity: 0;
+      animation: fx-meteor-fall var(--duration, 6s) linear var(--delay, 0s) infinite;
+      will-change: transform, opacity;
+    }
+
+    .fx-meteor::before {
+      content: "";
+      position: absolute;
+      top: 50%;
+      left: 0;
+      z-index: -1;
+      width: var(--tail, 50px);
+      height: 1px;
+      transform: translateY(-50%);
+      background: linear-gradient(90deg, rgba(148, 163, 184, 0.9), rgba(0, 0, 0, 0));
+      border-radius: 9999px;
+    }
+
+    @keyframes fx-meteor-fall {
+      0% { opacity: 0; transform: rotate(215deg) translate(0); }
+      4%, 68% { opacity: 1; }
+      100% { opacity: 0; transform: rotate(215deg) translate(-180vh); }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .fx-meteor { animation: none; }
+      .fx-meteors { display: none; }
     }
 
     .bg-layer {
@@ -4215,6 +4271,13 @@
       background-position: center;
       background-size: cover;
       background-repeat: no-repeat;
+      /* 只在设了自定义背景时存在：body 常透明后（见 body 处注释），默认态的压暗层
+         （bgDim 默认 25% 黑）会漏出来把整页压灰——此前靠 body 不透明底色无意间盖住 */
+      display: none;
+    }
+
+    body.has-custom-bg .bg-layer {
+      display: block;
     }
 
     .bg-dim {
@@ -4851,6 +4914,7 @@
 
   <!-- 自定义背景层 -->
   <div class="bg-layer" id="bgLayer" aria-hidden="true"><div class="bg-dim" id="bgDimLayer"></div></div>
+  <div class="fx-meteors" data-fx-meteors aria-hidden="true"></div>
 
   <!-- 顶部导航：居中悬浮胶囊（毛玻璃 + 内高光，滚动加深投影）；胶囊外区域点击穿透 -->
   <header class="site-header" id="siteHeader">
@@ -12842,6 +12906,31 @@
       if (reg && reg.open) reg.open(); // 显示动作在各自 open 函数里，直接调 fsOpen 不会显示（与路由器同理）
     })();
   })();
+  </script>
+  <script>
+    // 流星（参考博客站 fx 特效接入，源码 博客动画源码/03-流星-meteors.js 精简）：
+    // 本站无 00 设置核心，档位固定 high（30 颗）；触屏窄屏自动降为 low（10 颗），
+    // 系统减弱动态时不渲染（CSS @media 兜底隐藏）。负 delay 让每颗首帧即处于不同相位
+    (function () {
+      var root = document.querySelector('[data-fx-meteors]');
+      if (!root) return;
+      var reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      var lowPower = window.matchMedia('(max-width: 859px)').matches
+        && window.matchMedia('(pointer: coarse)').matches;
+      var count = reduceMotion ? 0 : (lowPower ? 10 : 30);
+      var frag = document.createDocumentFragment();
+      for (var i = 0; i < count; i++) {
+        var meteor = document.createElement('span');
+        var duration = 4.5 + Math.random() * 4.5;
+        meteor.className = 'fx-meteor';
+        meteor.style.setProperty('--left', (-35 + Math.random() * 125) + '%');
+        meteor.style.setProperty('--duration', duration + 's');
+        meteor.style.setProperty('--delay', (-Math.random() * duration) + 's');
+        meteor.style.setProperty('--tail', (38 + Math.random() * 34) + 'px');
+        frag.appendChild(meteor);
+      }
+      root.appendChild(frag);
+    })();
   </script>
 </body>
 </html>

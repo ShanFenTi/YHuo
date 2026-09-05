@@ -635,7 +635,7 @@
           tryImage(n, extIndex + 1);
         };
         // 图片位于项目根目录 images/ 文件夹
-        img.src = 'images/' + n + '.' + IMAGE_EXT[extIndex];
+        img.src = '/images/' + n + '.' + IMAGE_EXT[extIndex];
       }
 
       // 后台图片 + 本地 images/ 合并显示：后台的排前面；
@@ -728,8 +728,8 @@
       return /\.(mp4|webm|mov|m4v|ogv)$/i.test(n);
     }
     function videoSrcOf(item) {
-      if (typeof item === 'string') return 'video/' + encodeURIComponent(item);
-      return item.url || 'video/' + encodeURIComponent(item.name);
+      if (typeof item === 'string') return '/video/' + encodeURIComponent(item);
+      return item.url || '/video/' + encodeURIComponent(item.name);
     }
     function playVideoAt(i) {
       if (!homeVideo || FLAGS_OFF.video || !videoList.length) return;
@@ -781,7 +781,7 @@
       });
     }
     function loadVideoStaticNames() {
-      return fetch('video/', { credentials: 'same-origin' })
+      return fetch('/video/', { credentials: 'same-origin' })
         .then(function (res) {
           if (!res.ok) throw new Error('video 目录不可访问');
           return res.text();
@@ -801,7 +801,7 @@
           return names;
         })
         .catch(function () {
-          return fetch('video/playlist.json', { credentials: 'same-origin' })
+          return fetch('/video/playlist.json', { credentials: 'same-origin' })
             .then(function (res) {
               if (!res.ok) throw new Error('无清单文件');
               return res.json();
@@ -1075,7 +1075,7 @@
       }
       if (!/music\//.test(src || '')) { lyricShowPlaceholder('♪ ' + display); return; } // KV 媒体/本地 blob 无同名 lrc 可取
       lyricShowPlaceholder('♪ ' + display, true); // 加载期间显示歌名 + 待机点
-      fetch('music/' + encodeURIComponent(display) + '.lrc', { credentials: 'same-origin' })
+      fetch('/music/' + encodeURIComponent(display) + '.lrc', { credentials: 'same-origin' })
         .then(function (r) { return r.ok ? r.text() : ''; })
         .then(function (txt) {
           if (seq !== lyricFetchSeq) return;
@@ -1558,7 +1558,7 @@
     }
 
     function loadMusicStaticNames() {
-      return fetch('music/', { credentials: 'same-origin' })
+      return fetch('/music/', { credentials: 'same-origin' })
         .then(function (res) {
           if (!res.ok) throw new Error('music 目录不可访问');
           return res.text();
@@ -1582,7 +1582,7 @@
         .catch(function () {
           // 目录列表不可用时（GitHub Pages 等静态托管不支持）：
           // 退回读取清单文件 music/playlist.json（用"生成歌单.bat"维护）
-          return fetch('music/playlist.json', { credentials: 'same-origin' })
+          return fetch('/music/playlist.json', { credentials: 'same-origin' })
             .then(function (res) {
               if (!res.ok) throw new Error('无清单文件');
               return res.json();
@@ -1653,7 +1653,7 @@
           trackDone();
           return;
         }
-        fetch('music/' + encodeURIComponent(name))
+        fetch('/music/' + encodeURIComponent(name))
           .then(function (res) {
             if (!res.ok) throw new Error('读取失败');
             return res.blob();
@@ -6194,18 +6194,18 @@
           .catch(function () { data.docs = []; });
         var useStatic = function () {
           data.music = []; data.images = []; data.videos = [];
-          fetch('music/playlist.json').then(function (r) { return r.ok ? r.json() : []; }).then(function (a) {
+          fetch('/music/playlist.json').then(function (r) { return r.ok ? r.json() : []; }).then(function (a) {
             (Array.isArray(a) ? a : []).forEach(function (n) {
               var name = String(n);
-              data.music.push({ name: name, url: 'music/' + encodeURIComponent(name) });
+              data.music.push({ name: name, url: '/music/' + encodeURIComponent(name) });
             });
           }).catch(function () {});
-          fetch('video/playlist.json').then(function (r) { return r.ok ? r.json() : []; }).then(function (a) {
+          fetch('/video/playlist.json').then(function (r) { return r.ok ? r.json() : []; }).then(function (a) {
             (Array.isArray(a) ? a : []).forEach(function (n) {
-              data.videos.push({ name: String(n), url: 'video/' + encodeURIComponent(String(n)) });
+              data.videos.push({ name: String(n), url: '/video/' + encodeURIComponent(String(n)) });
             });
           }).catch(function () {});
-          fetch('images/manifest.json').then(function (r) { return r.ok ? r.json() : null; }).then(function (m) {
+          fetch('/images/manifest.json').then(function (r) { return r.ok ? r.json() : null; }).then(function (m) {
             ((m && m.files) || []).forEach(function (f) {
               data.images.push({ title: f.title || '', url: f.url || '', album: '' });
             });

@@ -1,5 +1,7 @@
 # -*- coding: utf-8 -*-
 """多页面改造阶段2：由单页 index.html 生成六个独立页面。
+#
+# （2026-09-06 一次性迁移脚本，使命已完成：它从"单页旧版 index.html"生成六页，重跑会因视图标记不存在而断言退出；留档备查。改造说明见 部署说明.md §4。）
 只做 markup 手术：外壳（head/导航/浮层/播放器/页脚/脚本引用）六个页面完全一致，
 仅 <html data-page>、<title>、导航高亮和 <main> 内容不同。
 视图块做"页面化"：去 hidden/dialog 语义、去关闭按钮（docViewer/profileView 等真浮层不动）。

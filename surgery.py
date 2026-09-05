@@ -1,5 +1,7 @@
 # -*- coding: utf-8 -*-
 """common.js 多页面手术：删全屏管理器/路径路由，页面模块 init/teardown 化，接 pjax。
+#
+# （2026-09-06 一次性手术脚本，行号断言基于改造前的 assets/common.js，重跑必然断言失败退出；留档备查。）
 行号基于当前 assets/common.js（提取自原 index.html 6091-12715 行 + 流星段）。
 每个操作带起止行内容断言，自底向上应用，任何断言失败立即报错退出。"""
 import io, sys

@@ -6438,6 +6438,13 @@
     // =========================
     sectionLinks.forEach(function (a) {
       a.addEventListener('click', function (e) {
+        // 全屏界面开着或路径带路由时放行默认锚点行为：URL 变 /docs#home 触发 popstate，
+        // 路由器按"锚点回首页"关所有层并把路径清回 /。此前这里一律 preventDefault，
+        // hash 永不变动，界面里点「首页」只滚动被盖住的底层页面，看起来毫无反应（路由上线时漏掉的真 bug）
+        if (FS_TOP.some(function (tid) {
+          var r = FS_REG[tid];
+          return r && r.el && r.el.classList.contains('show');
+        }) || idForPath(location.pathname)) return;
         e.preventDefault();
         var target = document.getElementById(a.getAttribute('data-target'));
         if (!target) return;

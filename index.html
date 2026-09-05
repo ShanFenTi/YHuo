@@ -480,6 +480,60 @@
       background: color-mix(in srgb, var(--apple-primary) 12%, transparent);
     }
 
+    /* ===== 主题切换圆形揭示（View Transitions API） ===== */
+    /* .theme-vt 由 JS 只在切换瞬间挂到 <html> 上；keyframes theme-reveal 按点击坐标动态注入。
+       旧主题定格垫底，新主题从按钮位置圆形扫出；不支持 VT 的浏览器不挂类、直接切换 */
+    html.theme-vt::view-transition-old(root),
+    html.theme-vt::view-transition-new(root) { mix-blend-mode: normal; }
+
+    html.theme-vt::view-transition-old(root) {
+      animation: none;
+      opacity: 1;
+      z-index: 1;
+    }
+
+    html.theme-vt::view-transition-new(root) {
+      animation: 0.52s linear both theme-reveal;
+      z-index: 2;
+    }
+
+    /* 快照期间冻结元素自身过渡，防止与揭示动画叠加抖动 */
+    html.theme-vt *,
+    html.theme-vt *::before,
+    html.theme-vt *::after { transition: none !important; }
+
+    /* 切换按钮独立成像：出场旋转缩小、入场反转进入（图标翻转小动效） */
+    html.theme-vt .theme-toggle { view-transition-name: theme-toggle !important; }
+
+    html.theme-vt::view-transition-group(theme-toggle) {
+      animation: none;
+      z-index: 4;
+    }
+
+    html.theme-vt::view-transition-old(theme-toggle) {
+      mix-blend-mode: normal;
+      animation: 0.18s ease-in both theme-toggle-out;
+    }
+
+    html.theme-vt::view-transition-new(theme-toggle) {
+      mix-blend-mode: normal;
+      animation: theme-toggle-in 0.46s 40ms var(--ease-out-soft, ease-out) both;
+    }
+
+    @keyframes theme-toggle-out {
+      to { opacity: 0; transform: rotate(28deg) scale(0.72); }
+    }
+
+    @keyframes theme-toggle-in {
+      0% { opacity: 0; transform: rotate(-32deg) scale(0.62); }
+      to { opacity: 1; transform: rotate(0) scale(1); }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      /* 减弱动效：JS 已跳过 startViewTransition，这里双保险 */
+      html.theme-vt::view-transition-new(root) { animation: none; }
+    }
+
     /* 顶栏头像三态：默认人形图标 / 已登录首字徽章 / 有头像显示圆图 */
     .login-toggle .avatar-letter {
       display: none;
@@ -5767,10 +5821,45 @@
     var prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
     applyTheme(savedTheme || (prefersDark ? 'dark' : 'light'));
 
+    // 主题切换动效：新主题从按钮位置圆形扫出（View Transitions API，机制与参考站一致）。
+    // Firefox 等不支持 VT 的浏览器自动降级为直接切换；reduced-motion 同样跳过动画
+    var themeSwitching = false;
+    var themeRevealStyle = document.getElementById('theme-reveal-style');
+    if (!themeRevealStyle) {
+      themeRevealStyle = document.createElement('style');
+      themeRevealStyle.id = 'theme-reveal-style';
+      document.head.appendChild(themeRevealStyle);
+    }
     themeBtn.addEventListener('click', function () {
+      if (themeSwitching) return;
       var isDark = document.documentElement.classList.contains('dark');
       var next = isDark ? 'light' : 'dark';
-      applyTheme(next);
+      var root = document.documentElement;
+      var motionOK = !(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+      if (motionOK && document.startViewTransition) {
+        var rect = themeBtn.getBoundingClientRect();
+        var x = rect.left + rect.width / 2;
+        var y = rect.top + rect.height / 2;
+        // 覆盖全屏所需半径：圆心到最远角的距离 + 20px 余量
+        var radius = Math.hypot(Math.max(x, window.innerWidth - x), Math.max(y, window.innerHeight - y)) + 20;
+        // 坐标必须用百分比：快照按设备像素密度光栅化，px 在 2x 屏会只画一半；
+        // circle() 的百分比半径按归一化对角线 hypot(W,H)/√2 解析，故半径也要换算
+        var xPct = (x / window.innerWidth) * 100;
+        var yPct = (y / window.innerHeight) * 100;
+        var rPct = radius / (Math.hypot(window.innerWidth, window.innerHeight) / Math.SQRT2) * 100;
+        themeSwitching = true;
+        themeBtn.classList.add('is-switching');
+        themeRevealStyle.textContent = '@keyframes theme-reveal { from { clip-path: circle(0 at ' + xPct.toFixed(4) + '% ' + yPct.toFixed(4) + '%); } to { clip-path: circle(' + rPct.toFixed(4) + '% at ' + xPct.toFixed(4) + '% ' + yPct.toFixed(4) + '%); } }';
+        root.classList.add('theme-vt');
+        var vt = document.startViewTransition(function () { applyTheme(next); });
+        vt.finished.catch(function () {}).finally(function () {
+          themeSwitching = false;
+          themeBtn.classList.remove('is-switching');
+          root.classList.remove('theme-vt');
+        });
+      } else {
+        applyTheme(next);
+      }
       try { localStorage.setItem(THEME_KEY, next); } catch (e) {}
     });
 

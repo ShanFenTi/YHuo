@@ -2,6 +2,8 @@
 
 ## 2026-09-05
 
+* **前台+后台（音乐专辑封面）**：后台音乐页每行新增「封面」按钮——上传/替换专辑封面（jpg/png/gif/webp/avif ≤2MB，已设显示 ✓ 和移除 ✕），存 media.cover 列（KV covers/，换图删旧，删除歌曲连封面一并清理），新接口 `POST/DELETE /api/admin/media/:id/cover`、/api/admin/media 清单带 has\_cover；前台迷你播放器左侧圆盘升级为**专辑封面显示**：当前曲目带封面时黑胶式旋转（播放转、暂停保持角度、`prefers-reduced-motion` 不转、中心白点固定不随图转），无封面回落原音符图标；封面随 /api/playlist 下发（静态 music/ 曲库与本地文件夹歌曲无封面），曲目合并/缓存恢复时后台清单后到会自动补齐并即时刷新。**顺手修了一个真 bug**：autoLoadMusicFolder 把 /api/playlist 的 music 项映射成 {name,url} 时丢了 lrc 字段——后台曲库配的歌词从未真正到达播放器（一直只有静态 music/ 同名 .lrc 在生效），现一并携带并经 wrangler 全链路实测确认下发。本地实测：登录→传歌→传封面→清单 has\_cover/cover 地址→封面 200 image/png→替换后旧 KV 404 新图 200→配歌词 playlist 带 lrc→移除封面后回落、lrc 保留→删歌曲封面 KV 连带清理，校验脚本全过
+
 * **前台（课表导出）**：个人主页课表卡工具栏在「导入 WakeUp」旁新增「导出课表」按钮——纯前端把当前课表转成 **WakeUp 兼容 JSON** 下载（文件名 `WakeUp课表导出-日期.json`），本站「导入 WakeUp」可直接导回（服务端解析时保留提醒设置/作息；termStart 随文件携带，WakeUp App 忽略未知字段不受影响），WakeUp App 也能识别导入；weeks 转布尔数组（下标 0 = 第 1 周），内部空 weeks（= 每周都上）导出为全 true 保语义无损；无课程时提示不生成文件。本地实测：导出 → 服务端真实 parseWakeUp 解析往返测试，课程名/地点/教师/星期/节次跨度/周次/每周语义全部无损；校验脚本全过
 
 * **前台（账号昵称，展示名与登录名分离）**：登录账号不再直接当昵称用——个人主页身份卡用户名旁新增「改昵称」入口（1~20 字，留空保存即恢复显示用户名），改完**即时同步**顶栏字母徽章/下拉菜单/欢迎语（sessionStorage demoLoginName 改存展示名），登录账号名保持不变（登录仍用账号名）。留言板历史留言的署名取**实时昵称**（改昵称会同步旧留言的显示，署名按 user_id 实时解析）；login/register/me/profile 接口响应均带 nickname；新接口 `POST /api/user/nickname`（仅前台用户会话；users 表补 nickname 列，ensureSchema 自动补列）。本地实测：改昵称后身份卡/顶栏字母/存储名三处同步、重登后昵称保持、留言板署名显示昵称 + 等级徽标

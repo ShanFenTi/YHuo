@@ -1204,6 +1204,7 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
     down: ico('<path d="M12 5v14"/><path d="m19 12-7 7-7-7"/>'),
     box: ico('<path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/>'),
     lrc: ico('<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M9 13h6M9 17h4"/>'),
+    disc: ico('<circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="2.5"/>'),
     x: ico('<path d="M18 6 6 18M6 6l12 12"/>'),
   };
 
@@ -2155,6 +2156,48 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
     });
   }
 
+  // ---------- 音乐专辑封面：上传/替换/移除（media.cover 存 KV 键，/api/playlist 随清单下发前台播放器） ----------
+  function uploadCover(it) {
+    var inp = document.createElement('input');
+    inp.type = 'file';
+    inp.accept = '.jpg,.jpeg,.png,.gif,.webp,.avif,image/jpeg,image/png,image/gif,image/webp,image/avif';
+    inp.onchange = function () {
+      var f = inp.files && inp.files[0];
+      if (!f) return;
+      if (!/\\.(jpe?g|png|gif|webp|avif)$/i.test(f.name)) { toast('请选择 jpg/png/gif/webp/avif 图片', 'err'); return; }
+      if (f.size > 2 * 1024 * 1024) { toast('封面图片超过 2MB', 'err'); return; }
+      var form = new FormData();
+      form.append('file', f);
+      api('/api/admin/media/' + it.id + '/cover', { method: 'POST', body: form }).then(function (d) {
+        if (d.ok) {
+          it.has_cover = true;
+          toast('《' + it.title + '》封面已保存，前台刷新后生效', 'ok');
+          renderList();
+        } else toast(d.error || '上传失败', 'err');
+      }).catch(function () { toast('网络错误', 'err'); });
+    };
+    inp.click();
+  }
+
+  function removeCover(it) {
+    ask({
+      title: '移除封面',
+      msg: '移除《' + it.title + '》的专辑封面？歌曲本身不受影响。',
+      okText: '移除',
+      danger: true,
+      cb: function (yes) {
+        if (!yes) return;
+        api('/api/admin/media/' + it.id + '/cover', { method: 'DELETE' }).then(function (d) {
+          if (d.ok) {
+            it.has_cover = false;
+            toast('封面已移除', 'ok');
+            renderList();
+          } else toast(d.error || '操作失败', 'err');
+        }).catch(function () { toast('网络错误', 'err'); });
+      },
+    });
+  }
+
   function renderList() {
     var list = $('list');
     var arr = items[currentType] || [];
@@ -2315,6 +2358,21 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
           lrcDel.title = '移除歌词';
           lrcDel.addEventListener('click', function () { removeLrc(it); });
           actions.appendChild(lrcDel);
+        }
+        // 专辑封面按钮：上传/替换/移除（media.cover，前台迷你播放器旋转显示）
+        var coverBtn = document.createElement('button');
+        coverBtn.className = 'ghost';
+        coverBtn.innerHTML = ICO.disc + '<span>封面' + (it.has_cover ? '✓' : '') + '</span>';
+        coverBtn.title = it.has_cover ? '已设封面，点击替换' : '上传专辑封面（jpg/png/gif/webp/avif ≤2MB）';
+        coverBtn.addEventListener('click', function () { uploadCover(it); });
+        actions.appendChild(coverBtn);
+        if (it.has_cover) {
+          var coverDel = document.createElement('button');
+          coverDel.className = 'ghost icon-btn-sm';
+          coverDel.innerHTML = ICO.x;
+          coverDel.title = '移除封面';
+          coverDel.addEventListener('click', function () { removeCover(it); });
+          actions.appendChild(coverDel);
         }
       }
 

@@ -207,6 +207,10 @@ export async function ensureSchema(env) {
   try {
     await env.DB.prepare("ALTER TABLE media ADD COLUMN lrc TEXT").run();
   } catch {}
+  // 专辑封面：media.cover 存 KV 键（covers/m{id}-{随机}.{ext}，/media/{key} 访问）
+  try {
+    await env.DB.prepare("ALTER TABLE media ADD COLUMN cover TEXT").run();
+  } catch {}
   try {
     await env.DB.prepare("ALTER TABLE users ADD COLUMN avatar_key TEXT").run();
   } catch {}

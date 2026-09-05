@@ -42,10 +42,11 @@ export async function onRequestDelete({ env, params }) {
   const id = Number(params.id);
   if (!Number.isInteger(id)) return json({ ok: false, error: '参数错误' }, 400);
 
-  const row = await env.DB.prepare('SELECT r2_key FROM media WHERE id = ?').bind(id).first();
+  const row = await env.DB.prepare('SELECT r2_key, cover FROM media WHERE id = ?').bind(id).first();
   if (!row) return json({ ok: false, error: '条目不存在' }, 404);
 
   await env.MEDIA.delete(row.r2_key);
+  if (row.cover) await env.MEDIA.delete(row.cover); // 专辑封面一并清理
   await env.DB.prepare('DELETE FROM media WHERE id = ?').bind(id).run();
   return json({ ok: true });
 }

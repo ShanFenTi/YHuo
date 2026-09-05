@@ -6,7 +6,7 @@ const TYPES = ['music', 'video', 'image'];
 
 export async function onRequestGet({ env }) {
   const { results } = await env.DB
-    .prepare('SELECT id, type, title, r2_key, mime, size, sort_order, album, created_at, (lrc IS NOT NULL) AS has_lrc FROM media ORDER BY type, sort_order, id')
+    .prepare('SELECT id, type, title, r2_key, mime, size, sort_order, album, created_at, (lrc IS NOT NULL) AS has_lrc, (cover IS NOT NULL) AS has_cover FROM media ORDER BY type, sort_order, id')
     .all();
   const items = { music: [], video: [], image: [] };
   for (const r of results) {

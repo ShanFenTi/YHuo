@@ -29,8 +29,6 @@
 
     var gallery = document.getElementById('galleryGrid');
     var galleryEmpty = document.getElementById('galleryEmpty');
-    var lightbox = document.getElementById('lightbox');
-    var lightboxImg = document.getElementById('lightboxImg');
 
     var miniPlayer = document.getElementById('miniPlayer');
     var miniTitle = document.getElementById('miniTitle');
@@ -140,12 +138,8 @@
         if (sec.offsetTop <= pos) current = sec;
       });
       var id = current ? current.id : '';
-      // 全屏界面打开期间高亮由各自的 open 函数接管，滚动监听不抢回
-      if (
-        (aiView && !aiView.hidden) ||
-        (toolsView && !toolsView.hidden) || (docsView && !docsView.hidden) ||
-        (miscView && !miscView.hidden)
-      ) return;
+      // 多页面：仅首页按滚动位置高亮（子页面导航高亮是静态的，滚动逻辑不许摘掉它）
+      if (sections.length)
       navLinks.forEach(function (a) {
         a.classList.toggle('active', a.getAttribute('data-target') === id);
       });
@@ -160,156 +154,17 @@
     onScroll();
 
     // =========================
-    // 全屏层统一管理（注册制）——坑 13/17 根治
-    // 以前每个 open 函数各自维护互斥清单（漏改一处就出叠层/高亮 bug，踩过三次），
-    // 现在互斥、顶栏高亮接管、滚动锁都收敛在这一处：新增全屏层 = 在自己的代码里
-    // fsRegister 一次 + open 函数开头调 fsOpen(id)，不再需要任何互斥清单。
-    // FS_TOP：顶层互斥组；docViewer 叠在 docsView 上（Esc 逐层退），不参与互斥但会被其他层关闭。
+    // 功能开关（后台「外观 → 功能开关」，/api/settings 下发，缺省全开）
+    // 多页面架构（2026-09-05）：原「全屏层统一管理器」（FS_TOP/fsOpen/fsClose/垫底覆盖）与
+    // 「路径路由器」（FS_ROUTE/popstate 深链接）已随「栏目拆独立页」整体移除——
+    // 工具/文档/AI/杂项/留言各是真实页面（/tools/ /docs/ /ai/ /misc/ /board/），界面切换 = 真实导航；
+    // 跨页无缝与音乐不断播由 IIFE 尾部的 PJAX 路由负责。
     // =========================
-    var FS_TOP = ['profileView', 'toolsView', 'docsView', 'aiView', 'miscView', 'boardView'];
-    var FS_ALL = FS_TOP.concat(['docViewer']);
-    var FS_REG = {}; // id → { el, btn, close, lockScroll }
-    function fsRegister(id, opts) { FS_REG[id] = opts || {}; }
-    var FLAGS_OFF = {}; // 功能开关（后台「外观 → 功能开关」，/api/settings 下发，缺省全开）：true 的界面/模块前台直接隐藏
+    var FLAGS_OFF = {}; // true 的界面/模块前台直接隐藏
     var FF_APPLY_HOOKS = []; // flags 应用后要通知的启动期模块（画廊等在各自块级作用域里注册回调，规避坑 9）
-    function fsOpen(id) {
-      if (FLAGS_OFF[id]) return; // 被开关关掉的界面：不互斥、不接管高亮、不锁滚动（各 open 函数入口另有同款守卫）
-      // 先写路由再互斥关闭其他层：fsClose 清路由时看到的是新路由，不会误清（也避免产生中间历史记录）
-      if (FS_ROUTE[id] && idForPath(location.pathname) !== id) history.pushState(null, '', routePathFor(id));
-      if (FS_TITLES[id]) document.title = FS_TITLES[id] + ' - YHuo'; // 地址即界面，标题同步（返回/关闭由路由器恢复）
-      // 新打开的层提到最上（151）：被切换的旧层保持不透明垫在下面，主页不会从两层毛玻璃缝隙里闪出来
-      FS_TOP.forEach(function (tid) {
-        var r0 = FS_REG[tid];
-        if (r0 && r0.el) r0.el.style.zIndex = '';
-      });
-      var rTop = FS_REG[id];
-      if (rTop && rTop.el) rTop.el.style.zIndex = '151';
-      if (FS_COVER_TIMER[id]) { clearTimeout(FS_COVER_TIMER[id]); FS_COVER_TIMER[id] = null; } // 快速切回被覆盖层：撤销覆盖，原样留住
-      var rCv = FS_REG[id];
-      if (rCv && rCv.el) rCv.el.classList.remove('fs-covered');
-      FS_ALL.forEach(function (other) {
-        if (other === id) return;
-        if (FS_TOP.indexOf(other) !== -1) {
-          var reg = FS_REG[other];
-          if (reg && reg.el && reg.el.classList.contains('show')) coverLayer(other); // 开着的旧层：垫底盖住，新层完全不透明后再真正关闭
-          else closeFullscreenOf(other); // 没开着的：兜底清理
-        } else {
-          closeFullscreenOf(other); // docViewer 等非顶层：照旧关闭
-        }
-      });
-      var r = FS_REG[id] || {};
-      if (r.lockScroll !== false) document.body.style.overflow = 'hidden';
-      if (r.btn) takeNavHighlight(r.btn);
-    }
-    function fsClose(id) {
-      var r = FS_REG[id];
-      if (!r) return;
-      // ✕/Esc 主动关闭：若路由还指着本层就静默清掉（replaceState 不产生历史记录，返回键不会"重开"已手关的界面）
-      if (FS_ROUTE[id] && idForPath(location.pathname) === id) {
-        clearRoute();
-        document.title = BASE_TITLE;
-      }
-      if (r.lockScroll !== false) {
-        document.body.style.overflow = '';
-        // 被覆盖层的延迟关闭可能发生在别的层仍开着时：此时必须保持滚动锁（排除正在关闭的本层——它还没摘 .show）
-        for (var i = 0; i < FS_ALL.length; i++) {
-          if (FS_ALL[i] === id) continue;
-          var o = FS_REG[FS_ALL[i]];
-          if (o && o.el && o.el.classList.contains('show') && o.lockScroll !== false) {
-            document.body.style.overflow = 'hidden';
-            break;
-          }
-        }
-      }
-      if (r.btn) r.btn.classList.remove('active');
-    }
-    function fsCloseAll() { FS_ALL.forEach(closeFullscreenOf); }
-
-    // 切换界面时的"垫底覆盖"：旧层不淡出（那会让主页从两层毛玻璃缝隙里透出来），而是原样压在新层下面，
-    // 等新层过渡完（完全不透明）再在遮盖下走正常关闭流程
-    var FS_COVER_TIMER = {}; // 界面 id → 延迟真正关闭的定时器
-    function coverLayer(id) {
-      var reg = FS_REG[id];
-      if (!reg || !reg.el) return;
-      if (FS_COVER_TIMER[id]) clearTimeout(FS_COVER_TIMER[id]);
-      reg.el.classList.add('fs-covered'); // 垫底层禁点击
-      FS_COVER_TIMER[id] = setTimeout(function () {
-        FS_COVER_TIMER[id] = null;
-        reg.el.classList.remove('fs-covered');
-        if (reg.close) reg.close(); // 此刻新层已压在上面，这里的淡出用户看不见
-      }, 320);
-    }
-
-    // =========================
-    // 路径路由：每个界面一个真实地址（/tools、/docs、/ai、/album、/misc、/board）——
-    // 与多页站点同形态：地址栏直接体现所在界面、刷新/分享直达、前进后退可用、✕/Esc 关闭静默清路由。
-    // 依赖 Cloudflare Pages 的 SPA 回退（坑 2）：未知路径返回首页 200，首页脚本按 pathname 拉起对应界面；
-    // 注意本地 python http.server 没有回退，刷新 /tools 会 404（导航点击走 pushState 不受影响），wrangler/线上正常。
-    // 仅路由顶层界面；docViewer（文档阅读层）与个人主页不参与。#home 等普通锚点仍走原生锚点（视为"回到首页"）。
-    // 兼容：旧链接的 #/tools 形式自动归一化成 /tools（不产生多余历史记录）。
-    // =========================
-    var FS_ROUTE = { toolsView: 'tools', docsView: 'docs', aiView: 'ai', miscView: 'misc', boardView: 'board' };
-    var FS_TITLES = { toolsView: '工具合集', docsView: '文档', aiView: 'AI 助手', miscView: '杂项', boardView: '留言板' };
-    var BASE_TITLE = document.title;
-    function routePathFor(id) { return FS_ROUTE[id] ? '/' + FS_ROUTE[id] : ''; }
-    function idForPath(p) {
-      var key = String(p || '').replace(/\/+$/, '');
-      if (key.charAt(0) === '/') key = key.slice(1);
-      if (!key) return null;
-      for (var id in FS_ROUTE) if (FS_ROUTE[id] === key) return id;
-      return null;
-    }
-    function idForHash(h) { // 旧链接兼容：#/tools 形式
-      if (!h || h.charAt(0) !== '#' || h.charAt(1) !== '/') return null;
-      var key = h.slice(2);
-      for (var id in FS_ROUTE) if (FS_ROUTE[id] === key) return id;
-      return null;
-    }
-    function setTitleFor(id) {
-      document.title = (id && FS_TITLES[id]) ? FS_TITLES[id] + ' - YHuo' : BASE_TITLE;
-    }
-    function clearRoute() {
-      if (idForPath(location.pathname)) history.replaceState(null, '', '/');
-    }
-    // 供路由外的调用点（全站搜索等）拉起界面：实际显示在各自 open 函数里，路由由 fsOpen 写入
-    function fsNavigate(id) {
-      var reg = FS_REG[id];
-      if (reg && reg.open) reg.open();
-    }
-    // 路由器：后退/前进/锚点点击/手动改地址统一从这里进。点击路径由 fsOpen 写入（pushState 不触发本事件）；
-    // 后退到无路由路径时关闭所有开着的层。#home 等普通锚点在界面路径下点击（变成 /tools#home）也算"回到首页"：
-    // 路径有路由但 hash 是普通锚点时优先按回首页处理（关闭所有层并把路径清回 /）。
-    window.addEventListener('popstate', function () {
-      var pathId = idForPath(location.pathname);
-      var hashId = idForHash(location.hash);
-      var anchorHash = location.hash && !hashId; // #home 等普通锚点
-      if (pathId && anchorHash) {
-        // 锚点回首页：关所有层 + 路径清回 /（原生锚点滚动已发生）
-        FS_TOP.forEach(function (tid) {
-          var reg = FS_REG[tid];
-          if (reg && reg.el && reg.el.classList.contains('show') && !FLAGS_OFF[tid] && reg.close) reg.close();
-        });
-        history.replaceState(null, '', '/');
-        setTitleFor(null);
-        return;
-      }
-      var id = pathId || hashId;
-      if (id && !FLAGS_OFF[id]) {
-        var reg = FS_REG[id];
-        // 界面的实际显示在各自 open 函数里（fsOpen 只管互斥/高亮/锁滚动），故注册表带 open 供路由拉起
-        if (reg && reg.el && !reg.el.classList.contains('show') && reg.open) reg.open();
-        if (hashId && !pathId) history.replaceState(null, '', routePathFor(id)); // 旧 hash 链接归一化
-      } else if (id) {
-        history.replaceState(null, '', '/'); // 指向被功能开关关闭的界面（含旧 hash 形式）：回首页
-      } else {
-        FS_TOP.forEach(function (tid) {
-          var reg = FS_REG[tid];
-          if (reg && reg.el && reg.el.classList.contains('show') && !FLAGS_OFF[tid] && reg.close) reg.close();
-        });
-        clearRoute(); // 后退到首页：界面路径清掉
-      }
-      setTitleFor(id && !FLAGS_OFF[id] && !anchorHash ? id : null);
-    });
+    var PAGE_KEY = document.documentElement.getAttribute('data-page') || 'home'; // 当前页面（各页 <html> 上标死）
+    var PAGE_ROUTE = { home: '/', tools: '/tools/', docs: '/docs/', ai: '/ai/', misc: '/misc/', board: '/board/' };
+    var PAGE_TITLES = { home: document.title, tools: '工具合集 - YHuo', docs: '文档 - YHuo', ai: 'AI 助手 - YHuo', misc: '杂项 - YHuo', board: '留言板 - YHuo' };
 
     // 应用功能开关：给 <html> 打/摘 ff-* 类（CSS 负责隐藏；head 内联脚本已按 localStorage 缓存提前打过，这里按最新配置校正）
     // 并刷新缓存供下次访问首屏预隐藏；天气/歌词条由各自渲染入口判 FLAGS_OFF
@@ -338,13 +193,8 @@
         if (hv) { try { hv.pause(); } catch (e) {} }
       }
       FF_APPLY_HOOKS.forEach(function (fn) { try { fn(); } catch (e) {} }); // 通知启动期模块按最新开关校正（如画廊补加载）
-      // 深链接打开的/正开着的界面被开关关闭：就地关闭并清掉路由
-      FS_TOP.forEach(function (tid) {
-        if (!FLAGS_OFF[tid]) return;
-        var reg = FS_REG[tid];
-        if (reg && reg.el && reg.el.classList.contains('show') && reg.close) reg.close();
-        if (idForPath(location.pathname) === tid) { history.replaceState(null, '', '/'); document.title = BASE_TITLE; }
-      });
+      // 当前页面本身被开关关闭（后台关掉某栏目后直接访问/停留该页）：整页回首页
+      if (PAGE_KEY !== 'home' && FLAGS_OFF[PAGE_KEY + 'View']) location.replace('/');
     }
 
     // =========================
@@ -352,14 +202,7 @@
     // =========================
     sectionLinks.forEach(function (a) {
       a.addEventListener('click', function (e) {
-        // 全屏界面开着或路径带路由时放行默认锚点行为：URL 变 /docs#home 触发 popstate，
-        // 路由器按"锚点回首页"关所有层并把路径清回 /。此前这里一律 preventDefault，
-        // hash 永不变动，界面里点「首页」只滚动被盖住的底层页面，看起来毫无反应（路由上线时漏掉的真 bug）
-        if (FS_TOP.some(function (tid) {
-          var r = FS_REG[tid];
-          return r && r.el && r.el.classList.contains('show');
-        }) || idForPath(location.pathname)) return;
-        e.preventDefault();
+        e.preventDefault(); // 仅首页有 #home 锚点；子页面导航全是真链接，不进这里
         var target = document.getElementById(a.getAttribute('data-target'));
         if (!target) return;
         var top = target.getBoundingClientRect().top + window.scrollY - 52;
@@ -394,37 +237,29 @@
       if (h < 18) return '下午好 🌤️';
       return '晚上好 🌙';
     }
-    var heroGreeting = document.getElementById('heroGreeting');
+    var heroGreeting = null;
     var lastSecond = null;
-    function updateClock() {
-      var d = new Date();
-      var s = pad2(d.getSeconds());
-      if (clockHEl) clockHEl.textContent = pad2(d.getHours());
-      if (clockMEl) clockMEl.textContent = pad2(d.getMinutes());
-      if (clockSEl && s !== lastSecond) {
-        clockSEl.textContent = s;
-        if (lastSecond !== null) {
-          // 秒位跳动脉冲
-          clockSEl.classList.remove('tick');
-          void clockSEl.offsetWidth;
-          clockSEl.classList.add('tick');
-        }
-        lastSecond = s;
-      }
-      if (clockDateEl) {
-        clockDateEl.textContent = d.getFullYear() + '.' + pad2(d.getMonth() + 1) + '.' + pad2(d.getDate()) + '  周' + WEEK[d.getDay()];
-      }
-      if (heroGreeting) {
-        heroGreeting.textContent = greetingText(d.getHours());
-      }
+    var homeClockTimers = [];
+    function stopHomeClock() {
+      homeClockTimers.forEach(clearInterval);
+      homeClockTimers = [];
     }
-    updateClock();
-    setInterval(updateClock, 200);
-    // 毫秒滚数
-    if (clockMsEl) {
-      setInterval(function () {
-        clockMsEl.textContent = '.' + ('00' + new Date().getMilliseconds()).slice(-3);
-      }, 50);
+    function startHomeClock() {
+      stopHomeClock();
+      clockHEl = document.getElementById('clockH');
+      clockMEl = document.getElementById('clockM');
+      clockSEl = document.getElementById('clockS');
+      clockMsEl = document.getElementById('clockMs');
+      clockDateEl = document.getElementById('clockDate');
+      heroGreeting = document.getElementById('heroGreeting');
+      updateClock();
+      homeClockTimers.push(setInterval(updateClock, 200));
+      // 毫秒滚数
+      if (clockMsEl) {
+        homeClockTimers.push(setInterval(function () {
+          clockMsEl.textContent = '.' + ('00' + new Date().getMilliseconds()).slice(-3);
+        }, 50));
+      }
     }
 
     // =========================
@@ -489,8 +324,16 @@
     // 时钟下方的寄语：管理员在后台设置过"主页寄语"就优先显示；
     // 否则用每日一言（多条，3 秒切一句）。打字机逐字打出并轮播切换（仿歌词条效果）。
     // =========================
-    var heroQuote = document.getElementById('heroQuote');
-    if (heroQuote) {
+    var hqTeardown = null;
+    function destroyHomeQuote() {
+      if (!hqTeardown) return;
+      hqTeardown();
+      hqTeardown = null;
+    }
+    function startHomeQuote() {
+      destroyHomeQuote();
+      var heroQuote = document.getElementById('heroQuote');
+      if (!heroQuote) return;
       var heroQuoteText = document.getElementById('heroQuoteText');
       var hqList = [];            // 轮播内容池
       var hqIdx = -1;             // 当前显示条
@@ -551,11 +394,12 @@
       heroQuote.style.cursor = 'pointer';
       heroQuote.title = '点击切换';
       // 页面不可见时暂停打字/轮播，回来继续
-      document.addEventListener('visibilitychange', function () {
+      var onVis = function () {
         hqStop = document.hidden;
         if (hqStop) { clearInterval(hqTypeTimer); clearTimeout(hqHoldTimer); heroQuote.classList.remove('typing'); }
         else if (hqList.length > 1) hqNext();
-      });
+      };
+      document.addEventListener('visibilitychange', onVis);
 
       var showQuote = function (text, holdMs) {
         hqHoldMs = holdMs || HQ_HOLD_MS;
@@ -586,50 +430,72 @@
           showQuote(texts[0], 3000); // 一言：3 秒切一句
         });
       };
-      fetch('/api/settings?t=' + Date.now(), { credentials: 'same-origin' }) // 时间戳穿透浏览器 60s 缓存：后台改完设置（播放器款式等）下次进页面立即生效，不等缓存过期
+      fetch('/api/settings?t=' + Date.now(), { credentials: 'same-origin' }) // 时间戳穿透浏览器 60s 缓存
         .then(function (res) { return res.ok ? res.json() : Promise.reject(new Error('无接口')); })
         .then(function (s) {
           var qs = s && s.ok && Array.isArray(s.quotes) ? s.quotes : [];
           showQuotes(qs);
         })
         .catch(loadDailyQuote);
+
+      hqTeardown = function () {
+        clearInterval(hqTypeTimer);
+        clearTimeout(hqHoldTimer);
+        document.removeEventListener('visibilitychange', onVis);
+      };
     }
 
     // =========================
     // 滚动入场动画
     // =========================
-    if ('IntersectionObserver' in window) {
-      var observer = new IntersectionObserver(function (entries) {
-        entries.forEach(function (entry) {
-          if (entry.isIntersecting) {
-            entry.target.classList.add('visible');
-            observer.unobserve(entry.target);
-          }
+    var revealObserver = null;
+    function initScrollReveal() {
+      if (!('IntersectionObserver' in window)) {
+        document.querySelectorAll('.content-section').forEach(function (el) {
+          el.classList.add('visible');
         });
-      }, { threshold: 0.1, rootMargin: '0px 0px -60px 0px' });
-
-      document.querySelectorAll('.content-section').forEach(function (el) {
-        observer.observe(el);
-      });
-    } else {
-      // 降级：直接显示
-      document.querySelectorAll('.content-section').forEach(function (el) {
-        el.classList.add('visible');
+        return;
+      }
+      if (!revealObserver) {
+        revealObserver = new IntersectionObserver(function (entries) {
+          entries.forEach(function (entry) {
+            if (entry.isIntersecting) {
+              entry.target.classList.add('visible');
+              revealObserver.unobserve(entry.target);
+            }
+          });
+        }, { threshold: 0.1, rootMargin: '0px 0px -60px 0px' });
+      }
+      document.querySelectorAll('.content-section:not(.visible)').forEach(function (el) {
+        revealObserver.observe(el);
       });
     }
 
     // =========================
     // 图片画廊 + 灯箱
     // =========================
-    if (gallery) {
+    // 画廊状态挂 IIFE 作用域：resetCardMouse（外层）与外观开关要触达（坑 9：严格模式块内声明不可见）；
+    // 非杂项页保持空默认值，resetCardMouse 因此不再有 undefined.forEach 隐患
+    var loadedImgs = [];
+    var tiltRaf = null;
+    var hoverImg = null;
+    var galleryCard = null;
+    var cardMouseOn = true; // 大卡片跟随鼠标（外观卡片开关）
+    var imgTiltOn = true;   // 小图片倾斜动效（外观卡片开关）
+    var miscTeardown = null;
+    var miscAllowHook = null; // 当前画廊实例的「配置到达校正」回调（经 FF_APPLY_HOOKS 转发）
+
+    function initMiscGallery() {
+      destroyMiscGallery();
+      gallery = document.getElementById('galleryGrid');
+      galleryEmpty = document.getElementById('galleryEmpty');
+      if (!gallery) return;
       // 约定：图片命名为 1、2、3… 放入 images 文件夹，自动尝试多种格式
       var IMAGES = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
       var IMAGE_EXT = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'bmp', 'avif'];
       var imgPending = 0; // 等加载路径确定（后台接口或本地扫描）后再计数
-      var loadedImgs = [];
 
-      // 折叠相册：所有照片叠成一副牌，幻灯片式逐张展示（4 秒自动切换，悬停暂停）；
-      // 点击当前照片 → 像点"相册"一样展开全部图片平铺浏览
+      // 折叠相册：所有照片叠成一副牌，幻灯片式逐张展示（4 秒自动切换，悬停暂停）
       var deckIndex = 0;
       var deckTimer = null;
       var deckCount = document.getElementById('deckCount');
@@ -689,12 +555,8 @@
       gallery.addEventListener('mouseleave', function () { restartDeckTimer(); });
 
       // 鼠标动效：卡片 3D 倾斜 + 照片视差 + 聚光灯（rAF 节流，纯 CSS 变量驱动）
-      var cardMouseOn = true; // 大卡片跟随鼠标（外观卡片开关）
-      var imgTiltOn = true;   // 小图片倾斜动效（外观卡片开关）
-      var galleryCard = gallery.closest('.apple-card');
-      var tiltRaf = null;
+      galleryCard = gallery.closest('.apple-card');
       var lastMove = null;
-      var hoverImg = null;
       var reduceMotion = window.matchMedia &&
         window.matchMedia('(prefers-reduced-motion: reduce)').matches;
       if (galleryCard && !reduceMotion) {
@@ -797,6 +659,12 @@
           tryImage(n, 0);
         });
       }
+      function imgDone() {
+        imgPending--;
+        if (imgPending === 0 && gallery.children.length === 0) {
+          galleryEmpty.hidden = false;
+        }
+      }
       function galleryGated() {
         // 相册界面已移除：画廊只看杂项开关（settings 已应用过以实时 flags 为准）
         if (FLAGS_OFF.miscView !== undefined) return FLAGS_OFF.miscView;
@@ -804,8 +672,41 @@
         var c = window.__FF_CACHE;
         return !!(c && c.misc === false);
       }
+      var galleryStarted = false;
+      var pendingApiImages = null;
+      function startGalleryIfAllowed(apiImages) {
+        pendingApiImages = apiImages || null;
+        if (galleryStarted || galleryGated()) return;
+        galleryStarted = true;
+        startGallery(pendingApiImages);
+      }
+      miscAllowHook = function () { startGalleryIfAllowed(pendingApiImages); };
+      // 加载（fix：移除相册时误删的启动调用，画廊此前完全不出图）
+      fetch('/api/playlist', { credentials: 'same-origin' })
+        .then(function (res) { return res.ok ? res.json() : Promise.reject(new Error('无后台接口')); })
+        .then(function (data) {
+          startGalleryIfAllowed(data && data.ok ? data.images : null);
+        })
+        .catch(function () { startGalleryIfAllowed(null); });
 
+      miscTeardown = function () {
+        if (deckTimer) { clearInterval(deckTimer); deckTimer = null; }
+        window.removeEventListener('resize', layoutGallery);
+        if (tiltRaf) { cancelAnimationFrame(tiltRaf); tiltRaf = null; }
+        galleryCard = null;
+        hoverImg = null;
+        loadedImgs = [];
+        miscAllowHook = null;
+      };
     }
+
+    function destroyMiscGallery() {
+      if (miscTeardown) { miscTeardown(); miscTeardown = null; }
+    }
+    // 配置到达时转发校正（画廊比 settings 先启动/被开关拦下时补启动）
+    FF_APPLY_HOOKS.push(function () {
+      if (miscAllowHook) miscAllowHook();
+    });
 
     // =========================
     // 首页视频轮播：video 文件夹里的视频依次循环播放（静音自动播放，控件可取消静音）
@@ -914,7 +815,9 @@
             .catch(function () {});
         });
     }
-    if (homeVideo) {
+    function startHomeVideo() {
+      homeVideo = document.getElementById('homeVideo');
+      if (!homeVideo) return;
       homeVideo.addEventListener('ended', function () {
         // 单视频循环：还在独占当前视频就重播（currentTime 清零不重新加载）；否则按当前模式切下一个
         if (videoMode.mode === 'single' && videoMode.url === videoSrcOf(videoList[videoIndex])) {
@@ -1253,6 +1156,21 @@
     // 从未播放过：待机提示（一言已移到天气胶囊下方独立显示，这里不再重复轮播）
     if (lyricBar) lyricShowPlaceholder('♪ 打开底部播放器，歌词会在这里滚动');
     function lyricStopIdle() {} // 切歌时调用，保留空实现（待机只有静态一句，无需终止）
+
+    // pjax 回到首页时重绑歌词条元素（旧的已随 <main> 换掉）：播放中恢复当前句，从未播放显示待机
+    function lyricRebind() {
+      lyricBar = document.getElementById('lyricBar');
+      lyricText = document.getElementById('lyricText');
+      if (!lyricBar) return;
+      if (!audio.src) {
+        lyricShowPlaceholder('♪ 打开底部播放器，歌词会在这里滚动');
+        return;
+      }
+      lyricBar.hidden = false;
+      if (!lyricBar.classList.contains('show')) lyricBar.classList.add('show');
+      lyricFinishTyping();
+      musicLyricsTick();
+    }
 
     // =========================
     // 底部悬浮迷你播放器
@@ -4069,7 +3987,7 @@
 
     function openProfileView() {
       if (!profileView || !isMember()) return;
-      fsOpen('profileView'); // 互斥收起其他全屏层（个人主页不接管高亮/不锁滚动，保持原行为）
+      closeDocViewer(); // 与阅读层互斥（原由全屏管理器互斥代办）
       setProfileOpen(false);
       loadProfileData();
       loadEmailCard();
@@ -4088,10 +4006,9 @@
 
     if (profileViewClose) profileViewClose.addEventListener('click', closeProfileView);
     if (profileHomeBtn) profileHomeBtn.addEventListener('click', openProfileView);
-    fsRegister('profileView', { el: profileView, btn: null, close: closeProfileView, lockScroll: false });
     document.addEventListener('keydown', function (e) {
-      // 灯箱开着时 Esc 先归灯箱/相册管（它们自己的监听处理）
-      if (e.key === 'Escape' && profileView && !profileView.hidden && lightbox.hidden) closeProfileView();
+      // 个人主页 Esc 关闭（修：原条件里的 lightbox 自移除相册起就是 null，在这里解引用会让 Esc 静默报错）
+      if (e.key === 'Escape' && profileView && !profileView.hidden) closeProfileView();
     });
 
     // 主页大头像更换：复用下拉菜单那套 avatarInput 流程
@@ -4240,9 +4157,9 @@
     // 位置优先级：localStorage 手动选择 > IP 自动定位（ipapi.co + bigdatacloud 反查中文城市名）
     //   > 默认北京；结果缓存 30 分钟；任一环节失败静默隐藏（与每日一言的处理一致）
     // =========================
-    var weatherChip = document.getElementById('weatherChip');
-    var weatherIcon = document.getElementById('weatherIcon');
-    var weatherText = document.getElementById('weatherText');
+    var weatherChip = null;    // 首页模块：startHomeWeather 按当前 DOM 重查（pjax 换页后重建）
+    var weatherIcon = null;
+    var weatherText = null;
     var weatherPicker = document.getElementById('weatherPicker');
     var weatherSearch = document.getElementById('weatherSearch');
     var weatherResults = document.getElementById('weatherResults');
@@ -4413,7 +4330,6 @@
       loadWeather(loc);
     }
 
-    if (weatherChip) weatherChip.addEventListener('click', openWeatherPicker);
     var weatherPickerClose = document.getElementById('weatherPickerClose');
     if (weatherPickerClose) weatherPickerClose.addEventListener('click', closeWeatherPicker);
     if (weatherPicker) {
@@ -4519,14 +4435,21 @@
       });
     }
 
-    initWeather();
+    function startHomeWeather() {
+      weatherChip = document.getElementById('weatherChip');
+      weatherIcon = document.getElementById('weatherIcon');
+      weatherText = document.getElementById('weatherText');
+      if (!weatherChip) return;
+      weatherChip.addEventListener('click', openWeatherPicker);
+      initWeather();
+    }
 
     // =========================
     // 工具合集：重要日子 / 番茄钟 / 换算器 / 文本工具 / 随机决策 / 计算器（纯本地，无外部依赖）
     // =========================
 
     // ---- 计算器（带历史） ----
-    (function initCalc() {
+    function initCalc() {
       var screen = document.getElementById('calcScreen');
       var pad = document.getElementById('calcPad');
       var histEl = document.getElementById('calcHist');
@@ -4605,10 +4528,11 @@
       });
       render();
       renderHist();
-    })();
+    }
 
+    var pomoStopHook = null;
     // ---- 番茄钟（原倒计时升级：25/5/15 循环 + 今日完成数，响铃沿用） ----
-    (function initPomo() {
+    function initPomo() {
       var display = document.getElementById('pomoDisplay');
       var startBtn = document.getElementById('pomoStart');
       var resetBtn = document.getElementById('pomoReset');
@@ -4713,10 +4637,11 @@
       });
       renderNote();
       render();
-    })();
+      pomoStopHook = stop; // 交给页面模块：pjax 离开工具页时停表
+    }
 
     // ---- 重要日子（倒计时天数，存 localStorage） ----
-    (function initDays() {
+    function initDays() {
       var listEl = document.getElementById('daysList');
       var emptyEl = document.getElementById('daysEmpty');
       var nameEl = document.getElementById('daysName');
@@ -4803,10 +4728,10 @@
         el.addEventListener('keydown', function (e) { if (e.key === 'Enter') addBtn.click(); });
       });
       render();
-    })();
+    }
 
     // ---- 换算器（单位 + 进制，BigInt 保精度） ----
-    (function initConv() {
+    function initConv() {
       var tabs = document.getElementById('convTabs');
       var cats = document.getElementById('unitCats');
       var unitPane = document.getElementById('convUnit');
@@ -4923,10 +4848,10 @@
       }
       setCat('len');
       runBase();
-    })();
+    }
 
     // ---- 文本工具（字数 / 整理 / 时间戳 / JSON） ----
-    (function initText() {
+    function initText() {
       var tabs = document.getElementById('textTabs');
       if (!tabs) return;
       var PANES = { count: 'textCount', clean: 'textClean', ts: 'textTs', json: 'textJson' };
@@ -5019,10 +4944,10 @@
         if (fmtBtn) fmtBtn.addEventListener('click', function () { jsonRun(false); });
         if (minBtn) minBtn.addEventListener('click', function () { jsonRun(true); });
       }
-    })();
+    }
 
     // ---- 随机决策（滚灯式抽取，选项自动保存） ----
-    (function initDice() {
+    function initDice() {
       var input = document.getElementById('diceIn');
       var goBtn = document.getElementById('diceGo');
       var out = document.getElementById('diceOut');
@@ -5055,10 +4980,10 @@
           }
         }, 70);
       });
-    })();
+    }
 
     // ---- 密码生成（更多工具折叠区） ----
-    (function initPwdGen() {
+    function initPwdGen() {
       var out = document.getElementById('pwdGenOut');
       var lenEl = document.getElementById('pwdGenLen');
       var lenLabel = document.getElementById('pwdGenLenLabel');
@@ -5095,14 +5020,37 @@
         });
       }
       gen();
-    })();
+    }
+
+    function initToolsPage() {
+      initCalc();
+      initPomo();
+      initDays();
+      initConv();
+      initText();
+      initDice();
+      initPwdGen();
+    }
+
+    // 从 URL 锚点定位工具卡（/tools/#toolCalc；全站搜索跨页跳转同用此入口）
+    function locateToolCard(id) {
+      if (id === 'toolPwd') {
+        var fold = document.querySelector('.tool-more');
+        if (fold) fold.open = true;
+      }
+      var el = document.getElementById(id);
+      if (!el) return;
+      el.scrollIntoView({ block: 'center', behavior: 'smooth' });
+      el.classList.add('cmdk-flash');
+      setTimeout(function () { el.classList.remove('cmdk-flash'); }, 1600);
+    }
 
     // =========================
     // 文档区：docs/docs.json 清单 + docs/*.md，点击卡片进全屏阅读层。
     // 静态托管没有目录列表（坑 1），清单文件必须手工维护：加文档 = 放 md + 在 docs.json 加一条
     // =========================
-    var docsGrid = document.getElementById('docsGrid');
-    var docsEmpty = document.getElementById('docsEmpty');
+    var docsGrid = null;    // 文档页模块：initDocsPage 按当前 DOM 重查
+    var docsEmpty = null;
     var docViewer = document.getElementById('docViewer');
     var docViewerTitle = document.getElementById('docViewerTitle');
     var docArticle = document.getElementById('docArticle');
@@ -5258,13 +5206,15 @@
 
     var docViewerClose = document.getElementById('docViewerClose');
     if (docViewerClose) docViewerClose.addEventListener('click', closeDocViewer);
-    // docViewer 叠在 docsView 上（Esc 逐层退），不发起互斥；其他全屏层打开时会经管理器把它一并收起
-    fsRegister('docViewer', { el: docViewer, btn: null, close: closeDocViewer });
     document.addEventListener('keydown', function (e) {
-      if (e.key === 'Escape' && docViewer && !docViewer.hidden && lightbox.hidden) closeDocViewer();
+      // 文档阅读层 Esc 关闭（修：原条件里的 lightbox 自移除相册起就是 null，在这里解引用会让 Esc 静默报错）
+      if (e.key === 'Escape' && docViewer && !docViewer.hidden) closeDocViewer();
     });
 
-    if (docsGrid) {
+    function initDocsPage() {
+      docsGrid = document.getElementById('docsGrid');
+      docsEmpty = document.getElementById('docsEmpty');
+      if (!docsGrid) return;
       fetch('/docs/docs.json', { credentials: 'same-origin' })
         .then(function (r) { return r.ok ? r.json() : Promise.reject(new Error('http ' + r.status)); })
         .then(function (list) {
@@ -5309,11 +5259,11 @@
     // 流式回复：后端把上游 SSE 归一化成 data: {"delta":"..."} / [DONE]，前端按行解析；
     // 多轮历史只存在内存里，关闭界面或点"新对话"即清空
     // =========================
-    var aiView = document.getElementById('aiView');
-    var aiBtn = document.getElementById('aiBtn');
-    var aiForm = document.getElementById('aiForm');
-    var aiInput = document.getElementById('aiInput');
-    var aiMessages = document.getElementById('aiMessages');
+    var aiView = null;       // AI 页模块：initAiPage 按当前 DOM 重查（pjax 换页后重建）
+    var aiBtn = document.getElementById('aiBtn'); // 顶栏入口（外壳，常驻）
+    var aiForm = null;
+    var aiInput = null;
+    var aiMessages = null;
     var aiHistory = [];      // 本次对话 {role, content} 列表
     var aiConvId = 0;        // 当前对话的服务端 id（0=尚未落库的新对话）
     var aiConvs = [];        // 左侧历史栏数据 [{id,title,updated_at,msgs}]
@@ -5702,40 +5652,6 @@
         .catch(function () {});
     }
 
-    function openAiView() {
-      if (!aiView) return;
-      fsOpen('aiView'); // 互斥收起其他全屏层 + 接管顶栏高亮 + 锁背景滚动（统一管理器）
-      setProfileOpen(false);
-      aiView.hidden = false;
-      void aiView.offsetWidth;
-      aiView.classList.add('show');
-      // 每次打开都刷新一次配置（后台开关/改配置即时生效），再补开场白
-      fetchAiConfig(true).then(aiGreetIfEmpty);
-      // 首次打开且本地无历史：拉历史栏列表 + 恢复最近对话（登录用户）
-      if (!aiRestored && !aiHistory.length) {
-        aiRestored = true;
-        aiLoadConvList();
-        aiRestoreHistory();
-      }
-      setTimeout(function () { if (aiInput) aiInput.focus(); }, 200);
-    }
-
-    function closeAiView() {
-      if (!aiView || aiView.hidden) return;
-      fsClose('aiView'); // 解锁滚动 + 摘高亮（统一管理器）
-      aiView.classList.remove('show');
-      aiCloseHistoryDrawer(); // 关界面顺手收起历史抽屉
-      // 关闭保留对话：只中断进行中的流式请求（历史在内存 + 服务端，重开可继续）
-      if (aiAbort) {
-        try { aiAbort.abort(); } catch (e) {}
-        aiAbort = null;
-      }
-      setTimeout(function () {
-        aiView.hidden = true;
-        onScroll(); // 关闭后恢复按滚动位置的导航高亮
-      }, 250);
-    }
-
     function aiFail(messages, pending, msg) {
       // 失败时把刚 push 的用户消息弹回去，重试不会重复入历史
       if (messages.length && messages[messages.length - 1].role === 'user') messages.pop();
@@ -5861,65 +5777,98 @@
       });
     }
 
-    if (aiBtn) aiBtn.addEventListener('click', openAiView);
-    var aiViewClose = document.getElementById('aiViewClose');
-    if (aiViewClose) aiViewClose.addEventListener('click', closeAiView);
-    fsRegister('aiView', { el: aiView, btn: aiBtn, close: closeAiView, open: openAiView });
-    var aiNewChatBtn = document.getElementById('aiNewChatBtn');
-    if (aiNewChatBtn) {
-      aiNewChatBtn.addEventListener('click', function () {
-        aiResetChat();
-        // 无论之前有没有聊天记录，都给出可见反馈（否则只有欢迎语时点击像"没反应"）
-        addAiMsg('bot', '🆕 已开启新对话，有什么想问的～');
-        aiCloseHistoryDrawer(); // 抽屉开着时同步收起
-        if (aiInput) aiInput.focus();
-      });
-    }
-    // 抽屉内"新对话"：同款行为 + 关抽屉
-    var aiHistNewBtn = document.getElementById('aiHistNewBtn');
-    if (aiHistNewBtn) {
-      aiHistNewBtn.addEventListener('click', function () {
-        aiResetChat();
+    // —— AI 页模块（/ai/ 为独立页面）：进入重建绑定，离开断流 + 摘 document 监听 ——
+    var aiDocCleanup = null;
+    function initAiPage() {
+      aiView = document.getElementById('aiView');
+      aiForm = document.getElementById('aiForm');
+      aiInput = document.getElementById('aiInput');
+      aiMessages = document.getElementById('aiMessages');
+      if (!aiView) return;
+      // 每次进入都刷新一次配置（后台开关/改配置即时生效），再补开场白
+      fetchAiConfig(true).then(aiGreetIfEmpty);
+      if (!aiRestored && !aiHistory.length) {
+        aiRestored = true;
+        aiLoadConvList();
+        aiRestoreHistory();
+      } else if (aiHistory.length) {
+        // pjax 回来：用内存历史重建消息视图
+        aiMessages.innerHTML = '';
+        aiHistory.forEach(function (m) {
+          if (m.role === 'user') addAiMsg('user', m.content);
+          else aiRenderBot(addAiMsg('bot', ''), m.content);
+        });
+      } else {
         aiGreetIfEmpty();
-        addAiMsg('bot', '🆕 已开启新对话，有什么想问的～');
-        aiCloseHistoryDrawer();
-        if (aiInput) aiInput.focus();
-      });
-    }
-    // 历史抽屉：顶栏气泡按钮开合；点遮罩/聊天区关闭
-    var aiHistoryToggle = document.getElementById('aiHistoryToggle');
-    if (aiHistoryToggle) {
-      aiHistoryToggle.setAttribute('aria-expanded', 'false');
-      aiHistoryToggle.addEventListener('click', function () {
-        if (aiDrawerOpen()) aiCloseHistoryDrawer();
-        else aiOpenHistoryDrawer();
-      });
-    }
-    var aiHistoryScrim = document.getElementById('aiHistoryScrim');
-    if (aiHistoryScrim) aiHistoryScrim.addEventListener('click', aiCloseHistoryDrawer);
-    var aiChatEl = aiView ? aiView.querySelector('.ai-chat') : null;
-    if (aiChatEl) {
-      aiChatEl.addEventListener('click', function () { aiCloseHistoryDrawer(); });
-    }
-    // 顶栏切换模型：只影响之后的回复，当前对话历史延续（菜单逻辑见 aiSyncModelSwitcher）
-    var aiModelBtn = document.getElementById('aiModelBtn');
-    var aiModelMenu = document.getElementById('aiModelMenu');
-    if (aiModelBtn && aiModelMenu) {
-      aiModelBtn.addEventListener('click', function (e) {
-        e.stopPropagation();
-        aiModelMenu.hidden = !aiModelMenu.hidden;
-      });
-      document.addEventListener('click', function (e) {
-        if (!aiModelMenu.hidden && !e.target.closest('#aiModelSwitch')) aiModelMenu.hidden = true;
-      });
-    }
-    document.addEventListener('keydown', function (e) {
-      if (e.key === 'Escape' && aiView && !aiView.hidden && lightbox.hidden) {
-        if (aiModelMenu && !aiModelMenu.hidden) { aiModelMenu.hidden = true; return; } // Esc 先收模型菜单
-        if (aiDrawerOpen()) { aiCloseHistoryDrawer(); return; } // 抽屉开着先只关抽屉
-        closeAiView();
       }
-    });
+      var aiNewChatBtn = document.getElementById('aiNewChatBtn');
+      if (aiNewChatBtn) {
+        aiNewChatBtn.addEventListener('click', function () {
+          aiResetChat();
+          // 无论之前有没有聊天记录，都给出可见反馈（否则只有欢迎语时点击像"没反应"）
+          addAiMsg('bot', '🆕 已开启新对话，有什么想问的～');
+          aiCloseHistoryDrawer(); // 抽屉开着时同步收起
+          if (aiInput) aiInput.focus();
+        });
+      }
+      // 抽屉内"新对话"：同款行为 + 关抽屉
+      var aiHistNewBtn = document.getElementById('aiHistNewBtn');
+      if (aiHistNewBtn) {
+        aiHistNewBtn.addEventListener('click', function () {
+          aiResetChat();
+          aiGreetIfEmpty();
+          addAiMsg('bot', '🆕 已开启新对话，有什么想问的～');
+          aiCloseHistoryDrawer();
+          if (aiInput) aiInput.focus();
+        });
+      }
+      // 历史抽屉：顶栏气泡按钮开合；点遮罩/聊天区关闭
+      var aiHistoryToggle = document.getElementById('aiHistoryToggle');
+      if (aiHistoryToggle) {
+        aiHistoryToggle.setAttribute('aria-expanded', 'false');
+        aiHistoryToggle.addEventListener('click', function () {
+          if (aiDrawerOpen()) aiCloseHistoryDrawer();
+          else aiOpenHistoryDrawer();
+        });
+      }
+      var aiHistoryScrim = document.getElementById('aiHistoryScrim');
+      if (aiHistoryScrim) aiHistoryScrim.addEventListener('click', aiCloseHistoryDrawer);
+      var aiChatEl = aiView.querySelector('.ai-chat');
+      if (aiChatEl) {
+        aiChatEl.addEventListener('click', function () { aiCloseHistoryDrawer(); });
+      }
+      // 顶栏切换模型：只影响之后的回复，当前对话历史延续（菜单逻辑见 aiSyncModelSwitcher）
+      var aiModelBtn = document.getElementById('aiModelBtn');
+      var aiModelMenu = document.getElementById('aiModelMenu');
+      if (aiModelBtn && aiModelMenu) {
+        aiModelBtn.addEventListener('click', function (e) {
+          e.stopPropagation();
+          aiModelMenu.hidden = !aiModelMenu.hidden;
+        });
+      }
+      // document 级监听登记起来，离开页面时移除（防 pjax 反复进出叠加监听）
+      var onDocClick = function (e) {
+        if (aiModelMenu && !aiModelMenu.hidden && !e.target.closest('#aiModelSwitch')) aiModelMenu.hidden = true;
+      };
+      // Esc：先收模型菜单，再收历史抽屉（退出页面交给浏览器返回键，不再有"关界面"动作）
+      var onDocKey = function (e) {
+        if (e.key !== 'Escape') return;
+        if (aiModelMenu && !aiModelMenu.hidden) { aiModelMenu.hidden = true; return; }
+        if (aiDrawerOpen()) aiCloseHistoryDrawer();
+      };
+      document.addEventListener('click', onDocClick);
+      document.addEventListener('keydown', onDocKey);
+      aiDocCleanup = function () {
+        document.removeEventListener('click', onDocClick);
+        document.removeEventListener('keydown', onDocKey);
+      };
+      aiBindPageControls();
+    }
+
+    function destroyAiPage() {
+      if (aiDocCleanup) { aiDocCleanup(); aiDocCleanup = null; }
+      if (aiAbort) { try { aiAbort.abort(); } catch (e) {} aiAbort = null; }
+    }
 
     // ---------- 附件：＋上传文件（图片→视觉模型 base64；文本文件→上下文注入，不存服务器） ----------
     var IMAGE_MAX = 4 * 1024 * 1024;   // 单图 4MB
@@ -5994,195 +5943,79 @@
       }
     }
 
-    var aiFileBtn = document.getElementById('aiFileBtn');
-    var aiFileInput = document.getElementById('aiFileInput');
-    if (aiFileBtn && aiFileInput) {
-      aiFileBtn.addEventListener('click', function () { aiFileInput.click(); });
-      aiFileInput.addEventListener('change', function () {
-        aiAddFiles(this.files);
-        this.value = '';
-      });
-    }
+    function aiBindPageControls() {
+      // ---------- 附件：＋上传文件（图片→视觉模型 base64；文本文件→上下文注入，不存服务器） ----------
+      var aiFileBtn = document.getElementById('aiFileBtn');
+      var aiFileInput = document.getElementById('aiFileInput');
+      if (aiFileBtn && aiFileInput) {
+        aiFileBtn.addEventListener('click', function () { aiFileInput.click(); });
+        aiFileInput.addEventListener('change', function () {
+          aiAddFiles(this.files);
+          this.value = '';
+        });
+      }
 
-    if (aiForm) {
-      aiForm.addEventListener('submit', function (e) {
-        e.preventDefault();
-        var text = aiInput ? aiInput.value.trim() : '';
-        if ((!text && !aiAttach.length) || aiBusy) return;
-        if (!isMember()) {
-          addAiMsg('bot', '要和我聊天，请先登录或注册一个账号哦～（右上角头像进入登录）');
-          openGate();
-          return;
-        }
-        aiBusy = true;
-        var sendBtn = document.getElementById('aiSendBtn');
-        if (sendBtn) sendBtn.disabled = true;
-        fetchAiConfig(false).then(function (cfg) {
-          if (!cfg.enabled) {
-            addAiMsg('bot', 'AI 对话还没有配置好，请等站长在后台接入～');
-            aiStopBusy();
+      if (aiForm) {
+        aiForm.addEventListener('submit', function (e) {
+          e.preventDefault();
+          var text = aiInput ? aiInput.value.trim() : '';
+          if ((!text && !aiAttach.length) || aiBusy) return;
+          if (!isMember()) {
+            addAiMsg('bot', '要和我聊天，请先登录或注册一个账号哦～（右上角头像进入登录）');
+            openGate();
             return;
           }
-          // 组装消息：文本附件注入上下文；有图片时升级为多模态 parts（发给视觉模型）
-          var content = text;
-          var attachNote = '';
-          aiAttach.forEach(function (f) {
-            if (f.kind === 'text') {
-              content += (content ? '\n\n' : '') + '【附件 ' + f.name + '】\n' + f.data;
-              attachNote += ' 📄' + f.name;
+          aiBusy = true;
+          var sendBtn = document.getElementById('aiSendBtn');
+          if (sendBtn) sendBtn.disabled = true;
+          fetchAiConfig(false).then(function (cfg) {
+            if (!cfg.enabled) {
+              addAiMsg('bot', 'AI 对话还没有配置好，请等站长在后台接入～');
+              aiStopBusy();
+              return;
             }
-          });
-          var images = aiAttach.filter(function (f) { return f.kind === 'image'; });
-          if (images.length) {
-            var parts = [{ type: 'text', text: content || '请看这些图片' }];
-            images.forEach(function (f) {
-              parts.push({ type: 'image_url', image_url: { url: f.data } });
-              attachNote += ' 🖼' + f.name;
+            // 组装消息：文本附件注入上下文；有图片时升级为多模态 parts（发给视觉模型）
+            var content = text;
+            var attachNote = '';
+            aiAttach.forEach(function (f) {
+              if (f.kind === 'text') {
+                content += (content ? '\n\n' : '') + '【附件 ' + f.name + '】\n' + f.data;
+                attachNote += ' 📄' + f.name;
+              }
             });
-            content = parts;
-          }
-          addAiMsg('user', text + attachNote);
-          aiHistory.push({ role: 'user', content: content });
-          aiAttach = [];
-          aiRenderAttach();
-          if (aiInput) aiInput.value = '';
-          var pending = addAiMsg('bot', '思考中…', true);
-          streamAiReply(aiHistory, pending);
+            var images = aiAttach.filter(function (f) { return f.kind === 'image'; });
+            if (images.length) {
+              var parts = [{ type: 'text', text: content || '请看这些图片' }];
+              images.forEach(function (f) {
+                parts.push({ type: 'image_url', image_url: { url: f.data } });
+                attachNote += ' 🖼' + f.name;
+              });
+              content = parts;
+            }
+            addAiMsg('user', text + attachNote);
+            aiHistory.push({ role: 'user', content: content });
+            aiAttach = [];
+            aiRenderAttach();
+            if (aiInput) aiInput.value = '';
+            var pending = addAiMsg('bot', '思考中…', true);
+            streamAiReply(aiHistory, pending);
+          });
         });
-      });
-    }
-
-    // =========================
-    // 工具合集 / 文档界面：与 AI 同款的全屏层（相册同款接管高亮 + 锁背景滚动）
-    // =========================
-    var toolsView = document.getElementById('toolsView');
-    var toolsBtn = document.getElementById('toolsBtn');
-    var docsView = document.getElementById('docsView');
-    var docsBtn = document.getElementById('docsBtn');
-    var miscView = document.getElementById('miscView');
-    var miscBtn = document.getElementById('miscBtn');
-
-    // 各全屏层真正的关闭按钮 id（不能靠 .album-close 类找：AI 顶栏的"新对话"按钮
-    // 也用了这个样式类且排在关闭按钮前面，querySelector 会取到它导致互斥失效）
-    var FULLSCREEN_CLOSE_IDS = {
-      profileView: 'profileViewClose',
-      docViewer: 'docViewerClose',
-      toolsView: 'toolsViewClose',
-      docsView: 'docsViewClose',
-      aiView: 'aiViewClose',
-      miscView: 'miscViewClose',
-      boardView: 'boardViewClose',
-    };
-    function closeFullscreenOf(id) {
-      var el = document.getElementById(id);
-      if (el && !el.hidden) {
-        var cb = document.getElementById(FULLSCREEN_CLOSE_IDS[id] || '') || el.querySelector('.album-close');
-        if (cb) cb.click();
       }
     }
 
-    function takeNavHighlight(btn) {
-      navLinks.forEach(function (a) { a.classList.remove('active'); });
-      if (btn) btn.classList.add('active');
-    }
-
-    function openToolsView() {
-      if (!toolsView || FLAGS_OFF.toolsView) return;
-      fsOpen('toolsView'); // 互斥收起其他全屏层 + 接管顶栏高亮 + 锁背景滚动（统一管理器）
-      setProfileOpen(false);
-      toolsView.hidden = false;
-      void toolsView.offsetWidth;
-      toolsView.classList.add('show');
-    }
-
-    function closeToolsView() {
-      fsClose('toolsView'); // 解锁滚动 + 摘高亮（统一管理器）
-      toolsView.classList.remove('show');
-      setTimeout(function () {
-        toolsView.hidden = true;
-        onScroll();
-      }, 250);
-    }
-
-    function openDocsView() {
-      if (!docsView || FLAGS_OFF.docsView) return;
-      fsOpen('docsView'); // 互斥收起其他全屏层 + 接管顶栏高亮 + 锁背景滚动（统一管理器）
-      setProfileOpen(false);
-      docsView.hidden = false;
-      void docsView.offsetWidth;
-      docsView.classList.add('show');
-    }
-
-    function closeDocsView() {
-      fsClose('docsView'); // 解锁滚动 + 摘高亮（统一管理器）
-      docsView.classList.remove('show');
-      setTimeout(function () {
-        docsView.hidden = true;
-        onScroll();
-      }, 250);
-    }
-
-    function openMiscView() {
-      if (!miscView || FLAGS_OFF.miscView) return;
-      fsOpen('miscView'); // 互斥收起其他全屏层 + 接管顶栏高亮 + 锁背景滚动（统一管理器）
-      setProfileOpen(false);
-      miscView.hidden = false;
-      void miscView.offsetWidth;
-      miscView.classList.add('show');
-    }
-
-    function closeMiscView() {
-      fsClose('miscView'); // 解锁滚动 + 摘高亮（统一管理器）
-      miscView.classList.remove('show');
-      setTimeout(function () {
-        miscView.hidden = true;
-        onScroll();
-      }, 250);
-    }
-
-    if (toolsBtn) toolsBtn.addEventListener('click', openToolsView);
-    var toolsViewClose = document.getElementById('toolsViewClose');
-    if (toolsViewClose) toolsViewClose.addEventListener('click', closeToolsView);
-    if (docsBtn) docsBtn.addEventListener('click', openDocsView);
-    var docsViewClose = document.getElementById('docsViewClose');
-    if (docsViewClose) docsViewClose.addEventListener('click', closeDocsView);
-    if (miscBtn) miscBtn.addEventListener('click', openMiscView);
-    var miscViewClose = document.getElementById('miscViewClose');
-    if (miscViewClose) miscViewClose.addEventListener('click', closeMiscView);
-    fsRegister('toolsView', { el: toolsView, btn: toolsBtn, close: closeToolsView, open: openToolsView });
-    fsRegister('docsView', { el: docsView, btn: docsBtn, close: closeDocsView, open: openDocsView });
-    fsRegister('miscView', { el: miscView, btn: miscBtn, close: closeMiscView, open: openMiscView });
 
     // ---------- 留言板（boardView）：前台用户发布、管理员删除、留言带签到等级徽标 ----------
-    var boardBtn = document.getElementById('boardBtn');
-    var boardView = document.getElementById('boardView');
-    var boardList = document.getElementById('boardList');
-    var boardInput = document.getElementById('boardInput');
-    var boardCount = document.getElementById('boardCount');
-    var boardHint = document.getElementById('boardHint');
-    var boardPost = document.getElementById('boardPost');
-    var boardEmpty = document.getElementById('boardEmpty');
-    var boardMore = document.getElementById('boardMore');
-    var boardMe = { loggedIn: false, admin: false }; // 打开时经 /api/user/me 判定
+    var boardList = null;   // 留言板页模块：initBoardPage 按当前 DOM 重查
+    var boardInput = null;
+    var boardCount = null;
+    var boardHint = null;
+    var boardPost = null;
+    var boardEmpty = null;
+    var boardMore = null;
+    var boardMe = { loggedIn: false, admin: false }; // 进入页面时经 /api/user/me 判定
     var boardOffset = 0;
 
-    function openBoardView() {
-      if (!boardView) return;
-      fsOpen('boardView');
-      setProfileOpen(false);
-      boardView.hidden = false;
-      void boardView.offsetWidth;
-      boardView.classList.add('show');
-      boardOffset = 0;
-      boardList.textContent = '';
-      boardRefreshIdentity();
-      boardLoad();
-    }
-    function closeBoardView() {
-      fsClose('boardView');
-      boardView.classList.remove('show');
-      setTimeout(function () { boardView.hidden = true; }, 250);
-    }
     function boardRefreshIdentity() {
       fetch('/api/user/me', { credentials: 'same-origin' })
         .then(function (r) { return r.json().catch(function () { return {}; }); })
@@ -6287,60 +6120,58 @@
         })
         .catch(function () { boardHint.textContent = '留言加载失败'; });
     }
-    if (boardInput) {
+    function initBoardPage() {
+      boardList = document.getElementById('boardList');
+      boardInput = document.getElementById('boardInput');
+      boardCount = document.getElementById('boardCount');
+      boardHint = document.getElementById('boardHint');
+      boardPost = document.getElementById('boardPost');
+      boardEmpty = document.getElementById('boardEmpty');
+      boardMore = document.getElementById('boardMore');
+      if (!boardList || !boardInput) return;
       boardInput.addEventListener('input', function () {
         boardCount.textContent = boardInput.value.length + ' / 500';
       });
+      if (boardPost) {
+        boardPost.addEventListener('click', function () {
+          var content = boardInput.value.trim();
+          if (!content) { boardHint.textContent = '说点什么再发布吧'; return; }
+          if (!boardMe.loggedIn) { openGate(); return; }
+          boardPost.disabled = true;
+          boardPost.textContent = '发布中…';
+          fetch('/api/messages', {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ content: content })
+          }).then(function (r) { return r.json().catch(function () { return { ok: false, error: '响应异常' }; }); })
+            .then(function (d) {
+              boardPost.disabled = false;
+              boardPost.textContent = '发布留言';
+              if (d.ok) {
+                boardInput.value = '';
+                boardCount.textContent = '0 / 500';
+                boardOffset = 0;
+                boardLoad();
+                boardHint.textContent = '留言已发布';
+                setTimeout(function () { boardRefreshIdentity(); }, 2500);
+              } else {
+                boardHint.textContent = d.error || '发布失败';
+              }
+            })
+            .catch(function () { boardPost.disabled = false; boardPost.textContent = '发布留言'; boardHint.textContent = '网络错误'; });
+        });
+      }
+      if (boardMore) boardMore.addEventListener('click', boardLoad);
+      boardOffset = 0;
+      boardRefreshIdentity();
+      boardLoad();
     }
-    if (boardPost) {
-      boardPost.addEventListener('click', function () {
-        var content = boardInput.value.trim();
-        if (!content) { boardHint.textContent = '说点什么再发布吧'; return; }
-        if (!boardMe.loggedIn) { openGate(); return; }
-        boardPost.disabled = true;
-        boardPost.textContent = '发布中…';
-        fetch('/api/messages', {
-          method: 'POST',
-          credentials: 'same-origin',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ content: content })
-        }).then(function (r) { return r.json().catch(function () { return { ok: false, error: '响应异常' }; }); })
-          .then(function (d) {
-            boardPost.disabled = false;
-            boardPost.textContent = '发布留言';
-            if (d.ok) {
-              boardInput.value = '';
-              boardCount.textContent = '0 / 500';
-              boardOffset = 0;
-              boardLoad();
-              boardHint.textContent = '留言已发布';
-              setTimeout(function () { boardRefreshIdentity(); }, 2500);
-            } else {
-              boardHint.textContent = d.error || '发布失败';
-            }
-          })
-          .catch(function () { boardPost.disabled = false; boardPost.textContent = '发布留言'; boardHint.textContent = '网络错误'; });
-      });
-    }
-    if (boardMore) boardMore.addEventListener('click', boardLoad);
-    if (boardBtn) boardBtn.addEventListener('click', openBoardView);
-    var boardViewClose = document.getElementById('boardViewClose');
-    if (boardViewClose) boardViewClose.addEventListener('click', closeBoardView);
-    fsRegister('boardView', { el: boardView, btn: boardBtn, close: closeBoardView, open: openBoardView });
 
-    document.addEventListener('keydown', function (e) {
-      if (e.key !== 'Escape') return;
-      // 阅读层叠在文档界面上：Esc 只关阅读层，不关文档界面
-      if (docViewer && !docViewer.hidden) return;
-      if (toolsView && !toolsView.hidden) closeToolsView();
-      if (docsView && !docsView.hidden) closeDocsView();
-      if (miscView && !miscView.hidden) closeMiscView();
-      if (boardView && !boardView.hidden) closeBoardView();
-    });
 
     // ---------- 全站搜索（Ctrl+K / 顶栏放大镜）：命令面板 ----------
     // 数据源：界面/工具静态清单 + /api/playlist（失败回退 music|video|images 三个静态清单）+ docs/docs.json，60 秒缓存。
-    // 动作全部复用现有机制：界面走 hash 路由（fsOpen 自带开关守卫）、文档 openDoc、音乐按歌名回 tracks 定位 playIndex、
+    // 动作全部复用现有机制：界面 pjax 跳真实页面、文档 openDoc、音乐按歌名回 tracks 定位 playIndex、
     // 视频/首页回 home。被功能开关关闭的界面/模块不出现在结果里。
     (function initCmdk() {
       var root = document.getElementById('cmdk');
@@ -6410,12 +6241,12 @@
           out.push({ group: group, tag: tag, label: label, sub: opts.sub, run: run, disabled: !!opts.disabled, hl: hl });
         }
         // 界面（功能开关过滤：关闭的界面搜不到，AI 跟随其全局开关）；首页走原生锚点
-        push('界面', '界面', '首页', function () { location.hash = '#home'; });
-        if (!FLAGS_OFF.toolsView) push('界面', '界面', '工具', function () { fsNavigate('toolsView'); });
-        if (!FLAGS_OFF.docsView) push('界面', '界面', '文档', function () { fsNavigate('docsView'); });
-        if (aiOn()) push('界面', '界面', 'AI 助手', function () { fsNavigate('aiView'); });
-        if (!FLAGS_OFF.miscView) push('界面', '界面', '杂项', function () { fsNavigate('miscView'); });
-        push('界面', '界面', '留言板', function () { fsNavigate('boardView'); });
+        push('界面', '界面', '首页', function () { pjaxGo('/'); });
+        if (!FLAGS_OFF.toolsView) push('界面', '界面', '工具', function () { pjaxGo('/tools/'); });
+        if (!FLAGS_OFF.docsView) push('界面', '界面', '文档', function () { pjaxGo('/docs/'); });
+        if (aiOn()) push('界面', '界面', 'AI 助手', function () { pjaxGo('/ai/'); });
+        if (!FLAGS_OFF.miscView) push('界面', '界面', '杂项', function () { pjaxGo('/misc/'); });
+        push('界面', '界面', '留言板', function () { pjaxGo('/board/'); });
         // 工具卡（打开工具界面并定位到卡片）
         if (!FLAGS_OFF.toolsView) {
           var TOOLS = [
@@ -6428,18 +6259,7 @@
             { label: '密码生成', id: 'toolPwd', fold: true }
           ];
           TOOLS.forEach(function (t) {
-            push('工具', t.label, t.label, function () {
-              fsNavigate('toolsView');
-              setTimeout(function () {
-                var fold = document.querySelector('.tool-more');
-                if (fold && t.fold) fold.open = true;
-                var el = document.getElementById(t.id);
-                if (!el) return;
-                el.scrollIntoView({ block: 'center', behavior: 'smooth' });
-                el.classList.add('cmdk-flash');
-                setTimeout(function () { el.classList.remove('cmdk-flash'); }, 1600);
-              }, 380);
-            });
+            push('工具', t.label, t.label, function () { pjaxGo('/tools/#' + t.id); });
           });
         }
         // 文档
@@ -6447,9 +6267,7 @@
           data.docs.forEach(function (d) {
             var title = d.title || d.file || '';
             push('文档', '文档', title, function () {
-              fsNavigate('docsView');
-              // 等路由把文档界面拉起后再开阅读层——立即开会被 fsOpen 互斥收掉（docViewer 不发起互斥但会被其他层关闭）
-              setTimeout(function () { openDoc(title, d.file); }, 400);
+              openDoc(title, d.file); // 阅读层是全站外壳浮层，任何页面原地打开
             }, { sub: d.date || '' });
           });
         }
@@ -6462,7 +6280,7 @@
         // 视频
         if (!FLAGS_OFF.video) {
           data.videos.forEach(function (v) {
-            push('视频', '视频', stripExt(v.name), function () { location.hash = '#home'; }, { sub: '回首页播放' });
+            push('视频', '视频', stripExt(v.name), function () { pjaxGo('/'); }, { sub: '回首页播放' });
           });
         }
         // 组内按命中位置排序，组间按各组最佳命中排序（组保持整体，不交错——渲染按组变化插组头）
@@ -6614,18 +6432,159 @@
       }, true);
     })();
 
-    // 深链接：以 /tools（真实路径，Cloudflare Pages SPA 回退返回首页）或旧 #/tools 打开页面时
-    // 直接拉起对应界面（须在全部 fsRegister 之后执行；缓存即知该界面被功能开关关闭时静默回首页，
-    // 缓存未知（首访）先拉起，配置到达后由 applyFeatureFlags 校正）；旧 hash 形式归一化成真实路径
+    // =========================
+    // 多页面核心：pjax 无缝换页（2026-09-05）
+    // 六个页面都是真实 HTML（/、/tools/、/docs/、/ai/、/misc/、/board/），直接输入网址/刷新/分享全部可用；
+    // 站内导航在这里拦截：fetch 目标页 → 只替换 <main>（头部/播放器/浮层/页脚都在外壳里不动）→ 音乐跨页不断播。
+    // fetch 失败或禁 JS：浏览器整页加载兜底（页面本来就是真文件）。
+    // =========================
+    var PAGE_MODULES = {
+      home: {
+        init: function () { startHomeClock(); startHomeQuote(); startHomeVideo(); startHomeWeather(); lyricRebind(); },
+        destroy: function () { stopHomeClock(); destroyHomeQuote(); }
+      },
+      tools: {
+        init: function () { initToolsPage(); },
+        destroy: function () { if (pomoStopHook) pomoStopHook(); },
+        onHash: function (h) { var id = String(h || '').slice(1); if (/^tool/.test(id)) locateToolCard(id); }
+      },
+      docs:  { init: function () { initDocsPage(); } },
+      ai:    { init: function () { initAiPage(); }, destroy: destroyAiPage },
+      misc:  { init: function () { initMiscGallery(); }, destroy: destroyMiscGallery },
+      board: { init: function () { initBoardPage(); } }
+    };
+    var currentPage = PAGE_KEY;
+
+    function runPageHook(key, name, arg) {
+      var m = PAGE_MODULES[key];
+      if (m && m[name]) { try { m[name](arg); } catch (e) {} }
+    }
+    function pageKeyForPath(p) {
+      var key = String(p || '').replace(/^\/+|\/+$/g, '');
+      if (!key) return 'home';
+      return PAGE_ROUTE[key] ? key : null;
+    }
+    function isInternalLink(a) {
+      if (!a || a.tagName !== 'A') return false;
+      if (a.target === '_blank' || a.hasAttribute('download')) return false;
+      if (a.protocol !== location.protocol || a.host !== location.host) return false;
+      var h = a.getAttribute('href') || '';
+      if (!h || h.charAt(0) === '#') return false;
+      if (/^(admin|api|media)(\/|$)/.test(h.replace(/^\/+/, '').replace(/\/+$/, ''))) return false;
+      return true;
+    }
+    function applyNavActive(key) {
+      navLinks.forEach(function (a) {
+        var k = a.id ? a.id.replace(/Btn$/, '') : (a.getAttribute('data-target') === 'home' ? 'home' : '');
+        var on = k === key;
+        a.classList.toggle('active', on);
+        if (on) a.setAttribute('aria-current', 'page');
+        else a.removeAttribute('aria-current');
+      });
+    }
+    function closeAllTransientOverlays() {
+      // 换页时收起外壳上的临时浮层（不随 <main> 换页重置）
+      try { closeProfileView(); } catch (e) {}
+      try { closeDocViewer(); } catch (e) {}
+      try { closeWeatherPicker(); } catch (e) {}
+      try { closeBgPicker(); } catch (e) {}
+      try { setAppearOpen(false); } catch (e) {}
+      try { setProfileOpen(false); } catch (e) {}
+    }
+    function postVisit(path) {
+      // 访问计数：pjax 换页也按真实路径上报（每个浏览器会话的首次进入由顶部访问计数块负责）
+      try {
+        fetch('/api/visit', {
+          method: 'POST',
+          credentials: 'same-origin',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ path: path + location.hash })
+        }).catch(function () {});
+      } catch (e) {}
+    }
+
+    var scrollMem = {};  // 离开页面时的滚动位置（返回键恢复）
+    var pjaxBusy = false;
+    function pjaxSwap(u, push, restoreY) {
+      if (pjaxBusy) return;
+      pjaxBusy = true;
+      fetch(u.href, { credentials: 'same-origin' })
+        .then(function (r) {
+          if (!r.ok) throw new Error('http ' + r.status);
+          return r.text();
+        })
+        .then(function (html) {
+          var doc = new DOMParser().parseFromString(html, 'text/html');
+          var nextMain = doc.querySelector('main.page-main');
+          var curMain = document.querySelector('main.page-main');
+          if (!nextMain || !curMain) throw new Error('pjax: 目标页缺少 <main>');
+          var key = doc.documentElement.getAttribute('data-page') || pageKeyForPath(u.pathname) || 'home';
+          // 后台把该栏目关掉了：整页回首页（与 applyFeatureFlags 同口径）
+          var c = window.__FF_CACHE;
+          if (key !== 'home' && c && c[key] === false) { location.replace('/'); return; }
+          runPageHook(currentPage, 'destroy');
+          curMain.innerHTML = nextMain.innerHTML;
+          document.documentElement.setAttribute('data-page', key);
+          document.title = doc.title || PAGE_TITLES[key] || document.title;
+          applyNavActive(key);
+          currentPage = key;
+          closeAllTransientOverlays();
+          if (push) history.pushState(null, '', u.href);
+          else history.replaceState(null, '', u.href);
+          window.scrollTo(0, restoreY || 0);
+          initScrollReveal();
+          runPageHook(key, 'init');
+          if (u.hash) runPageHook(key, 'onHash', u.hash);
+          postVisit(u.pathname);
+        })
+        .catch(function () {
+          location.href = u.href; // fetch 失败（离线/异常响应）：整页加载兜底
+        })
+        .finally(function () { pjaxBusy = false; });
+    }
+    function pjaxGo(url) {
+      var u = new URL(url, location.href);
+      if (u.pathname === location.pathname) {
+        // 同页：锚点定位或滚顶，不换内容
+        if (u.hash && u.hash !== location.hash) {
+          location.hash = u.hash.slice(1);
+          runPageHook(currentPage, 'onHash', u.hash);
+        } else {
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+        return;
+      }
+      scrollMem[location.pathname] = window.scrollY;
+      pjaxSwap(u, true, 0);
+    }
+    document.addEventListener('click', function (e) {
+      if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+      var t = e.target;
+      var a = t && t.closest ? t.closest('a') : null;
+      if (!isInternalLink(a)) return;
+      e.preventDefault();
+      pjaxGo(a.href);
+    });
+    window.addEventListener('popstate', function () {
+      // 返回/前进：换回目标页内容并恢复滚动位置
+      var key = pageKeyForPath(location.pathname);
+      if (!key) { location.reload(); return; } // 未知路径交给服务器（Cloudflare SPA 回退回首页）
+      if (key === currentPage) {
+        // 同页 hash 变动（如工具页内 #toolCalc）：只做定位
+        if (location.hash) runPageHook(key, 'onHash', location.hash);
+        return;
+      }
+      pjaxSwap(new URL(location.href), false, scrollMem[location.pathname] || 0);
+    });
+
+    // 旧链接兼容：#/tools 形式的 hash 自动归一到独立页（不产生多余历史记录）
     (function () {
-      var id = idForPath(location.pathname) || idForHash(location.hash);
-      if (!id) return;
-      var c = window.__FF_CACHE;
-      if (c && c[FS_ROUTE[id]] === false) { history.replaceState(null, '', '/'); return; }
-      if (idForHash(location.hash) && !idForPath(location.pathname)) history.replaceState(null, '', routePathFor(id));
-      var reg = FS_REG[id];
-      if (reg && reg.open) reg.open(); // 显示动作在各自 open 函数里，直接调 fsOpen 不会显示（与路由器同理）
+      var m = /^#\/(tools|docs|ai|misc|board)\b/.exec(location.hash || '');
+      if (m) location.replace('/' + m[1] + '/');
     })();
+
+    // 当前页面启动：跑对应模块（首访的滚动高亮/进度条由 onScroll 自理）
+    runPageHook(currentPage, 'init');
   })();
 
     // 流星（参考博客站 fx 特效接入，源码 博客动画源码/03-流星-meteors.js 精简）：

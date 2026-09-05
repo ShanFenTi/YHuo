@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="zh-CN" class="light" data-page="home">
+<html lang="zh-CN" class="light" data-page="board">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>YHuo — 个人主页</title>
+  <title>留言板 - YHuo</title>
   <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -123,14 +123,14 @@
   <!-- 顶部导航：居中悬浮胶囊（毛玻璃 + 内高光，滚动加深投影）；胶囊外区域点击穿透 -->
   <header class="site-header" id="siteHeader">
     <div class="header-pill">
-      <a class="logo" href="#home" aria-label="回到首页">YHuo</a>
+      <a class="logo" href="/" aria-label="回到首页">YHuo</a>
     <nav class="site-nav" aria-label="主导航">
-      <a href="#home" class="nav-link active" data-target="home" aria-current="page">首页</a>
+      <a href="/" class="nav-link">首页</a>
       <a href="/tools/" class="nav-link" id="toolsBtn">工具</a>
       <a href="/docs/" class="nav-link" id="docsBtn">文档</a>
       <a href="/ai/" class="nav-link ai-entry" id="aiBtn">AI</a>
       <a href="/misc/" class="nav-link" id="miscBtn">杂项</a>
-      <a href="/board/" class="nav-link" id="boardBtn">留言</a>
+      <a href="/board/" class="nav-link active" id="boardBtn" aria-current="page">留言</a>
     </nav>
       <div class="header-actions">
         <button class="search-toggle" id="searchToggle" type="button" aria-label="搜索（Ctrl+K）" title="搜索（Ctrl+K）">
@@ -154,41 +154,33 @@
   </header>
 
   <main class="page-main">
-    <!-- 顶部锚点 -->
-    <div id="home"></div>
-
-      <!-- Hero / 时钟区域 -->
-      <section class="hero-section" aria-label="本地时间">
-        <p class="hero-greeting" id="heroGreeting">你好</p>
-        <div class="hero-row">
-          <div class="clock-hud">
-            <i class="hud-corner tl" aria-hidden="true"></i><i class="hud-corner tr" aria-hidden="true"></i><i class="hud-corner bl" aria-hidden="true"></i><i class="hud-corner br" aria-hidden="true"></i>
-            <p class="hud-label">SYS.TIME // LOCAL</p>
-            <div class="clock-display">
-              <span class="clock-seg" id="clockH">00</span><i class="clock-colon">:</i><span class="clock-seg" id="clockM">00</span><i class="clock-colon">:</i><span class="clock-seg" id="clockS">00</span><span class="clock-ms" id="clockMs">.000</span>
+  <div id="boardView" class="tools-view" aria-label="留言板">
+    <header class="album-bar">
+      <p class="album-title">留言板 · BOARD</p>
+    </header>
+    <div class="tools-scroll">
+      <div class="tool-block">
+        <div class="apple-card">
+          <div class="card-padding">
+            <p class="card-eyebrow">留言板 · MESSAGE BOARD</p>
+            <div class="board-compose">
+              <textarea class="tool-area" id="boardInput" rows="3" maxlength="500" placeholder="写下你的留言…（登录后可发布，500 字以内）"></textarea>
+              <div class="board-compose-foot">
+                <span class="board-hint" id="boardHint"></span>
+                <span class="board-count" id="boardCount">0 / 500</span>
+                <button class="tool-btn primary" id="boardPost" type="button">发布留言</button>
+              </div>
             </div>
-            <span class="scanline" aria-hidden="true"></span>
-          </div>
-          <!-- 视频轮播卡片：video 文件夹里的视频依次循环播放 -->
-          <div class="video-box">
-            <video id="homeVideo" muted playsinline controls preload="metadata"></video>
+            <div class="board-list" id="boardList"></div>
+            <p class="empty-hint" id="boardEmpty" hidden>还没有留言，来抢个沙发！</p>
+            <div style="text-align:center;margin-top:12px;">
+              <button class="appear-btn" id="boardMore" type="button" hidden>加载更多</button>
+            </div>
           </div>
         </div>
-        <p class="clock-date" id="clockDate">--</p>
-        <!-- 天气胶囊：Open-Meteo 免费接口，点击换城市；加载失败静默隐藏 -->
-        <button class="weather-chip" id="weatherChip" type="button" hidden title="点击更换城市">
-          <span class="weather-icon" id="weatherIcon" aria-hidden="true">☀️</span>
-          <span class="weather-text" id="weatherText">--</span>
-        </button>
-        <p class="hero-quote" id="heroQuote" hidden><span id="heroQuoteText"></span><i class="hq-cursor" aria-hidden="true"></i></p>
-        <!-- 歌词横条：播放时显示同步歌词（后台曲库自带的 .lrc 或 music/ 同名 .lrc），打字机逐字打出当前句；
-             无歌词降级显示歌名占位；从未播放时显示待机提示（一言在上方胶囊，不在此重复） -->
-        <div class="lyric-bar" id="lyricBar" hidden role="status" aria-live="polite">
-          <span class="lyric-dots" id="lyricDots" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></span>
-          <span class="lyric-line"><span id="lyricText"></span><i class="lyric-cursor" id="lyricCursor" aria-hidden="true"></i></span>
-          <span class="lyric-eq" aria-hidden="true"><i></i><i></i><i></i></span>
-        </div>
-      </section>
+      </div>
+    </div>
+  </div>
   </main>
 
   <!-- 外观设置抽屉：默认靠右隐藏，点击箭头弹出 -->

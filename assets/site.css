@@ -5091,3 +5091,58 @@
     .music-player { view-transition-name: none !important; }
 
 
+
+    /* ===== 多页面常规化（2026-09-05：栏目拆独立页 /tools/ /docs/ /ai/ /misc/ /board/）=====
+       栏目内容原为全屏毛玻璃层（fixed + .show 显隐），现在是常规页面：
+       容器回文档流、去毛玻璃壳，内容排在悬浮导航下方随页滚动（进场沿用 fadeInUp）。 */
+
+    body[data-page]:not([data-page="home"]) main.page-main {
+      padding-top: 96px; /* 顶部留白容得下悬浮胶囊（fixed 不占流） */
+      padding-bottom: 24px;
+    }
+
+    body[data-page="tools"] #toolsView,
+    body[data-page="docs"] #docsView,
+    body[data-page="misc"] #miscView,
+    body[data-page="board"] #boardView,
+    body[data-page="ai"] #aiView {
+      position: static;
+      z-index: auto;
+      opacity: 1;
+      visibility: visible;
+      background: transparent;
+      backdrop-filter: none;
+      -webkit-backdrop-filter: none;
+      transition: none;
+      animation: fadeInUp 600ms var(--ease-out) both;
+    }
+
+    /* AI 页保持全高聊天布局：消息区内部滚动，输入条钉在视口底部 */
+    body[data-page="ai"] #aiView {
+      height: calc(100dvh - 96px - 32px);
+    }
+
+    body[data-page]:not([data-page="home"]) .album-bar {
+      padding: 14px 0; /* 已在 main 的内边距里，不再 6vw 双重留白 */
+      transform: none;
+      opacity: 1;
+      transition: none;
+    }
+
+    body[data-page]:not([data-page="home"]) .tools-scroll,
+    body[data-page]:not([data-page="home"]) .docs-scroll {
+      flex: none;
+      overflow: visible;
+      padding: 20px 0 32px;
+      transform: none;
+      opacity: 1;
+      transition: none;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      body[data-page] #toolsView,
+      body[data-page] #docsView,
+      body[data-page] #miscView,
+      body[data-page] #boardView,
+      body[data-page] #aiView { animation: none; }
+    }

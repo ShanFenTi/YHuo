@@ -1,7 +1,7 @@
 // 一键代码检查（双击 校验代码.bat 运行）：
-//   1. index.html / functions/admin/index.js 的内联 <script> 做 new Function 语法校验
+//   1. 六个前台页面（/ 与 tools/docs/ai/misc/board 五个子页）+ functions/admin/index.js 的内联 <script> 做 new Function 语法校验
 //   2. functions/ 下所有 ESM 文件的 import/export 语法 + 相对导入路径真实存在（嵌套目录层级写错当场拦住）
-//   3. index.html 的 <script src>/<link href> 引用的本地文件存在
+//   3. 各页面 <script src>/<link href> 引用的本地文件存在
 // 退出码非 0 = 有问题；推送前跑一遍，两类"语法没错但一跑就炸"的错误当场现形
 import { readFileSync, existsSync, writeFileSync, rmSync, readdirSync, statSync } from 'node:fs';
 import { dirname, join, resolve, relative } from 'node:path';
@@ -13,6 +13,9 @@ const ROOT = dirname(fileURLToPath(import.meta.url));
 let errors = 0;
 const fail = (msg) => { errors++; console.log('  ✗ ' + msg); };
 const ok = (msg) => console.log('  ✓ ' + msg);
+
+// 多页面改造（2026-09-05）后的六个前台页面；改外壳（头部/导航/浮层）要六处同步，这里全部把关
+const PAGES = ['index.html', 'tools/index.html', 'docs/index.html', 'ai/index.html', 'misc/index.html', 'board/index.html'];
 
 // ---------- 1. 内联 <script> 语法 ----------
 function checkInlineScripts(file, label) {
@@ -32,7 +35,7 @@ function checkInlineScripts(file, label) {
 }
 
 console.log('[1] 内联 <script> 语法');
-checkInlineScripts(join(ROOT, 'index.html'), 'index.html');
+for (const p of PAGES) checkInlineScripts(join(ROOT, p), p);
 checkInlineScripts(join(ROOT, 'functions', 'admin', 'index.js'), 'functions/admin/index.js');
 
 // ---------- 2. functions/ ESM：语法 + 相对导入存在性 ----------
@@ -76,20 +79,23 @@ for (const file of jsFiles) {
   if (!bad) ok(`${rel}（${relative(ROOT, file).split('\\').length - 1} 层深，import 全部可达）`);
 }
 
-// ---------- 3. index.html 引用的本地静态文件 ----------
-console.log('[3] index.html 本地引用');
+// ---------- 3. 各页面的本地静态文件引用 ----------
+console.log('[3] 前台页面本地引用');
 {
-  const src = readFileSync(join(ROOT, 'index.html'), 'utf8');
-  const refRe = /(?:src|href)="(\/[^"']+?)"/g;
-  let m, checked = 0, bad = 0;
-  while ((m = refRe.exec(src))) {
-    const path = m[1].split('?')[0].split('#')[0];
-    if (path.startsWith('/api/') || path.startsWith('/media/') || path === '/admin') continue;
-    const target = join(ROOT, path);
-    checked++;
-    if (!existsSync(target)) { bad++; fail(`引用 ${path} 不存在`); }
+  let checked = 0, bad = 0;
+  for (const p of PAGES) {
+    const src = readFileSync(join(ROOT, p), 'utf8');
+    const refRe = /(?:src|href)="(\/[^"']+?)"/g;
+    let m;
+    while ((m = refRe.exec(src))) {
+      const path = m[1].split('?')[0].split('#')[0];
+      if (path.startsWith('/api/') || path.startsWith('/media/') || path === '/admin') continue;
+      const target = join(ROOT, path);
+      checked++;
+      if (!existsSync(target)) { bad++; fail(`${p} 引用 ${path} 不存在`); }
+    }
   }
-  if (!bad) ok(`本地静态引用 ${checked} 个全部存在`);
+  if (!bad) ok(`六个页面本地静态引用 ${checked} 个全部存在`);
 }
 
 function randomName() {

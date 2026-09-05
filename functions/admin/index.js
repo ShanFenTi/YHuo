@@ -158,7 +158,8 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
   .accent-row { display: flex; gap: 10px; }
   .accent-dot { width: 34px; height: 34px; border-radius: 50%; border: 3px solid transparent; padding: 0; }
   .accent-dot.active { border-color: var(--fg); }
-  .player-mode-btn.active { border-color: var(--fg); color: var(--fg); }
+  .player-mode-btn.active { background: var(--fg); color: var(--bg); border-color: var(--fg); font-weight: 700; }
+  .player-mode-btn.active:hover { background: var(--fg); color: var(--bg); opacity: 1; }
   .bgset-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
   .bg-preview { width: 160px; height: 90px; object-fit: cover; border-radius: 10px; border: 1px solid var(--border); }
   .meta2 { color: var(--muted); font-size: 13px; }

@@ -5923,7 +5923,8 @@
     function fsOpen(id) {
       if (FLAGS_OFF[id]) return; // 被开关关掉的界面：不互斥、不接管高亮、不锁滚动（各 open 函数入口另有同款守卫）
       // 先写路由再互斥关闭其他层：fsClose 清路由时看到的是新路由，不会误清（也避免产生中间历史记录）
-      if (FS_ROUTE[id] && location.hash !== '#/' + FS_ROUTE[id]) location.hash = '#/' + FS_ROUTE[id];
+      if (FS_ROUTE[id] && idForPath(location.pathname) !== id) history.pushState(null, '', routePathFor(id));
+      if (FS_TITLES[id]) document.title = FS_TITLES[id] + ' - YHuo'; // 地址即界面，标题同步（返回/关闭由路由器恢复）
       // 新打开的层提到最上（151）：被切换的旧层保持不透明垫在下面，主页不会从两层毛玻璃缝隙里闪出来
       FS_TOP.forEach(function (tid) {
         var r0 = FS_REG[tid];
@@ -5952,7 +5953,10 @@
       var r = FS_REG[id];
       if (!r) return;
       // ✕/Esc 主动关闭：若路由还指着本层就静默清掉（replaceState 不产生历史记录，返回键不会"重开"已手关的界面）
-      if (FS_ROUTE[id] && location.hash === '#/' + FS_ROUTE[id]) clearRouteHash();
+      if (FS_ROUTE[id] && idForPath(location.pathname) === id) {
+        clearRoute();
+        document.title = BASE_TITLE;
+      }
       if (r.lockScroll !== false) {
         document.body.style.overflow = '';
         // 被覆盖层的延迟关闭可能发生在别的层仍开着时：此时必须保持滚动锁（排除正在关闭的本层——它还没摘 .show）
@@ -5985,36 +5989,74 @@
     }
 
     // =========================
-    // hash 路由：顶栏五个界面与地址栏双向同步（#/tools 等）——浏览器前进/后退可用、刷新/分享直达对应界面。
-    // 仅路由顶层界面；docViewer（文档阅读层）与个人主页不参与。#home 等普通锚点视为"回到首页"。
+    // 路径路由：每个界面一个真实地址（/tools、/docs、/ai、/album、/misc、/board）——
+    // 与多页站点同形态：地址栏直接体现所在界面、刷新/分享直达、前进后退可用、✕/Esc 关闭静默清路由。
+    // 依赖 Cloudflare Pages 的 SPA 回退（坑 2）：未知路径返回首页 200，首页脚本按 pathname 拉起对应界面；
+    // 注意本地 python http.server 没有回退，刷新 /tools 会 404（导航点击走 pushState 不受影响），wrangler/线上正常。
+    // 仅路由顶层界面；docViewer（文档阅读层）与个人主页不参与。#home 等普通锚点仍走原生锚点（视为"回到首页"）。
+    // 兼容：旧链接的 #/tools 形式自动归一化成 /tools（不产生多余历史记录）。
     // =========================
     var FS_ROUTE = { toolsView: 'tools', docsView: 'docs', aiView: 'ai', albumView: 'album', miscView: 'misc', boardView: 'board' };
-    function routeFor(id) { return FS_ROUTE[id] ? '#/' + FS_ROUTE[id] : ''; }
-    function idForHash(h) {
+    var FS_TITLES = { toolsView: '工具合集', docsView: '文档', aiView: 'AI 助手', albumView: '相册', miscView: '杂项', boardView: '留言板' };
+    var BASE_TITLE = document.title;
+    function routePathFor(id) { return FS_ROUTE[id] ? '/' + FS_ROUTE[id] : ''; }
+    function idForPath(p) {
+      var key = String(p || '').replace(/\/+$/, '');
+      if (key.charAt(0) === '/') key = key.slice(1);
+      if (!key) return null;
+      for (var id in FS_ROUTE) if (FS_ROUTE[id] === key) return id;
+      return null;
+    }
+    function idForHash(h) { // 旧链接兼容：#/tools 形式
       if (!h || h.charAt(0) !== '#' || h.charAt(1) !== '/') return null;
       var key = h.slice(2);
       for (var id in FS_ROUTE) if (FS_ROUTE[id] === key) return id;
       return null;
     }
-    function clearRouteHash() {
-      if (idForHash(location.hash)) history.replaceState(null, '', location.pathname + location.search);
+    function setTitleFor(id) {
+      document.title = (id && FS_TITLES[id]) ? FS_TITLES[id] + ' - YHuo' : BASE_TITLE;
     }
-    // 路由器：后退/前进/锚点点击统一从这里进。拉起用 fsOpen（hash 相同不重复入栈）；点击路径造成的
-    // hashchange 到达时界面已打开，靠 show 判断防重入。
-    window.addEventListener('hashchange', function () {
-      var id = idForHash(location.hash);
+    function clearRoute() {
+      if (idForPath(location.pathname)) history.replaceState(null, '', '/');
+    }
+    // 供路由外的调用点（全站搜索等）拉起界面：实际显示在各自 open 函数里，路由由 fsOpen 写入
+    function fsNavigate(id) {
+      var reg = FS_REG[id];
+      if (reg && reg.open) reg.open();
+    }
+    // 路由器：后退/前进/锚点点击/手动改地址统一从这里进。点击路径由 fsOpen 写入（pushState 不触发本事件）；
+    // 后退到无路由路径时关闭所有开着的层。#home 等普通锚点在界面路径下点击（变成 /tools#home）也算"回到首页"：
+    // 路径有路由但 hash 是普通锚点时优先按回首页处理（关闭所有层并把路径清回 /）。
+    window.addEventListener('popstate', function () {
+      var pathId = idForPath(location.pathname);
+      var hashId = idForHash(location.hash);
+      var anchorHash = location.hash && !hashId; // #home 等普通锚点
+      if (pathId && anchorHash) {
+        // 锚点回首页：关所有层 + 路径清回 /（原生锚点滚动已发生）
+        FS_TOP.forEach(function (tid) {
+          var reg = FS_REG[tid];
+          if (reg && reg.el && reg.el.classList.contains('show') && !FLAGS_OFF[tid] && reg.close) reg.close();
+        });
+        history.replaceState(null, '', '/');
+        setTitleFor(null);
+        return;
+      }
+      var id = pathId || hashId;
       if (id && !FLAGS_OFF[id]) {
         var reg = FS_REG[id];
         // 界面的实际显示在各自 open 函数里（fsOpen 只管互斥/高亮/锁滚动），故注册表带 open 供路由拉起
         if (reg && reg.el && !reg.el.classList.contains('show') && reg.open) reg.open();
+        if (hashId && !pathId) history.replaceState(null, '', routePathFor(id)); // 旧 hash 链接归一化
       } else if (id) {
-        clearRouteHash(); // 指向被功能开关关闭的界面：静默清掉
+        history.replaceState(null, '', '/'); // 指向被功能开关关闭的界面（含旧 hash 形式）：回首页
       } else {
         FS_TOP.forEach(function (tid) {
           var reg = FS_REG[tid];
           if (reg && reg.el && reg.el.classList.contains('show') && !FLAGS_OFF[tid] && reg.close) reg.close();
         });
+        clearRoute(); // 后退到首页：界面路径清掉
       }
+      setTitleFor(id && !FLAGS_OFF[id] && !anchorHash ? id : null);
     });
 
     // 应用功能开关：给 <html> 打/摘 ff-* 类（CSS 负责隐藏；head 内联脚本已按 localStorage 缓存提前打过，这里按最新配置校正）
@@ -6051,7 +6093,7 @@
         if (!FLAGS_OFF[tid]) return;
         var reg = FS_REG[tid];
         if (reg && reg.el && reg.el.classList.contains('show') && reg.close) reg.close();
-        if (location.hash === routeFor(tid)) clearRouteHash();
+        if (idForPath(location.pathname) === tid) { history.replaceState(null, '', '/'); document.title = BASE_TITLE; }
       });
     }
 
@@ -12554,14 +12596,14 @@
           if (ql && hl < 0) return;
           out.push({ group: group, tag: tag, label: label, sub: opts.sub, run: run, disabled: !!opts.disabled, hl: hl });
         }
-        // 界面（功能开关过滤：关闭的界面搜不到，AI 跟随其全局开关）
+        // 界面（功能开关过滤：关闭的界面搜不到，AI 跟随其全局开关）；首页走原生锚点
         push('界面', '界面', '首页', function () { location.hash = '#home'; });
-        if (!FLAGS_OFF.toolsView) push('界面', '界面', '工具', function () { location.hash = '#/tools'; });
-        if (!FLAGS_OFF.docsView) push('界面', '界面', '文档', function () { location.hash = '#/docs'; });
-        if (aiOn()) push('界面', '界面', 'AI 助手', function () { location.hash = '#/ai'; });
-        if (!FLAGS_OFF.albumView) push('界面', '界面', '相册', function () { location.hash = '#/album'; });
-        if (!FLAGS_OFF.miscView) push('界面', '界面', '杂项', function () { location.hash = '#/misc'; });
-        push('界面', '界面', '留言板', function () { location.hash = '#/board'; });
+        if (!FLAGS_OFF.toolsView) push('界面', '界面', '工具', function () { fsNavigate('toolsView'); });
+        if (!FLAGS_OFF.docsView) push('界面', '界面', '文档', function () { fsNavigate('docsView'); });
+        if (aiOn()) push('界面', '界面', 'AI 助手', function () { fsNavigate('aiView'); });
+        if (!FLAGS_OFF.albumView) push('界面', '界面', '相册', function () { fsNavigate('albumView'); });
+        if (!FLAGS_OFF.miscView) push('界面', '界面', '杂项', function () { fsNavigate('miscView'); });
+        push('界面', '界面', '留言板', function () { fsNavigate('boardView'); });
         // 工具卡（打开工具界面并定位到卡片）
         if (!FLAGS_OFF.toolsView) {
           var TOOLS = [
@@ -12575,7 +12617,7 @@
           ];
           TOOLS.forEach(function (t) {
             push('工具', t.label, t.label, function () {
-              location.hash = '#/tools';
+              fsNavigate('toolsView');
               setTimeout(function () {
                 var fold = document.querySelector('.tool-more');
                 if (fold && t.fold) fold.open = true;
@@ -12593,8 +12635,8 @@
           data.docs.forEach(function (d) {
             var title = d.title || d.file || '';
             push('文档', '文档', title, function () {
-              location.hash = '#/docs';
-              // 等 hash 路由把文档界面拉起后再开阅读层——立即开会被 fsOpen 互斥收掉（docViewer 不发起互斥但会被其他层关闭）
+              fsNavigate('docsView');
+              // 等路由把文档界面拉起后再开阅读层——立即开会被 fsOpen 互斥收掉（docViewer 不发起互斥但会被其他层关闭）
               setTimeout(function () { openDoc(title, d.file); }, 400);
             }, { sub: d.date || '' });
           });
@@ -12615,7 +12657,7 @@
             if (im.album) albums[im.album] = true;
           });
           Object.keys(albums).forEach(function (a) {
-            push('相册', '相册', a, function () { location.hash = '#/album'; });
+            push('相册', '相册', a, function () { fsNavigate('albumView'); });
           });
         }
         if (!FLAGS_OFF.video) {
@@ -12772,13 +12814,15 @@
       }, true);
     })();
 
-    // 深链接：以 #/xxx 打开页面时直接拉起对应界面（须在全部 fsRegister 之后执行；
-    // 缓存即知该界面被功能开关关闭时静默回首页，缓存未知（首访）先拉起，配置到达后由 applyFeatureFlags 校正）
+    // 深链接：以 /tools（真实路径，Cloudflare Pages SPA 回退返回首页）或旧 #/tools 打开页面时
+    // 直接拉起对应界面（须在全部 fsRegister 之后执行；缓存即知该界面被功能开关关闭时静默回首页，
+    // 缓存未知（首访）先拉起，配置到达后由 applyFeatureFlags 校正）；旧 hash 形式归一化成真实路径
     (function () {
-      var id = idForHash(location.hash);
+      var id = idForPath(location.pathname) || idForHash(location.hash);
       if (!id) return;
       var c = window.__FF_CACHE;
-      if (c && c[FS_ROUTE[id]] === false) { clearRouteHash(); return; }
+      if (c && c[FS_ROUTE[id]] === false) { history.replaceState(null, '', '/'); return; }
+      if (idForHash(location.hash) && !idForPath(location.pathname)) history.replaceState(null, '', routePathFor(id));
       var reg = FS_REG[id];
       if (reg && reg.open) reg.open(); // 显示动作在各自 open 函数里，直接调 fsOpen 不会显示（与路由器同理）
     })();

@@ -4086,6 +4086,28 @@
       .content-section {
         padding: 80px 0;
       }
+
+      /* 这段主容器收窄到 860px，视频盒却仍固定 320px 占右侧、时钟字号仍是 9vw（最大 96px）——
+         时钟容器(overflow:hidden)必溢出，秒数/毫秒正好被视频盒方向的裁剪切掉（900~1199px 全段复现，
+         1040px 以上秒位整位消失）。该段内视频盒收窄、时钟整体降一档；≥1200px 主容器加宽后恢复原字号 */
+      .video-box {
+        flex-basis: 260px;
+        min-height: 170px;
+      }
+
+      .clock-hud {
+        padding: 22px 24px 20px;
+      }
+
+      .clock-seg,
+      .clock-colon {
+        font-size: clamp(3rem, 7.5vw, 68px);
+      }
+
+      .clock-ms {
+        font-size: clamp(1rem, 2vw, 1.25rem);
+        min-width: 3em;
+      }
     }
 
     /* 平板纵向 (768-899px) */

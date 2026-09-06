@@ -202,9 +202,12 @@
     // =========================
     sectionLinks.forEach(function (a) {
       a.addEventListener('click', function (e) {
-        e.preventDefault(); // 仅首页有 #home 锚点；子页面导航全是真链接，不进这里
+        // 先找目标再决定吞不吞事件：pjax 只换 <main> 不换外壳导航，从首页 pjax 走后
+        // 「首页」仍是 data-target 形态——在其他页面 #home 不存在，这里必须放行，
+        // 让 document 级 pjax 拦截器接手（href="/" 真链接回首页）；先 preventDefault 会把点击吞成无反应
         var target = document.getElementById(a.getAttribute('data-target'));
         if (!target) return;
+        e.preventDefault();
         var top = target.getBoundingClientRect().top + window.scrollY - 52;
         window.scrollTo({ top: top, behavior: 'smooth' });
       });

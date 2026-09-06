@@ -349,6 +349,14 @@
       outline-offset: 2px;
     }
 
+    /* 顶栏里的非链接入口（课表，点了开浮层不换页）：button 复位，外观与链接版完全一致 */
+    button.nav-link {
+      background: transparent;
+      border: none;
+      cursor: pointer;
+      font-family: inherit;
+    }
+
     /* Theme toggle button */
     .theme-toggle {
       display: inline-flex;

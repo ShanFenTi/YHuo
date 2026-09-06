@@ -131,6 +131,7 @@
       <a href="/ai/" class="nav-link ai-entry" id="aiBtn">AI</a>
       <a href="/misc/" class="nav-link active" id="miscBtn" aria-current="page">杂项</a>
       <a href="/board/" class="nav-link" id="boardBtn">留言</a>
+      <button type="button" class="nav-link" id="schedNavBtn" title="课表">课表</button>
     </nav>
       <div class="header-actions">
         <button class="search-toggle" id="searchToggle" type="button" aria-label="搜索（Ctrl+K）" title="搜索（Ctrl+K）">
@@ -375,6 +376,79 @@
         </div>
       </div>
 
+      <div class="profilev-grid">
+        <!-- 邮箱（绑定 / 找回密码基础 / 登录二次验证） -->
+        <div class="apple-card" id="emailCard" style="display:none">
+          <div class="card-padding">
+            <p class="card-eyebrow">邮箱 · EMAIL</p>
+            <div id="emailBoundView" style="display:none">
+              <p class="profile-hint" id="emailBoundText" style="margin:0 0 10px;">已绑定</p>
+              <div class="profile-actions">
+                <button class="appear-btn" id="emailRebindBtn" type="button">换绑邮箱</button>
+                <button class="appear-btn" id="twofaToggleBtn" type="button">开启二次验证</button>
+              </div>
+              <p class="profile-hint" style="margin-top:10px;">开启二次验证后，每次登录需额外输入邮箱验证码。</p>
+            </div>
+            <div id="emailBindView" style="display:none">
+              <input class="profilev-input" id="pemailInput" type="email" placeholder="新邮箱地址">
+              <div class="pwd-out-row" style="display:flex;gap:8px;align-items:center;margin-bottom:10px;">
+                <input class="profilev-input" id="pemailCode" type="text" inputmode="numeric" maxlength="6" placeholder="验证码" style="margin-bottom:0;">
+                <button class="appear-btn" id="pemailSendBtn" type="button" style="white-space:nowrap;">发送验证码</button>
+              </div>
+              <button class="appear-btn" id="pemailVerifyBtn" type="button">验证并绑定</button>
+              <p class="profile-msg" id="pemailMsg"></p>
+            </div>
+          </div>
+        </div>
+        <!-- 修改密码 -->
+        <div class="apple-card" id="pwdCard">
+          <div class="card-padding">
+            <p class="card-eyebrow">修改密码 · PASSWORD</p>
+            <form id="pwdForm" autocomplete="off">
+              <input class="profilev-input" id="pwdOld" type="password" placeholder="旧密码" required>
+              <input class="profilev-input" id="pwdNew" type="password" placeholder="新密码（至少 6 位）" required>
+              <input class="profilev-input" id="pwdNew2" type="password" placeholder="再输入一遍新密码" required>
+              <button class="appear-btn" id="pwdSubmit" type="submit">修改密码</button>
+              <p class="profile-msg" id="pwdMsg"></p>
+            </form>
+          </div>
+        </div>
+        <!-- 账号操作 -->
+        <div class="apple-card" id="acctCard">
+          <div class="card-padding">
+            <p class="card-eyebrow">账号 · ACCOUNT</p>
+            <div class="profile-actions">
+              <button class="appear-btn" id="profilevAvatarBtn" type="button">更换头像</button>
+            </div>
+            <div class="profile-actions">
+              <button class="appear-btn danger-btn" id="profilevLogoutBtn" type="button">退出登录</button>
+            </div>
+            <p class="profile-hint" style="margin-top:12px;">头像修改立即生效；改密后当前登录保持不变。</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- 我的收藏 -->
+      <div class="apple-card" id="favCard">
+        <div class="card-padding">
+          <p class="card-eyebrow">我的收藏 · FAVORITES</p>
+          <p class="profilev-sec-title">音乐</p>
+          <ul class="fav-music" id="favMusic"></ul>
+          <p class="empty-hint" id="favEmpty" hidden>还没有收藏。播放列表里的 ♥ 可以收藏音乐。</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 课表界面（顶栏「课表」直达；2026-09-06 从个人主页抽出为独立浮层） -->
+  <div class="profile-view" id="schedView" hidden role="dialog" aria-modal="true" aria-label="课表">
+    <header class="album-bar">
+      <p class="album-title">课表 · SCHEDULE</p>
+      <button class="album-close" id="schedViewClose" type="button" aria-label="关闭课表">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>
+      </button>
+    </header>
+    <div class="profile-scroll">
       <!-- 课表（周视图 + WakeUp 导入 + 邮件提醒设置）；未启用时只显示入口行 -->
       <div class="apple-card" id="schedCard" style="display:none">
         <div class="card-padding">
@@ -443,67 +517,6 @@
         </div>
       </div>
 
-      <div class="profilev-grid">
-        <!-- 邮箱（绑定 / 找回密码基础 / 登录二次验证） -->
-        <div class="apple-card" id="emailCard" style="display:none">
-          <div class="card-padding">
-            <p class="card-eyebrow">邮箱 · EMAIL</p>
-            <div id="emailBoundView" style="display:none">
-              <p class="profile-hint" id="emailBoundText" style="margin:0 0 10px;">已绑定</p>
-              <div class="profile-actions">
-                <button class="appear-btn" id="emailRebindBtn" type="button">换绑邮箱</button>
-                <button class="appear-btn" id="twofaToggleBtn" type="button">开启二次验证</button>
-              </div>
-              <p class="profile-hint" style="margin-top:10px;">开启二次验证后，每次登录需额外输入邮箱验证码。</p>
-            </div>
-            <div id="emailBindView" style="display:none">
-              <input class="profilev-input" id="pemailInput" type="email" placeholder="新邮箱地址">
-              <div class="pwd-out-row" style="display:flex;gap:8px;align-items:center;margin-bottom:10px;">
-                <input class="profilev-input" id="pemailCode" type="text" inputmode="numeric" maxlength="6" placeholder="验证码" style="margin-bottom:0;">
-                <button class="appear-btn" id="pemailSendBtn" type="button" style="white-space:nowrap;">发送验证码</button>
-              </div>
-              <button class="appear-btn" id="pemailVerifyBtn" type="button">验证并绑定</button>
-              <p class="profile-msg" id="pemailMsg"></p>
-            </div>
-          </div>
-        </div>
-        <!-- 修改密码 -->
-        <div class="apple-card" id="pwdCard">
-          <div class="card-padding">
-            <p class="card-eyebrow">修改密码 · PASSWORD</p>
-            <form id="pwdForm" autocomplete="off">
-              <input class="profilev-input" id="pwdOld" type="password" placeholder="旧密码" required>
-              <input class="profilev-input" id="pwdNew" type="password" placeholder="新密码（至少 6 位）" required>
-              <input class="profilev-input" id="pwdNew2" type="password" placeholder="再输入一遍新密码" required>
-              <button class="appear-btn" id="pwdSubmit" type="submit">修改密码</button>
-              <p class="profile-msg" id="pwdMsg"></p>
-            </form>
-          </div>
-        </div>
-        <!-- 账号操作 -->
-        <div class="apple-card" id="acctCard">
-          <div class="card-padding">
-            <p class="card-eyebrow">账号 · ACCOUNT</p>
-            <div class="profile-actions">
-              <button class="appear-btn" id="profilevAvatarBtn" type="button">更换头像</button>
-            </div>
-            <div class="profile-actions">
-              <button class="appear-btn danger-btn" id="profilevLogoutBtn" type="button">退出登录</button>
-            </div>
-            <p class="profile-hint" style="margin-top:12px;">头像修改立即生效；改密后当前登录保持不变。</p>
-          </div>
-        </div>
-      </div>
-
-      <!-- 我的收藏 -->
-      <div class="apple-card" id="favCard">
-        <div class="card-padding">
-          <p class="card-eyebrow">我的收藏 · FAVORITES</p>
-          <p class="profilev-sec-title">音乐</p>
-          <ul class="fav-music" id="favMusic"></ul>
-          <p class="empty-hint" id="favEmpty" hidden>还没有收藏。播放列表里的 ♥ 可以收藏音乐。</p>
-        </div>
-      </div>
     </div>
   </div>
 

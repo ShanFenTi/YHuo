@@ -3703,6 +3703,32 @@
       renderSchedEmailHint();
     });
 
+    // ---------- 课表浮层（顶栏「课表」直达；2026-09-06 从个人主页抽出为独立浮层） ----------
+    var schedView = document.getElementById('schedView');
+    var schedViewClose = document.getElementById('schedViewClose');
+    var schedNavBtn = document.getElementById('schedNavBtn');
+    function openSchedView() {
+      if (!schedView) return;
+      if (!isMember()) { window.openGate(); return; } // 未登录先弹登录卡（与收藏 ♥ 同口径；坑 9 经 window 暴露）
+      closeProfileView();
+      closeDocViewer();
+      loadSched();
+      schedView.hidden = false;
+      void schedView.offsetWidth;
+      schedView.classList.add('show');
+    }
+    function closeSchedView() {
+      if (!schedView || schedView.hidden) return;
+      schedView.classList.remove('show');
+      setTimeout(function () { schedView.hidden = true; }, 260);
+    }
+    if (schedViewClose) schedViewClose.addEventListener('click', closeSchedView);
+    if (schedNavBtn) schedNavBtn.addEventListener('click', openSchedView);
+    // Esc 关闭（课程编辑弹窗开着时其捕获阶段处理器会 stopImmediatePropagation，这里不会连浮层一起关）
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape' && schedView && !schedView.hidden) closeSchedView();
+    });
+
     // 移除：确认后删服务端数据，回到入口行（提醒随之停止）
     if (schedRemoveBtn) schedRemoveBtn.addEventListener('click', function () {
       if (!schedData) return;
@@ -4013,10 +4039,10 @@
     function openProfileView() {
       if (!profileView || !isMember()) return;
       closeDocViewer(); // 与阅读层互斥（原由全屏管理器互斥代办）
+      closeSchedView(); // 与课表浮层互斥（课表 2026-09-06 起为顶栏直达的独立浮层）
       setProfileOpen(false);
       loadProfileData();
       loadEmailCard();
-      loadSched();
       renderFavorites();
       profileView.hidden = false;
       void profileView.offsetWidth;
@@ -6510,6 +6536,7 @@
     function closeAllTransientOverlays() {
       // 换页时收起外壳上的临时浮层（不随 <main> 换页重置）
       try { closeProfileView(); } catch (e) {}
+      try { closeSchedView(); } catch (e) {}
       try { closeDocViewer(); } catch (e) {}
       try { closeWeatherPicker(); } catch (e) {}
       try { closeBgPicker(); } catch (e) {}

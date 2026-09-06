@@ -137,6 +137,7 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
   }
   .fx-admin-preview.is-visible, .video-hover-preview.is-visible { opacity: 1; transform: none; }
   .fx-admin-preview .ap-card {
+    position: absolute; left: 0; top: 0; /* 必须可定位：JS 的 left/top 只对 absolute/fixed 生效，缺了会永远钉在容器原点（左上角） */
     width: 320px; overflow: hidden;
     background: var(--card); border: 1px solid var(--border);
     border-radius: 14px; box-shadow: var(--shadow);

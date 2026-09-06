@@ -538,6 +538,21 @@
         activeButton?.scrollIntoView({ block: 'nearest' });
       };
 
+      // 歌词条联动去重：同一曲目重复 showTrack（如面板重开重选同曲）不重复载词
+      let lyricKey = '';
+      // 是否真正开播过：初始被动恢复（载入上次曲目但未播放）不上报歌词，歌词条保持待机文案
+      let everPlayed = false;
+
+      // 上报当前曲目给外壳歌词条（showTrack 与 playing 事件共用，按 lyricId 去重）
+      const reportLyric = () => {
+        if (!window.__lyricBarApi || !tracks.length) return;
+        const t = tracks[currentIndex];
+        const lyricId = `${t.url}\u0000${t.rawName}`;
+        if (lyricId === lyricKey) return;
+        lyricKey = lyricId;
+        window.__lyricBarApi.loadTrack(t.rawName || `${t.title} - ${t.artist}`, t.url, t.lrc);
+      };
+
       const updateActiveTrack = () => {
         list.querySelectorAll('[data-track-index]').forEach((button) => {
           const active = Number(button.dataset.trackIndex) === currentIndex;
@@ -558,6 +573,10 @@
         if (count) count.textContent = `${currentIndex + 1}/${tracks.length}`;
         if (root.classList.contains('is-open')) window.requestAnimationFrame(scrollActiveTrack);
         updateMediaSession(track);
+        // 歌词条联动（common.js __lyricBarApi）：切歌（含播完自动切下一首）让外壳歌词条载入当前曲目，
+        // 悬浮款播放中即由它的进度驱动歌词滚动——此前歌词条只联动迷你条，悬浮款播放时一直是待机文案。
+        // 开播过才上报：初始被动恢复不上报，歌词条保持待机文案
+        if (everPlayed) reportLyric();
         persist();
       };
 
@@ -735,6 +754,8 @@
                 artist: cleanText(sep > -1 ? raw.slice(sep + 3) : '站内曲库', '站内曲库'),
                 cover: safeUrl(item.cover),
                 url: safeUrl(item.url || item.src), // 迷你播放条的曲目字段是 src
+                rawName: String(item.name || ''), // 原始文件名：歌词条按它拉同名 .lrc（common.js）
+                lrc: typeof item.lrc === 'string' ? item.lrc : null, // 后台曲库自带歌词（media.lrc）
               };
             })
             .filter((track) => track.url);
@@ -1001,11 +1022,17 @@
 
       audio.addEventListener('playing', () => {
         wantsPlayback = true;
+        everPlayed = true;
         root.classList.remove('is-loading');
         root.classList.add('is-playing');
         playButton.setAttribute('aria-label', '暂停');
         playButton.title = '暂停';
         setStatus('正在播放');
+        // 歌词条联动：接管时间源、点亮律动并确保当前曲目已上报（首播时 showTrack 阶段还没上报过）。
+        // 迷你条此刻不会产生 tick；它下次开播时经自己的 play 事件收回时间源，不打架
+        window.__lyricBarApi?.setSource({ now: () => audio.currentTime || 0, dur: () => audio.duration || 0 });
+        window.__lyricBarApi?.setPlaying(true);
+        reportLyric();
       });
 
       audio.addEventListener('pause', () => {
@@ -1013,6 +1040,9 @@
         playButton.setAttribute('aria-label', '播放');
         playButton.title = '播放';
         if (!wantsPlayback && audio.currentTime > 0 && !audio.ended) setStatus('已暂停');
+        // 歌词条联动：熄灭律动并补完当前句。时间源保留在悬浮款上——暂停后拖进度条歌词仍跟悬浮款位置走，
+        // 迷你条下次开播时经自己的 play 事件收回时间源
+        window.__lyricBarApi?.setPlaying(false);
       });
 
       audio.addEventListener('waiting', () => {
@@ -1044,6 +1074,8 @@
             `${formatTime(audio.currentTime)} / ${formatTime(audio.duration)}`,
           );
         }
+        // 歌词条联动：悬浮款播放中由它驱动歌词滚动（时间源在 playing 时注入）
+        window.__lyricBarApi?.tick();
       });
 
       audio.addEventListener('ended', () => {
@@ -1070,6 +1102,21 @@
         } catch {
         }
       }
+
+      // 歌词条联动：向外壳暴露当前曲目与播放态（pjax 回首页时 common.js lyricRebind 重绑歌词条，
+      // 需按悬浮款当前曲目补载歌词，而不是总取迷你条的 tracks[current]）
+      window.__blogPlayerTrack = function () {
+        if (!tracks.length) return null;
+        const t = tracks[currentIndex];
+        return {
+          name: t.rawName || `${t.title} - ${t.artist}`,
+          url: t.url,
+          lrc: t.lrc,
+          playing: wantsPlayback && !audio.paused,
+          time: audio.currentTime || 0,
+          duration: audio.duration || 0,
+        };
+      };
 
       loadPlaylist();
     };

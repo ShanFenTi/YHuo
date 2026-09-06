@@ -985,6 +985,7 @@
 
     audio.addEventListener('play', function () {
       updatePlayIcon(true);
+      lyricTimeSource = null; // 迷你条开播即收回歌词时间源（此前悬浮播放器在播的话交还给迷你条）
       saveMeta();
     });
     audio.addEventListener('pause', function () {
@@ -1151,10 +1152,15 @@
       }
     }
 
+    // 歌词时间源：默认迷你条 audio；悬浮播放器（博客款）播放中经 __lyricBarApi.setSource 注入
+    // 自己的 {now,dur}，歌词条即跟随悬浮款进度。两款互斥使用：后播放的接管歌词条，
+    // 暂停方不再产生 tick 事件，不会互相打架
+    var lyricTimeSource = null;
+
     // 播放进度 → 当前句（每次重算，句数少开销可忽略，seek 回退天然正确）
     function musicLyricsTick() {
       if (!lyricBar || lyricBar.hidden || (!lyricLines && !lyricPlain)) return;
-      var sec = audio.currentTime || 0;
+      var sec = lyricTimeSource ? lyricTimeSource.now() : (audio.currentTime || 0);
       var idx = -1, text = '', nextT = Infinity;
       if (lyricLines) {
         for (var i = 0; i < lyricLines.length; i++) {
@@ -1162,7 +1168,7 @@
         }
         text = idx >= 0 ? lyricLines[idx].text : '';
       } else {
-        var dur = audio.duration || 240;
+        var dur = (lyricTimeSource ? lyricTimeSource.dur() : audio.duration) || 240;
         var per = dur / lyricPlain.length;
         idx = Math.min(lyricPlain.length - 1, Math.floor(sec / per));
         nextT = (idx + 1) * per;
@@ -1182,8 +1188,12 @@
       lyricStartTyping(text, Math.max(600, Math.min(8000, (nextT - sec) * 1000)));
     }
 
-    // 从未播放过：待机提示（一言已移到天气胶囊下方独立显示，这里不再重复轮播）
-    if (lyricBar) lyricShowPlaceholder('♪ 打开底部播放器，歌词会在这里滚动');
+    // 从未播放过：待机提示（一言已移到天气胶囊下方独立显示，这里不再重复轮播）；
+    // 悬浮播放器款式下迷你条是藏着的，文案指向右下角悬浮球
+    function lyricStandbyText() {
+      return '♪ 打开' + (document.documentElement.classList.contains('using-blog-player') ? '右下角悬浮' : '底部') + '播放器，歌词会在这里滚动';
+    }
+    if (lyricBar) lyricShowPlaceholder(lyricStandbyText());
     function lyricStopIdle() {} // 切歌时调用，保留空实现（待机只有静态一句，无需终止）
 
     // pjax 回到首页时重绑歌词条元素（旧的已随 <main> 换掉）：播放中恢复当前句，从未播放显示待机
@@ -1191,28 +1201,46 @@
       lyricBar = document.getElementById('lyricBar');
       lyricText = document.getElementById('lyricText');
       if (!lyricBar) return;
-      if (!audio.src) {
-        lyricShowPlaceholder('♪ 打开底部播放器，歌词会在这里滚动');
+      // 悬浮播放器（博客款）正在播：歌词条跟随它的当前曲目（迷你条此时多半暂停/空源）
+      var blogTrack = null;
+      try { blogTrack = window.__blogPlayerTrack ? window.__blogPlayerTrack() : null; } catch (e) {}
+      var blogActive = !!(blogTrack && blogTrack.playing && blogTrack.name);
+      if (!audio.src && !blogActive) {
+        lyricShowPlaceholder(lyricStandbyText());
         return;
       }
       lyricBar.hidden = false;
       if (!lyricBar.classList.contains('show')) lyricBar.classList.add('show');
       // 新元素没有旧的 playing 律动态，按真实播放状态补上（否则播放中回首页律动条不动）
-      lyricBar.classList.toggle('playing', !audio.paused);
+      lyricBar.classList.toggle('playing', !audio.paused || blogActive);
       lyricFinishTyping();
       // 坑 27：子页整页加载时 lyricBar 不存在，恢复播放（applyResume/restoreCachedTracks）里的
-      // musicLyricsLoad 会重置状态后早退，歌词数据是空的——这里补载当前曲目，否则 pjax 回首页是空条
+      // musicLyricsLoad 会重置状态后早退，歌词数据是空的——这里补载当前曲目，否则 pjax 回首页是空条；
+      // 悬浮播放器在播时优先补载它的曲目（2026-09-06 起歌词条联动悬浮款）
       if (!lyricLines && !lyricPlain) {
-        var t = tracks[current];
+        var t = blogActive ? { name: blogTrack.name, src: blogTrack.url, lrc: blogTrack.lrc } : tracks[current];
         if (t) {
           musicLyricsLoad(t.name, t.src, t.lrc);
           return;
         }
-        lyricShowPlaceholder('♪ ' + musicDisplayName(currentName || ''));
+        lyricShowPlaceholder('♪ ' + musicDisplayName(blogActive ? blogTrack.name : (currentName || '')));
         return;
       }
       musicLyricsTick();
     }
+
+    // 悬浮播放器（博客款）歌词联动入口（blog-player.js 调用）：切歌载词、进度驱动、播放态律动。
+    // 时间源注入后 musicLyricsTick 一律读悬浮款进度；迷你条的 tick 事件此时不会触发，不打架
+    window.__lyricBarApi = {
+      loadTrack: function (name, src, lrc) { musicLyricsLoad(name, src, lrc); },
+      tick: musicLyricsTick,
+      setPlaying: function (playing) {
+        if (!lyricBar) return;
+        lyricBar.classList.toggle('playing', !!playing);
+        if (!playing) lyricFinishTyping(); // 暂停时当前句立即补完（与迷你条 pause 行为一致）
+      },
+      setSource: function (source) { lyricTimeSource = source || null; }
+    };
 
     // =========================
     // 底部悬浮迷你播放器

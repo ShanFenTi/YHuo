@@ -1197,6 +1197,8 @@
       }
       lyricBar.hidden = false;
       if (!lyricBar.classList.contains('show')) lyricBar.classList.add('show');
+      // 新元素没有旧的 playing 律动态，按真实播放状态补上（否则播放中回首页律动条不动）
+      lyricBar.classList.toggle('playing', !audio.paused);
       lyricFinishTyping();
       // 坑 27：子页整页加载时 lyricBar 不存在，恢复播放（applyResume/restoreCachedTracks）里的
       // musicLyricsLoad 会重置状态后早退，歌词数据是空的——这里补载当前曲目，否则 pjax 回首页是空条

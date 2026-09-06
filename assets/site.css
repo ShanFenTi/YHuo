@@ -5426,3 +5426,10 @@
     .preview-links a:hover { border-bottom-style: solid; }
 
     .preview-sep { color: var(--muted-foreground); }
+
+    /* =========================
+       AI 页隐藏播放条（2026-09-06 用户要求）：迷你条/悬浮球都不显示，聊天输入条独占底部；
+       音乐本身不打断——pjax 只换 <main>，外壳的 audio 不参与换页，进 AI 页照常续播
+       ========================= */
+    html[data-page="ai"] #miniPlayer { display: none !important; }
+    html.using-blog-player[data-page="ai"] .music-player { display: none !important; }

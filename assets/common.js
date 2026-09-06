@@ -1738,7 +1738,13 @@
     pendingMeta = null;
     try {
       var _m = JSON.parse(localStorage.getItem(META_KEY));
-      if (_m && _m.names && _m.names.length && _m.current >= 0) pendingMeta = _m;
+      if (_m && _m.names && _m.names.length && _m.current >= 0) {
+        // 顶栏悬停预览的实时缩略图也是本站整页（同源 iframe 共享 localStorage）：
+        // 预览帧整份丢弃恢复数据，否则主页播放中时悬停过的每个页面都各自叠一路自动续播
+        // （2026-09-06 用户实报"切界面越切越多路音乐"）；顺带避免预览帧偷跑下载整首歌
+        if (window.self !== window.top) _m = null;
+      }
+      if (_m) pendingMeta = _m;
     } catch (e) {}
     autoRestoreDir();
 

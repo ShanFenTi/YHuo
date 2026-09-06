@@ -139,15 +139,8 @@ const DDL = [
     count INTEGER NOT NULL DEFAULT 0,
     PRIMARY KEY (day, kind)
   )`,
-  // 访问明细（IP/页面/UA 摘要）：与 /api/visit 同一触发（每浏览器会话一条），概览页"最近访问"列表用
-  `CREATE TABLE IF NOT EXISTS visit_logs (
-    id         INTEGER PRIMARY KEY AUTOINCREMENT,
-    day        TEXT NOT NULL,
-    ip         TEXT NOT NULL DEFAULT '',
-    path       TEXT NOT NULL DEFAULT '',
-    ua         TEXT NOT NULL DEFAULT '',
-    created_at TEXT NOT NULL DEFAULT (datetime('now'))
-  )`,
+  // 访问明细表 visit_logs 已随"最近访问 / IP 记录"功能整体移除（2026-09-06）：不再建表、不再写入、不再读取。
+  // 线上残留的旧表如需清理数据，可在 Cloudflare D1 控制台执行：DROP TABLE IF EXISTS visit_logs;
   // 邮件发送明细（每次 sendMail 记一条，成功/失败都记，ok=1 成功 0 失败 + 失败原因）：
   // 概览页"邮件统计"卡片里的发送明细列表用；成功时与 email_usage_daily 同日入账
   `CREATE TABLE IF NOT EXISTS email_logs (

@@ -30,6 +30,20 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
     --shadow: 0 1px 3px rgba(0,0,0,.5);
     --ok: #4ade80; --warn: #fbbf24; --danger: #f87171;
   }
+  /* ---------- 动效令牌（对齐参考博客站的缓动体系：长缓出 + 轻回弹） ---------- */
+  :root {
+    --ease-soft: cubic-bezier(.16, 1, .3, 1);
+    --ease-outc: cubic-bezier(.22, 1, .36, 1);
+    --ease-spring: cubic-bezier(.34, 1.56, .64, 1);
+    --t-fast: .22s; --t-med: .4s; --t-reveal: .6s;
+  }
+  /* 主题切换圆形揭示（参考站同款，View Transitions）：旧帧定格垫底、新帧从按钮位置圆形扫开；
+     实际 clip 动画由 JS 对 ::view-transition-new(root) 做 element.animate（半径按归一化对角线换算百分比） */
+  ::view-transition-old(root), ::view-transition-new(root) { animation: none; mix-blend-mode: normal; }
+  ::view-transition-old(root) { z-index: 1; }
+  ::view-transition-new(root) { z-index: 2; }
+  /* 细滚动条随主题配色（scrollbar-* 属性可继承） */
+  html { scrollbar-width: thin; scrollbar-color: color-mix(in srgb, var(--fg) 25%, transparent) transparent; }
   * { box-sizing: border-box; margin: 0; }
   body {
     min-height: 100vh;
@@ -79,16 +93,26 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
   .brand .mark img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
   .brand h1 { font-size: 16px; font-weight: 700; line-height: 1.2; }
   .brand p { font-size: 11px; color: var(--muted); margin-top: 2px; }
-  nav.sidenav-links { display: flex; flex-direction: column; gap: 4px; }
+  nav.sidenav-links { display: flex; flex-direction: column; gap: 4px; position: relative; }
+  /* 侧栏滑动指示器（参考站「导航胶囊指示器」的竖排移植）：胶囊在 active 项之间滑动，
+     按钮本身不再画背景（:has 兜底——指示器不存在时退回原自绘背景，不会出现无底色的选中项） */
+  #sideInd {
+    position: absolute; left: 0; right: 0; z-index: 0;
+    border-radius: 10px; background: var(--fg);
+    opacity: 0; pointer-events: none;
+    transition: top .42s var(--ease-soft), height .42s var(--ease-soft), opacity .18s;
+  }
   nav.sidenav-links button {
     display: flex; align-items: center; gap: 10px;
     background: transparent; color: var(--fg);
     padding: 10px 12px; border-radius: 10px; font-size: 14px;
     text-align: left; border: none; cursor: pointer;
-    transition: background .15s ease, padding .22s ease, gap .22s ease;
+    position: relative; z-index: 1;
+    transition: background .2s var(--ease-outc), color .2s var(--ease-outc), padding .22s ease, gap .22s ease;
   }
   nav.sidenav-links button:hover { background: var(--hover); opacity: 1; }
   nav.sidenav-links button.active { background: var(--fg); color: var(--bg); font-weight: 600; }
+  nav.sidenav-links:has(#sideInd) button.active { background: transparent; color: var(--bg); }
   nav.sidenav-links button svg { width: 17px; height: 17px; flex: none; }
   .sidenav-foot { margin-top: auto; padding-top: 12px; border-top: 1px solid var(--row-line); display: flex; flex-direction: column; gap: 4px; }
   .sidenav-foot .icon-btn { justify-content: flex-start; transition: background .15s ease, padding .22s ease, gap .22s ease; }
@@ -115,6 +139,15 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
     border: 1px solid var(--border);
     box-shadow: var(--shadow);
     margin-bottom: 20px;
+    transition: border-color var(--t-fast) var(--ease-outc), box-shadow var(--t-med) var(--ease-soft), translate var(--t-med) var(--ease-spring);
+  }
+  /* 卡片悬浮：轻抬 + 边框加深 + 阴影扩散（触屏设备不触发悬浮态） */
+  @media (hover: hover) {
+    .card:hover, .stat:hover {
+      translate: 0 -2px;
+      border-color: color-mix(in srgb, var(--fg) 26%, var(--border));
+      box-shadow: 0 2px 6px rgba(0, 0, 0, .06), 0 18px 40px rgba(0, 0, 0, .10);
+    }
   }
   .hint { color: var(--muted); font-size: 13px; line-height: 1.6; margin-bottom: 16px; }
   input[type=text], input[type=password] {
@@ -132,7 +165,7 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
   button {
     padding: 9px 18px; border: none; border-radius: 10px; font-size: 14px;
     background: var(--fg); color: var(--bg); cursor: pointer;
-    transition: opacity .15s, transform .1s, background .15s, color .15s, border-color .15s;
+    transition: opacity .15s, transform .18s var(--ease-spring), background .15s, color .15s, border-color .15s, box-shadow .2s var(--ease-outc);
   }
   button:hover { opacity: .82; }
   button:active { transform: scale(.97); }
@@ -281,12 +314,16 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
   .ai-test-err { color: var(--danger); font-weight: 600; }
   @keyframes aiFadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
   .ai-mgr-main.ai-enter { animation: aiFadeIn .2s ease; }
-  /* 功能界面切换动效：新面板淡入 + 轻微上移 */
-  @keyframes pageFadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
-  .panel-enter { animation: pageFadeIn .22s ease; }
+  /* 功能界面切换动效：参考站同款「模糊揭示」——上浮 + 模糊收焦（fill 用默认值，动画结束无残留，
+     不占 transform、不破坏面板内 fixed 元素的包含块）；卡片/统计卡再加级联延迟（--stagger-i 由 switchPage 写入） */
+  @keyframes panelReveal { from { opacity: 0; transform: translateY(14px); filter: blur(10px); } to { opacity: 1; transform: none; filter: none; } }
+  @keyframes cardReveal { from { opacity: 0; transform: translateY(12px); filter: blur(6px); } to { opacity: 1; transform: none; filter: none; } }
+  .panel-enter { animation: panelReveal var(--t-reveal) var(--ease-soft); }
+  .panel-enter .card, .panel-enter .stat { animation: cardReveal .5s var(--ease-soft) backwards; animation-delay: calc(var(--stagger-i, 0) * 55ms); }
   /* 登录门卡片切换（初始化/登录/找回密码/网络错误）与进入主界面的入场动效：同样靠 hidden 切换自动重播 */
-  #gateWrap .card:not([hidden]) { animation: pageFadeIn .24s ease; }
-  #appShell:not([hidden]) { animation: pageFadeIn .28s ease; }
+  @keyframes gateIn { from { opacity: 0; transform: translateY(16px) scale(.98); filter: blur(8px); } to { opacity: 1; transform: none; filter: none; } }
+  #gateWrap .card:not([hidden]) { animation: gateIn .5s var(--ease-soft); }
+  #appShell:not([hidden]) { animation: panelReveal .55s var(--ease-soft); }
   /* 无障碍合规：系统开启"减弱动态效果"时压掉全部动画与过渡（面板/列表/弹窗/下拉/侧边栏一律瞬时完成），
      不再逐个枚举——漏一个就还有动的。无 infinite 动画，iteration-count 收 1 安全 */
   @media (prefers-reduced-motion: reduce) {
@@ -366,7 +403,7 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
   ul.list li:hover { background: color-mix(in srgb, var(--hover) 55%, transparent); }
   .empty { color: var(--muted); font-size: 14px; text-align: center; padding: 34px 0; }
   /* 相册/列表切换淡入动效（搜索输入不触发，仅在整表刷新与切相册时重播） */
-  @keyframes listSwap { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: none; } }
+  @keyframes listSwap { from { opacity: 0; transform: translateY(6px); filter: blur(4px); } to { opacity: 1; transform: none; filter: none; } }
   #list.list-swap { animation: listSwap .22s ease; }
   .upload-row.dragover { border-color: var(--fg); background: var(--chip); }
   /* 状态页：存储分区条 / 邮件额度 */
@@ -416,9 +453,9 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
   }
   /* 弹窗入场动效：hidden 切换（display none→flex）会自动重播，无需 JS 参与 */
   @keyframes modalBackIn { from { opacity: 0; } to { opacity: 1; } }
-  @keyframes modalBodyIn { from { opacity: 0; transform: translateY(10px) scale(.98); } to { opacity: 1; transform: none; } }
+  @keyframes modalBodyIn { from { opacity: 0; transform: translateY(12px) scale(.96); filter: blur(6px); } to { opacity: 1; transform: none; filter: none; } }
   .modal:not([hidden]) .modal-backdrop { animation: modalBackIn .16s ease; }
-  .modal:not([hidden]) .modal-body { animation: modalBodyIn .2s cubic-bezier(.2, .7, .3, 1.08); }
+  .modal:not([hidden]) .modal-body { animation: modalBodyIn .34s var(--ease-spring); }
   .modal-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
   .modal-head strong { font-size: 15px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .modal-body audio { width: 100%; margin-top: 4px; }
@@ -494,25 +531,8 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
     transform: translateY(-50%); transition: transform .18s cubic-bezier(.2,.7,.3,1.2);
   }
   .geo-toggle.on .gt-thumb { transform: translate(16px, -50%); }
-  /* 功能开关（外观页）：复用 geo-toggle 滑动开关样式 */
+  /* 滑动开关（原"归属地"开关样式；归属地功能已移除，现仅外观页功能开关使用） */
   #flagRows { display: flex; flex-wrap: wrap; gap: 6px 22px; max-width: 640px; }
-  /* 最近访问明细 */
-  #visitLogsBody .vl-row {
-    display: flex; align-items: center; gap: 12px; padding: 7px 0;
-    font-size: 13px; border-bottom: 1px solid var(--row-line);
-  }
-  #visitLogsBody .vl-row:last-child { border-bottom: none; }
-  #visitLogsBody .vl-time { flex: none; color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; }
-  #visitLogsBody .vl-ip { flex: none; font-family: ui-monospace, SFMono-Regular, Consolas, monospace; font-weight: 600; }
-  #visitLogsBody .vl-geo { flex: none; color: var(--muted); font-size: 12px; min-width: 34px; }
-  #visitLogsBody .vl-path {
-    flex: none; max-width: 160px; color: var(--muted); font-size: 12px;
-    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-  }
-  #visitLogsBody .vl-ua {
-    flex: 1; min-width: 0; color: var(--muted); font-size: 12px;
-    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-  }
   /* 邮件统计：趋势 + 发送明细 */
   .mail-sec-title { font-size: 12px; color: var(--muted); margin: 14px 0 4px; }
   #mailTrend svg { width: 100%; height: 70px; display: block; }
@@ -645,7 +665,7 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
     padding: 10px 20px; border-radius: 12px; font-size: 14px;
     box-shadow: 0 6px 24px rgba(0,0,0,.22);
     opacity: 0; pointer-events: none; max-width: 86vw;
-    transition: opacity .22s, transform .22s;
+    transition: opacity .25s var(--ease-outc), transform .32s var(--ease-spring);
   }
   .toast.show { opacity: 1; transform: translate(-50%, 0); }
   .toast.err { font-weight: 700; }
@@ -824,18 +844,6 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
           </div>
           <div id="visitChart"></div>
           <p class="hint" id="visitHint" style="margin:10px 0 0" hidden>按天明细从上线开始积累，之前累积的总访问量没有逐日记录。</p>
-        </div>
-        <div class="card" id="visitLogsCard">
-          <div class="visit-head">
-            <strong>最近访问</strong>
-            <span class="meta2" id="visitLogsSumm"></span>
-            <span class="spacer"></span>
-            <button type="button" class="geo-toggle on" id="visitGeoToggle" role="switch" aria-checked="true" title="显示/隐藏 IP 归属地查询">
-              <span class="gt-label">归属地</span>
-              <span class="gt-track"><i class="gt-thumb"></i></span>
-            </button>
-          </div>
-          <div id="visitLogsBody"><p class="hint" style="margin:0">加载中…</p></div>
         </div>
         <div class="card" id="aiUsageCard">
           <div class="visit-head">
@@ -1227,9 +1235,37 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
     if (label) label.textContent = t === 'dark' ? '浅色' : '深色';
   }
   applyTheme(document.documentElement.getAttribute('data-theme') || 'light');
-  $('themeBtn').addEventListener('click', function () {
+  // 主题切换：支持 View Transitions 的浏览器播放「从按钮位置圆形揭示」动效（参考站同款）；
+  // 半径按归一化对角线换算成百分比（px 裁剪坐标在 2x 屏只画一半），Firefox/减弱动态回退即时切换
+  var themeVTBusy = false;
+  $('themeBtn').addEventListener('click', function (e) {
     var next = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
-    applyTheme(next);
+    var reduce = false;
+    try { reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches; } catch (err) {}
+    if (themeVTBusy || reduce || !document.startViewTransition) {
+      applyTheme(next);
+    } else {
+      themeVTBusy = true;
+      try {
+        var r = e.currentTarget.getBoundingClientRect();
+        var cx = r.left + r.width / 2, cy = r.top + r.height / 2;
+        var px = (cx / window.innerWidth * 100).toFixed(2);
+        var py = (cy / window.innerHeight * 100).toFixed(2);
+        var maxR = Math.hypot(Math.max(cx, window.innerWidth - cx), Math.max(cy, window.innerHeight - cy));
+        var rr = (maxR * 100 / (Math.hypot(window.innerWidth, window.innerHeight) / Math.SQRT2)).toFixed(2);
+        var vt = document.startViewTransition(function () { applyTheme(next); });
+        vt.ready.then(function () {
+          document.documentElement.animate(
+            { clipPath: ['circle(0% at ' + px + '% ' + py + '%)', 'circle(' + rr + '% at ' + px + '% ' + py + '%)'] },
+            { duration: 480, easing: 'linear', pseudoElement: '::view-transition-new(root)' }
+          );
+        }).catch(function () {});
+        vt.finished.finally(function () { themeVTBusy = false; });
+      } catch (err2) {
+        themeVTBusy = false;
+        applyTheme(next);
+      }
+    }
     try { localStorage.setItem('adminTheme', next); } catch (e) {}
   });
 
@@ -1454,9 +1490,28 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
   });
 
   // ---------- 主界面 ----------
+  // 统计数字滚动（概览六卡）：仅首次从 0 填充时播放（后续刷新直接落值，不反复播）；减弱动态时跳过
+  function countUp(el, to) {
+    if (!el) return;
+    var reduce = false;
+    try { reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches; } catch (e) {}
+    var from = parseInt(el.textContent, 10) || 0;
+    if (reduce || from !== 0 || !(to > 0)) { el.textContent = to; return; }
+    var t0 = null, dur = 700;
+    var step = function (ts) {
+      if (t0 === null) t0 = ts;
+      var p = Math.min(1, (ts - t0) / dur);
+      el.textContent = Math.round(to * (1 - Math.pow(1 - p, 3)));
+      if (p < 1) requestAnimationFrame(step);
+      else el.textContent = to;
+    };
+    requestAnimationFrame(step);
+  }
+
   function enterMain() {
     show('main');
     switchPage('overview'); // 默认落在概览页
+    requestAnimationFrame(function () { moveSideIndicator(); }); // 等一帧让面板显示后再量位置
     loadList().then(function () { syncStaticMedia(); });
     loadUsers();
     loadVisits();
@@ -1466,10 +1521,10 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
   }
 
   function refreshStats() {
-    $('statMusic').textContent = items.music.length;
-    $('statVideo').textContent = items.video.length;
-    $('statImage').textContent = items.image.length;
-    $('statUsers').textContent = users.length;
+    countUp($('statMusic'), items.music.length);
+    countUp($('statVideo'), items.video.length);
+    countUp($('statImage'), items.image.length);
+    countUp($('statUsers'), users.length);
   }
 
   function loadList() {
@@ -1664,81 +1719,20 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
     api('/api/admin/visits').then(function (d) {
       if (!d.ok) return;
       visitData = d;
-      $('statVisits').textContent = d.visits;
-      $('statToday').textContent = d.today;
+      countUp($('statVisits'), d.visits);
+      countUp($('statToday'), d.today);
       renderVisitChart();
     }).catch(function () {});
-    loadVisitLogs();
   }
 
-  // 最近访问明细（IP/页面/UA），概览页卡片；IP 归属地可按开关启用（site_settings.visit_geo，默认开）
-  var geoEnabled = true;
-  var geoCache = {}; // 会话内去重：ip → '查询中'/geo/'—'
-  function setGeoToggle() {
-    var b = $('visitGeoToggle');
-    if (!b) return;
-    b.classList.toggle('on', geoEnabled);
-    b.setAttribute('aria-checked', geoEnabled ? 'true' : 'false');
-    b.title = geoEnabled ? '点击关闭 IP 归属地查询' : '点击开启 IP 归属地查询';
-  }
+  // 「最近访问」IP 明细卡与归属地查询已整体移除（2026-09-06）：/api/visit 不再记录 IP/UA，
+  // /api/admin/visit-logs 与 /api/admin/geoip 接口一并下线；fmtLogTime 保留（邮件发送明细在用）
   function fmtLogTime(iso) {
     var d = new Date(iso);
     if (isNaN(d.getTime())) return '';
     function p(x) { return x < 10 ? '0' + x : x; }
     return (d.getMonth() + 1) + '-' + p(d.getDate()) + ' ' + p(d.getHours()) + ':' + p(d.getMinutes());
   }
-  function loadGeo() {
-    if (!geoEnabled) return;
-    var els = document.querySelectorAll('#visitLogsBody .vl-geo[data-ip]');
-    els.forEach(function (el) {
-      var ip = el.getAttribute('data-ip');
-      if (!ip) { el.remove(); return; }
-      var cached = geoCache[ip];
-      if (cached) { el.textContent = cached; return; }
-      geoCache[ip] = '…';
-      api('/api/admin/geoip?ip=' + encodeURIComponent(ip)).then(function (d) {
-        var txt = (d && d.ok && d.geo) ? d.geo : '—';
-        geoCache[ip] = txt;
-        if (el.parentNode) el.textContent = txt;
-      }).catch(function () { geoCache[ip] = '—'; if (el.parentNode) el.textContent = '—'; });
-    });
-  }
-  function loadVisitLogs() {
-    api('/api/admin/visit-logs').then(function (d) {
-      if (!d.ok) return;
-      var logs = d.logs || [];
-      if (typeof d.geoEnabled === 'boolean') { geoEnabled = d.geoEnabled; setGeoToggle(); }
-      $('visitLogsSumm').textContent = logs.length ? '最近 ' + logs.length + ' 次访问' : '暂无记录';
-      var body = $('visitLogsBody');
-      if (!logs.length) {
-        body.innerHTML = '<p class="hint" style="margin:0">暂无访问明细——上线并在前台访问过首页后，这里会显示最近访问的 IP / 归属地 / 页面 / 设备。</p>';
-        return;
-      }
-      body.innerHTML = logs.map(function (l) {
-        var t = '<span class="vl-time">' + fmtLogTime(l.created_at) + '</span>' +
-          '<span class="vl-ip">' + escapeHtml(l.ip || '-') + '</span>' +
-          (geoEnabled && l.ip ? '<span class="vl-geo" data-ip="' + escapeHtml(l.ip) + '"></span>' : '');
-        if (l.path) t += '<span class="vl-path" title="' + escapeHtml(l.path) + '">' + escapeHtml(l.path) + '</span>';
-        if (l.ua) t += '<span class="vl-ua" title="' + escapeHtml(l.ua) + '">' + escapeHtml(l.ua) + '</span>';
-        return '<div class="vl-row">' + t + '</div>';
-      }).join('');
-      loadGeo();
-    }).catch(function () {});
-  }
-  // 归属地开关：只控制前端是否查询，不删数据
-  $('visitGeoToggle').addEventListener('click', function () {
-    api('/api/admin/geoip', {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ enabled: !geoEnabled }),
-    }).then(function (d) {
-      if (d && d.ok) {
-        geoEnabled = d.enabled;
-        setGeoToggle();
-        loadVisitLogs();
-      }
-    }).catch(function () { toast('切换失败', 'err'); });
-  });
 
   function renderVisitChart() {
     var n = visitRange;
@@ -4218,6 +4212,20 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
     });
   });
 
+  // 侧栏滑动指示器：把胶囊对齐到当前 active 项（参考站「导航胶囊指示器」竖排移植）
+  var sideIndEl = null;
+  function moveSideIndicator() {
+    try {
+      var nav = $('sideNav');
+      if (!nav) return;
+      if (!sideIndEl) { sideIndEl = document.createElement('i'); sideIndEl.id = 'sideInd'; nav.insertBefore(sideIndEl, nav.firstChild); }
+      var act = nav.querySelector('button.active');
+      if (!act) { sideIndEl.style.opacity = '0'; return; }
+      sideIndEl.style.opacity = '1';
+      sideIndEl.style.top = act.offsetTop + 'px';
+      sideIndEl.style.height = act.offsetHeight + 'px';
+    } catch (e) {}
+  }
   function switchPage(type) {
     currentType = type;
     navBtns.forEach(function (b) { b.classList.toggle('active', b.getAttribute('data-type') === type); });
@@ -4292,9 +4300,13 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
     if (targetPanel && targetPanel !== lastEnterPanel) {
       lastEnterPanel = targetPanel;
       targetPanel.classList.remove('panel-enter');
+      // 卡片级联入场：给面板里的卡片/统计卡按顺序写 --stagger-i（封顶 8，后面的同时入场）
+      var stag = targetPanel.querySelectorAll('.card, .stat');
+      for (var si = 0; si < stag.length; si++) stag[si].style.setProperty('--stagger-i', String(Math.min(si, 8)));
       void targetPanel.offsetWidth; // 强制 reflow 以重播动画
       targetPanel.classList.add('panel-enter');
     }
+    moveSideIndicator();
   }
   navBtns.forEach(function (btn) {
     btn.addEventListener('click', function () {

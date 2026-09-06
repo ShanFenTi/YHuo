@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>文档 - YHuo</title>
+  <title>关于 - YHuo</title>
   <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -127,11 +127,11 @@
     <nav class="site-nav" aria-label="主导航">
       <a href="/" class="nav-link" data-target="home">首页</a>
       <a href="/tools/" class="nav-link" id="toolsBtn">工具</a>
-      <a href="/docs/" class="nav-link active" id="docsBtn" aria-current="page">文档</a>
       <a href="/ai/" class="nav-link ai-entry" id="aiBtn">AI</a>
       <a href="/misc/" class="nav-link" id="miscBtn">杂项</a>
       <a href="/board/" class="nav-link" id="boardBtn">留言</a>
       <a href="/schedule/" class="nav-link" id="scheduleBtn">课表</a>
+      <a href="/docs/" class="nav-link active" id="docsBtn" aria-current="page">关于</a>
     </nav>
       <div class="header-actions">
         <button class="search-toggle" id="searchToggle" type="button" aria-label="搜索（Ctrl+K）" title="搜索（Ctrl+K）">
@@ -155,15 +155,15 @@
   </header>
 
   <main class="page-main">
-    <div id="docsView" class="docs-view" aria-label="文档">
+    <div id="docsView" class="docs-view" aria-label="关于">
     <header class="album-bar">
-      <p class="album-title">文档 · DOCS</p>
+      <p class="album-title">关于 · ABOUT</p>
     </header>
     <div class="docs-scroll">
       <div class="tool-block">
         <div class="apple-card">
           <div class="card-padding">
-            <p class="card-eyebrow">文档 · DOCS</p>
+            <p class="card-eyebrow">关于 · ABOUT</p>
             <div class="docs-grid" id="docsGrid"></div>
             <p class="empty-hint" id="docsEmpty" hidden>docs/docs.json 里还没有文档条目。</p>
           </div>

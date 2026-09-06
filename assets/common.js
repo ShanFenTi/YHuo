@@ -166,7 +166,7 @@
     var onGatePassedPageHook = null; // 游客门通过后的页面回调（课表页等需登录页面注册；passGate 触发）
     var schedPageCleanup = null;     // 课表页 document 级监听的清理函数（离页摘除防叠加）
     var PAGE_ROUTE = { home: '/', tools: '/tools/', docs: '/docs/', ai: '/ai/', misc: '/misc/', board: '/board/', schedule: '/schedule/' };
-    var PAGE_TITLES = { home: document.title, tools: '工具合集 - YHuo', docs: '文档 - YHuo', ai: 'AI 助手 - YHuo', misc: '杂项 - YHuo', board: '留言板 - YHuo', schedule: '课表 - YHuo' };
+    var PAGE_TITLES = { home: document.title, tools: '工具合集 - YHuo', docs: '关于 - YHuo', ai: 'AI 助手 - YHuo', misc: '杂项 - YHuo', board: '留言板 - YHuo', schedule: '课表 - YHuo' };
 
     // 应用功能开关：给 <html> 打/摘 ff-* 类（CSS 负责隐藏；head 内联脚本已按 localStorage 缓存提前打过，这里按最新配置校正）
     // 并刷新缓存供下次访问首屏预隐藏；天气/歌词条由各自渲染入口判 FLAGS_OFF
@@ -6335,7 +6335,7 @@
         // 界面（功能开关过滤：关闭的界面搜不到，AI 跟随其全局开关）；首页走原生锚点
         push('界面', '界面', '首页', function () { pjaxGo('/'); });
         if (!FLAGS_OFF.toolsView) push('界面', '界面', '工具', function () { pjaxGo('/tools/'); });
-        if (!FLAGS_OFF.docsView) push('界面', '界面', '文档', function () { pjaxGo('/docs/'); });
+        if (!FLAGS_OFF.docsView) push('界面', '界面', '关于', function () { pjaxGo('/docs/'); });
         if (aiOn()) push('界面', '界面', 'AI 助手', function () { pjaxGo('/ai/'); });
         if (!FLAGS_OFF.miscView) push('界面', '界面', '杂项', function () { pjaxGo('/misc/'); });
         push('界面', '界面', '留言板', function () { pjaxGo('/board/'); });
@@ -6359,7 +6359,7 @@
         if (!FLAGS_OFF.docsView) {
           data.docs.forEach(function (d) {
             var title = d.title || d.file || '';
-            push('文档', '文档', title, function () {
+            push('关于', '关于', title, function () {
               openDoc(title, d.file); // 阅读层是全站外壳浮层，任何页面原地打开
             }, { sub: d.date || '' });
           });

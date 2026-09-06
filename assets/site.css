@@ -5433,3 +5433,28 @@
        ========================= */
     html[data-page="ai"] #miniPlayer { display: none !important; }
     html.using-blog-player[data-page="ai"] .music-player { display: none !important; }
+
+    /* AI 页锁视口（2026-09-06 手机实报：页脚跟在全高聊天区下面把页面撑出 100+px 可滚，
+       输入条会随页面滚走、与消息区内部滚动形成双滚混乱）：
+       AI 页禁页面滚动、页脚不参与——应用式全高布局，仅消息区内部滚动，桌面手机统一 */
+    html[data-page="ai"] body { overflow: hidden; height: 100dvh; }
+    html[data-page="ai"] .site-footer { display: none; }
+
+    /* AI 历史抽屉是模态层：整体（含遮罩）抬到顶栏胶囊之上——手机上抽屉从胶囊底下钻过，
+       顶部的「新对话」按钮会被胶囊压住（2026-09-06 手机实报）；遮罩同层罩住全屏含顶栏 */
+    .ai-history { z-index: 60; }
+    .ai-history-scrim { z-index: 59; }
+
+    /* AI 输入条底部留出 iOS 手势条安全区 */
+    html[data-page="ai"] .ai-input-bar { padding-bottom: calc(8px + env(safe-area-inset-bottom, 0px)); }
+
+    /* 坑 28：pageFade（fill:both）让页面容器在 Chromium 里持续构成层叠上下文——AI 历史抽屉
+       （fixed z60，在 #aiView 里）整体被关进容器的 z:auto 上下文，画在顶栏胶囊 z50 之下，
+       手机上抽屉顶部的「新对话」按钮被胶囊压住。修法：AI 页把 #aiView 自身抬到顶栏之上
+       （容器盒从 y96 起，与顶栏不重叠，无副作用；高于顶栏 50、低于外观抽屉/头像下拉 160 与灯箱 200） */
+    html[data-page="ai"] #aiView { position: relative; z-index: 60; }
+
+    /* iOS 聚焦不放大：触屏设备输入字号 ≥16px（<16px 聚焦时 Safari 会强制放大视口） */
+    @media (pointer: coarse) {
+      .ai-input-bar input { font-size: 16px; }
+    }

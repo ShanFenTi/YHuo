@@ -5458,3 +5458,11 @@
     @media (pointer: coarse) {
       .ai-input-bar input { font-size: 16px; }
     }
+
+    /* AI 页手机端贴边（2026-09-06 用户实报"对话框贴边"）：page-main(4vw) + ai-chat(6vw)
+       两侧留白双重叠加出 ~40px 外边距，气泡远离屏幕边——手机端把总留白收到 ~12px，
+       气泡/输入条贴向屏幕两侧（顶栏分隔线同步变宽，整页一致）；桌面/平板布局不变 */
+    @media (max-width: 767px) {
+      html[data-page="ai"] .page-main { padding-left: 8px; padding-right: 8px; }
+      html[data-page="ai"] .ai-chat { padding-left: 2px; padding-right: 2px; }
+    }

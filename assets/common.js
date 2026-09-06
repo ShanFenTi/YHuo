@@ -3070,18 +3070,47 @@
       var schedDocMouseUp = null; // 周视图拖选的 document mouseup（重渲染前先摘旧的，防叠加）
       var schedClearTimer = null; // 清空课程两段式确认的武装计时器
       var SCHED_DAYS = ['周一', '周二', '周三', '周四', '周五', '周六', '周日'];
-      var SCHED_COLORS = ['#5b8def', '#e8618c', '#3aa981', '#e0913d', '#8b6fd6', '#4ab3c4', '#d16a4a', '#6f7f95'];
+      var SCHED_COLORS = [
+        '#5b8def', '#e8618c', '#3aa981', '#e0913d', '#8b6fd6', '#4ab3c4', '#d16a4a', '#6f7f95',
+        '#e04f5f', '#689f38', '#c9a227', '#2f9ec7', '#5a6ee0', '#b76fd6', '#d65fa0', '#8d6e63',
+        '#52886b', '#a63d57', '#4557a5', '#37474f'
+      ]; // 20 色白字友好色板
 
       function showSchedMsg(text, err) {
         if (!schedMsg) return;
         schedMsg.textContent = text || '';
         schedMsg.classList.toggle('err', !!err);
       }
-      function schedColor(name) {
+      var schedColorMap = null; // 课程名 → 颜色（renderSchedGrid 每轮重建：同名课恒同色，不同名的课互不撞色）
+      function schedHash(name) {
         var h = 0;
         var s = String(name || '');
         for (var i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0;
-        return SCHED_COLORS[h % SCHED_COLORS.length];
+        return h;
+      }
+      // 给当前课表里出现过的课程名分配颜色：从名字哈希位开始线性探测，色板内互不重复；
+      // 课程超过色板数（20 门）才回落复用。编辑器预览里还没入库的名字走 schedColor 兜底
+      function schedRebuildColors() {
+        schedColorMap = {};
+        var used = {};
+        var names = [];
+        schedData.courses.forEach(function (c) {
+          var n = String(c.name || '');
+          if (n && names.indexOf(n) === -1) names.push(n);
+        });
+        names.forEach(function (n) {
+          var base = schedHash(n) % SCHED_COLORS.length;
+          for (var k = 0; k < SCHED_COLORS.length; k++) {
+            var idx = (base + k) % SCHED_COLORS.length;
+            if (!used[idx]) { used[idx] = 1; schedColorMap[n] = SCHED_COLORS[idx]; return; }
+          }
+          schedColorMap[n] = SCHED_COLORS[base]; // 课程多于色板才走到这
+        });
+      }
+      function schedColor(name) {
+        var n = String(name || '');
+        if (schedColorMap && schedColorMap[n]) return schedColorMap[n];
+        return SCHED_COLORS[schedHash(n) % SCHED_COLORS.length];
       }
       // 当前教学周（本地时间；termStart 自动校准到那周的周一）
       function schedCurWeek() {
@@ -3129,6 +3158,7 @@
       function renderSchedGrid() {
         if (!schedGridEl || !schedData) return;
         var grid = schedGridEl;
+        schedRebuildColors(); // 本轮渲染的配色（不同课程互不撞色）
         if (grid._cleanupDrag) { grid._cleanupDrag(); grid._cleanupDrag = null; }
         grid.innerHTML = '';
         var cur = schedCurWeek();

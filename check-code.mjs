@@ -14,8 +14,8 @@ let errors = 0;
 const fail = (msg) => { errors++; console.log('  ✗ ' + msg); };
 const ok = (msg) => console.log('  ✓ ' + msg);
 
-// 多页面改造（2026-09-05）后的七个前台页面（2026-09-06 增课表页 /schedule/）；改外壳（头部/导航/浮层）要多处同步，这里全部把关
-const PAGES = ['index.html', 'tools/index.html', 'docs/index.html', 'ai/index.html', 'misc/index.html', 'board/index.html', 'schedule/index.html'];
+// 多页面改造（2026-09-05）后的前台页面（2026-09-06 增课表页 /schedule/ 与博客预览页 /blog/，共八个）；改外壳（头部/导航/浮层）要多处同步，这里全部把关
+const PAGES = ['index.html', 'tools/index.html', 'docs/index.html', 'ai/index.html', 'misc/index.html', 'board/index.html', 'schedule/index.html', 'blog/index.html'];
 
 // ---------- 1. 内联 <script> 语法 ----------
 function checkInlineScripts(file, label) {

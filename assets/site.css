@@ -5370,3 +5370,36 @@
       font-size: 0.72em;
       opacity: 0.55;
     }
+
+
+    /* =========================
+       预览演示页（/blog/，2026-09-06：第八页，对齐 博客动画源码/demo.html 的链接预览演示区）
+       顶栏「预览」为站内链接（id blogBtn）；页面就是两张示例外链，悬停看预览卡。
+       卡片本体样式在上方「链接预览卡片」段
+       ========================= */
+    html[data-page="blog"] .tool-block { max-width: 940px; margin: 0 auto; }
+
+    .preview-lead {
+      margin: 0 0 16px;
+      line-height: 1.9;
+    }
+
+    .preview-links {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: baseline;
+      gap: 10px;
+      margin: 0;
+      font-size: 1.05rem;
+    }
+
+    .preview-links a {
+      color: var(--primary);
+      font-weight: 700;
+      text-decoration: none;
+      border-bottom: 1px dashed color-mix(in srgb, var(--primary) 45%, transparent);
+    }
+
+    .preview-links a:hover { border-bottom-style: solid; }
+
+    .preview-sep { color: var(--muted-foreground); }

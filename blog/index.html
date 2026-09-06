@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="zh-CN" class="light" data-page="tools">
+<html lang="zh-CN" class="light" data-page="blog">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>工具合集 - YHuo</title>
+  <title>预览 - YHuo</title>
   <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -126,12 +126,12 @@
       <a class="logo" href="/" aria-label="回到首页">YHuo</a>
     <nav class="site-nav" aria-label="主导航">
       <a href="/" class="nav-link" data-target="home">首页</a>
-      <a href="/tools/" class="nav-link active" id="toolsBtn" aria-current="page">工具</a>
+      <a href="/tools/" class="nav-link" id="toolsBtn">工具</a>
       <a href="/ai/" class="nav-link ai-entry" id="aiBtn">AI</a>
       <a href="/misc/" class="nav-link" id="miscBtn">杂项</a>
       <a href="/board/" class="nav-link" id="boardBtn">留言</a>
       <a href="/schedule/" class="nav-link" id="scheduleBtn">课表</a>
-      <a href="/blog/" class="nav-link" id="blogBtn">预览</a>
+      <a href="/blog/" class="nav-link active" id="blogBtn" aria-current="page">预览</a>
       <a href="/docs/" class="nav-link" id="docsBtn">关于</a>
     </nav>
       <div class="header-actions">
@@ -156,195 +156,22 @@
   </header>
 
   <main class="page-main">
-    <div id="toolsView" class="tools-view" aria-label="工具合集">
     <header class="album-bar">
-      <p class="album-title">工具合集 · TOOLS</p>
+      <p class="album-title">预览 · DEMO</p>
     </header>
-    <div class="tools-scroll">
-      <!-- 工具合集：本地小工具，无外部依赖 -->
-      <div class="tool-block">
-        <div class="apple-card">
-          <div class="card-padding">
-            <p class="card-eyebrow">工具合集 · TOOLBOX</p>
-            <div class="tools-grid">
-              <!-- 重要日子 -->
-              <div class="tool-card" id="toolDays">
-                <p class="tool-card-title">🎯 重要日子</p>
-                <p class="tool-empty" id="daysEmpty" hidden></p>
-                <div class="tool-list" id="daysList"></div>
-                <div class="tool-form">
-                  <input class="profilev-input" id="daysName" type="text" maxlength="20" placeholder="名称（如：考研、生日）">
-                  <input class="profilev-input" id="daysDate" type="date" aria-label="日期">
-                  <button class="tool-btn primary" id="daysAdd" type="button">添加</button>
-                </div>
-              </div>
-
-              <!-- 番茄钟 -->
-              <div class="tool-card" id="toolPomo">
-                <p class="tool-card-title">🍅 番茄钟<span class="tool-title-note" id="pomoNote"></span></p>
-                <div class="tool-tabs" id="pomoTabs">
-                  <button type="button" data-m="work" class="on">专注 25</button>
-                  <button type="button" data-m="break">短休 5</button>
-                  <button type="button" data-m="long">长休 15</button>
-                </div>
-                <div class="timer-display" id="pomoDisplay">25:00</div>
-                <div class="timer-controls">
-                  <button class="tool-btn primary" id="pomoStart" type="button">开始</button>
-                  <button class="tool-btn" id="pomoReset" type="button">重置</button>
-                </div>
-              </div>
-
-              <!-- 换算器 -->
-              <div class="tool-card" id="toolConv">
-                <p class="tool-card-title">🔄 换算器</p>
-                <div class="tool-tabs" id="convTabs">
-                  <button type="button" data-t="unit" class="on">单位</button>
-                  <button type="button" data-t="base">进制</button>
-                </div>
-                <div id="convUnit">
-                  <div class="tool-tabs tool-tabs-sub" id="unitCats">
-                    <button type="button" data-c="len" class="on">长度</button>
-                    <button type="button" data-c="weight">重量</button>
-                    <button type="button" data-c="temp">温度</button>
-                    <button type="button" data-c="data">数据</button>
-                  </div>
-                  <div class="tool-row">
-                    <input class="profilev-input" id="unitIn" type="number" inputmode="decimal" value="1" aria-label="数值">
-                    <select class="profilev-input" id="unitFrom" aria-label="源单位"></select>
-                  </div>
-                  <p class="conv-arrow">↓</p>
-                  <div class="tool-row">
-                    <input class="profilev-input" id="unitOut" type="text" readonly aria-label="结果">
-                    <select class="profilev-input" id="unitTo" aria-label="目标单位"></select>
-                  </div>
-                </div>
-                <div id="convBase" hidden>
-                  <input class="profilev-input" id="baseIn" type="text" placeholder="非负整数，如 255">
-                  <div class="tool-tabs tool-tabs-sub" id="baseFrom">
-                    <button type="button" data-b="2">二进制</button>
-                    <button type="button" data-b="8">八进制</button>
-                    <button type="button" data-b="10" class="on">十进制</button>
-                    <button type="button" data-b="16">十六进制</button>
-                  </div>
-                  <div class="tool-list" id="baseRows">
-                    <div class="tool-list-item" data-copy="bin"><span class="sub">BIN</span><code class="grow" id="baseBin">—</code></div>
-                    <div class="tool-list-item" data-copy="oct"><span class="sub">OCT</span><code class="grow" id="baseOct">—</code></div>
-                    <div class="tool-list-item" data-copy="dec"><span class="sub">DEC</span><code class="grow" id="baseDec">—</code></div>
-                    <div class="tool-list-item" data-copy="hex"><span class="sub">HEX</span><code class="grow" id="baseHex">—</code></div>
-                  </div>
-                  <p class="base-hint">点击行可复制对应值</p>
-                </div>
-              </div>
-
-              <!-- 文本工具 -->
-              <div class="tool-card" id="toolText">
-                <p class="tool-card-title">📝 文本工具</p>
-                <div class="tool-tabs" id="textTabs">
-                  <button type="button" data-t="count" class="on">字数</button>
-                  <button type="button" data-t="clean">整理</button>
-                  <button type="button" data-t="ts">时间戳</button>
-                  <button type="button" data-t="json">JSON</button>
-                </div>
-                <div id="textCount">
-                  <textarea class="tool-area" id="tcIn" rows="4" placeholder="粘贴文本，实时统计"></textarea>
-                  <div class="text-stats">
-                    <div class="text-stat"><b id="tcChars">0</b><span>字符</span></div>
-                    <div class="text-stat"><b id="tcNoSpace">0</b><span>不含空格</span></div>
-                    <div class="text-stat"><b id="tcWords">0</b><span>词数（中文按字）</span></div>
-                    <div class="text-stat"><b id="tcLines">0</b><span>行数</span></div>
-                  </div>
-                </div>
-                <div id="textClean" hidden>
-                  <textarea class="tool-area" id="tlIn" rows="5" placeholder="每行一条，处理完直接复制走"></textarea>
-                  <div class="text-btns">
-                    <button class="tool-btn" type="button" data-clean="dedupe">去重</button>
-                    <button class="tool-btn" type="button" data-clean="sort">排序</button>
-                    <button class="tool-btn" type="button" data-clean="noblank">去空行</button>
-                    <button class="tool-btn" type="button" data-clean="trim">去首尾空格</button>
-                    <button class="tool-btn" type="button" data-clean="upper">转大写</button>
-                    <button class="tool-btn" type="button" data-clean="lower">转小写</button>
-                  </div>
-                </div>
-                <div id="textTs" hidden>
-                  <input class="profilev-input" id="tsIn" type="text" placeholder="Unix 时间戳，秒或毫秒都行">
-                  <div class="text-btns">
-                    <button class="tool-btn" id="tsTo" type="button">转日期</button>
-                    <button class="tool-btn" id="tsNow" type="button">现在的时间戳</button>
-                  </div>
-                  <p class="tool-note" id="tsOut">10 位以内按秒算，更长的按毫秒算</p>
-                </div>
-                <div id="textJson" hidden>
-                  <textarea class="tool-area" id="tjIn" rows="5" placeholder='{"a": 1, "b": [2, 3]}'></textarea>
-                  <div class="text-btns">
-                    <button class="tool-btn" id="tjFmt" type="button">格式化</button>
-                    <button class="tool-btn" id="tjMin" type="button">压缩</button>
-                  </div>
-                  <p class="tool-note" id="tjOut"></p>
-                </div>
-              </div>
-
-              <!-- 随机决策 -->
-              <div class="tool-card" id="toolDice">
-                <p class="tool-card-title">🎲 随机决策</p>
-                <textarea class="tool-area" id="diceIn" rows="3" placeholder="每行一个选项，自动保存"></textarea>
-                <button class="tool-btn primary" id="diceGo" type="button" style="width:100%;">抽一个</button>
-                <p class="dice-result" id="diceOut">—</p>
-              </div>
-
-              <!-- 计算器（带历史） -->
-              <div class="tool-card" id="toolCalc">
-                <p class="tool-card-title">🧮 计算器</p>
-                <div class="calc-screen" id="calcScreen">0</div>
-                <div class="calc-pad" id="calcPad">
-                  <button type="button" data-k="C">C</button>
-                  <button type="button" data-k="(">(</button>
-                  <button type="button" data-k=")">)</button>
-                  <button type="button" data-k="/">÷</button>
-                  <button type="button" data-k="7">7</button>
-                  <button type="button" data-k="8">8</button>
-                  <button type="button" data-k="9">9</button>
-                  <button type="button" data-k="*">×</button>
-                  <button type="button" data-k="4">4</button>
-                  <button type="button" data-k="5">5</button>
-                  <button type="button" data-k="6">6</button>
-                  <button type="button" data-k="-">−</button>
-                  <button type="button" data-k="1">1</button>
-                  <button type="button" data-k="2">2</button>
-                  <button type="button" data-k="3">3</button>
-                  <button type="button" data-k="+">+</button>
-                  <button type="button" data-k="0">0</button>
-                  <button type="button" data-k=".">.</button>
-                  <button type="button" data-k="back">⌫</button>
-                  <button type="button" data-k="=" class="calc-eq">=</button>
-                </div>
-                <div class="calc-hist-head" id="calcHistHead" hidden>
-                  <span>历史 · 点一条填入结果</span>
-                  <button class="tool-x" id="calcHistClear" type="button">清空</button>
-                </div>
-                <div class="tool-list" id="calcHist"></div>
-              </div>
-            </div>
-
-            <!-- 更多工具：低频工具收进折叠区 -->
-            <details class="tool-more">
-              <summary>更多工具 ▾</summary>
-              <div class="tool-card" id="toolPwd">
-                <p class="tool-card-title">🔐 密码生成</p>
-                <div class="pwd-out-row">
-                  <input class="profilev-input" id="pwdGenOut" type="text" readonly>
-                  <button class="appear-btn" id="pwdGenCopy" type="button">复制</button>
-                </div>
-                <label class="tool-check"><input type="range" id="pwdGenLen" min="8" max="32" value="16"> <span id="pwdGenLenLabel">16 位</span></label>
-                <label class="tool-check"><input type="checkbox" id="pwdGenSym" checked> 含符号 !@#$%</label>
-                <button class="appear-btn" id="pwdGenBtn" type="button" style="width:100%;">生成</button>
-              </div>
-            </details>
-          </div>
+    <div class="tool-block">
+      <div class="apple-card">
+        <div class="card-padding">
+          <p class="card-eyebrow">链接预览卡片 · LINK PREVIEW</p>
+          <p class="preview-lead">悬停下面的外链 150ms，会弹出跟随鼠标的预览卡片——站点名、链接文字、描述与上下文（GitHub 链接还会带仓库预览图），滚动或移开即消失：</p>
+          <p class="preview-links">
+            <a href="https://github.com/laogou717/clay-blog" target="_blank" rel="noopener">GitHub 上的 clay-blog 仓库</a>
+            <span class="preview-sep">·</span>
+            <a href="https://www.bilibili.com" target="_blank" rel="noopener">哔哩哔哩</a>
+          </p>
+          <p class="empty-hint">仅白名单站点的外链触发预览，站内链接与白名单外的外链不弹。白名单在 common.js 尾部 SITE_INFO，要加站点改那里。</p>
         </div>
       </div>
-
-      <!-- 外观设置已移至右侧抽屉（appear-dock） -->
-    </div>
     </div>
   </main>
 

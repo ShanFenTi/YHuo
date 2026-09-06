@@ -6797,6 +6797,7 @@
         var parts = pathname.split('/').filter(Boolean).slice(0, 2);
         return parts.length ? parts.join(' / ') : 'GitHub';
       }
+      if (info.id === 'site') return '站内页面';
       if (info.id === 'blog') {
         return (!url.pathname || url.pathname === '/') ? '博客首页' : '博客内页';
       }
@@ -6837,11 +6838,28 @@
       imageEl.hidden = true;
     });
 
-    // 白名单匹配：仅站外链接，hostname 去 www 后查表
+    // 顶栏导航项的页面说明（站内链接也出预览卡，悬停看各页简介）；加/改页面改这里
+    // 键 = 去尾斜杠的 pathname（与 resolveLink 的归一口径一致）
+    var NAV_INFO = {
+      '/':         { id: 'site', name: 'YHuo · 首页', desc: '时钟 / 寄语 / 天气 / 歌词条 / 站内曲库' },
+      '/tools':    { id: 'site', name: 'YHuo · 工具合集', desc: '重要日子 / 番茄钟 / 换算器 / 文本工具 / 随机决策 / 计算器' },
+      '/docs':     { id: 'site', name: 'YHuo · 关于', desc: '站点介绍与更新日志' },
+      '/ai':       { id: 'site', name: 'YHuo · AI 助手', desc: '多供应商多模型流式对话' },
+      '/misc':     { id: 'site', name: 'YHuo · 杂项', desc: '牌堆式轮播的图片画廊' },
+      '/board':    { id: 'site', name: 'YHuo · 留言板', desc: '给站长或访客留句话' },
+      '/schedule': { id: 'site', name: 'YHuo · 课表', desc: 'WakeUp 导入导出 / 每日早报与课前邮件提醒' },
+      '/blog':     { id: 'site', name: 'YHuo · 链接预览演示', desc: '悬停本页两个示例链接，看预览卡效果' }
+    };
+
+    // 白名单匹配：顶栏导航项按路径查页面说明；站外链接按 hostname 去 www 查表；其余一律不弹
     function resolveLink(link) {
       var url;
       try { url = new URL(link.href, window.location.href); } catch (e) { return null; }
       if (url.protocol !== 'http:' && url.protocol !== 'https:') return null;
+      if (link.closest('.site-nav')) {
+        var path = url.pathname.replace(/\/+$/, '') || '/';
+        return NAV_INFO[path] ? { url: url, info: NAV_INFO[path] } : null;
+      }
       var host = url.hostname.replace(/^www\./, '');
       return SITE_INFO[host] ? { url: url, info: SITE_INFO[host] } : null;
     }

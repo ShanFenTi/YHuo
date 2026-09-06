@@ -5275,7 +5275,8 @@
     }
 
     .fx-link-preview[data-preview-site="bilibili"] .fx-link-preview__visual { background: #fb7299; }
-    .fx-link-preview[data-preview-site="blog"] .fx-link-preview__visual {
+    .fx-link-preview[data-preview-site="blog"] .fx-link-preview__visual,
+    .fx-link-preview[data-preview-site="site"] .fx-link-preview__visual {
       background: color-mix(in srgb, var(--primary) 82%, #000);
     }
 

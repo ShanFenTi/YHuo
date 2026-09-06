@@ -6750,6 +6750,7 @@
     document.body.appendChild(root);
 
     var card = root.querySelector('.fx-link-preview__card');
+    var visualEl = root.querySelector('.fx-link-preview__visual');
     var domainEl = root.querySelector('[data-fx-preview-domain]');
     var titleEl = root.querySelector('[data-fx-preview-title]');
     var descEl = root.querySelector('[data-fx-preview-desc]');
@@ -6824,9 +6825,41 @@
       imageEl.hidden = true;
       if (imageUrl) imageEl.src = imageUrl;
       else imageEl.removeAttribute('src');
+      // 站内页面：视觉区放实时缩略 iframe（首次悬停创建并常驻缓存，加载完成前显示彩色兜底）；
+      // 站外链接则全部藏掉，防止上一次的缩略图叠在外链卡上
+      if (info.id === 'site') attachLiveFrame(url.pathname.replace(/\/+$/, '') || '/');
+      else hideLiveFrames();
       activeLink = link;
       root.classList.add('is-visible');
       window.requestAnimationFrame(position);
+    }
+
+    // 站内页面的实时缩略图：iframe 按 1280 宽渲染、CSS scale(0.25) 缩进 320×112 的视觉区，
+    // pointer-events:none 纯展示。iframe 一旦插回 DOM 会整页重载，所以常驻 visual 里不挪动，
+    // 按路径缓存复用（首悬停要加载 1~2 秒，之后秒出）。显隐用 is-current 切 display——
+    // 不动 DOM 就不会触发重载，切到站外链接时全部藏掉防叠影
+    var liveFrames = {};
+    function attachLiveFrame(path) {
+      var f = liveFrames[path];
+      if (!f) {
+        f = document.createElement('iframe');
+        f.className = 'fx-link-preview__page';
+        f.src = path === '/' ? '/' : path + '/';
+        f.tabIndex = -1;
+        f.setAttribute('aria-hidden', 'true');
+        f.setAttribute('title', '页面预览');
+        f.addEventListener('load', function () { f.classList.add('is-ready'); });
+        liveFrames[path] = f;
+      }
+      if (f.parentElement !== visualEl) visualEl.appendChild(f);
+      Object.keys(liveFrames).forEach(function (k) {
+        liveFrames[k].classList.toggle('is-current', liveFrames[k] === f);
+      });
+    }
+    function hideLiveFrames() {
+      Object.keys(liveFrames).forEach(function (k) {
+        liveFrames[k].classList.remove('is-current');
+      });
     }
 
     imageEl.addEventListener('load', function () {

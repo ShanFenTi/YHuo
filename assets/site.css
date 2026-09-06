@@ -5280,6 +5280,28 @@
       background: color-mix(in srgb, var(--primary) 82%, #000);
     }
 
+    /* 站内页面的实时缩略 iframe：common.js 按路径创建并缓存，加载完成前露出
+       下层彩色兜底当 loading 态；pointer-events:none 纯展示不可交互。
+       只显示 is-current 那一张（display 切换不触发 iframe 重载，缓存依然秒开） */
+    .fx-link-preview__page {
+      position: absolute;
+      inset: 0;
+      z-index: 2;
+      display: none;
+      width: 1280px;
+      height: 448px;
+      border: 0;
+      background: transparent;
+      transform: scale(0.25); /* 1280 宽整页缩进 320px 卡片，0.25 后正好 320×112 铺满视觉区 */
+      transform-origin: 0 0;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.3s var(--ease-out);
+    }
+
+    .fx-link-preview__page.is-current { display: block; }
+    .fx-link-preview__page.is-ready { opacity: 1; }
+
     .fx-link-preview__image {
       position: absolute;
       inset: 0;

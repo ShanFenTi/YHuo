@@ -51,88 +51,82 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
     transition: background .25s, color .25s;
   }
-  /* ---------- 侧边栏 + 顶栏框架 ---------- */
-  .shell { display: flex; min-height: 100vh; }
-  aside.sidenav {
-    width: 220px; flex: none;
-    background: var(--card); border-right: 1px solid var(--border);
-    display: flex; flex-direction: column;
-    padding: 18px 12px;
-    position: sticky; top: 0; height: 100vh;
-    transition: width .2s;
-    overflow: hidden;
+  /* ---------- 顶栏胶囊（复刻前台 site-header/header-pill）+ 窄屏抽屉侧栏 ---------- */
+  .shell { min-height: 100vh; }
+  .main-col { min-width: 0; }
+  .admin-header {
+    position: sticky; top: 0; z-index: 50;
+    display: flex; justify-content: center;
+    padding: 10px 12px 0;
+    pointer-events: none; /* 胶囊外点击穿透（前台同款） */
   }
-  /* 收起态：只剩图标列 */
-  body.nav-collapsed aside.sidenav { width: 64px; }
-  body.nav-collapsed .brand { padding-left: 4px; padding-right: 4px; gap: 0; }
-  body.nav-collapsed nav.sidenav-links button { justify-content: center; padding: 10px 0; gap: 0; }
-  body.nav-collapsed .sidenav-foot .icon-btn { justify-content: center; padding: 10px 0; gap: 0; }
-  /* 文字标签用「宽度收成 0 + 淡出」而不是 display:none，展开时与侧边栏宽度过渡完全同步，不闪烁 */
-  .brand-text, nav.sidenav-links button span, .sidenav-foot .icon-btn span {
-    white-space: nowrap; overflow: hidden; max-width: 200px; opacity: 1;
-    transition: max-width .22s ease, opacity .16s ease;
+  .header-pill {
+    pointer-events: auto;
+    display: flex; align-items: center; gap: 6px;
+    padding: 5px 8px;
+    border-radius: 999px;
+    background: rgba(255,255,255,.6);
+    -webkit-backdrop-filter: saturate(1.8) blur(22px);
+    backdrop-filter: saturate(1.8) blur(22px);
+    border: 1px solid rgba(255,255,255,.55);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.45), 0 8px 28px rgba(0,0,0,.1);
+    transition: box-shadow .25s var(--ease-outc);
+    max-width: 100%;
   }
-  body.nav-collapsed .brand-text,
-  body.nav-collapsed nav.sidenav-links button span,
-  body.nav-collapsed .sidenav-foot .icon-btn span {
-    max-width: 0; opacity: 0;
-    transition: max-width .2s ease, opacity .12s ease;
+  [data-theme="dark"] .header-pill {
+    background: rgba(30,30,32,.58);
+    border-color: rgba(255,255,255,.1);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.08), 0 8px 28px rgba(0,0,0,.42);
   }
-  #navCollapseBtn svg { transition: transform .2s; }
-  body.nav-collapsed #navCollapseBtn svg { transform: rotate(180deg); }
-  .brand { display: flex; align-items: center; gap: 10px; padding: 4px 10px 18px; position: relative; transition: padding .22s ease, gap .22s ease; }
-  .brand .mark {
-    width: 38px; height: 38px; border-radius: 50%;
+  .admin-header.scrolled .header-pill { box-shadow: inset 0 1px 0 rgba(255,255,255,.45), 0 10px 32px rgba(0,0,0,.16); }
+  [data-theme="dark"] .admin-header.scrolled .header-pill { box-shadow: inset 0 1px 0 rgba(255,255,255,.08), 0 10px 32px rgba(0,0,0,.5); }
+  /* 头像圆（原侧栏 brand mark 移植，点击进「我的」） */
+  .mark {
+    width: 34px; height: 34px; border-radius: 50%; flex: none;
     background: var(--fg); color: var(--bg);
-    font-weight: 700; font-size: 14px; letter-spacing: .05em;
-    display: flex; align-items: center; justify-content: center; flex: none;
+    font-weight: 700; font-size: 13px; letter-spacing: .05em;
+    display: flex; align-items: center; justify-content: center;
     cursor: pointer; position: relative; overflow: hidden;
+    margin-left: 6px;
     transition: transform .15s, box-shadow .15s;
   }
-  .brand .mark:hover { transform: scale(1.06); box-shadow: 0 0 0 3px color-mix(in srgb, var(--fg) 18%, transparent); }
-  .brand .mark img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
-  .brand h1 { font-size: 16px; font-weight: 700; line-height: 1.2; }
-  .brand p { font-size: 11px; color: var(--muted); margin-top: 2px; }
-  nav.sidenav-links { display: flex; flex-direction: column; gap: 4px; position: relative; }
-  /* 侧栏滑动指示器（参考站「导航胶囊指示器」的竖排移植）：胶囊在 active 项之间滑动，
-     按钮本身不再画背景（:has 兜底——指示器不存在时退回原自绘背景，不会出现无底色的选中项） */
-  #sideInd {
-    position: absolute; left: 0; right: 0; z-index: 0;
-    border-radius: 10px; background: var(--fg);
-    opacity: 0; pointer-events: none;
-    transition: top .42s var(--ease-soft), height .42s var(--ease-soft), opacity .18s;
+  .mark:hover { transform: scale(1.06); box-shadow: 0 0 0 3px color-mix(in srgb, var(--fg) 18%, transparent); }
+  .mark img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+  nav.site-nav { display: flex; gap: 2px; min-width: 0; }
+  nav.site-nav button {
+    height: 34px; padding: 0 13px; border-radius: 999px;
+    font-size: 13px; font-weight: 500; white-space: nowrap;
+    color: var(--fg); border: none; cursor: pointer; background: transparent;
+    transition: background .2s var(--ease-outc), color .2s var(--ease-outc);
   }
+  nav.site-nav button:hover { background: var(--hover); }
+  nav.site-nav button.active { background: var(--fg); color: var(--bg); font-weight: 600; }
+  .header-actions { display: flex; gap: 2px; border-left: 1px solid var(--border); padding-left: 6px; margin-left: 2px; }
+  .action-btn {
+    width: 34px; height: 34px; border-radius: 50%; flex: none;
+    display: flex; align-items: center; justify-content: center;
+    padding: 0; /* 抵消全局 button 的 9px 18px 内边距，否则 34px 圆钮里 svg 会被挤成 0 宽 */
+    color: var(--fg); border: none; cursor: pointer; background: transparent;
+    transition: background .2s var(--ease-outc);
+  }
+  .action-btn:hover { background: var(--hover); }
+  .action-btn svg { width: 16px; height: 16px; display: block; }
+  /* 窄屏抽屉侧栏：≤900px 汉堡唤出（宽屏 display:none，导航走胶囊） */
+  aside.sidenav { display: none; }
+  aside.sidenav .brand { padding: 6px 10px 14px; }
+  aside.sidenav .brand h1 { font-size: 16px; font-weight: 700; }
+  nav.sidenav-links { display: flex; flex-direction: column; gap: 4px; }
   nav.sidenav-links button {
     display: flex; align-items: center; gap: 10px;
     background: transparent; color: var(--fg);
     padding: 10px 12px; border-radius: 10px; font-size: 14px;
     text-align: left; border: none; cursor: pointer;
-    position: relative; z-index: 1;
-    transition: background .2s var(--ease-outc), color .2s var(--ease-outc), padding .22s ease, gap .22s ease;
+    transition: background .2s var(--ease-outc), color .2s var(--ease-outc);
   }
-  nav.sidenav-links button:hover { background: var(--hover); opacity: 1; }
+  nav.sidenav-links button:hover { background: var(--hover); }
   nav.sidenav-links button.active { background: var(--fg); color: var(--bg); font-weight: 600; }
-  nav.sidenav-links:has(#sideInd) button.active { background: transparent; color: var(--bg); }
   nav.sidenav-links button svg { width: 17px; height: 17px; flex: none; }
-  .sidenav-foot { margin-top: auto; padding-top: 12px; border-top: 1px solid var(--row-line); display: flex; flex-direction: column; gap: 4px; }
-  .sidenav-foot .icon-btn { justify-content: flex-start; transition: background .15s ease, padding .22s ease, gap .22s ease; }
-  .sidenav-foot .icon-btn:hover { opacity: 1; }
-  .main-col { flex: 1; min-width: 0; display: flex; flex-direction: column; }
-  header.topbar {
-    position: sticky; top: 0; z-index: 50;
-    display: flex; align-items: center; gap: 12px;
-    padding: 12px 28px;
-    background: var(--card); border-bottom: 1px solid var(--border);
-  }
-  header.topbar h2 { font-size: 17px; font-weight: 700; flex: 1; }
-  .menu-btn { display: none; padding: 8px 10px; }
-  .menu-btn svg { width: 18px; height: 18px; display: block; }
-  .topbar-btns { display: flex; gap: 8px; }
-  .icon-btn {
-    display: flex; align-items: center; gap: 6px;
-    padding: 8px 14px; border-radius: 10px; font-size: 13px;
-  }
-  .icon-btn svg { width: 15px; height: 15px; }
+  .menu-btn { display: none; }
   main.content { padding: 24px 28px 48px; flex: 1; }
   .card {
     background: var(--card); border-radius: 18px; padding: 24px;
@@ -683,23 +677,20 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
   .gate-wrap .card { width: min(420px, 100%); margin-bottom: 0; }
   /* 移动端适配 */
   @media (max-width: 900px) {
+    /* 窄屏：导航回抽屉，胶囊只留 汉堡/头像/动作钮（前台式占满行宽） */
+    .site-nav.pill-nav { display: none; } /* 两档类名压过基础规则 nav.site-nav 的 display:flex */
+    .menu-btn { display: flex; }
+    .admin-header { padding: 8px 10px 0; }
+    .header-pill { width: 100%; }
     aside.sidenav {
+      display: flex; flex-direction: column;
       position: fixed; left: 0; top: 0; z-index: 200;
+      width: 220px; height: 100vh; padding: 14px 12px;
+      background: var(--card); border-right: 1px solid var(--border);
       transform: translateX(-100%); transition: transform .22s;
-      box-shadow: none; height: 100vh;
+      overflow-y: auto;
     }
     body.nav-open aside.sidenav { transform: translateX(0); box-shadow: 0 0 0 100vmax rgba(0,0,0,.45); }
-    body.nav-open aside.sidenav .brand { pointer-events: auto; }
-    .menu-btn { display: flex; align-items: center; }
-    /* 窄屏抽屉永远显示完整侧边栏：覆盖桌面端收起态的图标模式 */
-    body.nav-collapsed aside.sidenav { width: 220px; }
-    body.nav-collapsed .brand { padding: 4px 10px 18px; gap: 10px; }
-    body.nav-collapsed .brand-text { max-width: 200px; opacity: 1; }
-    body.nav-collapsed nav.sidenav-links button { justify-content: flex-start; padding: 10px 12px; gap: 10px; }
-    body.nav-collapsed nav.sidenav-links button span { max-width: 200px; opacity: 1; }
-    body.nav-collapsed .sidenav-foot .icon-btn { justify-content: flex-start; padding: 8px 14px; gap: 6px; }
-    body.nav-collapsed .sidenav-foot .icon-btn span { max-width: 200px; opacity: 1; }
-    header.topbar { padding: 10px 16px; }
     main.content { padding: 16px 16px 40px; }
     .card { padding: 16px; border-radius: 14px; }
     ul.list li { flex-wrap: wrap; row-gap: 8px; padding: 10px 2px; }
@@ -779,13 +770,8 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
 
 <div class="shell" id="appShell" hidden>
   <aside class="sidenav">
-    <div class="brand">
-      <div class="mark" id="brandMark" title="我的"><span id="brandMono">YH</span><img id="brandAvatarImg" hidden alt=""></div>
-      <div class="brand-text">
-        <h1>管理界面</h1>
-      </div>
-    </div>
-    <nav class="sidenav-links" id="sideNav">
+    <div class="brand"><h1>管理界面</h1></div>
+    <nav class="sidenav-links" id="drawerNav">
       <button data-type="overview" title="概览"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9"/><rect x="14" y="3" width="7" height="5"/><rect x="14" y="12" width="7" height="9"/><rect x="3" y="16" width="7" height="5"/></svg><span>概览</span></button>
       <button data-type="music" title="音乐"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg><span>音乐</span></button>
       <button data-type="video" title="视频"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M2 8h20M2 16h20M8 4v16M16 4v16"/></svg><span>视频</span></button>
@@ -797,28 +783,39 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
       <button data-type="me" title="我的"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg><span>我的</span></button>
       <button data-type="status" title="状态"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20a8 8 0 1 1 8-8"/><path d="M12 12l3.5-3.5"/><circle cx="12" cy="12" r="1.4" fill="currentColor" stroke="none"/><path d="M20 12a8 8 0 0 0-8-8"/></svg><span>状态</span></button>
     </nav>
-    <div class="sidenav-foot">
-      <button id="themeBtn" class="ghost icon-btn" title="切换浅色/深色">
-        <svg id="themeIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></svg>
-        <span id="themeLabel">深色</span>
-      </button>
-      <button id="logoutBtn" class="ghost icon-btn" title="退出">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="m16 17 5-5-5-5"/><path d="M21 12H9"/></svg>
-        <span>退出</span>
-      </button>
-      <button id="navCollapseBtn" class="ghost icon-btn" title="收起/展开侧边栏">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
-        <span id="navCollapseLabel">收起侧边栏</span>
-      </button>
-    </div>
   </aside>
 
   <div class="main-col">
-    <header class="topbar">
-      <button id="menuBtn" class="ghost menu-btn" title="菜单">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
-      </button>
-      <h2 id="pageTitle">概览</h2>
+    <header class="admin-header" id="adminHeader">
+      <div class="header-pill">
+        <button id="menuBtn" class="action-btn menu-btn" title="菜单">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
+        </button>
+        <div class="mark" id="brandMark" title="我的"><span id="brandMono">YH</span><img id="brandAvatarImg" hidden alt=""></div>
+        <nav class="site-nav pill-nav" id="sideNav" aria-label="后台导航">
+          <button data-type="overview">概览</button>
+          <button data-type="music">音乐</button>
+          <button data-type="video">视频</button>
+          <button data-type="image">图片</button>
+          <button data-type="users">用户</button>
+          <button data-type="appearance">外观</button>
+          <button data-type="ai">AI</button>
+          <button data-type="email">邮件</button>
+          <button data-type="me">我的</button>
+          <button data-type="status">状态</button>
+        </nav>
+        <div class="header-actions">
+          <a class="action-btn" href="/" target="_blank" rel="noopener" title="回前台">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-8 9 8"/><path d="M5 9.5V21h5v-7h4v7h5V9.5"/></svg>
+          </a>
+          <button id="themeBtn" class="action-btn" title="切换浅色/深色">
+            <svg id="themeIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></svg>
+          </button>
+          <button id="logoutBtn" class="action-btn" title="退出登录">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="m16 17 5-5-5-5"/><path d="M21 12H9"/></svg>
+          </button>
+        </div>
+      </div>
     </header>
 
     <main class="content">
@@ -1231,8 +1228,6 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
     document.documentElement.setAttribute('data-theme', t);
     var icon = $('themeIcon');
     if (icon) icon.innerHTML = t === 'dark' ? SUN_SVG : MOON_SVG;
-    var label = $('themeLabel');
-    if (label) label.textContent = t === 'dark' ? '浅色' : '深色';
   }
   applyTheme(document.documentElement.getAttribute('data-theme') || 'light');
   // 主题切换：支持 View Transitions 的浏览器播放「从按钮位置圆形揭示」动效（参考站同款）；
@@ -1511,7 +1506,6 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
   function enterMain() {
     show('main');
     switchPage('overview'); // 默认落在概览页
-    requestAnimationFrame(function () { moveSideIndicator(); }); // 等一帧让面板显示后再量位置
     loadList().then(function () { syncStaticMedia(); });
     loadUsers();
     loadVisits();
@@ -3901,9 +3895,8 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
   $('aiApiKey').addEventListener('change', function () { fetchAiModels(false); });
   $('aiProtocol').addEventListener('change', function () { fetchAiModels(false); });
 
-  // ---------- 侧边栏导航 ----------
-  var PAGE_TITLES = { overview: '概览', music: '音乐', video: '视频', image: '图片', users: '用户', appearance: '外观', ai: 'AI 设置', email: '邮件', me: '我的', status: '状态' };
-  var navBtns = document.querySelectorAll('#sideNav button');
+  // ---------- 顶部胶囊 + 抽屉导航（两套按钮同走 switchPage，active 同步打在两份上） ----------
+  var navBtns = document.querySelectorAll('#sideNav button, #drawerNav button');
   // ---------- 我的（管理员资料 + 头像；头像 KV 键存 site_settings 'admin_avatar'） ----------
   function applyAdminAvatar(key) {
     var has = !!key;
@@ -4209,23 +4202,9 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
   });
 
   // 侧栏滑动指示器：把胶囊对齐到当前 active 项（参考站「导航胶囊指示器」竖排移植）
-  var sideIndEl = null;
-  function moveSideIndicator() {
-    try {
-      var nav = $('sideNav');
-      if (!nav) return;
-      if (!sideIndEl) { sideIndEl = document.createElement('i'); sideIndEl.id = 'sideInd'; nav.insertBefore(sideIndEl, nav.firstChild); }
-      var act = nav.querySelector('button.active');
-      if (!act) { sideIndEl.style.opacity = '0'; return; }
-      sideIndEl.style.opacity = '1';
-      sideIndEl.style.top = act.offsetTop + 'px';
-      sideIndEl.style.height = act.offsetHeight + 'px';
-    } catch (e) {}
-  }
   function switchPage(type) {
     currentType = type;
     navBtns.forEach(function (b) { b.classList.toggle('active', b.getAttribute('data-type') === type); });
-    $('pageTitle').textContent = PAGE_TITLES[type] || type;
     var isOverview = type === 'overview';
     var isUsers = type === 'users';
     var isAppear = type === 'appearance';
@@ -4302,26 +4281,11 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
       void targetPanel.offsetWidth; // 强制 reflow 以重播动画
       targetPanel.classList.add('panel-enter');
     }
-    moveSideIndicator();
   }
   navBtns.forEach(function (btn) {
     btn.addEventListener('click', function () {
       switchPage(btn.getAttribute('data-type'));
     });
-  });
-  // 侧边栏收起/展开（桌面端，localStorage 记住）
-  try {
-    if (localStorage.getItem('adminNavCollapsed') === '1') {
-      document.body.classList.add('nav-collapsed');
-      $('navCollapseLabel').textContent = '展开侧边栏';
-      $('navCollapseBtn').title = '展开侧边栏';
-    }
-  } catch (e) {}
-  $('navCollapseBtn').addEventListener('click', function () {
-    var collapsed = document.body.classList.toggle('nav-collapsed');
-    $('navCollapseLabel').textContent = collapsed ? '展开侧边栏' : '收起侧边栏';
-    this.title = collapsed ? '展开侧边栏' : '收起侧边栏';
-    try { localStorage.setItem('adminNavCollapsed', collapsed ? '1' : '0'); } catch (e) {}
   });
   // 窄屏汉堡菜单：点遮罩收起
   $('menuBtn').addEventListener('click', function () {
@@ -4332,6 +4296,11 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
     if (e.target.closest('aside.sidenav') || e.target.closest('#menuBtn')) return;
     document.body.classList.remove('nav-open');
   });
+  // 顶栏滚动投影（复刻前台 .scrolled：滚过 10px 加深胶囊投影）
+  window.addEventListener('scroll', function () {
+    var h = document.getElementById('adminHeader');
+    if (h) h.classList.toggle('scrolled', (window.scrollY || 0) > 10);
+  }, { passive: true });
   $('fileInput').accept = TYPE_EXT.music;
   $('searchInput').addEventListener('input', renderList);
   $('selAll').addEventListener('change', function () {

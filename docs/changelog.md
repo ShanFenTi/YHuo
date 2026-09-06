@@ -2,7 +2,7 @@
 
 ## 2026-09-06
 
-* **修：后台顶栏导航悬停预览卡始终钉在左上角**（用户实报"怎么始终在左上角预览"）——`.fx-admin-preview .ap-card` 漏写了 `position:absolute`：卡片的 left/top 由 JS 按鼠标位置写入，但 left/top 对**静态定位元素无效**，卡片于是永远渲染在 fixed 容器原点（左上角）。补 `position:absolute; left:0; top:0`（与前台 `.fx-link-preview__card` 同款写法）后，卡片正确出现在鼠标右下 18px 处并跟随移动。本地实测：悬停靠右的「状态」项（鼠标 x834,y33），卡片落在 (852,51) 紧贴鼠标；校验全过；**待推送**
+* **修：后台顶栏导航悬停预览卡始终钉在左上角**（用户实报"怎么始终在左上角预览"）——`.fx-admin-preview .ap-card` 漏写了 `position:absolute`：卡片的 left/top 由 JS 按鼠标位置写入，但 left/top 对**静态定位元素无效**，卡片于是永远渲染在 fixed 容器原点（左上角）。补 `position:absolute; left:0; top:0`（与前台 `.fx-link-preview__card` 同款写法）后，卡片正确出现在鼠标右下 18px 处并跟随移动。本地实测：悬停靠右的「状态」项（鼠标 x834,y33），卡片落在 (852,51) 紧贴鼠标；校验全过。已推送上线并线上验证（线上 /admin 含修复样式 position:absolute; left:0; top:0）
 
 * **后台（顶栏导航悬停预览卡 + 视频行悬停播放卡，两处"首页同款"悬停预览）**：①**顶栏导航项悬停出栏目实时缩略卡**——后台是单页应用、十个栏目共用 /admin 一个地址，与前台多页面不同：视觉区放**一个常驻 iframe**（加载 /admin 自身，1280 宽 scale(0.25) 缩进 320×112），悬停不同栏目时 **postMessage（type=adminPreviewPanel）让 iframe 里的 admin 实例 switchPage 切到对应面板**——悬停哪个栏目就实时预览哪个，一个 iframe 全搞定；iframe 在登录门/加载态收到的消息先存 pending、enterMain 末尾补应用，iframe 就绪（enterMain）后回发 adminPreviewReady 通知父页补发；栏目描述表 PANEL_INFO 十项；触屏不启用。实测：悬停 音乐/外观 缩略实时切到对应管理面板、主界面自身不动。②**视频列表行悬停出播放卡**：renderList 给视频行挂 _vkey/_vtitle（JS 属性），悬停 150ms 弹 320 宽悬浮卡内 `<video muted loop>` 自动静音循环播放 + 底部标题条，移出/滚动即收起并卸载 src 停止下载；行内 ▶ 预览弹窗行为不变。实测：悬停不同行出对应视频且真实播放推进、移开即停即卸载。两卡样式走后台 --card/--border/--shadow 变量、z-index 400（压过抽屉让过弹窗/吐司）、仅悬停设备启用；校验全过。已推送上线并线上验证（线上 /admin 含 fx-admin-preview/video-hover-preview/adminPreviewPanel 全部新标记）
 

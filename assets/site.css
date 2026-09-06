@@ -2388,9 +2388,11 @@
       z-index: 150; /* 与相册同级：两者不会同时打开（打开时先收起另一个） */
       display: flex;
       flex-direction: column;
-      background: color-mix(in srgb, var(--apple-background) 88%, transparent);
-      backdrop-filter: blur(20px);
-      -webkit-backdrop-filter: blur(20px);
+      /* 毛玻璃适度透：不透明度 ~65%、模糊 14px——太高会完全盖住身后内容观感成"独立实心背景"（用户反馈）；
+         流星可见性由下方 body:has 规则解决（浮层打开时流星层抬到玻璃之上），这里不必调到极透 */
+      background: color-mix(in srgb, var(--apple-background) 65%, transparent);
+      backdrop-filter: blur(14px) saturate(1.2);
+      -webkit-backdrop-filter: blur(14px) saturate(1.2);
       opacity: 0;
       visibility: hidden;
       transition: opacity 250ms var(--ease-out), visibility 250ms var(--ease-out);
@@ -3866,6 +3868,12 @@
       z-index: -1;
       overflow: hidden;
       pointer-events: none;
+    }
+
+    /* 个人主页/课表浮层（.profile-view，z 150 毛玻璃）打开时：流星层抬到玻璃之上（150<155<外观抽屉/头像下拉 160），
+       否则浮层观感是"独立实心背景"、流星全被盖住（用户反馈）；浮层关闭自动回落 z:-1，不影响日常"流星在内容后面"的设计 */
+    body:has(.profile-view.show) .fx-meteors {
+      z-index: 155;
     }
 
     .theme-vt .fx-meteors {

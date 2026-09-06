@@ -3876,6 +3876,21 @@
       z-index: 155;
     }
 
+    /* 同场景的顶缝修复：浮层从 52px 起铺玻璃，顶条(0~52px)在自定义背景下露原图原样，与下方磨砂反差极大（用户反馈）。
+       浮层打开时给头部透明壳补一条与浮层同参数的磨砂带，与浮层连成整面（头部 z50 < 浮层150，带子只在顶条露出）；
+       胶囊/进度条在头部内、绘制在带子之上不受影响；壳是 pointer-events:none，带子不挡点击 */
+    body:has(.profile-view.show) .site-header::before {
+      content: "";
+      position: absolute;
+      left: 0;
+      right: 0;
+      top: 0;
+      height: 52px;
+      background: color-mix(in srgb, var(--apple-background) 65%, transparent);
+      backdrop-filter: blur(14px) saturate(1.2);
+      -webkit-backdrop-filter: blur(14px) saturate(1.2);
+    }
+
     .theme-vt .fx-meteors {
       visibility: hidden;
       opacity: 0;

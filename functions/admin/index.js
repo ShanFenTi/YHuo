@@ -128,6 +128,50 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
   nav.sidenav-links button svg { width: 17px; height: 17px; flex: none; }
   .menu-btn { display: none; }
   main.content { padding: 24px 28px 48px; flex: 1; }
+  /* ---------- 悬停预览卡（顶栏栏目实时缩略 + 视频行快速预览；复刻前台 fx-link-preview） ---------- */
+  .fx-admin-preview, .video-hover-preview {
+    position: fixed; left: 0; top: 0; z-index: 400; /* 压过抽屉(200)、让过预览弹窗(999)/吐司(1001) */
+    pointer-events: none;
+    opacity: 0; transform: translateY(4px);
+    transition: opacity .18s var(--ease-outc), transform .18s var(--ease-outc);
+  }
+  .fx-admin-preview.is-visible, .video-hover-preview.is-visible { opacity: 1; transform: none; }
+  .fx-admin-preview .ap-card {
+    width: 320px; overflow: hidden;
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 14px; box-shadow: var(--shadow);
+  }
+  .fx-admin-preview .ap-visual {
+    position: relative; height: 112px; overflow: hidden;
+    background: color-mix(in srgb, var(--fg) 8%, var(--bg));
+  }
+  /* 实时缩略：iframe 按 1280 宽渲染、scale(0.25) 缩进 320×112；加载完成前显示「预览加载中…」 */
+  .fx-admin-preview .ap-frame-host iframe {
+    width: 1280px; height: 448px; border: 0; margin: 0;
+    transform: scale(0.25); transform-origin: 0 0;
+    position: absolute; left: 0; top: 0;
+    pointer-events: none; opacity: 0; transition: opacity .2s;
+  }
+  .fx-admin-preview .ap-frame-host iframe.is-ready { opacity: 1; }
+  .fx-admin-preview .ap-loading {
+    position: absolute; inset: 0;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 12px; color: var(--muted);
+  }
+  .fx-admin-preview .ap-meta { padding: 9px 14px 11px; display: flex; flex-direction: column; gap: 2px; }
+  .fx-admin-preview .ap-domain { font-size: 11px; color: var(--muted); }
+  .fx-admin-preview .ap-title { font-size: 13px; font-weight: 600; }
+  .fx-admin-preview .ap-desc { font-size: 12px; color: var(--muted); }
+  .video-hover-preview {
+    width: 320px; overflow: hidden;
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 14px; box-shadow: var(--shadow);
+  }
+  .video-hover-preview video { width: 100%; aspect-ratio: 16 / 9; object-fit: contain; background: #000; display: block; }
+  .video-hover-preview .vhp-title {
+    padding: 7px 12px; font-size: 12px; font-weight: 500;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
   .card {
     background: var(--card); border-radius: 18px; padding: 24px;
     border: 1px solid var(--border);
@@ -1511,8 +1555,31 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
     loadVisits();
     loadAiUsage();
     loadMailUsage();
-    loadMe(); // 侧边栏左上角头像
+    loadMe(); // 顶栏胶囊左上角头像
+    // 顶栏悬停预览卡的 iframe 在启动期（登录门/加载态）发来的切面板请求在这里补应用
+    if (previewPendingPanel && previewPendingPanel !== currentType) {
+      var pp = previewPendingPanel;
+      previewPendingPanel = null;
+      switchPage(pp);
+    }
+    // 自己作为预览 iframe 被嵌在顶栏悬停卡里时，向父页报就绪（父页据此补发切面板消息）
+    try { if (window.parent && window.parent !== window) window.parent.postMessage({ type: 'adminPreviewReady' }, location.origin); } catch (e) {}
   }
+
+    // 预览 iframe 同步切面板：顶栏悬停预览卡里嵌的 /admin iframe 收到悬停事件后 postMessage 过来切栏目。
+    // iframe 启动早期主界面还没显示（登录门/加载态）时先存 pending，enterMain 末尾应用（防消息丢失）
+    var previewPendingPanel = null;
+    window.addEventListener('message', function (e) {
+      if (e.origin !== location.origin) return;
+      var d = e.data || {};
+      if (d.type !== 'adminPreviewPanel') return;
+      var type = String(d.panel || '');
+      var known = false;
+      navBtns.forEach(function (b) { if (b.getAttribute('data-type') === type) known = true; });
+      if (!known) return;
+      if (document.getElementById('appShell').hidden) { previewPendingPanel = type; return; }
+      if (type !== currentType) switchPage(type);
+    });
 
   function refreshStats() {
     countUp($('statMusic'), items.music.length);
@@ -2254,6 +2321,13 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
 
       li.appendChild(title);
       li.appendChild(meta);
+
+      // 视频行挂媒体地址与标题：行悬停预览卡用（见「视频行悬停预览」模块）。
+      // 注意 _vkey/_vtitle 是 JS 属性不是 class，querySelector('#list li._vkey') 永远查不到
+      if (currentType === 'video' && it.r2_key) {
+        li._vkey = '/media/' + it.r2_key;
+        li._vtitle = it.title;
+      }
 
       // 图片：行内相册归属下拉（自定义组件，带展开动画；与 AI 面板同款 makeAiDrop）
       if (currentType === 'image') {
@@ -4301,6 +4375,196 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
     var h = document.getElementById('adminHeader');
     if (h) h.classList.toggle('scrolled', (window.scrollY || 0) > 10);
   }, { passive: true });
+
+  // ---------- 顶栏悬停预览卡（复刻前台 fx-link-preview：导航项悬停出栏目实时缩略卡） ----------
+  // 后台是单页应用、十个栏目共用 /admin 一个地址，视觉区放一个常驻 iframe（加载 /admin 自身，
+  // 1280 宽 scale(0.25) 缩进 320×112），悬停不同栏目时 postMessage 让 iframe 里的 admin 实例
+  // 切到对应面板——消息监听在 enterMain 附近（adminPreviewPanel）。仅悬停设备启用。
+  (function () {
+    if (!window.matchMedia('(hover: hover) and (pointer: fine)').matches) return;
+    var PANEL_INFO = {
+      overview: { name: '概览', desc: '站点统计 / 访问趋势 / AI 与邮件用量' },
+      music: { name: '音乐', desc: '曲库管理 · 歌词 / 封面 / 试听' },
+      video: { name: '视频', desc: '视频管理 · 首页播放模式 · 行上悬停可预览' },
+      image: { name: '图片', desc: '图片管理 · 相册分组 / 拖拽归类' },
+      users: { name: '用户', desc: '注册用户 · 禁用 / 解封 / 删除' },
+      appearance: { name: '外观', desc: '主题色 / 寄语 / 功能开关 / 播放器款式' },
+      ai: { name: 'AI', desc: 'AI 供应商 / 模型 / 全局开关' },
+      email: { name: '邮件', desc: '邮件服务 / 验证码 / 课表提醒定时任务' },
+      me: { name: '我的', desc: '管理员资料 / 头像 / 安全中心' },
+      status: { name: '状态', desc: '健康状态 / 数据库与 KV' }
+    };
+    var root = document.createElement('div');
+    root.className = 'fx-admin-preview';
+    root.setAttribute('aria-hidden', 'true');
+    root.innerHTML =
+      '<article class="ap-card">' +
+        '<div class="ap-visual"><div class="ap-frame-host"></div><div class="ap-loading">预览加载中…</div></div>' +
+        '<div class="ap-meta">' +
+          '<span class="ap-domain">管理后台</span>' +
+          '<strong class="ap-title"></strong>' +
+          '<span class="ap-desc"></span>' +
+        '</div>' +
+      '</article>';
+    document.body.appendChild(root);
+    var card = root.querySelector('.ap-card');
+    var host = root.querySelector('.ap-frame-host');
+    var loading = root.querySelector('.ap-loading');
+    var titleEl = root.querySelector('.ap-title');
+    var descEl = root.querySelector('.ap-desc');
+    var frame = null, pendingPanel = '';
+    var showTimer = 0, rafId = 0, px = 0, py = 0, activeBtn = null;
+    function applyPending() {
+      if (!pendingPanel || !frame || !frame.contentWindow) return;
+      try { frame.contentWindow.postMessage({ type: 'adminPreviewPanel', panel: pendingPanel }, location.origin); } catch (e) {}
+    }
+    function ensureFrame() {
+      if (frame) { applyPending(); return; }
+      frame = document.createElement('iframe');
+      frame.src = '/admin';
+      frame.tabIndex = -1;
+      frame.setAttribute('aria-hidden', 'true');
+      frame.setAttribute('title', '栏目预览');
+      // load 只代表文档加载完，不代表 iframe 里的后台脚本已就绪；就绪信号靠 iframe
+      // enterMain 里的 adminPreviewReady 消息，收到前显示「预览加载中…」遮罩。
+      // load 后先试发 + 定时补发（面板未变时重复 postMessage 在 iframe 侧是无害 no-op）
+      frame.addEventListener('load', function () {
+        frame.classList.add('is-ready');
+        loading.hidden = true;
+        applyPending();
+        setTimeout(applyPending, 600);
+        setTimeout(applyPending, 1800);
+      });
+      host.appendChild(frame);
+    }
+    // iframe 里的 admin 完成启动（enterMain）后会报 adminPreviewReady，收到即补发当前栏目
+    window.addEventListener('message', function (e) {
+      if (e.origin !== location.origin) return;
+      var d = e.data || {};
+      if (d.type === 'adminPreviewReady') {
+        loading.hidden = true;
+        if (frame) frame.classList.add('is-ready');
+        applyPending();
+      }
+    });
+    function position() {
+      rafId = 0;
+      // 用 offsetWidth/Height 量布局尺寸（前台坑：入场动画期间 getBoundingClientRect 会量到缩小的尺寸）
+      var w = card.offsetWidth, h = card.offsetHeight, gap = 12;
+      var x = Math.max(gap, Math.min(px + 18, window.innerWidth - w - gap));
+      var y = Math.max(gap, Math.min(py + 18, window.innerHeight - h - gap));
+      card.style.left = x + 'px';
+      card.style.top = y + 'px';
+    }
+    function show(btn) {
+      var type = btn.getAttribute('data-type');
+      var info = PANEL_INFO[type];
+      if (!info) return;
+      titleEl.textContent = info.name;
+      descEl.textContent = info.desc;
+      ensureFrame();
+      pendingPanel = type;
+      applyPending();
+      root.classList.add('is-visible');
+      if (!rafId) rafId = window.requestAnimationFrame(position);
+    }
+    function hide() {
+      window.clearTimeout(showTimer);
+      showTimer = 0; activeBtn = null; pendingPanel = '';
+      root.classList.remove('is-visible');
+    }
+    document.addEventListener('pointerover', function (e) {
+      var btn = e.target.closest ? e.target.closest('#sideNav button') : null;
+      if (!btn || btn === activeBtn) return;
+      window.clearTimeout(showTimer);
+      activeBtn = btn;
+      px = e.clientX; py = e.clientY;
+      showTimer = window.setTimeout(function () {
+        showTimer = 0;
+        if (activeBtn === btn) show(btn);
+      }, 150);
+    });
+    document.addEventListener('pointerout', function (e) {
+      var btn = e.target.closest ? e.target.closest('#sideNav button') : null;
+      if (!btn) return;
+      var to = e.relatedTarget;
+      if (to instanceof Element && to.closest && to.closest('#sideNav button') === btn) return;
+      hide();
+    });
+    document.addEventListener('pointercancel', hide);
+    document.addEventListener('pointermove', function (e) {
+      px = e.clientX; py = e.clientY;
+      if (root.classList.contains('is-visible') && !rafId) rafId = window.requestAnimationFrame(position);
+    });
+    window.addEventListener('scroll', hide, { passive: true });
+  })();
+
+  // ---------- 视频行悬停预览（悬浮小卡内静音循环播放；仅悬停设备） ----------
+  // 视频行在 renderList 里挂了 _vkey(/media/地址)/_vtitle，这里委托 pointerover 弹卡；
+  // 行内 ▶ 预览弹窗行为不变，悬停卡只是免点击的快速预览
+  (function () {
+    if (!window.matchMedia('(hover: hover) and (pointer: fine)').matches) return;
+    var card = document.createElement('div');
+    card.className = 'video-hover-preview';
+    card.setAttribute('aria-hidden', 'true');
+    card.innerHTML = '<video muted loop playsinline preload="auto"></video><div class="vhp-title"></div>';
+    document.body.appendChild(card);
+    var video = card.querySelector('video');
+    var titleEl = card.querySelector('.vhp-title');
+    var showTimer = 0, rafId = 0, px = 0, py = 0, activeLi = null;
+    function position() {
+      rafId = 0;
+      var w = card.offsetWidth, h = card.offsetHeight, gap = 12;
+      var x = Math.max(gap, Math.min(px + 18, window.innerWidth - w - gap));
+      var y = Math.max(gap, Math.min(py + 18, window.innerHeight - h - gap));
+      card.style.left = x + 'px';
+      card.style.top = y + 'px';
+    }
+    function show(li) {
+      titleEl.textContent = li._vtitle || '';
+      video.src = li._vkey;
+      var p = video.play();
+      if (p && p.catch) p.catch(function () {});
+      card.classList.add('is-visible');
+      if (!rafId) rafId = window.requestAnimationFrame(position);
+    }
+    function hide() {
+      window.clearTimeout(showTimer);
+      showTimer = 0; activeLi = null;
+      card.classList.remove('is-visible');
+      video.pause();
+      video.removeAttribute('src'); // 卸载媒体，停止下载与播放
+      video.load();
+    }
+    document.addEventListener('pointerover', function (e) {
+      var li = e.target.closest ? e.target.closest('#list li') : null;
+      if (!li || !li._vkey || li === activeLi) return;
+      window.clearTimeout(showTimer);
+      activeLi = li;
+      px = e.clientX; py = e.clientY;
+      showTimer = window.setTimeout(function () {
+        showTimer = 0;
+        if (activeLi === li) show(li);
+      }, 150);
+    });
+    document.addEventListener('pointerout', function (e) {
+      var li = e.target.closest ? e.target.closest('#list li') : null;
+      if (!li || !li._vkey) return;
+      var to = e.relatedTarget;
+      if (to instanceof Element && to.closest && to.closest('#list li') === li) return;
+      hide();
+    });
+    document.addEventListener('pointercancel', hide);
+    document.addEventListener('pointermove', function (e) {
+      px = e.clientX; py = e.clientY;
+      if (!card.classList.contains('is-visible')) return;
+      // 行被重渲染删掉（切页/搜索）时鼠标一动就自动收起
+      var li = e.target && e.target.closest ? e.target.closest('#list li') : null;
+      if (!li || !li._vkey) { hide(); return; }
+      if (!rafId) rafId = window.requestAnimationFrame(position);
+    });
+    window.addEventListener('scroll', hide, { passive: true });
+  })();
   $('fileInput').accept = TYPE_EXT.music;
   $('searchInput').addEventListener('input', renderList);
   $('selAll').addEventListener('change', function () {

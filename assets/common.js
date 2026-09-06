@@ -6712,7 +6712,9 @@
         var meteor = document.createElement('span');
         var duration = 4.5 + Math.random() * 4.5;
         meteor.className = 'fx-meteor';
-        meteor.style.setProperty('--left', (-35 + Math.random() * 125) + '%');
+        // 出生范围 -80%~+100%：流星向右下方 35° 斜落，要经过左下角必须从 -60% 以远出生，
+        // 原示例的 -35%~+90% 会让左下角整块没有流星（2026-09-06 用户实报）
+        meteor.style.setProperty('--left', (-80 + Math.random() * 180) + '%');
         meteor.style.setProperty('--duration', duration + 's');
         meteor.style.setProperty('--delay', (-Math.random() * duration) + 's');
         meteor.style.setProperty('--tail', (38 + Math.random() * 34) + 'px');

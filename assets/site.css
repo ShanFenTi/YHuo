@@ -5163,10 +5163,16 @@
       animation: pageFade 600ms var(--ease-out) both;
     }
 
-    /* AI 页保持全高聊天布局：消息区内部滚动，输入条钉在视口底部 */
+    /* AI 页保持全高聊天布局：消息区内部滚动，输入条钉在视口底部；
+       顶部留白 96→68px（2026-09-06 用户要求"向上移动不要太多空"——96px 在胶囊下沿(~58px)
+       之下还有近 40px 空档；68 = 胶囊下沿 + 余量），高度公式同步改；头部标题行压缩上下内边距。
+       注意选择器要带 :not() 抬到与上方 5145 行子页通用规则同特异性（0-3-2），靠源码顺序取胜 */
+    html[data-page="ai"]:not([data-page="home"]) main.page-main { padding-top: 68px; }
     html[data-page="ai"] #aiView {
-      height: calc(100dvh - 96px - 32px);
+      height: calc(100dvh - 68px - 24px);
     }
+    /* header.album-bar 抬一档特异性：5191 行的子页 14px 规则同分但更靠后会 otherwise 反超 */
+    html[data-page="ai"] .ai-view header.album-bar { padding: 8px 0; }
 
     /* AI 聊天区的入场态原由 .ai-view.show 门控（独立页没有 .show，直接放行） */
     html[data-page="ai"] .ai-chat {
@@ -5451,8 +5457,17 @@
     /* 坑 28：pageFade（fill:both）让页面容器在 Chromium 里持续构成层叠上下文——AI 历史抽屉
        （fixed z60，在 #aiView 里）整体被关进容器的 z:auto 上下文，画在顶栏胶囊 z50 之下，
        手机上抽屉顶部的「新对话」按钮被胶囊压住。修法：AI 页把 #aiView 自身抬到顶栏之上
-       （容器盒从 y96 起，与顶栏不重叠，无副作用；高于顶栏 50、低于外观抽屉/头像下拉 160 与灯箱 200） */
-    html[data-page="ai"] #aiView { position: relative; z-index: 60; }
+       （容器盒从 y96 起，与顶栏不重叠，无副作用；高于顶栏 50、低于外观抽屉/头像下拉 160 与灯箱 200）。
+       ⚠️ relative 会激活老全屏层样式残留的 top:52px/bottom:0 偏移（静态时被忽略、relative 下生效，
+       整页内容下坠 52px）——必须一并归零 auto（2026-09-06 "头部上移"实报时发现） */
+    html[data-page="ai"] #aiView {
+      position: relative;
+      top: auto;
+      bottom: auto;
+      left: auto;
+      right: auto;
+      z-index: 60;
+    }
 
     /* iOS 聚焦不放大：触屏设备输入字号 ≥16px（<16px 聚焦时 Safari 会强制放大视口） */
     @media (pointer: coarse) {

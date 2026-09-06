@@ -72,3 +72,11 @@ CREATE TABLE IF NOT EXISTS messages (
   is_admin   INTEGER NOT NULL DEFAULT 0,
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
+
+-- 相册本体（2026-09-06 根治"空相册不落库"：图片归属仍以 media.album 为准，本表只管"存在与顺序"）
+CREATE TABLE IF NOT EXISTS albums (
+  name       TEXT PRIMARY KEY,
+  sort_order INTEGER NOT NULL DEFAULT 0,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+

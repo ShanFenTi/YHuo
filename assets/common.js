@@ -27,9 +27,6 @@
     var clockMsEl = document.getElementById('clockMs');
     var clockDateEl = document.getElementById('clockDate');
 
-    var gallery = document.getElementById('galleryGrid');
-    var galleryEmpty = document.getElementById('galleryEmpty');
-
     var miniPlayer = document.getElementById('miniPlayer');
     var miniTitle = document.getElementById('miniTitle');
     var miniPlayBtn = document.getElementById('miniPlayBtn');
@@ -157,16 +154,16 @@
     // 功能开关（后台「外观 → 功能开关」，/api/settings 下发，缺省全开）
     // 多页面架构（2026-09-05）：原「全屏层统一管理器」（FS_TOP/fsOpen/fsClose/垫底覆盖）与
     // 「路径路由器」（FS_ROUTE/popstate 深链接）已随「栏目拆独立页」整体移除——
-    // 工具/文档/AI/杂项/留言各是真实页面（/tools/ /docs/ /ai/ /misc/ /board/），界面切换 = 真实导航；
+    // 工具/文档/AI/留言各是真实页面（/tools/ /docs/ /ai/ /board/），界面切换 = 真实导航；
     // 跨页无缝与音乐不断播由 IIFE 尾部的 PJAX 路由负责。
     // =========================
     var FLAGS_OFF = {}; // true 的界面/模块前台直接隐藏
-    var FF_APPLY_HOOKS = []; // flags 应用后要通知的启动期模块（画廊等在各自块级作用域里注册回调，规避坑 9）
+    var FF_APPLY_HOOKS = []; // flags 应用后要通知的启动期模块（在各自块级作用域里 push 回调，规避坑 9）
     var PAGE_KEY = document.documentElement.getAttribute('data-page') || 'home'; // 当前页面（各页 <html> 上标死）
     var onGatePassedPageHook = null; // 游客门通过后的页面回调（课表页等需登录页面注册；passGate 触发）
     var schedPageCleanup = null;     // 课表页 document 级监听的清理函数（离页摘除防叠加）
-    var PAGE_ROUTE = { home: '/', tools: '/tools/', docs: '/docs/', ai: '/ai/', misc: '/misc/', board: '/board/', schedule: '/schedule/', blog: '/blog/' };
-    var PAGE_TITLES = { home: document.title, tools: '工具合集 - YHuo', docs: '关于 - YHuo', ai: 'AI 助手 - YHuo', misc: '杂项 - YHuo', board: '留言板 - YHuo', schedule: '课表 - YHuo', blog: '预览 - YHuo' };
+    var PAGE_ROUTE = { home: '/', tools: '/tools/', docs: '/docs/', ai: '/ai/', board: '/board/', schedule: '/schedule/', blog: '/blog/' };
+    var PAGE_TITLES = { home: document.title, tools: '工具合集 - YHuo', docs: '关于 - YHuo', ai: 'AI 助手 - YHuo', board: '留言板 - YHuo', schedule: '课表 - YHuo', blog: '预览 - YHuo' };
 
     // 应用功能开关：给 <html> 打/摘 ff-* 类（CSS 负责隐藏；head 内联脚本已按 localStorage 缓存提前打过，这里按最新配置校正）
     // 并刷新缓存供下次访问首屏预隐藏；天气/歌词条由各自渲染入口判 FLAGS_OFF
@@ -175,7 +172,6 @@
       FLAGS_OFF = {
         toolsView: flags.tools === false,
         docsView: flags.docs === false,
-        miscView: flags.misc === false,
         weather: flags.weather === false,
         lyric: flags.lyric === false,
         video: flags.video === false
@@ -185,7 +181,6 @@
       window.__FF_CACHE = flags; // 同步缓存镜像刷新为最新值（启动期代码判断用）
       fc.toggle('ff-tools-off', FLAGS_OFF.toolsView);
       fc.toggle('ff-docs-off', FLAGS_OFF.docsView);
-      fc.toggle('ff-misc-off', FLAGS_OFF.miscView);
       fc.toggle('ff-video-off', FLAGS_OFF.video);
       try { localStorage.setItem('yhuoFlags', JSON.stringify(flags)); } catch (e) {}
       if (FLAGS_OFF.video) {
@@ -194,7 +189,7 @@
         var hv = document.getElementById('homeVideo');
         if (hv) { try { hv.pause(); } catch (e) {} }
       }
-      FF_APPLY_HOOKS.forEach(function (fn) { try { fn(); } catch (e) {} }); // 通知启动期模块按最新开关校正（如画廊补加载）
+      FF_APPLY_HOOKS.forEach(function (fn) { try { fn(); } catch (e) {} }); // 通知启动期模块按最新开关校正
       // 当前页面本身被开关关闭（后台关掉某栏目后直接访问/停留该页）：整页回首页
       if (PAGE_KEY !== 'home' && FLAGS_OFF[PAGE_KEY + 'View']) location.replace('/');
     }
@@ -497,243 +492,6 @@
         revealObserver.observe(el);
       });
     }
-
-    // =========================
-    // 图片画廊 + 灯箱
-    // =========================
-    // 画廊状态挂 IIFE 作用域：resetCardMouse（外层）与外观开关要触达（坑 9：严格模式块内声明不可见）；
-    // 非杂项页保持空默认值，resetCardMouse 因此不再有 undefined.forEach 隐患
-    var loadedImgs = [];
-    var tiltRaf = null;
-    var hoverImg = null;
-    var galleryCard = null;
-    var cardMouseOn = true; // 大卡片跟随鼠标（外观卡片开关）
-    var imgTiltOn = true;   // 小图片倾斜动效（外观卡片开关）
-    var miscTeardown = null;
-    var miscAllowHook = null; // 当前画廊实例的「配置到达校正」回调（经 FF_APPLY_HOOKS 转发）
-
-    function initMiscGallery() {
-      destroyMiscGallery();
-      gallery = document.getElementById('galleryGrid');
-      galleryEmpty = document.getElementById('galleryEmpty');
-      if (!gallery) return;
-      // 约定：图片命名为 1、2、3… 放入 images 文件夹，自动尝试多种格式
-      var IMAGES = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
-      var IMAGE_EXT = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'bmp', 'avif'];
-      var imgPending = 0; // 等加载路径确定（后台接口或本地扫描）后再计数
-
-      // 折叠相册：所有照片叠成一副牌，幻灯片式逐张展示（4 秒自动切换，悬停暂停）
-      var deckIndex = 0;
-      var deckTimer = null;
-      var deckCount = document.getElementById('deckCount');
-      var deckNav = document.getElementById('deckNav');
-      var deckPrev = document.getElementById('deckPrev');
-      var deckNext = document.getElementById('deckNext');
-
-      function applyDeck() {
-        var n = loadedImgs.length;
-        if (!n) return;
-        if (deckIndex >= n) deckIndex = 0;
-        loadedImgs.forEach(function (el, i) {
-          el.classList.remove('deck-front', 'deck-1', 'deck-2');
-          var rel = (i - deckIndex + n) % n;
-          if (rel === 0) el.classList.add('deck-front');
-          else if (rel === 1) el.classList.add('deck-1');
-          else if (rel === 2) el.classList.add('deck-2');
-          el.style.zIndex = String(n - rel);
-        });
-        if (deckCount) deckCount.textContent = (deckIndex + 1) + ' / ' + n;
-        if (deckNav) deckNav.hidden = n < 2;
-      }
-
-      function deckStep(delta) {
-        var n = loadedImgs.length;
-        if (n < 2) return;
-        deckIndex = (deckIndex + delta + n) % n;
-        applyDeck();
-        restartDeckTimer();
-      }
-
-      function restartDeckTimer() {
-        if (deckTimer) { clearInterval(deckTimer); deckTimer = null; }
-        if (loadedImgs.length < 2) return;
-        deckTimer = setInterval(function () {
-          if (document.hidden || !loadedImgs.length) return;
-          deckIndex = (deckIndex + 1) % loadedImgs.length;
-          applyDeck();
-        }, 4000);
-      }
-
-      // 布局：舞台高度要容得下最大的照片（照片最宽 560px，4:3 + 上下白边 ≈ 432px），
-      // 否则最大化窗口时照片会戳出白色卡片、盖住下方的切换按钮
-      function layoutGallery() {
-        gallery.style.height = loadedImgs.length ? 'min(42vw, 432px)' : '0px';
-        applyDeck();
-        if (loadedImgs.length > 1 && !deckTimer) restartDeckTimer();
-      }
-      window.addEventListener('resize', layoutGallery);
-
-      if (deckPrev) deckPrev.addEventListener('click', function () { deckStep(-1); });
-      if (deckNext) deckNext.addEventListener('click', function () { deckStep(1); });
-      // 悬停在照片上时暂停自动轮播，移开继续
-      gallery.addEventListener('mouseenter', function () {
-        if (deckTimer) { clearInterval(deckTimer); deckTimer = null; }
-      });
-      gallery.addEventListener('mouseleave', function () { restartDeckTimer(); });
-
-      // 鼠标动效：卡片 3D 倾斜 + 照片视差 + 聚光灯（rAF 节流，纯 CSS 变量驱动）
-      galleryCard = gallery.closest('.apple-card');
-      var lastMove = null;
-      var reduceMotion = window.matchMedia &&
-        window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-      if (galleryCard && !reduceMotion) {
-        function applyCardMouse() {
-          tiltRaf = null;
-          if (!lastMove) return;
-          var r = galleryCard.getBoundingClientRect();
-          var nx = (lastMove.clientX - r.left) / r.width * 2 - 1; // -1 ~ 1
-          var ny = (lastMove.clientY - r.top) / r.height * 2 - 1;
-          if (cardMouseOn) {
-            galleryCard.style.setProperty('--cx', (ny * -2.5).toFixed(2) + 'deg');
-            galleryCard.style.setProperty('--cy', (nx * 2.5).toFixed(2) + 'deg');
-            galleryCard.style.setProperty('--mx', ((nx + 1) / 2 * 100).toFixed(1) + '%');
-            galleryCard.style.setProperty('--my', ((ny + 1) / 2 * 100).toFixed(1) + '%');
-            loadedImgs.forEach(function (el, i) {
-              var depth = 6 + (i % 3) * 5; // 每张照片视差深度不同
-              el.style.setProperty('--px', (nx * depth).toFixed(1) + 'px');
-              el.style.setProperty('--py', (ny * depth).toFixed(1) + 'px');
-            });
-          }
-
-          // 单张照片自己的 3D 倾斜（跟随鼠标在照片内的位置）
-          var t = lastMove.target && lastMove.target.tagName === 'IMG' ? lastMove.target : null;
-          if (t !== hoverImg) {
-            if (hoverImg) {
-              hoverImg.style.setProperty('--ix', '0deg');
-              hoverImg.style.setProperty('--iy', '0deg');
-            }
-            hoverImg = t;
-          }
-          if (hoverImg) {
-            if (imgTiltOn) {
-              var ir = hoverImg.getBoundingClientRect();
-              var ix = (lastMove.clientX - ir.left) / ir.width * 2 - 1;
-              var iy = (lastMove.clientY - ir.top) / ir.height * 2 - 1;
-              hoverImg.style.setProperty('--ix', (iy * -10).toFixed(2) + 'deg');
-              hoverImg.style.setProperty('--iy', (ix * 10).toFixed(2) + 'deg');
-            } else {
-              hoverImg.style.setProperty('--ix', '0deg');
-              hoverImg.style.setProperty('--iy', '0deg');
-            }
-          }
-        }
-        galleryCard.addEventListener('mousemove', function (e) {
-          if (!cardMouseOn && !imgTiltOn) return;
-          lastMove = e;
-          if (tiltRaf === null) {
-            tiltRaf = requestAnimationFrame(applyCardMouse);
-          }
-        });
-        galleryCard.addEventListener('mouseleave', resetCardMouse);
-      }
-
-      function addGalleryImg(img, n) {
-        // 每张图带一点确定性倾斜/抖动，保留照片随手摆放的感觉
-        img.style.setProperty('--tilt', (((n * 47) % 17) - 8) + 'deg');
-        img.style.setProperty('--jx', (((n * 29) % 21) - 10) + 'px');
-        img.style.setProperty('--jy', (((n * 13) % 15) - 7) + 'px');
-        loadedImgs.push(img);
-        gallery.appendChild(img);
-        layoutGallery();
-        imgDone();
-      }
-
-      function tryImage(n, extIndex) {
-        if (extIndex >= IMAGE_EXT.length) {
-          imgDone();
-          return;
-        }
-        var img = new Image();
-        img.alt = 'image ' + n;
-        img.onload = function () {
-          addGalleryImg(img, n);
-        };
-        img.onerror = function () {
-          tryImage(n, extIndex + 1);
-        };
-        // 图片位于项目根目录 images/ 文件夹
-        img.src = '/images/' + n + '.' + IMAGE_EXT[extIndex];
-      }
-
-      // 后台图片 + 本地 images/ 合并显示：后台的排前面；
-      // 编号已在后台里的静态图跳过（如"1"已导入），避免前台重复显示
-      function startGallery(apiImages) {
-        var apiPart = (apiImages && apiImages.length) ? apiImages : [];
-        var have = {};
-        apiPart.forEach(function (m) { have[m.name] = true; });
-        var staticNums = IMAGES.filter(function (n) { return !have[String(n)]; });
-        imgPending = apiPart.length + staticNums.length;
-        apiPart.forEach(function (m, i) {
-          var img = new Image();
-          img.alt = m.name;
-          img.onload = function () {
-            addGalleryImg(img, i + 1);
-          };
-          img.onerror = function () { imgDone(); };
-          img.src = m.url;
-        });
-        staticNums.forEach(function (n) {
-          tryImage(n, 0);
-        });
-      }
-      function imgDone() {
-        imgPending--;
-        if (imgPending === 0 && gallery.children.length === 0) {
-          galleryEmpty.hidden = false;
-        }
-      }
-      function galleryGated() {
-        // 相册界面已移除：画廊只看杂项开关（settings 已应用过以实时 flags 为准）
-        if (FLAGS_OFF.miscView !== undefined) return FLAGS_OFF.miscView;
-        // 画廊跑得比 settings 早：先看 head 内联脚本同步存的 window.__FF_CACHE，配置到达后经 FF_APPLY_HOOKS 校正补加载
-        var c = window.__FF_CACHE;
-        return !!(c && c.misc === false);
-      }
-      var galleryStarted = false;
-      var pendingApiImages = null;
-      function startGalleryIfAllowed(apiImages) {
-        pendingApiImages = apiImages || null;
-        if (galleryStarted || galleryGated()) return;
-        galleryStarted = true;
-        startGallery(pendingApiImages);
-      }
-      miscAllowHook = function () { startGalleryIfAllowed(pendingApiImages); };
-      // 加载（fix：移除相册时误删的启动调用，画廊此前完全不出图）
-      fetch('/api/playlist', { credentials: 'same-origin' })
-        .then(function (res) { return res.ok ? res.json() : Promise.reject(new Error('无后台接口')); })
-        .then(function (data) {
-          startGalleryIfAllowed(data && data.ok ? data.images : null);
-        })
-        .catch(function () { startGalleryIfAllowed(null); });
-
-      miscTeardown = function () {
-        if (deckTimer) { clearInterval(deckTimer); deckTimer = null; }
-        window.removeEventListener('resize', layoutGallery);
-        if (tiltRaf) { cancelAnimationFrame(tiltRaf); tiltRaf = null; }
-        galleryCard = null;
-        hoverImg = null;
-        loadedImgs = [];
-        miscAllowHook = null;
-      };
-    }
-
-    function destroyMiscGallery() {
-      if (miscTeardown) { miscTeardown(); miscTeardown = null; }
-    }
-    // 配置到达时转发校正（画廊比 settings 先启动/被开关拦下时补启动）
-    FF_APPLY_HOOKS.push(function () {
-      if (miscAllowHook) miscAllowHook();
-    });
 
     // =========================
     // 首页视频轮播：video 文件夹里的视频依次循环播放（静音自动播放，控件可取消静音）
@@ -1776,29 +1534,6 @@
     } catch (e) {}
     autoRestoreDir();
 
-    // 复位所有鼠标跟随变量（供 mouseleave 和外观开关共用；放在外层作用域，严格模式下块内函数声明不可见）
-    function resetCardMouse() {
-      if (tiltRaf !== null && tiltRaf !== undefined) {
-        cancelAnimationFrame(tiltRaf);
-        tiltRaf = null;
-      }
-      if (galleryCard) {
-        galleryCard.style.setProperty('--cx', '0deg');
-        galleryCard.style.setProperty('--cy', '0deg');
-        galleryCard.style.setProperty('--mx', '50%');
-        galleryCard.style.setProperty('--my', '50%');
-      }
-      if (hoverImg) {
-        hoverImg.style.setProperty('--ix', '0deg');
-        hoverImg.style.setProperty('--iy', '0deg');
-        hoverImg = null;
-      }
-      loadedImgs.forEach(function (el) {
-        el.style.setProperty('--px', '0px');
-        el.style.setProperty('--py', '0px');
-      });
-    }
-
     // =========================
     // 外观抽屉：点击箭头弹出/收起，点外部或 Esc 收起
     // =========================
@@ -1969,23 +1704,36 @@
 
     function openBgPicker() {
       bgPickerGrid.innerHTML = '';
-      var imgs = typeof loadedImgs !== 'undefined' ? loadedImgs : [];
-      if (bgPickerEmpty) bgPickerEmpty.hidden = imgs.length > 0;
+      if (bgPickerEmpty) bgPickerEmpty.hidden = false; // 先显示空态，图拉到了再收
       var savedSrc = null;
       try { savedSrc = localStorage.getItem(BG_SRC_KEY); } catch (e) {}
-      imgs.forEach(function (img) {
-        var thumb = document.createElement('img');
-        thumb.src = img.src;
-        thumb.alt = '设为背景：' + (img.alt || '站内图片');
-        if (savedSrc && img.src.indexOf(savedSrc) !== -1) thumb.classList.add('picked');
-        thumb.addEventListener('click', function () {
-          applyBgFromSrc(img.src);
-          idbPut('customBg', '');
-          try { localStorage.setItem(BG_SRC_KEY, img.src); } catch (e) {}
-          closeBgPicker();
+      // 站内图来源：画廊已随杂项页移除，这里现场拉清单（后台清单失败回落静态 manifest）
+      var fill = function (imgs) {
+        if (bgPickerEmpty) bgPickerEmpty.hidden = imgs.length > 0;
+        imgs.forEach(function (m) {
+          var src = m.url || m.src || '';
+          if (!src) return;
+          var thumb = document.createElement('img');
+          thumb.src = src;
+          thumb.alt = '设为背景：' + (m.title || m.alt || '站内图片');
+          if (savedSrc && src.indexOf(savedSrc) !== -1) thumb.classList.add('picked');
+          thumb.addEventListener('click', function () {
+            applyBgFromSrc(src);
+            idbPut('customBg', '');
+            try { localStorage.setItem(BG_SRC_KEY, src); } catch (e) {}
+            closeBgPicker();
+          });
+          bgPickerGrid.appendChild(thumb);
         });
-        bgPickerGrid.appendChild(thumb);
-      });
+      };
+      fetch('/api/playlist', { credentials: 'same-origin' })
+        .then(function (r) { return r.ok ? r.json() : Promise.reject(new Error('无后台接口')); })
+        .then(function (d) { fill(d && d.ok ? (d.images || []) : []); })
+        .catch(function () {
+          fetch('/images/manifest.json').then(function (r) { return r.ok ? r.json() : null; }).then(function (m) {
+            fill(((m && m.files) || []).map(function (f) { return { title: f.title || '', url: f.url || '' }; }));
+          }).catch(function () {});
+        });
       bgPicker.hidden = false;
       void bgPicker.offsetWidth; // 触发重排以启用过渡动画
       bgPicker.classList.add('show');
@@ -2079,35 +1827,6 @@
       });
     }
 
-    // 动效开关：大卡片跟随鼠标 / 小图片倾斜
-    var cardMouseToggle = document.getElementById('cardMouseToggle');
-    var imgMouseToggle = document.getElementById('imgMouseToggle');
-    if (cardMouseToggle || imgMouseToggle) {
-      var cardMouseSaved = null;
-      var imgMouseSaved = null;
-      try {
-        cardMouseSaved = localStorage.getItem('cardMouse');
-        imgMouseSaved = localStorage.getItem('imgMouse');
-      } catch (e) {}
-      cardMouseOn = cardMouseSaved !== '0';
-      imgTiltOn = imgMouseSaved !== '0';
-      if (cardMouseToggle) {
-        cardMouseToggle.checked = cardMouseOn;
-        cardMouseToggle.addEventListener('change', function () {
-          cardMouseOn = cardMouseToggle.checked;
-          try { localStorage.setItem('cardMouse', cardMouseOn ? '1' : '0'); } catch (e) {}
-          if (!cardMouseOn) resetCardMouse();
-        });
-      }
-      if (imgMouseToggle) {
-        imgMouseToggle.checked = imgTiltOn;
-        imgMouseToggle.addEventListener('change', function () {
-          imgTiltOn = imgMouseToggle.checked;
-          try { localStorage.setItem('imgMouse', imgTiltOn ? '1' : '0'); } catch (e) {}
-          if (!imgTiltOn) resetCardMouse();
-        });
-      }
-    }
     // 页脚：网站运行时长（起点为网站启用时间；如调整上线时间，改 SITE_BIRTH 即可）
     var SITE_BIRTH = new Date('2026-08-29T12:42:07+08:00');
     var uptimeEl = document.getElementById('siteUptime');
@@ -4081,8 +3800,8 @@
       var music = [];
       Object.keys(favSet).forEach(function (u) {
         var f = favSet[u];
-        if (f.type === 'image') photos.push(f);
-        else if (f.type === 'music') music.push(f);
+        // 收藏只处理音乐（相册界面已随杂项页移除，历史里的图片收藏项忽略）
+        if (f.type === 'music') music.push(f);
       });
 
       music.forEach(function (f) {
@@ -6311,7 +6030,7 @@
 
 
     // ---------- 全站搜索（Ctrl+K / 顶栏放大镜）：命令面板 ----------
-    // 数据源：界面/工具静态清单 + /api/playlist（失败回退 music|video|images 三个静态清单）+ docs/docs.json，60 秒缓存。
+    // 数据源：界面/工具静态清单 + /api/playlist（失败回退 music|video 两个静态清单）+ docs/docs.json，60 秒缓存。
     // 动作全部复用现有机制：界面 pjax 跳真实页面、文档 openDoc、音乐按歌名回 tracks 定位 playIndex、
     // 视频/首页回 home。被功能开关关闭的界面/模块不出现在结果里。
     (function initCmdk() {
@@ -6324,7 +6043,7 @@
       var hideTimer = null;
       var items = [];   // 当前渲染的扁平结果
       var active = 0;
-      var data = { at: 0, docs: [], music: [], images: [], videos: [] };
+      var data = { at: 0, docs: [], music: [], videos: [] };
 
       function loadData() {
         if (Date.now() - data.at < 60000) return;
@@ -6334,7 +6053,7 @@
           .then(function (l) { data.docs = Array.isArray(l) ? l : []; })
           .catch(function () { data.docs = []; });
         var useStatic = function () {
-          data.music = []; data.images = []; data.videos = [];
+          data.music = []; data.videos = [];
           fetch('/music/playlist.json').then(function (r) { return r.ok ? r.json() : []; }).then(function (a) {
             (Array.isArray(a) ? a : []).forEach(function (n) {
               var name = String(n);
@@ -6346,11 +6065,6 @@
               data.videos.push({ name: String(n), url: '/video/' + encodeURIComponent(String(n)) });
             });
           }).catch(function () {});
-          fetch('/images/manifest.json').then(function (r) { return r.ok ? r.json() : null; }).then(function (m) {
-            ((m && m.files) || []).forEach(function (f) {
-              data.images.push({ title: f.title || '', url: f.url || '', album: '' });
-            });
-          }).catch(function () {});
         };
         fetch('/api/playlist', { credentials: 'same-origin' })
           .then(function (r) { return r.ok ? r.json() : Promise.reject(new Error('http ' + r.status)); })
@@ -6358,7 +6072,6 @@
             // 坑 2：非 ok（SPA 回退伪 200）也要走静态兜底，不能静默 return
             if (!d || !d.ok) { useStatic(); return; }
             data.music = (d.music || []).map(function (m) { return { name: m.name || '', url: m.url || '' }; });
-            data.images = (d.images || []).map(function (m) { return { title: m.title || m.name || '', url: m.url || '', album: m.album || '' }; });
             data.videos = (d.video || []).map(function (m) { return { name: m.name || m.title || '', url: m.url || '' }; });
           })
           .catch(useStatic);
@@ -6386,7 +6099,6 @@
         if (!FLAGS_OFF.toolsView) push('界面', '界面', '工具', function () { pjaxGo('/tools/'); });
         if (!FLAGS_OFF.docsView) push('界面', '界面', '关于', function () { pjaxGo('/docs/'); });
         if (aiOn()) push('界面', '界面', 'AI 助手', function () { pjaxGo('/ai/'); });
-        if (!FLAGS_OFF.miscView) push('界面', '界面', '杂项', function () { pjaxGo('/misc/'); });
         push('界面', '界面', '留言板', function () { pjaxGo('/board/'); });
         push('界面', '界面', '课表', function () { pjaxGo('/schedule/'); });
         push('界面', '界面', '链接预览演示', function () { pjaxGo('/blog/'); });
@@ -6577,7 +6289,7 @@
 
     // =========================
     // 多页面核心：pjax 无缝换页（2026-09-05）
-    // 六个页面都是真实 HTML（/、/tools/、/docs/、/ai/、/misc/、/board/），直接输入网址/刷新/分享全部可用；
+    // 七个页面都是真实 HTML（/、/tools/、/docs/、/ai/、/board/、/schedule/、/blog/），直接输入网址/刷新/分享全部可用；
     // 站内导航在这里拦截：fetch 目标页 → 只替换 <main>（头部/播放器/浮层/页脚都在外壳里不动）→ 音乐跨页不断播。
     // fetch 失败或禁 JS：浏览器整页加载兜底（页面本来就是真文件）。
     // =========================
@@ -6593,7 +6305,6 @@
       },
       docs:  { init: function () { initDocsPage(); } },
       ai:    { init: function () { initAiPage(); }, destroy: destroyAiPage },
-      misc:  { init: function () { initMiscGallery(); }, destroy: destroyMiscGallery },
       board: { init: function () { initBoardPage(); } },
       schedule: { init: function () { initSchedPage(); }, destroy: destroySchedPage }
     };
@@ -6723,7 +6434,7 @@
 
     // 旧链接兼容：#/tools 形式的 hash 自动归一到独立页（不产生多余历史记录）
     (function () {
-      var m = /^#\/(tools|docs|ai|misc|board)\b/.exec(location.hash || '');
+      var m = /^#\/(tools|docs|ai|board)\b/.exec(location.hash || '');
       if (m) location.replace('/' + m[1] + '/');
     })();
 
@@ -6948,7 +6659,6 @@
       '/tools':    { id: 'site', name: 'YHuo · 工具合集', desc: '重要日子 / 番茄钟 / 换算器 / 文本工具 / 随机决策 / 计算器' },
       '/docs':     { id: 'site', name: 'YHuo · 关于', desc: '站点介绍与更新日志' },
       '/ai':       { id: 'site', name: 'YHuo · AI 助手', desc: '多供应商多模型流式对话' },
-      '/misc':     { id: 'site', name: 'YHuo · 杂项', desc: '牌堆式轮播的图片画廊' },
       '/board':    { id: 'site', name: 'YHuo · 留言板', desc: '给站长或访客留句话' },
       '/schedule': { id: 'site', name: 'YHuo · 课表', desc: 'WakeUp 导入导出 / 每日早报与课前邮件提醒' },
       '/blog':     { id: 'site', name: 'YHuo · 链接预览演示', desc: '悬停本页两个示例链接，看预览卡效果' }

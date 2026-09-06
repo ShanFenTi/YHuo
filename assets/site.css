@@ -2166,7 +2166,7 @@
       position: fixed;
       bottom: 16px;
       right: 0;
-      /* 高于全屏界面(150)：工具/文档/AI/相册/杂项/个人主页里箭头也可见可点；
+      /* 高于全屏界面(150)：工具/文档/AI/个人主页等页面里箭头也可见可点；
          低于灯箱(200)和登录卡片(400)，大图预览时不抢层 */
       z-index: 160;
       transition: transform 350ms var(--ease-out);
@@ -3262,146 +3262,6 @@
       }
     }
 
-    /* ===== Image Gallery（照片散落堆叠 + 悬停抽出） ===== */
-    .gallery {
-      position: relative;
-    }
-
-    .gallery:not(:empty) {
-      margin: 8px 0 4px;
-    }
-
-    .gallery img {
-      position: absolute;
-      /* 折叠相册：所有照片叠成一副牌，幻灯片式逐张展示；点击展开全部（相册视图） */
-      left: 50%;
-      top: 50%;
-      width: min(82%, 560px);
-      aspect-ratio: 4/3;
-      object-fit: cover;
-      border-radius: calc(var(--radius) - 4px);
-      border: 6px solid var(--apple-card);
-      box-shadow: var(--shadow-md);
-      cursor: zoom-in;
-      display: block;
-      opacity: 0;
-      pointer-events: none;
-      z-index: 1;
-      transform: translate(calc(-50% + var(--px, 0px)), calc(-50% + var(--py, 0px)))
-        rotate(var(--deck-rot, var(--tilt, 0deg)))
-        scale(var(--deck-scale, 1)) translate(var(--deck-x, 0px), 0)
-        rotateX(var(--ix, 0deg)) rotateY(var(--iy, 0deg));
-      transition: transform 450ms var(--ease-out), opacity 450ms var(--ease-out), box-shadow 250ms var(--ease-out);
-    }
-
-    /* 当前展示的一张 */
-    .gallery img.deck-front {
-      opacity: 1;
-      pointer-events: auto;
-      z-index: 10;
-      --deck-scale: 1;
-      --deck-x: 0px;
-    }
-
-    .gallery img.deck-front:hover {
-      z-index: 10;
-      box-shadow: var(--shadow-xl);
-    }
-
-    /* 牌堆里露边的后面两张 */
-    .gallery img.deck-1 {
-      opacity: .85;
-      z-index: 9;
-      --deck-scale: .9;
-      --deck-x: 30px;
-      --deck-rot: 3deg;
-      filter: brightness(.93);
-    }
-
-    .gallery img.deck-2 {
-      opacity: .6;
-      z-index: 8;
-      --deck-scale: .82;
-      --deck-x: -26px;
-      --deck-rot: -3.5deg;
-      filter: brightness(.86);
-    }
-
-    /* 轮播控制：左右箭头 + 计数 */
-    .deck-nav {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 16px;
-      margin-top: 14px;
-    }
-
-    .deck-btn {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      width: 36px;
-      height: 36px;
-      border: 1px solid var(--apple-border);
-      border-radius: 999px;
-      background: var(--apple-card);
-      color: var(--apple-foreground);
-      cursor: pointer;
-      transition: transform 180ms var(--ease-out), background-color 180ms var(--ease-out);
-    }
-
-    .deck-btn:hover {
-      transform: scale(1.08);
-      background: var(--apple-secondary);
-    }
-
-    .deck-btn svg {
-      width: 16px;
-      height: 16px;
-    }
-
-    .deck-count {
-      font-size: 12px;
-      font-weight: 600;
-      letter-spacing: .1em;
-      color: var(--apple-muted-foreground);
-      min-width: 52px;
-      text-align: center;
-    }
-
-    /* 窄屏：半宽放不下，图片卡片占满整行 */
-    @media (max-width: 760px) {
-      .gallery-card { width: 100%; min-width: 0; }
-    }
-
-    /* 卡片 3D 倾斜 + 鼠标聚光灯（跟随 JS 写入的 --cx/--cy/--mx/--my） */
-    .gallery-card {
-      transform: perspective(1200px) rotateX(var(--cx, 0deg)) rotateY(var(--cy, 0deg));
-      /* 白色背景板只占左半边，右侧留白 */
-      width: 50%;
-      min-width: 360px;
-    }
-
-    .gallery-card:hover {
-      transform: perspective(1200px) rotateX(var(--cx, 0deg)) rotateY(var(--cy, 0deg));
-    }
-
-    .gallery-card::after {
-      content: '';
-      position: absolute;
-      inset: 0;
-      border-radius: inherit;
-      background: radial-gradient(420px circle at var(--mx, 50%) var(--my, 50%),
-        color-mix(in srgb, var(--apple-foreground) 7%, transparent), transparent 70%);
-      opacity: 0;
-      transition: opacity 300ms var(--ease-out);
-      pointer-events: none;
-    }
-
-    .gallery-card:hover::after {
-      opacity: 1;
-    }
-
     .empty-hint {
       font-size: 14px;
       color: var(--apple-muted-foreground);
@@ -4284,10 +4144,6 @@
         height: 46px;
       }
 
-      .gallery img {
-        border-width: 4px;
-      }
-
       .site-footer {
         padding: 24px 5vw;
         font-size: 12px;
@@ -4556,11 +4412,11 @@
   /* 功能开关首屏预隐藏：类由 head 内联脚本按 localStorage 缓存在渲染前打上（无闪现），
      applyFeatureFlags / fetchAiConfig 拉到最新配置后会增删同样的类做校正 */
   .ff-tools-off #toolsBtn, .ff-docs-off #docsBtn,
-  .ff-misc-off #miscBtn, .ff-ai-off #aiBtn { display: none !important; }
+  .ff-ai-off #aiBtn { display: none !important; }
   .ff-video-off .video-box { display: none !important; }
   /* 首访无缓存：可选功能先藏（默认先藏、配置到了再放行；接口失败或超时兜底放行） */
   .ff-boot-hide #toolsBtn, .ff-boot-hide #docsBtn,
-  .ff-boot-hide #miscBtn, .ff-boot-hide .video-box { display: none !important; }
+  .ff-boot-hide .video-box { display: none !important; }
   .ff-ai-boot-hide #aiBtn { display: none !important; }
     /* ===== 悬浮音乐播放器（参考博客站款，后台「外观」可选替换迷你播放条） =====
        变量映射：原站 CSS 依赖它自己的一套 token（--brand/--surface/--nav-pill-bg 等），
@@ -5138,7 +4994,7 @@
 
 
 
-    /* ===== 多页面常规化（2026-09-05：栏目拆独立页 /tools/ /docs/ /ai/ /misc/ /board/）=====
+    /* ===== 多页面常规化（2026-09-05：栏目拆独立页 /tools/ /docs/ /ai/ /board/）=====
        栏目内容原为全屏毛玻璃层（fixed + .show 显隐），现在是常规页面：
        容器回文档流、去毛玻璃壳，内容排在悬浮导航下方随页滚动（进场沿用 fadeInUp）。 */
 
@@ -5149,7 +5005,6 @@
 
     html[data-page="tools"] #toolsView,
     html[data-page="docs"] #docsView,
-    html[data-page="misc"] #miscView,
     html[data-page="board"] #boardView,
     html[data-page="ai"] #aiView {
       position: static;
@@ -5188,7 +5043,6 @@
     }
     html[data-page="tools"] #toolsView,
     html[data-page="docs"] #docsView,
-    html[data-page="misc"] #miscView,
     html[data-page="board"] #boardView,
     html[data-page="ai"] #aiView {
       animation: pageFade 600ms var(--ease-out) both;
@@ -5214,7 +5068,6 @@
     @media (prefers-reduced-motion: reduce) {
       html[data-page] #toolsView,
       html[data-page] #docsView,
-      html[data-page] #miscView,
       html[data-page] #boardView,
       html[data-page] #aiView { animation: none; }
     }

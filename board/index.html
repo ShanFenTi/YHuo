@@ -90,14 +90,13 @@
     // settings/AI 配置到达后由 applyFeatureFlags/fetchAiConfig 摘掉；接口失败或 3 秒超时兜底放行。
     try {
       var _ff = JSON.parse(localStorage.getItem('yhuoFlags') || 'null');
-      window.__FF_CACHE = (_ff && typeof _ff === 'object') ? _ff : null; // 同步暴露：画廊等启动期代码按缓存决定是否加载资源
+      window.__FF_CACHE = (_ff && typeof _ff === 'object') ? _ff : null; // 同步暴露：pjax 关页守卫等启动期判断按缓存先行
       var _fc = document.documentElement.classList;
       var _hasFlags = false;
       if (_ff && typeof _ff === 'object') {
         _hasFlags = true;
         if (_ff.tools === false) _fc.add('ff-tools-off');
         if (_ff.docs === false) _fc.add('ff-docs-off');
-          if (_ff.misc === false) _fc.add('ff-misc-off');
         if (_ff.video === false) _fc.add('ff-video-off');
       }
       var _ai = localStorage.getItem('yhuoAiOff');
@@ -128,7 +127,6 @@
       <a href="/" class="nav-link" data-target="home">首页</a>
       <a href="/tools/" class="nav-link" id="toolsBtn">工具</a>
       <a href="/ai/" class="nav-link ai-entry" id="aiBtn">AI</a>
-      <a href="/misc/" class="nav-link" id="miscBtn">杂项</a>
       <a href="/board/" class="nav-link active" id="boardBtn" aria-current="page">留言</a>
       <a href="/schedule/" class="nav-link" id="scheduleBtn">课表</a>
       <a href="/blog/" class="nav-link" id="blogBtn">预览</a>
@@ -209,18 +207,6 @@
           <button class="appear-btn" id="bgBlurFollow" type="button" hidden style="margin-top:8px">跟随站点默认</button>
         </div>
         <input type="file" id="bgInput" accept="image/*" hidden>
-
-        <p class="appear-label">动效</p>
-        <label class="switch-row">
-          <span>大卡片跟随鼠标</span>
-          <input type="checkbox" id="cardMouseToggle" checked>
-          <span class="switch-ui" aria-hidden="true"></span>
-        </label>
-        <label class="switch-row">
-          <span>小图片倾斜动效</span>
-          <input type="checkbox" id="imgMouseToggle" checked>
-          <span class="switch-ui" aria-hidden="true"></span>
-        </label>
 
         <p class="appear-hint">背景图保存在本地浏览器中，仅自己可见。</p>
       </div>

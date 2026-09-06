@@ -176,6 +176,14 @@ const DDL = [
     is_admin   INTEGER NOT NULL DEFAULT 0,
     created_at TEXT NOT NULL DEFAULT (datetime('now'))
   )`,
+  // 相册本体落库（2026-09-06 根治"空相册不落库"：此前相册只由 media.album 派生，
+  // 新建的空相册刷新即消失）。图片归属仍以 media.album 为准，本表只管"存在与顺序"
+  // （sort_order 预留相册排序）；凡往 media.album 写相册名的接口都应同步 upsert 本表
+  `CREATE TABLE IF NOT EXISTS albums (
+    name       TEXT PRIMARY KEY,
+    sort_order INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+  )`,
 ];
 
 // 同一个隔离实例里只跑一次
@@ -231,6 +239,11 @@ export async function ensureSchema(env) {
   } catch {}
   try {
     await env.DB.prepare("ALTER TABLE sessions ADD COLUMN ua TEXT NOT NULL DEFAULT ''").run();
+  } catch {}
+  // 存量相册回填：把 media.album 里已有的相册名补进 albums 表
+  // （INSERT OR IGNORE 幂等，ensureSchema 每个隔离实例各跑一遍也无副作用）
+  try {
+    await env.DB.prepare("INSERT OR IGNORE INTO albums (name) SELECT DISTINCT album FROM media WHERE album != ''").run();
   } catch {}
   // 旧数据迁移：conv_id=0 的孤儿消息归入自动创建的"历史对话"（一次性，幂等）
   try {

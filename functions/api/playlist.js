@@ -18,7 +18,7 @@ export async function onRequestGet({ env }) {
         if (r.cover) it.cover = '/media/' + r.cover;
         return it;
       });
-    // 图片额外带相册字段，前台相册界面按它分组
+    // 图片带相册字段（后台图片页仍在用；前台消费方=外观抽屉背景选择器的站内图网格）
     const images = results
       .filter((r) => r.type === 'image')
       .map((r) => ({ name: r.title, url: '/media/' + r.r2_key, album: r.album || '' }));

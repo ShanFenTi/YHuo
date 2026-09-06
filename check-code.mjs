@@ -1,8 +1,9 @@
 // 一键代码检查（双击 校验代码.bat 运行）：
-//   1. 七个前台页面（/ 与 tools/docs/ai/misc/board/schedule 六个子页）+ functions/admin/index.js 的内联 <script> 做 new Function 语法校验
+//   1. 七个前台页面（/ 与 tools/docs/ai/board/schedule/blog 六个子页）+ functions/admin/index.js 的内联 <script> 做 new Function 语法校验
 //   2. functions/ 下所有 ESM 文件的 import/export 语法 + 相对导入路径真实存在（嵌套目录层级写错当场拦住）
 //   3. 各页面 <script src>/<link href> 引用的本地文件存在
-// 退出码非 0 = 有问题；推送前跑一遍，两类"语法没错但一跑就炸"的错误当场现形
+//   4. 七页外壳一致性（坑 23：头部/浮层/页脚/播放器等外壳 markup 七页各一份拷贝，漏同步当场报错）
+// 退出码非 0 = 有问题；推送前跑一遍，几类"语法没错但一跑就炸"的错误当场现形
 import { readFileSync, existsSync, writeFileSync, rmSync, readdirSync, statSync } from 'node:fs';
 import { dirname, join, resolve, relative } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
@@ -14,8 +15,8 @@ let errors = 0;
 const fail = (msg) => { errors++; console.log('  ✗ ' + msg); };
 const ok = (msg) => console.log('  ✓ ' + msg);
 
-// 多页面改造（2026-09-05）后的前台页面（2026-09-06 增课表页 /schedule/ 与博客预览页 /blog/，共八个）；改外壳（头部/导航/浮层）要多处同步，这里全部把关
-const PAGES = ['index.html', 'tools/index.html', 'docs/index.html', 'ai/index.html', 'misc/index.html', 'board/index.html', 'schedule/index.html', 'blog/index.html'];
+// 多页面改造（2026-09-05）后的前台页面（2026-09-06 增课表页 /schedule/ 与预览页 /blog/、同日移除杂项页 /misc/，现共七个）；改外壳（头部/导航/浮层）要多处同步，这里全部把关
+const PAGES = ['index.html', 'tools/index.html', 'docs/index.html', 'ai/index.html', 'board/index.html', 'schedule/index.html', 'blog/index.html'];
 
 // ---------- 1. 内联 <script> 语法 ----------
 function checkInlineScripts(file, label) {
@@ -96,6 +97,56 @@ console.log('[3] 前台页面本地引用');
     }
   }
   if (!bad) ok(`七个页面本地静态引用 ${checked} 个全部存在`);
+}
+
+// ---------- 4. 八页外壳一致性（坑 23） ----------
+// 外壳 = <main>…</main> 之外的全部内容（head + 头部胶囊 + 浮层 + 页脚 + 播放器 + script 引用）。
+// 八页本就只差 data-page / <title> / 导航高亮三处，归一化掉之后应当逐行相等；
+// 不等 = 改外壳时漏同步了某个页面，当场报出错页与首个差异行。
+console.log('[4] 七页外壳一致性');
+{
+  const MAIN_OPEN = /<main[\s>]/g;
+  const MAIN_CLOSE = /<\/main>/g;
+  const shells = PAGES.map((p) => {
+    const src = readFileSync(join(ROOT, p), 'utf8');
+    const openN = (src.match(MAIN_OPEN) || []).length;
+    const closeN = (src.match(MAIN_CLOSE) || []).length;
+    const openAt = src.indexOf('<main');
+    const closeAt = src.indexOf('</main>');
+    if (openN !== 1 || closeN !== 1 || openAt < 0 || closeAt < openAt) {
+      fail(`${p} <main> 出现 ${openN}/${closeN} 次，无法定位内容区，该页跳过外壳比对`);
+      return null;
+    }
+    return src.slice(0, openAt) + src.slice(closeAt + '</main>'.length);
+  });
+  // 差异白名单：三处页间合法差异（ai-entry 类不在白名单里，各页本就一致，剥掉反而会放过漏改）
+  const norm = (s) => s.replace(/\r\n/g, '\n')
+    .replace(/data-page="[^"]*"/g, 'data-page="*"')
+    .replace(/<title>[^<]*<\/title>/g, '<title>*</title>')
+    .split('\n')
+    .map((line) => line.includes('nav-link')
+      ? line.replace(/\s+aria-current="page"/g, '').replace(/\s+active(?=["\s])/g, '')
+      : line)
+    .join('\n');
+  if (shells[0] === null) {
+    fail('首页外壳无法提取，跳过比对');
+  } else {
+    const base = norm(shells[0]);
+    let bad = 0;
+    for (let i = 1; i < PAGES.length; i++) {
+      if (shells[i] === null) { bad++; continue; }
+      const other = norm(shells[i]);
+      if (other === base) continue;
+      bad++;
+      const a = base.split('\n');
+      const b = other.split('\n');
+      let ln = 0;
+      while (ln < Math.min(a.length, b.length) && a[ln] === b[ln]) ln++;
+      const snippet = (b[ln] || '(该页外壳提前结束)').trim().slice(0, 60);
+      fail(`${PAGES[i]} 外壳与首页不一致（归一化后第 ${ln + 1} 行）：${snippet}`);
+    }
+    if (!bad) ok(`六个子页外壳与首页一致（比对 ${base.split('\n').length} 行；白名单：data-page/标题/导航高亮）`);
+  }
 }
 
 function randomName() {

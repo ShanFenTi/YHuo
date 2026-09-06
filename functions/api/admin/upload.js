@@ -73,6 +73,10 @@ export async function onRequestPost({ request, env }) {
     .prepare('INSERT INTO media (type, title, r2_key, mime, size, sort_order, album, lrc) VALUES (?, ?, ?, ?, ?, ?, ?, ?)')
     .bind(type, title, key, mime, file.size, next.v, album, lrcText)
     .run();
+  // 指定了相册就保证 albums 表有对应行（图片归属以 media.album 为准，本表只管"存在"）
+  if (album) {
+    await env.DB.prepare('INSERT OR IGNORE INTO albums (name) VALUES (?)').bind(album).run();
+  }
 
   return json({
     ok: true,

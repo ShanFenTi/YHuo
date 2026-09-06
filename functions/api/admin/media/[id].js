@@ -35,6 +35,10 @@ export async function onRequestPut({ request, env, params }) {
     ? await env.DB.prepare('UPDATE media SET title = ?, album = ? WHERE id = ?').bind(title, album, id).run()
     : await env.DB.prepare('UPDATE media SET title = ?, album = ?, lrc = ? WHERE id = ?').bind(title, album, lrc, id).run();
   if (!result.meta.changes) return json({ ok: false, error: '条目不存在' }, 404);
+  // 指定了相册就保证 albums 表有对应行（批量移入/行内改相册都走这里）
+  if (album) {
+    await env.DB.prepare('INSERT OR IGNORE INTO albums (name) VALUES (?)').bind(album).run();
+  }
   return json({ ok: true, title, album, has_lrc: lrc === undefined ? undefined : !!lrc });
 }
 

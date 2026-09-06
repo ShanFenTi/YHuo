@@ -1531,6 +1531,7 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
     return api('/api/admin/media').then(function (data) {
       if (data.ok) {
         items = data.items;
+        serverAlbums = data.albums || [];
         listSwap(); // 整表刷新（含相册重命名/解散/批量移入）时列表淡入
         renderList();
         refreshStats();
@@ -1864,14 +1865,14 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
 
   // ---------- 相册管理（仅图片类型） ----------
   var albumFilter = ''; // '' 全部图片，'__none__' 未分组，其他 = 相册名
-  var extraAlbums = []; // 本次会话里新建过的空相册（相册由 media.album 派生，空相册得靠这里记住）
+  var serverAlbums = []; // albums 表里的相册名单（GET /api/admin/media 随清单返回，空相册也持久保存）
   function albumNames() {
     var set = [];
     (items.image || []).forEach(function (it) {
       var a = (it.album || '').trim();
       if (a && set.indexOf(a) === -1) set.push(a);
     });
-    extraAlbums.forEach(function (a) {
+    serverAlbums.forEach(function (a) {
       if (set.indexOf(a) === -1) set.push(a);
     });
     return set;
@@ -1931,8 +1932,6 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
             body: JSON.stringify({ action: 'rename', from: name, to: to })
           }).then(function (d) {
             if (d.ok) {
-              var idx = extraAlbums.indexOf(name);
-              if (idx > -1) extraAlbums[idx] = to; // 空相册重命名：同步会话名单
               if (albumFilter === name) albumFilter = to;
               loadList();
               toast('已重命名为「' + to + '」', 'ok');
@@ -1959,8 +1958,6 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
             body: JSON.stringify({ action: 'delete', name: name })
           }).then(function (d) {
             if (d.ok) {
-              var idx = extraAlbums.indexOf(name);
-              if (idx > -1) extraAlbums.splice(idx, 1);
               if (albumFilter === name) albumFilter = '';
               loadList();
               toast('相册已解散，图片回到未分组', 'ok');
@@ -1993,7 +1990,7 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
 
   function rebuildAlbumControls() {
     var names = albumNames();
-    // 刚新建还没移入图片的相册也要留在列表里（extraAlbums 已在 albumNames 里合并）
+    // 刚新建还没移入图片的相册也要留在列表里（serverAlbums 已在 albumNames 里合并）
     if (albumFilter && albumFilter !== '__none__' && names.indexOf(albumFilter) === -1) {
       names = [albumFilter].concat(names);
     }
@@ -2951,7 +2948,6 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
   var FLAG_DEFS = [
     { key: 'tools', label: '工具界面' },
     { key: 'docs', label: '文档界面' },
-    { key: 'misc', label: '杂项界面' },
     { key: 'weather', label: '天气胶囊' },
     { key: 'lyric', label: '歌词横条' },
     { key: 'video', label: '首页视频' }
@@ -4359,10 +4355,17 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
         var name = (val || '').trim().slice(0, 50);
         if (!ok || !name) return;
         if (albumNames().indexOf(name) > -1) { toast('相册「' + name + '」已存在', 'err'); return; }
-        extraAlbums.push(name); // 空相册不用落库，移入第一张图时自然生成
-        albumFilter = name;
-        renderList();
-        toast('已创建「' + name + '」，把图片拖到相册名上即可归组', 'ok');
+        api('/api/admin/albums', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'create', name: name })
+        }).then(function (d) {
+          if (d.ok) {
+            albumFilter = name;
+            loadList();
+            toast('已创建「' + name + '」，把图片拖到相册名上即可归组', 'ok');
+          } else toast(d.error || '创建失败', 'err');
+        });
       }
     });
   });

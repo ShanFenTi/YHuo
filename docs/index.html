@@ -131,7 +131,7 @@
       <a href="/ai/" class="nav-link ai-entry" id="aiBtn">AI</a>
       <a href="/misc/" class="nav-link" id="miscBtn">杂项</a>
       <a href="/board/" class="nav-link" id="boardBtn">留言</a>
-      <button type="button" class="nav-link" id="schedNavBtn" title="课表">课表</button>
+      <a href="/schedule/" class="nav-link" id="scheduleBtn">课表</a>
     </nav>
       <div class="header-actions">
         <button class="search-toggle" id="searchToggle" type="button" aria-label="搜索（Ctrl+K）" title="搜索（Ctrl+K）">
@@ -424,133 +424,6 @@
           <ul class="fav-music" id="favMusic"></ul>
           <p class="empty-hint" id="favEmpty" hidden>还没有收藏。播放列表里的 ♥ 可以收藏音乐。</p>
         </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- 课表界面（顶栏「课表」直达；2026-09-06 从个人主页抽出为独立浮层） -->
-  <div class="profile-view" id="schedView" hidden role="dialog" aria-modal="true" aria-label="课表">
-    <header class="album-bar">
-      <p class="album-title">课表 · SCHEDULE</p>
-      <button class="album-close" id="schedViewClose" type="button" aria-label="关闭课表">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>
-      </button>
-    </header>
-    <div class="profile-scroll">
-      <!-- 课表（周视图 + WakeUp 导入 + 邮件提醒设置）；未启用时只显示入口行 -->
-      <div class="apple-card" id="schedCard" style="display:none">
-        <div class="card-padding">
-          <p class="card-eyebrow">课表 · SCHEDULE</p>
-          <!-- 启用入口（服务端没有课表数据时显示） -->
-          <div id="schedEnable" hidden>
-            <button class="appear-btn" id="schedEnableBtn" type="button">＋ 启用课表</button>
-            <p class="profile-hint" style="margin-top:10px;">导入 WakeUp 课表或手动添加课程，配合邮箱获得每日早报和上课前提醒。</p>
-          </div>
-          <div id="schedBody" hidden>
-          <div class="sched-toolbar">
-            <div class="sched-week-nav">
-              <button class="sched-mini-btn" id="schedWeekPrev" type="button" aria-label="上一周">‹</button>
-              <span class="sched-week-label" id="schedWeekLabel">第 1 周</span>
-              <button class="sched-mini-btn" id="schedWeekNext" type="button" aria-label="下一周">›</button>
-            </div>
-            <div class="sched-toolbar-right">
-              <label class="sched-inline">学期首周一
-                <input class="sched-inline-input" type="date" id="schedTermStart">
-              </label>
-              <button class="appear-btn" id="schedImportBtn" type="button">导入 WakeUp</button>
-              <input type="file" id="schedImportFile" accept=".json,.csv,application/json,text/csv" hidden>
-              <button class="appear-btn" id="schedExportBtn" type="button">导出课表</button>
-              <button class="appear-btn" id="schedAddBtn" type="button">＋ 添加课程</button>
-            </div>
-          </div>
-          <div class="sched-grid" id="schedGrid" aria-label="周课表"></div>
-          <!-- 提醒设置：iOS 风格开关 + 时间/提前量胶囊快选 -->
-          <div class="sched-remind-block">
-            <div class="sched-remind-line">
-              <label class="sched-switch-row">
-                <span class="sched-inline">每日早报（当天课程一封汇总）</span>
-                <span class="sched-switch"><input type="checkbox" id="schedDailyOn"><i></i></span>
-              </label>
-            </div>
-            <div class="sched-remind-line sched-remind-dep" id="schedDailyTimeRow">
-              <div class="sched-pill-row" id="schedTimeQuick">
-                <button type="button" class="sched-pill" data-t="06:30">6:30</button>
-                <button type="button" class="sched-pill" data-t="07:00">7:00</button>
-                <button type="button" class="sched-pill" data-t="07:30">7:30</button>
-                <button type="button" class="sched-pill" data-t="08:00">8:00</button>
-                <input class="sched-inline-input sched-time-input" type="time" id="schedDailyTime" value="07:00" aria-label="自定义早报时间">
-              </div>
-            </div>
-            <div class="sched-remind-line">
-              <span class="sched-inline">重点课提前提醒</span>
-              <div class="sched-pill-row" id="schedAheadQuick">
-                <button type="button" class="sched-pill" data-a="15">15 分钟</button>
-                <button type="button" class="sched-pill" data-a="30">30 分钟</button>
-                <button type="button" class="sched-pill" data-a="60">1 小时</button>
-                <input class="sched-inline-input sched-num-input" type="number" id="schedAhead" min="5" max="120" aria-label="自定义提前分钟数">
-              </div>
-            </div>
-            <div class="sched-remind-line" style="flex-direction:row;justify-content:flex-end;">
-              <button class="appear-btn danger-btn" id="schedRemoveBtn" type="button">移除课表</button>
-            </div>
-          </div>
-          <!-- 作息时间（每节上课时间，展开编辑） -->
-          <details class="sched-nodetimes">
-            <summary>作息时间（各节上课时间）</summary>
-            <div class="sched-nodetimes-grid" id="schedNodeTimes"></div>
-          </details>
-          <p class="profile-msg" id="schedMsg"></p>
-          <p class="profile-hint" id="schedEmailHint" hidden></p>
-          </div>
-        </div>
-      </div>
-
-    </div>
-  </div>
-
-  <!-- 课程编辑弹窗：点课程块或"添加课程"弹出，居中显示（不用滚到卡片底部找表单） -->
-  <div class="sched-editor-overlay" id="schedEditor" hidden role="dialog" aria-modal="true" aria-label="编辑课程">
-    <div class="sched-editor-panel">
-      <p class="sched-editor-title" id="schedEditorTitle">添加课程</p>
-      <input class="profilev-input" id="schedEName" type="text" placeholder="课程名（必填）">
-      <div class="sched-editor-row">
-        <input class="profilev-input" id="schedEPlace" type="text" placeholder="教室">
-        <input class="profilev-input" id="schedETeacher" type="text" placeholder="教师">
-      </div>
-      <!-- 周几：胶囊点选（隐藏原生 select，保留无障碍） -->
-      <div class="sched-field-label">星期</div>
-      <div class="sched-pill-row" id="schedEDayPills" role="radiogroup" aria-label="星期">
-        <button type="button" class="sched-pill" data-v="1">一</button>
-        <button type="button" class="sched-pill" data-v="2">二</button>
-        <button type="button" class="sched-pill" data-v="3">三</button>
-        <button type="button" class="sched-pill" data-v="4">四</button>
-        <button type="button" class="sched-pill" data-v="5">五</button>
-        <button type="button" class="sched-pill" data-v="6">六</button>
-        <button type="button" class="sched-pill" data-v="7">日</button>
-      </div>
-      <!-- 节次：起止胶囊点选 -->
-      <div class="sched-field-label">节次 <span class="sched-field-sub" id="schedENodeHint"></span></div>
-      <div class="sched-pill-row sched-pill-dense" id="schedEStartPills" role="radiogroup" aria-label="开始节次"></div>
-      <div class="sched-field-label sched-field-sub-label">到</div>
-      <div class="sched-pill-row sched-pill-dense" id="schedEEndPills" role="radiogroup" aria-label="结束节次"></div>
-      <!-- 周次：快选胶囊 + 自定义输入 -->
-      <div class="sched-field-label">周次</div>
-      <div class="sched-pill-row" id="schedEWeekQuick">
-        <button type="button" class="sched-pill" data-w="1-16">全学期</button>
-        <button type="button" class="sched-pill" data-w="1-16单">单周</button>
-        <button type="button" class="sched-pill" data-w="1-16双">双周</button>
-        <button type="button" class="sched-pill" data-w="1-8">前半</button>
-        <button type="button" class="sched-pill" data-w="9-16">后半</button>
-      </div>
-      <input class="profilev-input" id="schedEWeeks" type="text" placeholder="或自定义，如 1-16 / 1,3,5 / 1-16(单)">
-      <div class="sched-editor-row">
-        <label class="sched-inline"><input type="checkbox" id="schedERemind"> 重点课（课前单独邮件提醒）</label>
-      </div>
-      <div class="sched-editor-row sched-editor-actions">
-        <button class="appear-btn danger-btn" id="schedEDelete" type="button" hidden>删除</button>
-        <span class="flex-spacer"></span>
-        <button class="appear-btn" id="schedECancel" type="button">取消</button>
-        <button class="appear-btn" id="schedESave" type="button">保存</button>
       </div>
     </div>
   </div>

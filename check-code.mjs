@@ -1,5 +1,5 @@
 // 一键代码检查（双击 校验代码.bat 运行）：
-//   1. 六个前台页面（/ 与 tools/docs/ai/misc/board 五个子页）+ functions/admin/index.js 的内联 <script> 做 new Function 语法校验
+//   1. 七个前台页面（/ 与 tools/docs/ai/misc/board/schedule 六个子页）+ functions/admin/index.js 的内联 <script> 做 new Function 语法校验
 //   2. functions/ 下所有 ESM 文件的 import/export 语法 + 相对导入路径真实存在（嵌套目录层级写错当场拦住）
 //   3. 各页面 <script src>/<link href> 引用的本地文件存在
 // 退出码非 0 = 有问题；推送前跑一遍，两类"语法没错但一跑就炸"的错误当场现形
@@ -14,8 +14,8 @@ let errors = 0;
 const fail = (msg) => { errors++; console.log('  ✗ ' + msg); };
 const ok = (msg) => console.log('  ✓ ' + msg);
 
-// 多页面改造（2026-09-05）后的六个前台页面；改外壳（头部/导航/浮层）要六处同步，这里全部把关
-const PAGES = ['index.html', 'tools/index.html', 'docs/index.html', 'ai/index.html', 'misc/index.html', 'board/index.html'];
+// 多页面改造（2026-09-05）后的七个前台页面（2026-09-06 增课表页 /schedule/）；改外壳（头部/导航/浮层）要多处同步，这里全部把关
+const PAGES = ['index.html', 'tools/index.html', 'docs/index.html', 'ai/index.html', 'misc/index.html', 'board/index.html', 'schedule/index.html'];
 
 // ---------- 1. 内联 <script> 语法 ----------
 function checkInlineScripts(file, label) {
@@ -95,7 +95,7 @@ console.log('[3] 前台页面本地引用');
       if (!existsSync(target)) { bad++; fail(`${p} 引用 ${path} 不存在`); }
     }
   }
-  if (!bad) ok(`六个页面本地静态引用 ${checked} 个全部存在`);
+  if (!bad) ok(`七个页面本地静态引用 ${checked} 个全部存在`);
 }
 
 function randomName() {

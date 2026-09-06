@@ -3300,6 +3300,7 @@
       var schedEditIdx = -2; // 编辑中的课程下标（-1 = 新增，-2 = 未在编辑）
       var schedPreview = null; // 编辑中的实时预览（null = 不显示；{name,day,startNode,endNode}）
       var schedDocMouseUp = null; // 周视图拖选的 document mouseup（重渲染前先摘旧的，防叠加）
+      var schedClearTimer = null; // 清空课程两段式确认的武装计时器
       var SCHED_DAYS = ['周一', '周二', '周三', '周四', '周五', '周六', '周日'];
       var SCHED_COLORS = ['#5b8def', '#e8618c', '#3aa981', '#e0913d', '#8b6fd6', '#4ab3c4', '#d16a4a', '#6f7f95'];
 
@@ -3684,6 +3685,7 @@
       var schedBodyBox = document.getElementById('schedBody');
       var schedEnableBtn = document.getElementById('schedEnableBtn');
       var schedRemoveBtn = document.getElementById('schedRemoveBtn');
+      var schedClearBtn = document.getElementById('schedClearBtn');
       function schedShowBody(on) {
         if (schedEnableBox) schedEnableBox.hidden = on;
         if (schedBodyBox) schedBodyBox.hidden = !on;
@@ -3740,6 +3742,39 @@
         } else if (window.confirm('移除后所有课程、作息和提醒设置将被删除，确定移除课表？')) {
           doRemove();
         }
+      });
+
+      // 清空课程（2026-09-06）：移除导入/手动添加的全部课程，但保留课表本身与作息、提醒设置。
+      // 前台没有 ask() 组件（那是后台的），沿用 AI 对话删除同款「两段式确认」：首点变红武装，2.5 秒内再点才执行
+      if (schedClearBtn) schedClearBtn.addEventListener('click', function () {
+        if (!schedData) return;
+        var count = schedData.courses ? schedData.courses.length : 0;
+        if (!count) { showSchedMsg('当前没有课程'); return; }
+        if (schedClearBtn.dataset.armed !== '1') {
+          schedClearBtn.dataset.armed = '1';
+          schedClearBtn.dataset.plainText = schedClearBtn.textContent;
+          schedClearBtn.textContent = '确认清空 ' + count + ' 门？';
+          schedClearBtn.style.background = 'color-mix(in srgb, var(--danger) 12%, transparent)';
+          schedClearBtn.style.borderColor = 'color-mix(in srgb, var(--danger) 55%, transparent)';
+          schedClearBtn.style.color = 'var(--danger)';
+          schedClearTimer = setTimeout(function () {
+            schedClearBtn.dataset.armed = '0';
+            schedClearBtn.textContent = schedClearBtn.dataset.plainText;
+            schedClearBtn.style.background = '';
+            schedClearBtn.style.borderColor = '';
+            schedClearBtn.style.color = '';
+          }, 2500);
+          return;
+        }
+        clearTimeout(schedClearTimer);
+        schedClearBtn.dataset.armed = '0';
+        schedClearBtn.textContent = schedClearBtn.dataset.plainText;
+        schedClearBtn.style.background = '';
+        schedClearBtn.style.borderColor = '';
+        schedClearBtn.style.color = '';
+        schedCloseEditor();
+        schedData.courses = [];
+        schedSave('已清空全部课程（' + count + ' 门）');
       });
 
       // 提示语：提醒依赖邮件服务 + 已验证邮箱（GitHub Pages 静态模式下接口 404 → 整卡隐藏）；

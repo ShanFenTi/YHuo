@@ -6704,7 +6704,7 @@
   })();
 
     // 流星（参考博客站 fx 特效接入，源码 博客动画源码/03-流星-meteors.js 精简）：
-    // 本站无 00 设置核心，档位固定 high（30 颗）；触屏窄屏自动降为 low（10 颗），
+    // 本站无 00 设置核心，档位固定 high（30 颗）；触屏窄屏自动降为 low（15 颗），
     // 系统减弱动态时不渲染（CSS @media 兜底隐藏）。负 delay 让每颗首帧即处于不同相位
     (function () {
       var root = document.querySelector('[data-fx-meteors]');
@@ -6712,21 +6712,40 @@
       var reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
       var lowPower = window.matchMedia('(max-width: 859px)').matches
         && window.matchMedia('(pointer: coarse)').matches;
-      var count = reduceMotion ? 0 : (lowPower ? 10 : 30);
+      var count = reduceMotion ? 0 : (lowPower ? 15 : 30);
+      // 出生横坐标按视口几何自适应：流星沿 rotate(215deg) translate(-180vh) 向右下 35° 斜落，
+      // 水平行程恒为 1.474×视口高（竖直 1.033×视口高，出生点 top:-4rem），与屏宽无关——
+      // 固定出生带 -80%~+100%（相对屏宽）只在宽屏（横行程≈0.83 屏宽）碰巧够到左下角，
+      // 窄屏横行程可达 3 倍屏宽，整带挤在上半部对角区、下三分之一全无流星
+      // （2026-09-06 用户实报"窄屏只有一小部分"；390×844 实测底部三区 10s 采样全 0）。
+      // 改为反推最左出生：让路径恰好从左缘 95% 高度处进入屏幕；右端 +100%（顶右短迹）不变
+      function birthLeft() {
+        var w = window.innerWidth, h = window.innerHeight;
+        var minPct = -((0.95 * h + 64) * (1.474 / 1.033) / w) * 100; // 64=top:-4rem
+        return minPct + Math.random() * (100 - minPct);
+      }
+      var meteors = [];
       var frag = document.createDocumentFragment();
       for (var i = 0; i < count; i++) {
         var meteor = document.createElement('span');
         var duration = 4.5 + Math.random() * 4.5;
         meteor.className = 'fx-meteor';
-        // 出生范围 -80%~+100%：流星向右下方 35° 斜落，要经过左下角必须从 -60% 以远出生，
-        // 原示例的 -35%~+90% 会让左下角整块没有流星（2026-09-06 用户实报）
-        meteor.style.setProperty('--left', (-80 + Math.random() * 180) + '%');
+        meteor.style.setProperty('--left', birthLeft().toFixed(2) + '%');
         meteor.style.setProperty('--duration', duration + 's');
         meteor.style.setProperty('--delay', (-Math.random() * duration) + 's');
         meteor.style.setProperty('--tail', (38 + Math.random() * 34) + 'px');
         frag.appendChild(meteor);
+        meteors.push(meteor);
       }
       root.appendChild(frag);
+      // 旋转屏幕/改窗口尺寸后"横行程÷屏宽"的比例会变，重排出生坐标保持全屏覆盖
+      var resizeTimer = 0;
+      window.addEventListener('resize', function () {
+        window.clearTimeout(resizeTimer);
+        resizeTimer = window.setTimeout(function () {
+          meteors.forEach(function (m) { m.style.setProperty('--left', birthLeft().toFixed(2) + '%'); });
+        }, 200);
+      });
     })();
 
   // 链接预览卡片（参考博客站 fx 特效接入，源码 博客动画源码/06-链接预览卡片.js 精简）：

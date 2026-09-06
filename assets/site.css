@@ -5212,3 +5212,161 @@
       html[data-page] #boardView,
       html[data-page] #aiView { animation: none; }
     }
+
+    /* =========================
+       链接预览卡片（参考博客站 fx 特效接入，2026-09-06；源码 博客动画源码/06 + demo.html）
+       悬停白名单站点外链 150ms 弹出；卡片 DOM 由 common.js 尾部注入，白名单也在那里。
+       颜色/阴影/缓动全部映射站点语义变量，深浅主题与主题色自动跟随
+       ========================= */
+    .fx-link-preview {
+      --lp-ease: cubic-bezier(0.16, 1, 0.3, 1);
+      position: fixed;
+      inset: 0;
+      z-index: 320; /* 低于全站搜索 350/登录卡 400，高于灯箱 200 */
+      pointer-events: none;
+    }
+
+    .fx-link-preview__card {
+      position: absolute;
+      top: 0;
+      left: 0;
+      display: grid;
+      grid-template-rows: 112px minmax(0, 1fr);
+      width: min(320px, calc(100vw - 2rem));
+      height: 190px;
+      overflow: hidden;
+      border: 1px solid var(--border);
+      border-radius: 1rem;
+      background: color-mix(in srgb, var(--card) 94%, transparent);
+      color: var(--foreground);
+      box-shadow: var(--shadow-xl);
+      opacity: 0;
+      visibility: hidden;
+      translate: 0.4rem 0.4rem;
+      transition: opacity 0.18s var(--ease-out), translate 0.2s var(--lp-ease), visibility 0s linear 0.2s;
+    }
+
+    .fx-link-preview.is-visible .fx-link-preview__card {
+      opacity: 1;
+      visibility: visible;
+      translate: 0 0;
+      transition-delay: 0s;
+      animation: fx-preview-in 0.28s var(--spring) both;
+    }
+
+    .fx-link-preview__domain {
+      display: flex;
+      align-items: center;
+      overflow: hidden;
+      color: var(--primary);
+      font-size: 0.68rem;
+      font-weight: 700;
+      letter-spacing: 0;
+      white-space: nowrap;
+      text-overflow: ellipsis;
+    }
+
+    .fx-link-preview__visual {
+      position: relative;
+      height: 100%;
+      overflow: hidden;
+      background: #24292f;
+      color: #ffffff;
+    }
+
+    .fx-link-preview[data-preview-site="bilibili"] .fx-link-preview__visual { background: #fb7299; }
+    .fx-link-preview[data-preview-site="blog"] .fx-link-preview__visual {
+      background: color-mix(in srgb, var(--primary) 82%, #000);
+    }
+
+    .fx-link-preview__image {
+      position: absolute;
+      inset: 0;
+      z-index: 1;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .fx-link-preview__fallback {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 0.7rem;
+      padding: 1rem;
+    }
+
+    .fx-link-preview__mark { display: none; justify-content: center; align-items: center; }
+
+    .fx-link-preview[data-preview-site="github"] .fx-link-preview__mark--github,
+    .fx-link-preview[data-preview-site="bilibili"] .fx-link-preview__mark--bilibili { display: inline-flex; }
+
+    .fx-link-preview__context {
+      overflow: hidden;
+      max-width: 13rem;
+      font-size: 0.88rem;
+      font-weight: 700;
+      white-space: nowrap;
+      text-overflow: ellipsis;
+    }
+
+    .fx-link-preview__meta {
+      display: grid;
+      gap: 0.12rem;
+      padding: 0.7rem 0.85rem 0.78rem;
+    }
+
+    .fx-link-preview__title {
+      display: -webkit-box;
+      overflow: hidden;
+      color: var(--foreground);
+      font-size: 0.8rem;
+      line-height: 1.4;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+    }
+
+    .fx-link-preview__desc {
+      display: -webkit-box;
+      overflow: hidden;
+      color: var(--muted-foreground);
+      font-size: 0.68rem;
+      line-height: 1.45;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+    }
+
+    .fx-link-preview.is-visible .fx-link-preview__card::after {
+      content: "";
+      position: absolute;
+      inset: -1px;
+      border-radius: inherit;
+      pointer-events: none;
+      background: radial-gradient(120% 120% at 50% 0%, color-mix(in srgb, var(--primary) 18%, transparent), transparent 60%);
+      animation: fx-preview-glow 2.4s ease-in-out infinite;
+    }
+
+    @keyframes fx-preview-in {
+      0% { opacity: 0; scale: 0.92; }
+      100% { opacity: 1; scale: 1; }
+    }
+
+    @keyframes fx-preview-glow {
+      0%, 100% { opacity: 0.5; }
+      50% { opacity: 1; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .fx-link-preview.is-visible .fx-link-preview__card,
+      .fx-link-preview.is-visible .fx-link-preview__card::after { animation: none; }
+    }
+
+    /* 顶栏外链标识：新标签打开的导航项带 ↗ */
+    .site-nav a[target="_blank"]::after {
+      content: "↗";
+      margin-left: 2px;
+      font-size: 0.72em;
+      opacity: 0.55;
+    }

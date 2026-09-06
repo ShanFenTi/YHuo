@@ -6704,3 +6704,185 @@
       }
       root.appendChild(frag);
     })();
+
+  // 链接预览卡片（参考博客站 fx 特效接入，源码 博客动画源码/06-链接预览卡片.js 精简）：
+  // 悬停白名单站点的外链 150ms 后弹出小卡片（站点名 + 链接文字 + 描述 + 上下文/GitHub 预览图），
+  // 跟随鼠标、贴边自动翻转；白名单外（含全部站内链接）一律不显示，卡片不出现原始 URL。
+  // 卡片 DOM 由这里注入一次——外壳跨 pjax 不换，免七页同步（坑 23），document 级监听整站常驻。
+  // 仅「可悬停 + 精确指针」设备启用；系统减弱动态时只去入场动画（site.css @media 兜底）。
+  (function () {
+    if (!window.matchMedia('(hover: hover) and (pointer: fine)').matches) return;
+    if (document.querySelector('[data-fx-link-preview]')) return;
+
+    // 白名单：hostname(去 www) → 站点 id/名称/描述；要加站点改这里
+    var SITE_INFO = {
+      'yyyyyolo7a79-blog.pages.dev': { id: 'blog', name: 'yyyyyolo7a79 的博客', desc: '本站特效参考的博客站（clay-blog 魔改版）' },
+      'github.com': { id: 'github', name: 'GitHub', desc: '代码托管与协作平台' },
+      'bilibili.com': { id: 'bilibili', name: '哔哩哔哩', desc: '视频分享与弹幕网站' },
+      'space.bilibili.com': { id: 'bilibili', name: '哔哩哔哩', desc: '视频分享与弹幕网站' }
+    };
+
+    var GITHUB_MARK = '<svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 19c-4.3 1.4-4.3-2.5-6-3m12 5v-3.5c0-1 .1-1.4-.5-2 2.8-.3 5.5-1.4 5.5-6a4.7 4.7 0 0 0-1.3-3.2 4.3 4.3 0 0 0-.1-3.2s-1.1-.3-3.5 1.3a12 12 0 0 0-6.2 0C6.5 2.8 5.4 3.1 5.4 3.1a4.3 4.3 0 0 0-.1 3.2A4.7 4.7 0 0 0 4 9.5c0 4.6 2.7 5.7 5.5 6-.6.6-.6 1.2-.5 2V21"/></svg>';
+    var BILI_MARK = '<svg width="29" height="29" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><g><path d="M17.813 4.653h.854c1.51.054 2.769.578 3.773 1.574 1.004.995 1.524 2.249 1.56 3.76v7.36c-.036 1.51-.556 2.769-1.56 3.773s-2.262 1.524-3.773 1.56H5.333c-1.51-.036-2.769-.556-3.773-1.56S.036 18.858 0 17.347v-7.36c.036-1.511.556-2.765 1.56-3.76 1.004-.996 2.262-1.52 3.773-1.574h.774l-1.174-1.12a1.234 1.234 0 0 1-.373-.906c0-.356.124-.658.373-.907l.027-.027c.267-.249.573-.373.92-.373.347 0 .653.124.92.373L9.653 4.44c.071.071.134.142.187.213h4.267a.836.836 0 0 1 .16-.213l2.853-2.747c.267-.249.573-.373.92-.373.347 0 .662.151.929.4.267.249.391.551.391.907 0 .355-.124.657-.373.906zM5.333 7.24c-.746.018-1.373.276-1.88.773-.506.498-.769 1.13-.786 1.894v7.52c.017.764.28 1.395.786 1.893.507.498 1.134.756 1.88.773h13.334c.746-.017 1.373-.275 1.88-.773.506-.498.769-1.129.786-1.893v-7.52c-.017-.765-.28-1.396-.786-1.894-.507-.497-1.134-.755-1.88-.773zM8 11.107c.373 0 .684.124.933.373.25.249.383.569.4.96v1.173c-.017.391-.15.711-.4.96-.249.25-.56.374-.933.374s-.684-.125-.933-.374c-.25-.249-.383-.569-.4-.96V12.44c0-.373.129-.689.386-.947.258-.257.574-.386.947-.386zm8 0c.373 0 .684.124.933.373.25.249.383.569.4.96v1.173c-.017.391-.15.711-.4.96-.249.25-.56.374-.933.374s-.684-.125-.933-.374c-.25-.249-.383-.569-.4-.96V12.44c.017-.391.15-.711.4-.96.249-.249.56-.373.933-.373Z"/></g></svg>';
+
+    var root = document.createElement('div');
+    root.className = 'fx-link-preview';
+    root.setAttribute('data-fx-link-preview', '');
+    root.setAttribute('aria-hidden', 'true');
+    // 结构与示例逐字同构（context 钩子在图片区内不在 meta 区，脚本按此取节点）
+    root.innerHTML =
+      '<article class="fx-link-preview__card">' +
+        '<div class="fx-link-preview__visual" aria-hidden="true">' +
+          '<img class="fx-link-preview__image" data-fx-preview-image alt="" hidden>' +
+          '<div class="fx-link-preview__fallback">' +
+            '<span class="fx-link-preview__mark fx-link-preview__mark--github">' + GITHUB_MARK + '</span>' +
+            '<span class="fx-link-preview__mark fx-link-preview__mark--bilibili">' + BILI_MARK + '</span>' +
+            '<span class="fx-link-preview__context" data-fx-preview-context></span>' +
+          '</div>' +
+        '</div>' +
+        '<div class="fx-link-preview__meta">' +
+          '<span class="fx-link-preview__domain" data-fx-preview-domain></span>' +
+          '<strong class="fx-link-preview__title" data-fx-preview-title></strong>' +
+          '<span class="fx-link-preview__desc" data-fx-preview-desc></span>' +
+        '</div>' +
+      '</article>';
+    document.body.appendChild(root);
+
+    var card = root.querySelector('.fx-link-preview__card');
+    var domainEl = root.querySelector('[data-fx-preview-domain]');
+    var titleEl = root.querySelector('[data-fx-preview-title]');
+    var descEl = root.querySelector('[data-fx-preview-desc]');
+    var contextEl = root.querySelector('[data-fx-preview-context]');
+    var imageEl = root.querySelector('[data-fx-preview-image]');
+
+    var showTimer = 0;
+    var pendingLink = null;
+    var activeLink = null;
+    var imageRequest = '';
+    var rafId = 0;
+    var pendingX = 0;
+    var pendingY = 0;
+
+    function hide() {
+      window.clearTimeout(showTimer);
+      showTimer = 0;
+      pendingLink = null;
+      activeLink = null;
+      imageRequest = '';
+      root.classList.remove('is-visible');
+    }
+
+    function position() {
+      rafId = 0;
+      // 用 offsetWidth/Height 量布局尺寸：入场动画 scale 期间 getBoundingClientRect 会量到
+      // 缩小的尺寸，钳制后动画放完右/下缘会溢出屏幕十几px
+      var w = card.offsetWidth;
+      var h = card.offsetHeight;
+      var gap = 16;
+      var maxX = window.innerWidth - w - gap;
+      var maxY = window.innerHeight - h - gap;
+      var x = Math.min(pendingX + 18, maxX);
+      var y = Math.min(pendingY + 18, maxY);
+      x = Math.max(gap, x);
+      y = Math.max(gap, y);
+      card.style.left = x + 'px';
+      card.style.top = y + 'px';
+    }
+
+    function getPreviewContext(url, info) {
+      if (info.id === 'github') {
+        var pathname = url.pathname;
+        try { pathname = decodeURIComponent(pathname); } catch (e) {}
+        var parts = pathname.split('/').filter(Boolean).slice(0, 2);
+        return parts.length ? parts.join(' / ') : 'GitHub';
+      }
+      if (info.id === 'blog') {
+        return (!url.pathname || url.pathname === '/') ? '博客首页' : '博客内页';
+      }
+      if (url.hostname.indexOf('space.') === 0) return 'UP 主空间';
+      return url.pathname.indexOf('/video/') === 0 ? '哔哩哔哩视频' : '哔哩哔哩';
+    }
+
+    function getPreviewImage(url, info) {
+      if (info.id !== 'github') return '';
+      var parts = url.pathname.split('/').filter(Boolean).slice(0, 2);
+      if (parts.length !== 2) return '';
+      return 'https://opengraph.githubassets.com/yhuo-preview/' + parts.join('/');
+    }
+
+    function show(link, resolved) {
+      var url = resolved.url, info = resolved.info;
+      domainEl.textContent = info.name;
+      titleEl.textContent = (link.textContent || '').trim().replace(/\s+/g, ' ').slice(0, 48) || info.name;
+      descEl.textContent = info.desc;
+      contextEl.textContent = getPreviewContext(url, info);
+      root.setAttribute('data-preview-site', info.id);
+      var imageUrl = getPreviewImage(url, info);
+      imageRequest = imageUrl;
+      imageEl.hidden = true;
+      if (imageUrl) imageEl.src = imageUrl;
+      else imageEl.removeAttribute('src');
+      activeLink = link;
+      root.classList.add('is-visible');
+      window.requestAnimationFrame(position);
+    }
+
+    imageEl.addEventListener('load', function () {
+      if (imageRequest && imageEl.src === new URL(imageRequest, window.location.href).href) {
+        imageEl.hidden = false;
+      }
+    });
+    imageEl.addEventListener('error', function () {
+      imageEl.hidden = true;
+    });
+
+    // 白名单匹配：仅站外链接，hostname 去 www 后查表
+    function resolveLink(link) {
+      var url;
+      try { url = new URL(link.href, window.location.href); } catch (e) { return null; }
+      if (url.protocol !== 'http:' && url.protocol !== 'https:') return null;
+      var host = url.hostname.replace(/^www\./, '');
+      return SITE_INFO[host] ? { url: url, info: SITE_INFO[host] } : null;
+    }
+
+    document.addEventListener('pointerover', function (event) {
+      var link = event.target.closest ? event.target.closest('a[href]') : null;
+      // tabindex="-1" 的链接不触发预览（与示例同口径）
+      if (!link || link.tabIndex < 0) return;
+      var resolved = resolveLink(link);
+      if (!resolved) { hide(); return; }
+      if (pendingLink === link || activeLink === link) return;
+      // 先记 pendingLink 再计时；提前移出时 hide() 会清掉计时器
+      window.clearTimeout(showTimer);
+      pendingLink = link;
+      showTimer = window.setTimeout(function () {
+        showTimer = 0;
+        if (pendingLink !== link) return;
+        show(link, resolved);
+      }, 150);
+    });
+
+    document.addEventListener('pointerout', function (event) {
+      var from = event.target.closest ? event.target.closest('a[href]') : null;
+      if (!from) return;
+      var to = event.relatedTarget;
+      // 仍在同一链接内部时保持；移入其他链接先隐藏，避免白名单→非白名单后滞留
+      if (to instanceof Element && to.closest && to.closest('a[href]') === from) return;
+      hide();
+    });
+
+    document.addEventListener('pointercancel', hide);
+    document.addEventListener('pointermove', function (event) {
+      pendingX = event.clientX;
+      pendingY = event.clientY;
+      if (root.classList.contains('is-visible') && !rafId) {
+        rafId = window.requestAnimationFrame(position);
+      }
+    });
+
+    // 滚动 / 触屏滑动 / 失焦：一律清理并隐藏
+    window.addEventListener('scroll', hide, { passive: true });
+    window.addEventListener('blur', hide);
+    document.addEventListener('wheel', hide, { passive: true });
+    document.addEventListener('touchmove', hide, { passive: true });
+  })();

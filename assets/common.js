@@ -1100,7 +1100,9 @@
         } else lyricShowPlaceholder('♪ ' + display);
         return;
       }
-      if (!/music\//.test(src || '')) { lyricShowPlaceholder('♪ ' + display); return; } // KV 媒体/本地 blob 无同名 lrc 可取
+      // 无自带歌词：取静态 music/ 同名 .lrc（曲目 src 已是 blob URL，按歌名取，不再看 src 前缀——
+      // blob 化之后前缀判断永远不命中，静态曲目的 .lrc 曾因此静默失效）。
+      // KV 媒体/本地文件夹曲目通常 404，回落歌名占位；坑 2：伪 200 HTML 视为无歌词
       lyricShowPlaceholder('♪ ' + display, true); // 加载期间显示歌名 + 待机点
       fetch('/music/' + encodeURIComponent(display) + '.lrc', { credentials: 'same-origin' })
         .then(function (r) { return r.ok ? r.text() : ''; })
@@ -1196,6 +1198,17 @@
       lyricBar.hidden = false;
       if (!lyricBar.classList.contains('show')) lyricBar.classList.add('show');
       lyricFinishTyping();
+      // 坑 27：子页整页加载时 lyricBar 不存在，恢复播放（applyResume/restoreCachedTracks）里的
+      // musicLyricsLoad 会重置状态后早退，歌词数据是空的——这里补载当前曲目，否则 pjax 回首页是空条
+      if (!lyricLines && !lyricPlain) {
+        var t = tracks[current];
+        if (t) {
+          musicLyricsLoad(t.name, t.src, t.lrc);
+          return;
+        }
+        lyricShowPlaceholder('♪ ' + musicDisplayName(currentName || ''));
+        return;
+      }
       musicLyricsTick();
     }
 
@@ -6552,7 +6565,7 @@
 
     function runPageHook(key, name, arg) {
       var m = PAGE_MODULES[key];
-      if (m && m[name]) { try { m[name](arg); } catch (e) {} }
+      if (m && m[name]) { try { m[name](arg); } catch (e) { (window.__pageErrors = window.__pageErrors || []).push(key + '/' + name + ': ' + (e && (e.stack || e.message) || e)); } }
     }
     function pageKeyForPath(p) {
       var key = String(p || '').replace(/^\/+|\/+$/g, '');

@@ -80,3 +80,13 @@ CREATE TABLE IF NOT EXISTS albums (
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
+
+-- 随笔（2026-09-07：后台「随笔」页管理，前台 /notes/ 时间线；date 倒序+年份分组，锚点 id=日期）
+CREATE TABLE IF NOT EXISTS notes (
+  id         INTEGER PRIMARY KEY AUTOINCREMENT,
+  date       TEXT NOT NULL,
+  mood       TEXT NOT NULL DEFAULT '',
+  text       TEXT NOT NULL,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_notes_date ON notes (date, id);

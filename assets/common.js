@@ -5145,9 +5145,10 @@
     }
 
     // =========================
-    // 随笔页 /notes/（2026-09-07）：notes/notes.json 清单（手工维护，与 docs.json 同思路——
-    // 静态托管没有目录列表，加一条随笔 = 往数组里加一个对象）。按年份分组的时间线流，
-    // text 走 mdToHtml（先整体转义再解析，防注入）；单条锚点 id = 日期（/notes/#2026-09-07 可直达/分享）
+    // 随笔页 /notes/（2026-09-07）：数据源链 = /api/notes（D1，后台「随笔」页维护）
+    // → 失败或空库回落静态 notes/notes.json（手工维护，与 docs.json 同思路——静态托管没有目录列表）。
+    // 按年份分组的时间线流，text 走 mdToHtml（先整体转义再解析，防注入）；
+    // 单条锚点 id = 日期（/notes/#2026-09-07 可直达/分享）
     // =========================
     var notesFeed = null;   // 随笔页模块：initNotesPage 按当前 DOM 重查
     var notesEmpty = null;
@@ -5156,24 +5157,42 @@
       notesFeed = document.getElementById('notesFeed');
       notesEmpty = document.getElementById('notesEmpty');
       if (!notesFeed) return;
+      fetch('/api/notes', { credentials: 'same-origin' })
+        .then(function (r) { return r.ok ? r.json() : Promise.reject(new Error('http ' + r.status)); })
+        .then(function (d) {
+          if (!notesFeed) return; // fetch 期间 pjax 切走了：当前 DOM 已不是随笔页，直接放弃
+          var list = (d && d.ok && Array.isArray(d.list)) ? d.list : null;
+          if (list && list.length) { notesShow(list); return; }
+          fetchStaticNotes(); // 空库（后台还没录数据）→ 静态清单
+        })
+        .catch(fetchStaticNotes); // 接口失败（离线/异常响应）→ 静态清单
+    }
+
+    function fetchStaticNotes() {
+      if (!notesFeed) return;
       fetch('/notes/notes.json', { credentials: 'same-origin' })
         .then(function (r) { return r.ok ? r.json() : Promise.reject(new Error('http ' + r.status)); })
         .then(function (list) {
-          if (!notesFeed) return; // fetch 期间 pjax 切走了：当前 DOM 已不是随笔页，直接放弃
-          if (!Array.isArray(list) || !list.length) {
-            if (notesEmpty) notesEmpty.hidden = false;
-            return;
-          }
-          renderNotes(list);
-          // 直达 /notes/#日期 时内容还没渲染，原生锚点跳转会扑空，这里补定位
-          if (location.hash) locateNote(location.hash);
+          if (!notesFeed) return; // 同上，pjax 竞态守卫
+          notesShow(list);
         })
         .catch(function () {
+          if (!notesFeed) return;
           if (notesEmpty) {
-            notesEmpty.textContent = '随笔清单加载失败（notes/notes.json）。';
+            notesEmpty.textContent = '随笔清单加载失败。';
             notesEmpty.hidden = false;
           }
         });
+    }
+
+    function notesShow(list) {
+      if (!Array.isArray(list) || !list.length) {
+        if (notesEmpty) notesEmpty.hidden = false;
+        return;
+      }
+      renderNotes(list);
+      // 直达 /notes/#日期 时内容还没渲染，原生锚点跳转会扑空，这里补定位
+      if (location.hash) locateNote(location.hash);
     }
 
     function renderNotes(list) {

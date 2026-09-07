@@ -821,6 +821,7 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
       <button data-type="music" title="音乐"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg><span>音乐</span></button>
       <button data-type="video" title="视频"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M2 8h20M2 16h20M8 4v16M16 4v16"/></svg><span>视频</span></button>
       <button data-type="image" title="图片"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m21 15-5-5L5 21"/></svg><span>图片</span></button>
+      <button data-type="notes" title="随笔"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/><path d="M9 7h7M9 11h5"/></svg><span>随笔</span></button>
       <button data-type="users" title="用户"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg><span>用户</span></button>
       <button data-type="appearance" title="外观"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 2a10 10 0 0 0 0 20z" fill="currentColor" stroke="none"/></svg><span>外观</span></button>
       <button data-type="ai" title="AI 设置"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="8" width="16" height="12" rx="2"/><path d="M12 8V4"/><path d="M9 4h6"/><circle cx="9" cy="13" r="1" fill="currentColor" stroke="none"/><circle cx="15" cy="13" r="1" fill="currentColor" stroke="none"/><path d="M9 17h6"/></svg><span>AI</span></button>
@@ -842,6 +843,7 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
           <button data-type="music">音乐</button>
           <button data-type="video">视频</button>
           <button data-type="image">图片</button>
+          <button data-type="notes">随笔</button>
           <button data-type="users">用户</button>
           <button data-type="appearance">外观</button>
           <button data-type="ai">AI</button>
@@ -945,6 +947,33 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
         <ul class="list" id="list"></ul>
         <div class="empty" id="empty" hidden>还没有内容，先上传一个文件吧。也可以拖动条目调整顺序。</div>
       </div>
+    </div>
+  </div>
+
+  <div id="notesPanel" hidden>
+    <p class="appear-label2" style="margin-top:0">随笔管理（前台 /notes/ 时间线；保存后访客刷新即生效）</p>
+    <div class="card" style="margin-bottom:16px">
+      <p class="appear-label2" style="margin-top:0" id="noteFormTitle">新增随笔</p>
+      <div class="bgset-row">
+        <input type="date" id="noteDate" style="max-width:170px">
+        <input type="text" id="noteMood" placeholder="心情（可空，如 晴 / 夜）" maxlength="12" style="max-width:210px">
+      </div>
+      <div class="bgset-row" style="margin-top:8px;align-items:flex-start">
+        <textarea id="noteText" placeholder="正文（1~2000 字；支持迷你 Markdown：**粗** *斜* 行内码 [链接](url) > 引用，前台按它渲染）" rows="4" style="max-width:680px;width:100%;resize:vertical"></textarea>
+      </div>
+      <div class="bgset-row" style="margin-top:8px">
+        <button id="noteSaveBtn" type="button">保存</button>
+        <button id="noteCancelEditBtn" class="ghost" type="button" hidden>取消编辑</button>
+        <span class="meta2" id="noteFormMsg"></span>
+      </div>
+    </div>
+    <div class="card">
+      <div class="visit-head"><strong>全部随笔</strong><span class="meta2" id="notesSumm"></span></div>
+      <div class="bgset-row" style="margin-top:8px">
+        <button id="notesImportBtn" class="ghost" type="button">从静态清单导入</button>
+        <span class="meta2">把 notes/notes.json 里的存量随笔导入数据库（日期与正文完全相同的自动跳过）；导入后前台以数据库为准。</span>
+      </div>
+      <div id="notesList" style="margin-top:10px"></div>
     </div>
   </div>
 
@@ -3970,6 +3999,179 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
   $('aiApiKey').addEventListener('change', function () { fetchAiModels(false); });
   $('aiProtocol').addEventListener('change', function () { fetchAiModels(false); });
 
+  // ---------- 随笔管理（前台 /notes/ 时间线；D1 notes 表，静态 notes/notes.json 仅作前台兜底） ----------
+  // 坑 18：本文件是模板字符串，正则反斜杠一律双写；反引号与「美元符+花括号」插值序列都不许出现
+  var notesCache = [];
+  var noteEditingId = 0;
+
+  function noteTodayStr() {
+    var d = new Date();
+    function p(x) { return (x < 10 ? '0' : '') + x; }
+    return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate());
+  }
+  function noteFormMsg(text, err) { showMsg($('noteFormMsg'), text || '', err ? 'err' : ''); }
+
+  function noteResetForm() {
+    noteEditingId = 0;
+    $('noteFormTitle').textContent = '新增随笔';
+    $('noteDate').value = noteTodayStr();
+    $('noteMood').value = '';
+    $('noteText').value = '';
+    $('noteCancelEditBtn').hidden = true;
+  }
+
+  function loadNotes() {
+    var listEl = $('notesList');
+    listEl.innerHTML = '<p class="hint" style="margin:0">加载中…</p>';
+    api('/api/admin/notes').then(function (d) {
+      if (!d.ok) { listEl.innerHTML = '<p class="hint" style="margin:0">' + escapeHtml(d.error || '加载失败') + '</p>'; return; }
+      notesCache = d.list || [];
+      renderNotesList();
+    }).catch(function () {
+      listEl.innerHTML = '<p class="hint" style="margin:0">加载失败</p>';
+    });
+  }
+
+  function renderNotesList() {
+    var listEl = $('notesList');
+    listEl.textContent = '';
+    $('notesSumm').textContent = notesCache.length ? ('共 ' + notesCache.length + ' 条 · 按日期倒序') : '';
+    if (!notesCache.length) {
+      var pe = document.createElement('p');
+      pe.className = 'meta2';
+      pe.textContent = '还没有随笔。在上方新增，或点「从静态清单导入」把 notes/notes.json 的存量搬进数据库。';
+      listEl.appendChild(pe);
+      return;
+    }
+    var frag = document.createDocumentFragment();
+    notesCache.forEach(function (n) {
+      var row = document.createElement('div');
+      row.className = 'st-row';
+      row.style.alignItems = 'flex-start';
+      var dEl = document.createElement('span');
+      dEl.className = 'st-name';
+      dEl.style.whiteSpace = 'nowrap';
+      dEl.textContent = n.date;
+      row.appendChild(dEl);
+      var mid = document.createElement('span');
+      mid.className = 'meta2';
+      mid.style.flex = '1';
+      mid.style.minWidth = '0';
+      var t = String(n.text || '').replace(/\\s+/g, ' ');
+      if (t.length > 60) t = t.slice(0, 60) + '…';
+      mid.textContent = t + (n.mood ? ('　（' + n.mood + '）') : '');
+      mid.title = String(n.text || '');
+      row.appendChild(mid);
+      var actions = document.createElement('span');
+      actions.style.display = 'flex';
+      actions.style.gap = '4px';
+      actions.style.flex = 'none';
+      var editBtn = document.createElement('button');
+      editBtn.className = 'icon-mini';
+      editBtn.title = '编辑';
+      editBtn.innerHTML = ICO.pencil;
+      editBtn.addEventListener('click', function () {
+        noteEditingId = n.id;
+        $('noteFormTitle').textContent = '编辑随笔 · ' + n.date;
+        $('noteDate').value = n.date;
+        $('noteMood').value = n.mood || '';
+        $('noteText').value = n.text || '';
+        $('noteCancelEditBtn').hidden = false;
+        noteFormMsg('正在编辑这条随笔，改完点「保存」。');
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      });
+      actions.appendChild(editBtn);
+      var delBtn = document.createElement('button');
+      delBtn.className = 'icon-mini';
+      delBtn.title = '删除';
+      delBtn.innerHTML = ICO.trash;
+      delBtn.addEventListener('click', function () {
+        ask({
+          title: '删除这条随笔？',
+          msg: n.date + (n.mood ? '（' + n.mood + '）' : '') + '：' + String(n.text || '').slice(0, 50),
+          okText: '删除',
+          danger: true,
+          cb: function (okVal) {
+            if (!okVal) return;
+            api('/api/admin/notes', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ action: 'delete', id: n.id })
+            }).then(function (r) {
+              if (!r.ok) { toast(r.error || '删除失败', 'err'); return; }
+              toast('已删除');
+              if (noteEditingId === n.id) noteResetForm();
+              loadNotes();
+            });
+          }
+        });
+      });
+      actions.appendChild(delBtn);
+      row.appendChild(actions);
+      frag.appendChild(row);
+    });
+    listEl.appendChild(frag);
+  }
+
+  $('noteSaveBtn').addEventListener('click', function () {
+    var date = $('noteDate').value.trim();
+    var mood = $('noteMood').value.trim();
+    var text = $('noteText').value.trim();
+    if (!/^\\d{4}-\\d{2}-\\d{2}$/.test(date)) { noteFormMsg('日期格式应为 YYYY-MM-DD', true); return; }
+    if (!text) { noteFormMsg('正文不能为空', true); return; }
+    if (text.length > 2000) { noteFormMsg('正文最长 2000 字（当前 ' + text.length + ' 字）', true); return; }
+    var wasEdit = !!noteEditingId;
+    var payload = { action: wasEdit ? 'update' : 'create', id: noteEditingId, date: date, mood: mood, text: text };
+    var btn = this;
+    btn.disabled = true;
+    api('/api/admin/notes', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    }).then(function (r) {
+      btn.disabled = false;
+      if (!r.ok) { noteFormMsg(r.error || '保存失败', true); return; }
+      noteResetForm();
+      noteFormMsg('');
+      toast(wasEdit ? '已保存修改' : '已新增随笔');
+      loadNotes();
+    }).catch(function () {
+      btn.disabled = false;
+      noteFormMsg('保存失败（网络异常）', true);
+    });
+  });
+  $('noteCancelEditBtn').addEventListener('click', function () { noteResetForm(); noteFormMsg(''); });
+
+  // 从静态清单导入：读部署在前台的 notes/notes.json 存量数据，批量搬进 D1（date+text 全同的跳过）
+  $('notesImportBtn').addEventListener('click', function () {
+    var btn = this;
+    btn.disabled = true;
+    fetch('/notes/notes.json', { credentials: 'same-origin' })
+      .then(function (r) { return r.ok ? r.json() : Promise.reject(new Error('http ' + r.status)); })
+      .then(function (list) {
+        if (!Array.isArray(list) || !list.length) { btn.disabled = false; toast('静态清单为空或不存在', 'err'); return; }
+        ask({
+          title: '导入静态清单？',
+          msg: 'notes/notes.json 里共 ' + list.length + ' 条，将批量导入数据库（日期与正文完全相同的自动跳过）。导入后前台以数据库为准。',
+          okText: '导入',
+          cb: function (okVal) {
+            if (!okVal) { btn.disabled = false; return; }
+            api('/api/admin/notes', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ action: 'import', list: list })
+            }).then(function (r) {
+              btn.disabled = false;
+              if (!r.ok) { toast(r.error || '导入失败', 'err'); return; }
+              toast('导入完成：新增 ' + r.imported + ' 条' + (r.skipped ? ('，跳过 ' + r.skipped + ' 条') : ''));
+              loadNotes();
+            }).catch(function () { btn.disabled = false; toast('导入失败（网络异常）', 'err'); });
+          }
+        });
+      })
+      .catch(function () { btn.disabled = false; toast('读取 notes/notes.json 失败', 'err'); });
+  });
+
   // ---------- 顶部胶囊 + 抽屉导航（两套按钮同走 switchPage，active 同步打在两份上） ----------
   var navBtns = document.querySelectorAll('#sideNav button, #drawerNav button');
   // ---------- 我的（管理员资料 + 头像；头像 KV 键存 site_settings 'admin_avatar'） ----------
@@ -4287,8 +4489,10 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
     var isEmail = type === 'email';
     var isMe = type === 'me';
     var isStatus = type === 'status';
+    var isNotes = type === 'notes';
     $('overviewPanel').hidden = !isOverview;
-    $('mediaPanel').hidden = isOverview || isUsers || isAppear || isAi || isEmail || isMe || isStatus;
+    $('mediaPanel').hidden = isOverview || isUsers || isAppear || isAi || isEmail || isMe || isStatus || isNotes;
+    $('notesPanel').hidden = !isNotes;
     $('userPanel').hidden = !isUsers;
     $('appearancePanel').hidden = !isAppear;
     $('aiPanel').hidden = !isAi;
@@ -4321,11 +4525,15 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
     if (isStatus) {
       renderStatus();
     }
+    if (isNotes) {
+      noteResetForm(); // 每次进页表单归零（日期预填今天），防上次的编辑草稿串场
+      loadNotes();
+    }
     if (isUsers) {
       $('userSearch').value = ''; // 换进来重置搜索
       loadUsers();
     }
-    if (!isOverview && !isUsers && !isAppear && !isAi && !isEmail && !isMe && !isStatus) {
+    if (!isOverview && !isUsers && !isAppear && !isAi && !isEmail && !isMe && !isStatus && !isNotes) {
       $('fileInput').accept = TYPE_EXT[type];
       $('titleInput').value = '';
       selected = {}; // 换标签页清空勾选和搜索
@@ -4346,7 +4554,8 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
       isAi ? $('aiPanel') :
       isEmail ? $('emailPanel') :
       isMe ? $('mePanel') :
-      isStatus ? $('statusPanel') : $('mediaPanel');
+      isStatus ? $('statusPanel') :
+      isNotes ? $('notesPanel') : $('mediaPanel');
     if (targetPanel && targetPanel !== lastEnterPanel) {
       lastEnterPanel = targetPanel;
       targetPanel.classList.remove('panel-enter');
@@ -4392,6 +4601,7 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
       appearance: { name: '外观', desc: '主题色 / 寄语 / 功能开关 / 播放器款式' },
       ai: { name: 'AI', desc: 'AI 供应商 / 模型 / 全局开关' },
       email: { name: '邮件', desc: '邮件服务 / 验证码 / 课表提醒定时任务' },
+      notes: { name: '随笔', desc: '随笔管理 · 新增 / 编辑 / 删除 / 静态清单导入' },
       me: { name: '我的', desc: '管理员资料 / 头像 / 安全中心' },
       status: { name: '状态', desc: '健康状态 / 数据库与 KV' }
     };

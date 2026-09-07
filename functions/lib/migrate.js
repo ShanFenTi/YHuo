@@ -184,6 +184,17 @@ const DDL = [
     sort_order INTEGER NOT NULL DEFAULT 0,
     created_at TEXT NOT NULL DEFAULT (datetime('now'))
   )`,
+  // 随笔（后台「随笔」页管理，前台 /notes/ 时间线展示）：date=随笔日期 YYYY-MM-DD
+  // （前台按它倒序 + 年份分组，也是单条锚点 id），mood=心情短语可空，text=正文
+  // （支持迷你 Markdown，前台 common.js mdToHtml 渲染；服务端只存文本不解析）
+  `CREATE TABLE IF NOT EXISTS notes (
+    id         INTEGER PRIMARY KEY AUTOINCREMENT,
+    date       TEXT NOT NULL,
+    mood       TEXT NOT NULL DEFAULT '',
+    text       TEXT NOT NULL,
+    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+  )`,
+  `CREATE INDEX IF NOT EXISTS idx_notes_date ON notes (date, id)`,
 ];
 
 // 同一个隔离实例里只跑一次

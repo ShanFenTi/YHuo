@@ -5642,7 +5642,7 @@
       font-weight: 500;
       color: var(--apple-foreground);
       text-decoration: none;
-      transition: background-color 180ms var(--ease-out), color 180ms var(--ease-out);
+      transition: background-color 180ms var(--ease-out), color 180ms var(--ease-out), transform 150ms var(--ease-out);
     }
 
     .nav-drawer-ico {
@@ -5653,7 +5653,18 @@
 
     .nav-drawer-link span { flex: 1; min-width: 0; }
 
-    .nav-drawer-link:hover { background: var(--apple-secondary); }
+    /* 悬停按压感：整行轻微下压；真正按下（:active）压得更深、回弹更快 */
+    .nav-drawer-link:hover {
+      background: var(--apple-secondary);
+      transform: scale(0.98);
+    }
+
+    .nav-drawer-link:hover .nav-drawer-ico { color: var(--apple-foreground); }
+
+    .nav-drawer-link:active {
+      transform: scale(0.96);
+      transition-duration: 80ms;
+    }
 
     .nav-drawer-link:hover .nav-drawer-ico { color: var(--apple-foreground); }
 

@@ -5559,10 +5559,10 @@
       bottom: 0;
       left: 0;
       z-index: 310;
-      width: min(78vw, 300px);
+      width: min(80vw, 320px);
       display: flex;
       flex-direction: column;
-      padding: 14px 12px;
+      padding: 16px 12px 12px;
       border-radius: 0 22px 22px 0;
       background: rgba(255, 255, 255, 0.86);
       -webkit-backdrop-filter: saturate(1.8) blur(22px);
@@ -5626,30 +5626,74 @@
     .nav-drawer-links {
       display: flex;
       flex-direction: column;
-      gap: 4px;
+      gap: 6px;
       overflow-y: auto;
     }
 
+    /* 条目：图标 + 文字。图标默认次级色，悬停/选中随文字变 */
     .nav-drawer-link {
       display: flex;
       align-items: center;
-      height: 44px;
-      padding: 0 16px;
+      gap: 12px;
+      height: 46px;
+      padding: 0 14px;
       border-radius: 14px;
-      font-size: 14px;
+      font-size: 14.5px;
       font-weight: 500;
       color: var(--apple-foreground);
       text-decoration: none;
       transition: background-color 180ms var(--ease-out), color 180ms var(--ease-out);
     }
 
+    .nav-drawer-ico {
+      flex: none;
+      color: var(--apple-muted-foreground);
+      transition: color 180ms var(--ease-out);
+    }
+
+    .nav-drawer-link span { flex: 1; min-width: 0; }
+
     .nav-drawer-link:hover { background: var(--apple-secondary); }
 
-    /* 当前项：与胶囊导航同款反色 chip */
+    .nav-drawer-link:hover .nav-drawer-ico { color: var(--apple-foreground); }
+
+    /* 当前项：主题色柔和底 + 主题色文字/图标（比反色黑块轻盈，与站点陶土色语言一致） */
     .nav-drawer-link.active {
-      background: var(--apple-foreground);
-      color: var(--apple-background);
+      background: color-mix(in srgb, var(--apple-primary) 12%, transparent);
+      color: var(--apple-primary);
       font-weight: 600;
+    }
+
+    .nav-drawer-link.active .nav-drawer-ico { color: var(--apple-primary); }
+
+    /* 开抽屉时条目从左级联滑入：只靠 keyframes from 隐藏 + fill backwards 盖住延迟期，
+       不设 opacity:0 基准态——backwards 动画结束后回基准样式，基准若隐藏条目会永远隐形（踩过已修） */
+    @media (prefers-reduced-motion: no-preference) {
+      .nav-drawer .nav-drawer-link:nth-child(1) { --i: 0; }
+      .nav-drawer .nav-drawer-link:nth-child(2) { --i: 1; }
+      .nav-drawer .nav-drawer-link:nth-child(3) { --i: 2; }
+      .nav-drawer .nav-drawer-link:nth-child(4) { --i: 3; }
+      .nav-drawer .nav-drawer-link:nth-child(5) { --i: 4; }
+      .nav-drawer .nav-drawer-link:nth-child(6) { --i: 5; }
+      .nav-drawer .nav-drawer-link:nth-child(7) { --i: 6; }
+      .nav-drawer .nav-drawer-link:nth-child(8) { --i: 7; }
+
+      body.nav-drawer-open .nav-drawer .nav-drawer-link {
+        animation: nav-drawer-item-in 420ms var(--ease-out) backwards;
+        animation-delay: calc(70ms + var(--i, 0) * 36ms);
+      }
+    }
+
+    @keyframes nav-drawer-item-in {
+      from {
+        opacity: 0;
+        transform: translateX(-10px);
+      }
+
+      to {
+        opacity: 1;
+        transform: none;
+      }
     }
 
     .nav-toggle:focus-visible,

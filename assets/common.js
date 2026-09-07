@@ -6473,7 +6473,7 @@
   })();
 
     // 流星（参考博客站 fx 特效接入，源码 博客动画源码/03-流星-meteors.js 精简）：
-    // 本站无 00 设置核心，档位固定 high（30 颗）；触屏窄屏自动降为 low（15 颗），
+    // 本站无 00 设置核心，档位固定 high（30 颗）；触屏窄屏自动降为 low（18 颗），
     // 系统减弱动态时不渲染（CSS @media 兜底隐藏）。负 delay 让每颗首帧即处于不同相位
     (function () {
       var root = document.querySelector('[data-fx-meteors]');
@@ -6481,38 +6481,50 @@
       var reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
       var lowPower = window.matchMedia('(max-width: 859px)').matches
         && window.matchMedia('(pointer: coarse)').matches;
-      var count = reduceMotion ? 0 : (lowPower ? 15 : 30);
-      // 出生横坐标按视口几何自适应：流星沿 rotate(215deg) translate(-180vh) 向右下 35° 斜落，
-      // 水平行程恒为 1.474×视口高（竖直 1.033×视口高，出生点 top:-4rem），与屏宽无关——
-      // 固定出生带 -80%~+100%（相对屏宽）只在宽屏（横行程≈0.83 屏宽）碰巧够到左下角，
-      // 窄屏横行程可达 3 倍屏宽，整带挤在上半部对角区、下三分之一全无流星
-      // （2026-09-06 用户实报"窄屏只有一小部分"；390×844 实测底部三区 10s 采样全 0）。
-      // 改为反推最左出生：让路径恰好从左缘 95% 高度处进入屏幕；右端 +100%（顶右短迹）不变
-      function birthLeft() {
+      var count = reduceMotion ? 0 : (lowPower ? 18 : 30);
+      // 出生横坐标按"屏幕目标点"反推（2026-09-07 二次修正）：上一版在 [最左出生, +100%] 的整条
+      // 出生带上均匀取点，但窄屏这条带约 3/4 在屏幕左侧外——路径穿过左下角的流星不仅占比小、
+      // 在屏时间也短，左下角观感仍系统性偏少（用户再报"左下角太少了"）。改为每颗流星先在屏幕上
+      // 均匀取一个"路径必经点"（x: 0~100%，y: 12%~92%），再按 35° 斜落几何反推出生横坐标
+      // = 目标x − 斜率×(目标y + 64px)：屏幕每个区域被路径均匀覆盖，左下角与其他区域同等密度
+      var SLOPE = 1.474 / 1.033; // 每竖直下降 1px 右移 1.427px（35° 斜落）；64px=top:-4rem 出生偏移
+      function birthLeftFor(txPct, tyPct) {
         var w = window.innerWidth, h = window.innerHeight;
-        var minPct = -((0.95 * h + 64) * (1.474 / 1.033) / w) * 100; // 64=top:-4rem
-        return minPct + Math.random() * (100 - minPct);
+        var leftPx = txPct * w - SLOPE * (tyPct * h + 64);
+        return (leftPx / w) * 100;
       }
       var meteors = [];
       var frag = document.createDocumentFragment();
-      for (var i = 0; i < count; i++) {
+      function spawnMeteor(tx, ty) {
         var meteor = document.createElement('span');
         var duration = 4.5 + Math.random() * 4.5;
         meteor.className = 'fx-meteor';
-        meteor.style.setProperty('--left', birthLeft().toFixed(2) + '%');
+        meteor._tx = tx;             // 路径必经点（屏宽比例 0~1），resize 重排时按它重算
+        meteor._ty = ty;             // 路径必经点（屏高比例，太贴边会被裁掉）
+        meteor.style.setProperty('--left', birthLeftFor(tx, ty).toFixed(2) + '%');
         meteor.style.setProperty('--duration', duration + 's');
         meteor.style.setProperty('--delay', (-Math.random() * duration) + 's');
         meteor.style.setProperty('--tail', (38 + Math.random() * 34) + 'px');
         frag.appendChild(meteor);
         meteors.push(meteor);
       }
+      // 主群：目标点全屏均匀（全屏基础覆盖）
+      for (var i = 0; i < count; i++) {
+        spawnMeteor(Math.random(), 0.12 + Math.random() * 0.8);
+      }
+      // 补充群（数量≈主群 70%）：目标点收紧到穿过左下角的几何带（tx -0.05~0.35 / ty 0.5~0.95，
+      // 该带内约八成迹线会扫过左下角九宫格）——穿过左下角的迹线在屏时间短，仅靠均匀分布观感
+      // 仍稀（用户再报"左下角太少了"），用更高出现频率补密度；宽屏同样生效、无副作用
+      for (var j = 0; j < Math.round(count * 0.7); j++) {
+        spawnMeteor(-0.05 + Math.random() * 0.4, 0.5 + Math.random() * 0.45);
+      }
       root.appendChild(frag);
-      // 旋转屏幕/改窗口尺寸后"横行程÷屏宽"的比例会变，重排出生坐标保持全屏覆盖
+      // 旋转屏幕/改窗口尺寸后"横行程÷屏宽"的比例会变，按存下的目标点重算出生坐标保持全屏覆盖
       var resizeTimer = 0;
       window.addEventListener('resize', function () {
         window.clearTimeout(resizeTimer);
         resizeTimer = window.setTimeout(function () {
-          meteors.forEach(function (m) { m.style.setProperty('--left', birthLeft().toFixed(2) + '%'); });
+          meteors.forEach(function (m) { m.style.setProperty('--left', birthLeftFor(m._tx, m._ty).toFixed(2) + '%'); });
         }, 200);
       });
     })();

@@ -10,6 +10,7 @@ import { runTick } from '../../lib/schedule.js';
 const KEY_NAME = 'schedule_tick_key';
 const LAST_OK = 'schedule_tick_last';
 const LAST_BAD = 'schedule_tick_bad';
+let lastBadLog = 0; // 错误密钥留痕的节流（isolate 级）：防匿名高频刷 D1 写配额
 
 async function getTickKey(env) {
   const row = await env.DB
@@ -39,7 +40,10 @@ export async function onRequestGet({ request, env }) {
   const key = await getTickKey(env);
   // 密钥没生成过（管理员从没用过课表功能）→ 一律拒绝，提示去后台生成
   if (!key || String(given || '') !== key) {
-    await record(env, LAST_BAD, { t: bjStamp() });
+    if (Date.now() - lastBadLog > 60000) {
+      lastBadLog = Date.now();
+      await record(env, LAST_BAD, { t: bjStamp() });
+    }
     return json({ ok: false, error: '无效的定时密钥' }, 401);
   }
   try {

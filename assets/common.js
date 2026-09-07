@@ -210,7 +210,7 @@
       });
       var id = current ? current.id : '';
       // 多页面：仅首页按滚动位置高亮（子页面导航高亮是静态的，滚动逻辑不许摘掉它）
-      if (sections.length)
+      if (sections.length && sections[0].isConnected)
       navLinks.forEach(function (a) {
         a.classList.toggle('active', a.getAttribute('data-target') === id);
       });
@@ -400,10 +400,10 @@
                 var s = d.hitokoto + (d.from ? ' —— 「' + d.from + '」' : '');
                 if (!seen[s]) { seen[s] = 1; texts.push(s); }
               });
-              resolve(texts);
+              return texts;
             });
           }
-          resolve(texts);
+          return texts;
         }).then(function (texts) {
           if (texts.length) {
             try {
@@ -439,6 +439,7 @@
       var HQ_HOLD_MS = 6000;      // 寄语每条停留时长（一言用 3000）
       var hqHoldMs = HQ_HOLD_MS;  // 当前生效的停留时长
       var hqStop = false;         // 页面隐藏时暂停轮播
+      var hqDead = false;         // pjax 离页后到达的异步回调（settings/一言池）不得再启动轮播链
 
       function hqTypeText(text, done) {
         clearInterval(hqTypeTimer);
@@ -514,11 +515,13 @@
         else { heroQuoteText.textContent = text; }        // 单条：静态显示
       };
       var showQuotes = function (list) {
+        if (hqDead) return;
         hqList = list.filter(function (q) { return q && q.trim(); });
         if (!hqList.length) return loadDailyQuote();
         if (hqList.length === 1) {
           // 单条寄语：并入一言池混合轮播（避免只有一条时静态不动）
           getHitokotoPool().then(function (texts) {
+            if (hqDead) return;
             hqList = hqList.concat(texts);
             showQuote(hqList[0], 6000);
           });
@@ -527,7 +530,9 @@
         showQuote(hqList[0]);
       };
       var loadDailyQuote = function () {
+        if (hqDead) return;
         getHitokotoPool().then(function (texts) {
+          if (hqDead) return;
           if (!texts.length) { heroQuote.hidden = true; return; }
           hqList = texts;
           showQuote(texts[0], 3000); // 一言：3 秒切一句
@@ -542,6 +547,7 @@
         .catch(loadDailyQuote);
 
       hqTeardown = function () {
+        hqDead = true;
         clearInterval(hqTypeTimer);
         clearTimeout(hqHoldTimer);
         document.removeEventListener('visibilitychange', onVis);
@@ -873,7 +879,7 @@
     var lyricFetchSeq = 0;     // 切歌取消上一次未完成的加载
 
     function lyricShowPlaceholder(text, waiting) {
-      if (!lyricBar) return;
+      if (!lyricBar || !lyricBar.isConnected) return;
       if (FLAGS_OFF.lyric) { lyricBar.hidden = true; return; } // 功能开关：显式收起（首帧占位策略）
       clearInterval(lyricTypeTimer);
       lyricTypeTimer = null;
@@ -928,7 +934,7 @@
       lyricIdx = -1;
       var seq = ++lyricFetchSeq;
       lyricStopIdle(); // 任何切歌都终止待机一言轮播
-      if (!lyricBar) return;
+      if (!lyricBar || !lyricBar.isConnected) return;
       var display = lyricDisplayName(name);
       // 后台曲库歌词：直接解析自带文本，不用再 fetch 同名文件
       if (lrc) {
@@ -963,7 +969,7 @@
     }
 
     function lyricStartTyping(text, lineDurMs) {
-      if (!lyricBar) return;
+      if (!lyricBar || !lyricBar.isConnected) return;
       if (FLAGS_OFF.lyric) { lyricBar.hidden = true; return; } // 同上
       clearInterval(lyricTypeTimer);
       lyricTypeTimer = null;
@@ -1041,7 +1047,7 @@
     function lyricRebind() {
       lyricBar = document.getElementById('lyricBar');
       lyricText = document.getElementById('lyricText');
-      if (!lyricBar) return;
+      if (!lyricBar || !lyricBar.isConnected) return;
       if (FLAGS_OFF.lyric) { lyricBar.hidden = true; return; } // 功能开关：显式收起（首帧占位策略）
       // 悬浮播放器（博客款）正在播：歌词条跟随它的当前曲目（迷你条此时多半暂停/空源）
       var blogTrack = null;
@@ -1077,7 +1083,7 @@
       loadTrack: function (name, src, lrc) { musicLyricsLoad(name, src, lrc); },
       tick: musicLyricsTick,
       setPlaying: function (playing) {
-        if (!lyricBar) return;
+        if (!lyricBar || !lyricBar.isConnected) return;
         lyricBar.classList.toggle('playing', !!playing);
         if (!playing) lyricFinishTyping(); // 暂停时当前句立即补完（与迷你条 pause 行为一致）
       },
@@ -1528,7 +1534,8 @@
 
       function trackDone() {
         pending--;
-        if (pending === 0 && added) {
+        if (pending === 0) {
+          if (!added) { finishMusicLoad(); saveMeta(); return; }
           if (apiMode) {
             tracks.sort(function (a, b) {
               return (order[a.name] !== undefined ? order[a.name] : 1e9) -
@@ -1673,6 +1680,14 @@
       var blog = mode === 'blog';
       document.documentElement.classList.toggle('using-blog-player', blog);
       try { localStorage.setItem('yhuoPlayerMode', blog ? 'blog' : 'mini'); } catch (e) {}
+      // 款式切换时停掉另一款的 audio：被藏起的播放器继续出声=「看不见的歌」，两边都点会双声
+      try {
+        if (blog) { if (audio && !audio.paused) audio.pause(); }
+        else {
+          var blogAudio = document.querySelector('[data-music-audio]');
+          if (blogAudio && !blogAudio.paused) blogAudio.pause();
+        }
+      } catch (e) {}
       if (!blog) return;
       if (blogPlayerInited) return;
       blogPlayerInited = true;
@@ -1826,7 +1841,7 @@
     function closeBgPicker() {
       bgPicker.classList.remove('show');
       setTimeout(function () {
-        bgPicker.hidden = true;
+        if (!bgPicker.classList.contains('show')) bgPicker.hidden = true;
       }, 250);
     }
 
@@ -1926,8 +1941,10 @@
     setInterval(renderUptime, 1000);
 
     // 访问计数：每个浏览器会话只计一次（Cloudflare 部署时可用，失败静默）；带当前页面路径供后台记录访问明细
-    if (!sessionStorage.getItem('visitCounted')) {
-      sessionStorage.setItem('visitCounted', '1');
+    var _visitCounted = null;
+    try { _visitCounted = sessionStorage.getItem('visitCounted'); } catch (e) {}
+    if (_visitCounted !== '1') {
+      try { sessionStorage.setItem('visitCounted', '1'); } catch (e) {}
       fetch('/api/visit', {
         method: 'POST',
         credentials: 'same-origin',
@@ -2061,14 +2078,14 @@
       document.body.classList.remove('login-lock');
       refreshLoginBadge();
       try { if (onGatePassedPageHook) onGatePassedPageHook(); } catch (e) {}
-      setTimeout(function () { loginGate.hidden = true; }, 450);
+      setTimeout(function () { if (!loginGate.classList.contains('show')) loginGate.hidden = true; }, 450);
     }
     function dismissGate() {
       // 误触/点空白关闭：不记身份、不清输入，重开时内容还在
       loginGate.classList.remove('show');
       loginGate.classList.add('hide');
       document.body.classList.remove('login-lock');
-      setTimeout(function () { loginGate.hidden = true; }, 450);
+      setTimeout(function () { if (!loginGate.classList.contains('show')) loginGate.hidden = true; }, 450);
     }
     // 顶栏登录按钮：悬停提示当前身份；真实登录显示主题色描边；
     // 有头像时显示圆形头像图，否则已登录显示首字徽章，未登录/游客显示人形图标
@@ -3575,7 +3592,7 @@
       function schedCloseEditor() {
         if (!schedEditor) return;
         schedEditor.classList.remove('show');
-        setTimeout(function () { schedEditor.hidden = true; }, 260);
+        setTimeout(function () { if (!schedEditor.classList.contains('show')) schedEditor.hidden = true; }, 260);
         schedEditIdx = -2;
         schedPreview = null;
         renderSchedGrid();
@@ -4026,7 +4043,7 @@
     function closeProfileView() {
       if (!profileView || profileView.hidden) return;
       profileView.classList.remove('show');
-      setTimeout(function () { profileView.hidden = true; }, 260);
+      setTimeout(function () { if (!profileView.classList.contains('show')) profileView.hidden = true; }, 260);
     }
 
     if (profileViewClose) profileViewClose.addEventListener('click', closeProfileView);
@@ -4345,7 +4362,7 @@
     function closeWeatherPicker() {
       if (!weatherPicker || weatherPicker.hidden) return;
       weatherPicker.classList.remove('show');
-      setTimeout(function () { weatherPicker.hidden = true; }, 220);
+      setTimeout(function () { if (!weatherPicker.classList.contains('show')) weatherPicker.hidden = true; }, 220);
     }
 
     function applyCity(loc) {
@@ -4423,6 +4440,7 @@
                   });
                 }
               });
+              if (weatherSearch.value.trim() !== q) return; // 请求在飞时用户已改词/清空：丢弃过期结果
               searchLocalCities(q).forEach(function (c) {
                 if (!seen[c.name]) merged.push(c);
               });
@@ -5085,12 +5103,12 @@
     // **粗** *斜* `行内码` [链接](url) ![图](url)；不支持的语法原样显示
     function mdToHtml(src) {
       var esc = function (s) {
-        return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
       };
       var inline = function (s) {
         return s
-          .replace(/!\[([^\]]*)\]\(([^)\s]+)\)/g, '<img src="$2" alt="$1">')
-          .replace(/\[([^\]]+)\]\(([^)\s]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>')
+          .replace(/!\[([^\]]*)\]\(([^\s)"']+)\)/g, '<img src="$2" alt="$1">')
+          .replace(/\[([^\]]+)\]\(([^\s)"']+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>')
           .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
           .replace(/(^|[^*])\*([^*]+)\*/g, '$1<em>$2</em>')
           .replace(/`([^`]+)`/g, '<code>$1</code>');
@@ -5226,7 +5244,7 @@
     function closeDocViewer() {
       if (!docViewer || docViewer.hidden) return;
       docViewer.classList.remove('show');
-      setTimeout(function () { docViewer.hidden = true; }, 260);
+      setTimeout(function () { if (!docViewer.classList.contains('show')) docViewer.hidden = true; }, 260);
     }
 
     var docViewerClose = document.getElementById('docViewerClose');
@@ -5906,7 +5924,7 @@
         return pump();
       }).catch(function (e) {
         if (e && e.aiAuth) { aiFail(messages, pending, '登录状态已过期，请重新登录后再聊'); openGate(); return; }
-        if (e && e.name === 'AbortError') return; // 关闭界面/新对话主动中断，不提示
+        if (e && e.name === 'AbortError') { aiStopBusy(); return; } // 主动中断不提示，但必须复位 aiBusy，否则重进 AI 页发送被静默拦截
         if (e && e.aiError) { aiFail(messages, pending, e.aiError); return; }
         if (!finished) aiFail(messages, pending, '网络错误，请稍后再试');
       });
@@ -6573,7 +6591,7 @@
     var PAGE_MODULES = {
       home: {
         init: function () { startHomeClock(); startHomeQuote(); startHomeVideo(); startHomeWeather(); lyricRebind(); },
-        destroy: function () { stopHomeClock(); destroyHomeQuote(); }
+        destroy: function () { stopHomeClock(); destroyHomeQuote(); clearInterval(lyricTypeTimer); lyricTypeTimer = null; }
       },
       tools: {
         init: function () { initToolsPage(); },
@@ -6625,6 +6643,7 @@
     function closeAllTransientOverlays() {
       // 换页时收起外壳上的临时浮层（不随 <main> 换页重置）
       try { setNavDrawer(false); } catch (e) {}
+      try { if (window.__blogPlayerClosePanel) window.__blogPlayerClosePanel(); } catch (e) {}
       try { closeProfileView(); } catch (e) {}
       try { closeDocViewer(); } catch (e) {}
       try { closeWeatherPicker(); } catch (e) {}

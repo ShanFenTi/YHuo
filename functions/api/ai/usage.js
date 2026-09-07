@@ -27,6 +27,15 @@ export async function onRequestPost({ request, env }) {
   }
   if (!user && !isAdmin) return json({ ok: false, error: 'login' }, 401);
 
+  // 每身份每小时上报次数上限：防登录态灌水刷统计与 D1 写配额
+  const who = user ? 'u' + user.id : 'admin';
+  const hourKey = 'aiusage:' + who + ':' + new Date().toISOString().slice(0, 13);
+  const capRow = await env.DB.prepare('SELECT fails FROM login_throttle WHERE key = ?').bind(hourKey).first();
+  if (capRow && capRow.fails >= 120) return json({ ok: false, error: 'too many' }, 429);
+  await env.DB.prepare(
+    'INSERT INTO login_throttle (key, fails, last_fail) VALUES (?, 1, ?) ON CONFLICT(key) DO UPDATE SET fails = fails + 1, last_fail = excluded.last_fail'
+  ).bind(hourKey, new Date().toISOString()).run();
+
   let body;
   try {
     body = await request.json();

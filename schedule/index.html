@@ -261,14 +261,14 @@
   <div class="sched-editor-overlay" id="schedEditor" hidden role="dialog" aria-modal="true" aria-label="编辑课程">
     <div class="sched-editor-panel">
       <p class="sched-editor-title" id="schedEditorTitle">添加课程</p>
-      <input class="profilev-input" id="schedEName" type="text" placeholder="课程名（必填）">
+      <input class="profilev-input" id="schedEName" type="text" placeholder="课程名（必填）" aria-label="课程名（必填）">
       <div class="sched-editor-row">
-        <input class="profilev-input" id="schedEPlace" type="text" placeholder="教室">
-        <input class="profilev-input" id="schedETeacher" type="text" placeholder="教师">
+        <input class="profilev-input" id="schedEPlace" type="text" placeholder="教室" aria-label="教室">
+        <input class="profilev-input" id="schedETeacher" type="text" placeholder="教师" aria-label="教师">
       </div>
       <!-- 周几：胶囊点选（隐藏原生 select，保留无障碍） -->
       <div class="sched-field-label">星期</div>
-      <div class="sched-pill-row" id="schedEDayPills" role="radiogroup" aria-label="星期">
+      <div class="sched-pill-row" id="schedEDayPills" role="group" aria-label="星期">
         <button type="button" class="sched-pill" data-v="1">一</button>
         <button type="button" class="sched-pill" data-v="2">二</button>
         <button type="button" class="sched-pill" data-v="3">三</button>
@@ -279,9 +279,9 @@
       </div>
       <!-- 节次：起止胶囊点选 -->
       <div class="sched-field-label">节次 <span class="sched-field-sub" id="schedENodeHint"></span></div>
-      <div class="sched-pill-row sched-pill-dense" id="schedEStartPills" role="radiogroup" aria-label="开始节次"></div>
+      <div class="sched-pill-row sched-pill-dense" id="schedEStartPills" role="group" aria-label="开始节次"></div>
       <div class="sched-field-label sched-field-sub-label">到</div>
-      <div class="sched-pill-row sched-pill-dense" id="schedEEndPills" role="radiogroup" aria-label="结束节次"></div>
+      <div class="sched-pill-row sched-pill-dense" id="schedEEndPills" role="group" aria-label="结束节次"></div>
       <!-- 周次：快选胶囊 + 自定义输入 -->
       <div class="sched-field-label">周次</div>
       <div class="sched-pill-row" id="schedEWeekQuick">
@@ -291,7 +291,7 @@
         <button type="button" class="sched-pill" data-w="1-8">前半</button>
         <button type="button" class="sched-pill" data-w="9-16">后半</button>
       </div>
-      <input class="profilev-input" id="schedEWeeks" type="text" placeholder="或自定义，如 1-16 / 1,3,5 / 1-16(单)">
+      <input class="profilev-input" id="schedEWeeks" type="text" placeholder="或自定义，如 1-16 / 1,3,5 / 1-16(单)" aria-label="或自定义，如 1-16 / 1,3,5 / 1-16(单)">
       <div class="sched-editor-row">
         <label class="sched-inline"><input type="checkbox" id="schedERemind"> 重点课（课前单独邮件提醒）</label>
       </div>
@@ -457,7 +457,7 @@
                 <button class="appear-btn" id="profilevNameEdit" type="button" style="flex:none;">改昵称</button>
               </div>
               <div id="profilevNameEditBox" hidden>
-                <input class="profilev-input" id="profilevNameInput" type="text" maxlength="20" placeholder="昵称（1~20 字，留空 = 恢复显示用户名）" style="max-width:280px;margin-bottom:6px;">
+                <input class="profilev-input" id="profilevNameInput" type="text" maxlength="20" placeholder="昵称（1~20 字，留空 = 恢复显示用户名）" style="max-width:280px;margin-bottom:6px;" aria-label="昵称（1~20 字，留空 = 恢复显示用户名）">
                 <div style="display:flex;gap:12px;">
                   <button class="appear-btn" id="profilevNameSave" type="button">保存</button>
                   <button class="appear-btn" id="profilevNameCancel" type="button">取消</button>
@@ -499,9 +499,9 @@
               <p class="profile-hint" style="margin-top:10px;">开启二次验证后，每次登录需额外输入邮箱验证码。</p>
             </div>
             <div id="emailBindView" style="display:none">
-              <input class="profilev-input" id="pemailInput" type="email" placeholder="新邮箱地址">
+              <input class="profilev-input" id="pemailInput" type="email" placeholder="新邮箱地址" aria-label="新邮箱地址">
               <div class="pwd-out-row" style="display:flex;gap:8px;align-items:center;margin-bottom:10px;">
-                <input class="profilev-input" id="pemailCode" type="text" inputmode="numeric" maxlength="6" placeholder="验证码" style="margin-bottom:0;">
+                <input class="profilev-input" id="pemailCode" type="text" inputmode="numeric" maxlength="6" placeholder="验证码" style="margin-bottom:0;" aria-label="验证码">
                 <button class="appear-btn" id="pemailSendBtn" type="button" style="white-space:nowrap;">发送验证码</button>
               </div>
               <button class="appear-btn" id="pemailVerifyBtn" type="button">验证并绑定</button>
@@ -596,7 +596,7 @@
   <div class="weather-picker" id="weatherPicker" hidden role="dialog" aria-modal="true" aria-label="选择城市">
     <div class="weather-picker-panel">
       <p class="weather-picker-title">选择城市</p>
-      <input class="profilev-input" id="weatherSearch" type="text" placeholder="输入城市名，如 上海、东京、Paris" autocomplete="off">
+      <input class="profilev-input" id="weatherSearch" type="text" placeholder="输入城市名，如 上海、东京、Paris" autocomplete="off" aria-label="输入城市名，如 上海、东京、Paris">
       <ul class="weather-results" id="weatherResults"></ul>
       <p class="empty-hint" id="weatherResultsEmpty" hidden>没有找到匹配的城市。</p>
       <div class="weather-picker-foot">

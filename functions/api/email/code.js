@@ -24,6 +24,12 @@ export async function onRequestPost({ request, env }) {
   if (!purpose) return json({ ok: false, error: '无效的验证码用途' }, 400);
   if (!isEmailAddr(email)) return json({ ok: false, error: '邮箱格式不正确' }, 400);
 
+  // 单 IP 每小时签发上限：防匿名批量请求烧穿邮件日配额（配额耗尽会连带 2FA 登录发码失败锁死管理员）
+  const ip = request.headers.get('CF-Connecting-IP') || 'unknown';
+  const ipHourKey = 'emailcode:' + ip + ':' + new Date().toISOString().slice(0, 13);
+  const ipCapRow = await env.DB.prepare('SELECT fails FROM login_throttle WHERE key = ?').bind(ipHourKey).first();
+  if (ipCapRow && ipCapRow.fails >= 8) return json({ ok: false, error: '验证码请求过于频繁，请一小时后再试' }, 429);
+
   // 管理员重置：只发绑定的管理员邮箱（存 site_settings 'admin_email'）
   if (purpose === 'admin-reset') {
     const row = await env.DB.prepare("SELECT value FROM site_settings WHERE key = 'admin_email'").first();
@@ -50,5 +56,8 @@ export async function onRequestPost({ request, env }) {
   } catch (e) {
     return json({ ok: false, error: (e && e.message) || '发送失败' }, 429);
   }
+  await env.DB.prepare(
+    'INSERT INTO login_throttle (key, fails, last_fail) VALUES (?, 1, ?) ON CONFLICT(key) DO UPDATE SET fails = fails + 1, last_fail = excluded.last_fail'
+  ).bind(ipHourKey, new Date().toISOString()).run();
   return json({ ok: true });
 }

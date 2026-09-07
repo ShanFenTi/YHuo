@@ -4910,6 +4910,8 @@
 
     @media ((width <= 520px)){
     .music-player { right: max(.75rem, env(safe-area-inset-right,0px)); bottom: max(.75rem, env(safe-area-inset-bottom,0px)); }
+    /* 避让右下角外观抽屉箭头（right 0~33px / bottom 16~76px、z 160 高于球 z 40）：博客款球整体上移 68px */
+    body.using-blog-player .music-player { bottom: calc(max(.75rem, env(safe-area-inset-bottom,0px)) + 68px); }
     }
 
     @media ((width <= 520px)){
@@ -5037,7 +5039,7 @@
     }
 
     @media ((width <= 859px)){
-    .music-player.is-open ~ .to-top, body:has(.music-player.is-open) .to-top { opacity: 0; pointer-events: none; }
+    .music-player.is-open ~ .back-top, body:has(.music-player.is-open) .back-top { opacity: 0; pointer-events: none; }
     }
 
     .music-player { view-transition-name: none !important; }
@@ -5681,8 +5683,6 @@
       transform: scale(0.96);
       transition-duration: 80ms;
     }
-
-    .nav-drawer-link:hover .nav-drawer-ico { color: var(--apple-foreground); }
 
     /* 当前项：主题色柔和底 + 主题色文字/图标（比反色黑块轻盈，与站点陶土色语言一致） */
     .nav-drawer-link.active {

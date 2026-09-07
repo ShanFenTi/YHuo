@@ -46,7 +46,7 @@ export async function onRequestPost({ request, env }) {
   if (file.size > MAX_SIZE) return json({ ok: false, error: '文件超过 24MB 上限（免费版存储单文件限制）' }, 413);
 
   const title = String(form.get('title') || '').trim().slice(0, 200) ||
-    (dot > -1 ? name.slice(0, dot) : name);
+    (dot > -1 ? name.slice(0, dot) : name).slice(0, 200);
   const album = String(form.get('album') || '').trim().slice(0, 50);
   const key = `${type}/${crypto.randomUUID()}.${ext}`;
   const mime = MIME[ext] || file.type || 'application/octet-stream';

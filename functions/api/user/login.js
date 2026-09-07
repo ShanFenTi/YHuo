@@ -71,6 +71,13 @@ export async function onRequestPost({ request, env }) {
 
   if (!username || !password) return json({ ok: false, error: '请输入用户名和密码' }, 400);
 
+  // 用户登录限速（与管理员分支同套 throttle）：此前普通用户登录可无限次在线试密码
+  const userThrottleKey = loginKey(request, 'userlogin', username);
+  const userLockedMin = await loginLockedFor(env, userThrottleKey);
+  if (userLockedMin > 0) {
+    return json({ ok: false, error: '尝试次数过多已锁定，请约 ' + userLockedMin + ' 分钟后再试' }, 429);
+  }
+
   const row = await env.DB
     .prepare('SELECT id, banned, password_hash, salt, email, email_verified, twofa_enabled, nickname FROM users WHERE username = ?')
     .bind(username)
@@ -80,6 +87,7 @@ export async function onRequestPost({ request, env }) {
     // 不存在的用户名也跑一次哈希在这里做不了，放到下面统一兜底；这里只处理存在的情况
     if (row.banned) return json({ ok: false, error: '该账号已被禁用，请联系管理员' }, 403);
     if (await verifyPassword(password, row.salt, row.password_hash)) {
+      await clearLoginFails(env, userThrottleKey);
       // 开了二次验证：发验证码 + 发票据，前端进入验证码步骤
       if (row.twofa_enabled && row.email_verified && row.email) {
         let t;
@@ -99,6 +107,7 @@ export async function onRequestPost({ request, env }) {
       const av = await env.DB.prepare('SELECT avatar_key FROM users WHERE id = ?').bind(row.id).first();
       return json({ ok: true, username, nickname: row.nickname || '', avatar: (av && av.avatar_key) || null }, 200, { 'Set-Cookie': userCookie(token) });
     }
+    await recordLoginFail(env, userThrottleKey);
     return json({ ok: false, error: '用户名或密码错误' }, 401);
   }
 

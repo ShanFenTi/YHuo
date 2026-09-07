@@ -18,17 +18,16 @@ export async function onRequestGet({ env }) {
       report.dbReadable = true;
       const n = await env.DB.prepare('SELECT COUNT(*) AS n FROM admin_users').first();
       report.tablesReady = true;
-      report.adminCount = n.n;
     } catch (e) {
-      report.dbError = String(e && e.message ? e.message : e).slice(0, 300);
+      report.tablesReady = false;
     }
   }
   if (report.media) {
     try {
-      const l = await env.MEDIA.list({ limit: 10 });
-      report.kvKeys = l.keys.map((k) => k.name);
+      await env.MEDIA.list({ limit: 1 });
+      report.mediaOk = true;
     } catch (e) {
-      report.kvError = String(e && e.message ? e.message : e).slice(0, 200);
+      report.mediaOk = false;
     }
   }
   return json(report, 200, { 'Cache-Control': 'no-store' });

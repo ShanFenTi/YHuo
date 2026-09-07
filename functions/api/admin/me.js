@@ -160,8 +160,12 @@ async function handleEmailAction(request, env) {
     return json({ ok: true, email });
   }
   if (action === 'email-remove') {
-    await env.DB.prepare("DELETE FROM site_settings WHERE key = 'admin_email'").run();
-    return json({ ok: true });
+    // 2FA 依赖已绑邮箱：解绑时必须同步关闭 2FA——否则登录端点会因查不到邮箱直接跳过验证码（fail-open 形同虚设）
+    await env.DB.batch([
+      env.DB.prepare("DELETE FROM site_settings WHERE key = 'admin_email'").run(),
+      env.DB.prepare("DELETE FROM site_settings WHERE key = 'admin_2fa'").run(),
+    ]);
+    return json({ ok: true, twofaDisabled: true });
   }
   return json({ ok: false, error: '未知操作' }, 400);
 }

@@ -169,7 +169,7 @@ export async function onRequestPut({ request, env }) {
 
   if (body.action === 'default') {
     const key = String(body.key || '').slice(0, 140);
-    const ok = providers.some((p) => p.models.includes(key.slice(p.name.length + 1)) && key.startsWith(p.name + '/'));
+    const ok = providers.some((p) => key.startsWith(p.name + '/') && p.models.some((m) => (typeof m === 'string' ? m : m && m.id) === key.slice(p.name.length + 1)));
     if (!ok) return json({ ok: false, error: '模型不存在' }, 404);
     await setSetting(env, 'ai_default', key);
     return json({ ok: true, default: key });

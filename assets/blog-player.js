@@ -458,9 +458,7 @@
         const state = root.dataset.musicMorphState;
         if (open && (state === 'open' || state === 'opening')) return;
         if (!open && (state === 'closed' || state === 'closing')) return;
-        // 移动端与设置/抽屉/灯箱互斥;桌面仅登记,并存行为保持冻结基线
-        if (open) window.__blogOverlayCoordinator?.request('music');
-        else window.__blogOverlayCoordinator?.release('music');
+        // 移动端互斥由 common.js closeAllTransientOverlays 经 __blogPlayerClosePanel 收起（换页/其他浮层打开时）
         if (!canMorph()) {
           settleOpenState(open, restoreFocus);
           return;
@@ -469,10 +467,10 @@
         else startCloseMorph(restoreFocus);
       };
 
-      // 注册关闭器:其他浮层打开时由协调器收起播放器
-      window.__blogOverlayCoordinator?.register('music', () => {
+      // 关闭器:common.js closeAllTransientOverlays（pjax 换页等）调用它收起播放器面板
+      window.__blogPlayerClosePanel = () => {
         if (root.classList.contains('is-open')) setOpen(false, false);
-      });
+      };
 
       const panelResizeObserver = new ResizeObserver(() => {
         if (root.classList.contains('is-open') && !root.classList.contains('is-dragging')) {
@@ -504,8 +502,9 @@
         image.src = source;
       };
 
-      cover?.addEventListener('error', () => { cover.hidden = true; });
-      dockCover?.addEventListener('error', () => { dockCover.hidden = true; });
+      // 失败时连 src 一起清掉：只 hidden 的话下次切回该曲 src 不变不触发重载，会复现空破图
+      cover?.addEventListener('error', () => { cover.hidden = true; cover.removeAttribute('src'); });
+      dockCover?.addEventListener('error', () => { dockCover.hidden = true; dockCover.removeAttribute('src'); });
 
       const updateMediaSession = (track) => {
         if (!('mediaSession' in navigator) || !('MediaMetadata' in window)) return;

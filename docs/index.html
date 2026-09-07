@@ -356,7 +356,7 @@
                 <button class="appear-btn" id="profilevNameEdit" type="button" style="flex:none;">改昵称</button>
               </div>
               <div id="profilevNameEditBox" hidden>
-                <input class="profilev-input" id="profilevNameInput" type="text" maxlength="20" placeholder="昵称（1~20 字，留空 = 恢复显示用户名）" style="max-width:280px;margin-bottom:6px;">
+                <input class="profilev-input" id="profilevNameInput" type="text" maxlength="20" placeholder="昵称（1~20 字，留空 = 恢复显示用户名）" style="max-width:280px;margin-bottom:6px;" aria-label="昵称（1~20 字，留空 = 恢复显示用户名）">
                 <div style="display:flex;gap:12px;">
                   <button class="appear-btn" id="profilevNameSave" type="button">保存</button>
                   <button class="appear-btn" id="profilevNameCancel" type="button">取消</button>
@@ -398,9 +398,9 @@
               <p class="profile-hint" style="margin-top:10px;">开启二次验证后，每次登录需额外输入邮箱验证码。</p>
             </div>
             <div id="emailBindView" style="display:none">
-              <input class="profilev-input" id="pemailInput" type="email" placeholder="新邮箱地址">
+              <input class="profilev-input" id="pemailInput" type="email" placeholder="新邮箱地址" aria-label="新邮箱地址">
               <div class="pwd-out-row" style="display:flex;gap:8px;align-items:center;margin-bottom:10px;">
-                <input class="profilev-input" id="pemailCode" type="text" inputmode="numeric" maxlength="6" placeholder="验证码" style="margin-bottom:0;">
+                <input class="profilev-input" id="pemailCode" type="text" inputmode="numeric" maxlength="6" placeholder="验证码" style="margin-bottom:0;" aria-label="验证码">
                 <button class="appear-btn" id="pemailSendBtn" type="button" style="white-space:nowrap;">发送验证码</button>
               </div>
               <button class="appear-btn" id="pemailVerifyBtn" type="button">验证并绑定</button>
@@ -495,7 +495,7 @@
   <div class="weather-picker" id="weatherPicker" hidden role="dialog" aria-modal="true" aria-label="选择城市">
     <div class="weather-picker-panel">
       <p class="weather-picker-title">选择城市</p>
-      <input class="profilev-input" id="weatherSearch" type="text" placeholder="输入城市名，如 上海、东京、Paris" autocomplete="off">
+      <input class="profilev-input" id="weatherSearch" type="text" placeholder="输入城市名，如 上海、东京、Paris" autocomplete="off" aria-label="输入城市名，如 上海、东京、Paris">
       <ul class="weather-results" id="weatherResults"></ul>
       <p class="empty-hint" id="weatherResultsEmpty" hidden>没有找到匹配的城市。</p>
       <div class="weather-picker-foot">

@@ -116,7 +116,7 @@ export async function onRequestPost({ request, env }) {
     try {
       const t = await upstream.text();
       try {
-        detail = extractUpstreamError(s.protocol, t) || t.slice(0, 200);
+        detail = extractUpstreamError(pick.protocol, t) || t.slice(0, 200);
       } catch {}
     } catch {}
     const friendly = /invalid|incorrect/i.test(detail) && /api key/i.test(detail)

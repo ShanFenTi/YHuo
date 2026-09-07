@@ -5672,4 +5672,6 @@
       .site-nav { display: none; }
       .nav-toggle { display: inline-flex; }
       .header-pill { gap: 6px; padding: 4px 6px 4px 8px; }
+      /* 胶囊占满行宽后没有 .site-nav 的 flex:1 撑开了（导航进抽屉）——动作组推到最右 */
+      .header-actions { margin-left: auto; }
     }

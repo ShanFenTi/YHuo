@@ -953,9 +953,8 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
   <div id="notesPanel" hidden>
     <p class="appear-label2" style="margin-top:0">随笔管理（前台 /notes/ 时间线；保存后访客刷新即生效）</p>
     <div class="card" style="margin-bottom:16px">
-      <p class="appear-label2" style="margin-top:0" id="noteFormTitle">新增随笔</p>
+      <p class="appear-label2" style="margin-top:0" id="noteFormTitle">新增随笔（日期自动取当天）</p>
       <div class="bgset-row">
-        <input type="date" id="noteDate" style="max-width:170px">
         <input type="text" id="noteMood" placeholder="天气 / 时段（可空，如 晴 / 雨 / 夜）" maxlength="12" style="max-width:210px">
       </div>
       <div class="bgset-row" style="margin-top:8px;align-items:flex-start">
@@ -4004,17 +4003,11 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
   var notesCache = [];
   var noteEditingId = 0;
 
-  function noteTodayStr() {
-    var d = new Date();
-    function p(x) { return (x < 10 ? '0' : '') + x; }
-    return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate());
-  }
   function noteFormMsg(text, err) { showMsg($('noteFormMsg'), text || '', err ? 'err' : ''); }
 
   function noteResetForm() {
     noteEditingId = 0;
-    $('noteFormTitle').textContent = '新增随笔';
-    $('noteDate').value = noteTodayStr();
+    $('noteFormTitle').textContent = '新增随笔（日期自动取当天）';
     $('noteMood').value = '';
     $('noteText').value = '';
     $('noteCancelEditBtn').hidden = true;
@@ -4072,8 +4065,7 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
       editBtn.innerHTML = ICO.pencil;
       editBtn.addEventListener('click', function () {
         noteEditingId = n.id;
-        $('noteFormTitle').textContent = '编辑随笔 · ' + n.date;
-        $('noteDate').value = n.date;
+        $('noteFormTitle').textContent = '编辑随笔 · ' + n.date + '（日期不变）';
         $('noteMood').value = n.mood || '';
         $('noteText').value = n.text || '';
         $('noteCancelEditBtn').hidden = false;
@@ -4114,14 +4106,13 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
   }
 
   $('noteSaveBtn').addEventListener('click', function () {
-    var date = $('noteDate').value.trim();
     var mood = $('noteMood').value.trim();
     var text = $('noteText').value.trim();
-    if (!/^\\d{4}-\\d{2}-\\d{2}$/.test(date)) { noteFormMsg('日期格式应为 YYYY-MM-DD', true); return; }
     if (!text) { noteFormMsg('正文不能为空', true); return; }
     if (text.length > 2000) { noteFormMsg('正文最长 2000 字（当前 ' + text.length + ' 字）', true); return; }
     var wasEdit = !!noteEditingId;
-    var payload = { action: wasEdit ? 'update' : 'create', id: noteEditingId, date: date, mood: mood, text: text };
+    // 日期前端不管：create 服务端自动取北京时间当天，update 保持原日期
+    var payload = { action: wasEdit ? 'update' : 'create', id: noteEditingId, mood: mood, text: text };
     var btn = this;
     btn.disabled = true;
     api('/api/admin/notes', {

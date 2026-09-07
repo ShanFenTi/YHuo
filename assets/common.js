@@ -6,6 +6,65 @@
     'use strict';
 
     // =========================
+    // 滚动模糊揭示（2026-09-07 接入参考博客站 04 号特效）：栏目卡片等进视口时从「模糊+下移」逐个清晰，
+    // 同批进入的按序 stagger（--reveal-delay，封顶 6 档），已揭示不重播。位置判断法（top < 94% 视口）
+    // 对快速滚动/锚点跳转/滚动恢复稳健：被跳过的内容直接出现不补播。CSS 在 site.css「滚动模糊揭示」段
+    //（:not(.is-revealed) 隐藏 + .is-revealed 播动画，fill 只用 backwards——坑 22 同源，both 会残留
+    // transform 改掉 fixed 后代包含块；也不用 transition，避免常驻覆盖卡片自身的 hover 过渡）。
+    // 门控类 fx-reveal 由 head 内联脚本打（无 JS / prefers-reduced-motion 不打，内容常显）；
+    // 目标限定 .page-main 内——外壳浮层（外观抽屉/个人主页/登录卡都是 .apple-card）不参与揭示。
+    // 放在最前：即使后面哪个模块抛错，揭示监听也已就位，不会出现内容永久隐藏
+    // =========================
+    window.__fxRevealBoot = true; // head 内联脚本 3 秒兜底的活口标记：本文件正常启动就不摘 fx-reveal 类
+    (function () {
+      var reduceMQ = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)');
+      if (!reduceMQ || reduceMQ.matches) return;
+      if (!document.documentElement.classList.contains('fx-reveal')) return;
+      var SEL = '.page-main :is(.album-bar, .apple-card, .tool-card, .tool-more, .doc-card, .note, .notes-year, .notes-lead)';
+      var targets = [];
+      var ticking = false;
+      function collect() {
+        targets = Array.prototype.slice.call(document.querySelectorAll(SEL));
+      }
+      function show() {
+        ticking = false;
+        var line = window.innerHeight * 0.94;
+        var batch = [];
+        for (var i = 0; i < targets.length; i++) {
+          var el = targets[i];
+          if (!el.classList.contains('is-revealed') && el.getBoundingClientRect().top < line) batch.push(el);
+        }
+        for (var j = 0; j < batch.length; j++) {
+          batch[j].style.setProperty('--reveal-delay', Math.min(j, 6) * 0.06 + 's');
+          batch[j].classList.add('is-revealed');
+        }
+      }
+      function queueShow() {
+        if (!ticking) {
+          ticking = true;
+          window.requestAnimationFrame(show);
+        }
+      }
+      collect();
+      show();
+      window.addEventListener('scroll', queueShow, { passive: true });
+      window.addEventListener('resize', queueShow, { passive: true });
+      window.addEventListener('load', queueShow);
+      // 动态内容防抖重扫：pjax 换页替换 main 内容、docs/notes/board 接口返回后插图，都从这里重新采集+揭示
+      var rescanTimer = 0;
+      if (typeof MutationObserver === 'function') {
+        var mainEl = document.querySelector('.page-main');
+        if (mainEl) {
+          var mo = new MutationObserver(function () {
+            clearTimeout(rescanTimer);
+            rescanTimer = setTimeout(function () { collect(); show(); }, 80);
+          });
+          mo.observe(mainEl, { childList: true, subtree: true });
+        }
+      }
+    })();
+
+    // =========================
     // DOM 引用
     // =========================
     var siteHeader = document.getElementById('siteHeader');

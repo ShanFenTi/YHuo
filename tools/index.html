@@ -106,6 +106,13 @@
       // 播放器样式首屏预切：上次是"悬浮播放器"就先挂 using-blog-player（藏迷你条），
       // 配置到达后由 applyPlayerMode 校正，防迷你条先闪一下再换
       if (localStorage.getItem('yhuoPlayerMode') === 'blog') _fc.add('using-blog-player');
+      // 滚动模糊揭示门控（common.js 顶部同名模块 / site.css「滚动模糊揭示」段）：JS 可用且未开启
+      // 「减少动态效果」才打 fx-reveal，CSS 只认这个类——无 JS 内容常显；common.js 启动会打
+      // __fxRevealBoot 标记，3 秒没等到就摘类兜底放行（防脚本加载失败把内容永远藏住）
+      if (window.matchMedia && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
+        _fc.add('fx-reveal');
+        setTimeout(function () { if (!window.__fxRevealBoot) _fc.remove('fx-reveal'); }, 3000);
+      }
       setTimeout(function () { _fc.remove('ff-boot-hide', 'ff-ai-boot-hide'); }, 3000); // 兜底：接口无响应也放行
     } catch (e) {}
   </script>

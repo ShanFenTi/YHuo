@@ -5457,3 +5457,38 @@
       border-left: 3px solid color-mix(in srgb, var(--primary) 45%, transparent);
       color: var(--apple-muted-foreground);
     }
+
+    /* =========================
+       滚动模糊揭示（2026-09-07 接入参考博客站 04 号特效：内容进视口从模糊+下移逐个清晰，见 common.js 顶部同名模块）
+       门控：head 内联脚本在 JS 可用且未开启「减少动态效果」时给 <html> 打 fx-reveal 类——
+       无 JS / 减少动态效果时本段整体不命中，内容常显（禁 JS 页面可读性优先）。
+       目标限定 .page-main 内：外壳浮层（外观抽屉/个人主页/登录卡都是 .apple-card）绝不参与揭示。
+       用动画不用过渡：过渡规则会常驻压过卡片自身的 hover 过渡；动画 fill 只用 backwards
+       （both 会把 transform 残留在已揭示元素上，改掉 fixed 后代的包含块——坑 22 同源）。
+       与 JS 的选择器清单保持同步：album-bar/apple-card/tool-card/tool-more/doc-card/note/notes-year/notes-lead
+       ========================= */
+    @media (prefers-reduced-motion: no-preference) {
+      html.fx-reveal .page-main :is(.album-bar, .apple-card, .tool-card, .tool-more, .doc-card, .note, .notes-year, .notes-lead):not(.is-revealed) {
+        opacity: 0;
+        transform: translateY(1.25rem);
+        filter: blur(10px);
+      }
+
+      html.fx-reveal .page-main :is(.album-bar, .apple-card, .tool-card, .tool-more, .doc-card, .note, .notes-year, .notes-lead).is-revealed {
+        animation: fx-reveal-in 0.6s var(--ease-out) var(--reveal-delay, 0s) backwards;
+      }
+    }
+
+    @keyframes fx-reveal-in {
+      from {
+        opacity: 0;
+        transform: translateY(1.25rem);
+        filter: blur(10px);
+      }
+
+      to {
+        opacity: 1;
+        transform: none;
+        filter: blur(0);
+      }
+    }

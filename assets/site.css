@@ -5559,7 +5559,7 @@
       bottom: 0;
       left: 0;
       z-index: 310;
-      width: min(80vw, 320px);
+      width: min(75vw, 292px);
       display: flex;
       flex-direction: column;
       padding: 16px 12px 12px;
@@ -5665,6 +5665,31 @@
     }
 
     .nav-drawer-link.active .nav-drawer-ico { color: var(--apple-primary); }
+
+    /* 行尾导航箭头：锚住行的右缘（文字 flex:1 顶开），行不再右半空着 */
+    .nav-drawer-chev {
+      margin-left: auto;
+      flex: none;
+      color: var(--apple-muted-foreground);
+      opacity: 0.6;
+      transition: color 180ms var(--ease-out), opacity 180ms var(--ease-out), transform 180ms var(--ease-out);
+    }
+
+    .nav-drawer-link:hover .nav-drawer-chev {
+      color: var(--apple-foreground);
+      opacity: 1;
+      transform: translateX(2px);
+    }
+
+    /* 抽屉底部品牌落款：margin-top:auto 沉底，填充列表下方的竖向空白 */
+    .nav-drawer-foot {
+      margin-top: auto;
+      padding: 12px 8px 2px;
+      font-size: 11px;
+      letter-spacing: 0.08em;
+      color: var(--apple-muted-foreground);
+      border-top: 1px solid var(--apple-border);
+    }
 
     /* 开抽屉时条目从左级联滑入：只靠 keyframes from 隐藏 + fill backwards 盖住延迟期，
        不设 opacity:0 基准态——backwards 动画结束后回基准样式，基准若隐藏条目会永远隐形（踩过已修） */

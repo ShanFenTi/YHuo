@@ -4115,19 +4115,16 @@
       }
     }
 
-    /* 小屏手机 (≤480px)：藏 logo 省空间，导航继续横滑 */
+    /* 小屏手机 (≤480px)：胶囊收紧。导航已进抽屉（≤900px 汉堡模式，见文件末尾「窄屏导航抽屉」段），
+       胶囊里只剩 汉堡+logo+动作钮，logo 放得下不再隐藏 */
     @media (max-width: 480px) {
       .site-header {
         padding: 6px 6px 0;
       }
 
       .header-pill {
-        padding: 4px 4px 4px 10px;
+        padding: 4px 4px 4px 8px;
         gap: 4px;
-      }
-
-      .logo {
-        display: none;
       }
 
       .header-actions {
@@ -5491,4 +5488,188 @@
         transform: none;
         filter: blur(0);
       }
+    }
+
+    /* =========================
+       滚动模糊揭示 · 文档阅读层（2026-09-07 补，用户要求「关于界面的更新日志什么的也加上」）：
+       docViewer 是外壳浮层不在 .page-main 内，单独一档——mdToHtml 顶层块 + 更新日志时间轴按天（.cl-day）
+       逐块揭示；采集/滚动监听（.doc-scroll 内部滚动）/openDoc 注入重扫都在 common.js 顶部揭示模块。
+       .cl-timeline 本身不参与（避免与 .cl-day 嵌套双重动画）
+       ========================= */
+    @media (prefers-reduced-motion: no-preference) {
+      html.fx-reveal #docArticle > :is(h1, h2, h3, h4, h5, h6, p, ul, ol, pre, blockquote, table, img, hr, div:not(.cl-timeline)):not(.is-revealed),
+      html.fx-reveal #docArticle .cl-day:not(.is-revealed) {
+        opacity: 0;
+        transform: translateY(1.25rem);
+        filter: blur(10px);
+      }
+
+      html.fx-reveal #docArticle > :is(h1, h2, h3, h4, h5, h6, p, ul, ol, pre, blockquote, table, img, hr, div:not(.cl-timeline)).is-revealed,
+      html.fx-reveal #docArticle .cl-day.is-revealed {
+        animation: fx-reveal-in 0.6s var(--ease-out) var(--reveal-delay, 0s) backwards;
+      }
+    }
+
+    /* =========================
+       窄屏导航抽屉（2026-09-07 起，对齐后台「汉堡+抽屉」窄屏模式，断点同为 900px，两种导航自由适配）：
+       >900px 维持悬浮胶囊导航（汉堡/抽屉不可见）；≤900px 胶囊收窄为 汉堡+logo+动作钮，导航项进左侧抽屉。
+       抽屉/遮罩常驻 DOM，开关走 body.nav-drawer-open 类 + transition（visibility 延迟切换保住收起动画），
+       状态由 common.js「窄屏导航抽屉」块管理；pjax 换页经 closeAllTransientOverlays 收起
+       ========================= */
+    .nav-toggle {
+      display: none;
+      align-items: center;
+      justify-content: center;
+      flex: none;
+      width: 34px;
+      height: 34px;
+      border: none;
+      border-radius: 999px;
+      background: none;
+      color: var(--apple-foreground);
+      cursor: pointer;
+      transition: background-color 180ms var(--ease-out);
+    }
+
+    .nav-toggle:hover { background: var(--apple-secondary); }
+
+    .nav-drawer-mask {
+      position: fixed;
+      inset: 0;
+      z-index: 300;
+      background: rgba(0, 0, 0, 0.4);
+      backdrop-filter: blur(2px);
+      -webkit-backdrop-filter: blur(2px);
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+      transition: opacity 280ms var(--ease-out), visibility 0s linear 280ms;
+    }
+
+    body.nav-drawer-open .nav-drawer-mask {
+      opacity: 1;
+      visibility: visible;
+      pointer-events: auto;
+      transition: opacity 280ms var(--ease-out);
+    }
+
+    .nav-drawer {
+      position: fixed;
+      top: 0;
+      bottom: 0;
+      left: 0;
+      z-index: 310;
+      width: min(78vw, 300px);
+      display: flex;
+      flex-direction: column;
+      padding: 14px 12px;
+      border-radius: 0 22px 22px 0;
+      background: rgba(255, 255, 255, 0.86);
+      -webkit-backdrop-filter: saturate(1.8) blur(22px);
+      backdrop-filter: saturate(1.8) blur(22px);
+      border: 1px solid rgba(255, 255, 255, 0.55);
+      border-left: none;
+      box-shadow: 0 12px 40px rgba(0, 0, 0, 0.18);
+      transform: translateX(-105%);
+      visibility: hidden;
+      transition: transform 320ms var(--ease-out), visibility 0s linear 320ms;
+    }
+
+    .dark .nav-drawer {
+      background: rgba(30, 30, 32, 0.86);
+      border-color: rgba(255, 255, 255, 0.1);
+      box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
+    }
+
+    body.nav-drawer-open .nav-drawer {
+      transform: none;
+      visibility: visible;
+      transition: transform 320ms var(--ease-out);
+    }
+
+    /* 抽屉开着锁背景滚动（登录卡 login-lock 同款机制） */
+    body.nav-drawer-open { overflow: hidden; }
+
+    .nav-drawer-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 2px 6px 12px;
+      border-bottom: 1px solid var(--apple-border);
+      margin-bottom: 10px;
+    }
+
+    .nav-drawer-logo {
+      font-size: 14px;
+      font-weight: 700;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      color: var(--apple-foreground);
+    }
+
+    .nav-drawer-close {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 34px;
+      height: 34px;
+      border: none;
+      border-radius: 999px;
+      background: none;
+      color: var(--apple-foreground);
+      cursor: pointer;
+      transition: background-color 180ms var(--ease-out);
+    }
+
+    .nav-drawer-close:hover { background: var(--apple-secondary); }
+
+    .nav-drawer-links {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      overflow-y: auto;
+    }
+
+    .nav-drawer-link {
+      display: flex;
+      align-items: center;
+      height: 44px;
+      padding: 0 16px;
+      border-radius: 14px;
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--apple-foreground);
+      text-decoration: none;
+      transition: background-color 180ms var(--ease-out), color 180ms var(--ease-out);
+    }
+
+    .nav-drawer-link:hover { background: var(--apple-secondary); }
+
+    /* 当前项：与胶囊导航同款反色 chip */
+    .nav-drawer-link.active {
+      background: var(--apple-foreground);
+      color: var(--apple-background);
+      font-weight: 600;
+    }
+
+    .nav-toggle:focus-visible,
+    .nav-drawer-close:focus-visible,
+    .nav-drawer-link:focus-visible {
+      outline: 2px solid var(--apple-ring);
+      outline-offset: 2px;
+    }
+
+    /* 功能开关：抽屉项与胶囊导航项（#toolsBtn 等按 id）同口径隐藏 */
+    .ff-tools-off .nav-drawer-link[data-target="tools"],
+    .ff-docs-off .nav-drawer-link[data-target="docs"],
+    .ff-ai-off .nav-drawer-link[data-target="ai"],
+    .ff-boot-hide .nav-drawer-link[data-target="tools"],
+    .ff-boot-hide .nav-drawer-link[data-target="docs"],
+    .ff-ai-boot-hide .nav-drawer-link[data-target="ai"] { display: none !important; }
+
+    /* ≤900px（与后台窄屏同断点）：导航项进抽屉，胶囊收窄为 汉堡+logo+动作钮 */
+    @media (max-width: 900px) {
+      .site-nav { display: none; }
+      .nav-toggle { display: inline-flex; }
+      .header-pill { gap: 6px; padding: 4px 6px 4px 8px; }
     }

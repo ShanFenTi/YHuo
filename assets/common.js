@@ -21,22 +21,33 @@
       if (!reduceMQ || reduceMQ.matches) return;
       if (!document.documentElement.classList.contains('fx-reveal')) return;
       var SEL = '.page-main :is(.album-bar, .apple-card, .tool-card, .tool-more, .doc-card, .note, .notes-year, .notes-lead)';
+      // 文档阅读层（docViewer 是外壳浮层，不在 .page-main 内，单独一档）：mdToHtml 的顶层块 +
+      // 更新日志时间轴按天（.cl-day）逐块揭示；只在阅读层开着时采集（关着 display:none 量到 0 会全部被误判已入视口）
+      var SEL_DOC = '#docArticle > :is(h1,h2,h3,h4,h5,h6,p,ul,ol,pre,blockquote,table,img,div:not(.cl-timeline)), #docArticle .cl-day';
       var targets = [];
+      var docTargets = [];
       var ticking = false;
       function collect() {
         targets = Array.prototype.slice.call(document.querySelectorAll(SEL));
+        var viewer = document.getElementById('docViewer');
+        docTargets = (viewer && !viewer.hidden) ? Array.prototype.slice.call(document.querySelectorAll(SEL_DOC)) : [];
       }
       function show() {
         ticking = false;
         var line = window.innerHeight * 0.94;
         var batch = [];
-        for (var i = 0; i < targets.length; i++) {
-          var el = targets[i];
+        var i, el;
+        for (i = 0; i < targets.length; i++) {
+          el = targets[i];
           if (!el.classList.contains('is-revealed') && el.getBoundingClientRect().top < line) batch.push(el);
         }
-        for (var j = 0; j < batch.length; j++) {
-          batch[j].style.setProperty('--reveal-delay', Math.min(j, 6) * 0.06 + 's');
-          batch[j].classList.add('is-revealed');
+        for (i = 0; i < docTargets.length; i++) {
+          el = docTargets[i];
+          if (!el.classList.contains('is-revealed') && el.getBoundingClientRect().top < line) batch.push(el);
+        }
+        for (i = 0; i < batch.length; i++) {
+          batch[i].style.setProperty('--reveal-delay', Math.min(i, 6) * 0.06 + 's');
+          batch[i].classList.add('is-revealed');
         }
       }
       function queueShow() {
@@ -50,17 +61,21 @@
       window.addEventListener('scroll', queueShow, { passive: true });
       window.addEventListener('resize', queueShow, { passive: true });
       window.addEventListener('load', queueShow);
-      // 动态内容防抖重扫：pjax 换页替换 main 内容、docs/notes/board 接口返回后插图，都从这里重新采集+揭示
+      // 阅读层是内部容器滚动（.doc-scroll），window scroll 收不到，单独挂
+      var docScrollEl = document.querySelector('#docViewer .doc-scroll');
+      if (docScrollEl) docScrollEl.addEventListener('scroll', queueShow, { passive: true });
+      // 动态内容防抖重扫：pjax 换页替换 main 内容、docs/notes/board 接口返回后插图、阅读层 openDoc 注入正文，
+      // 都从这里重新采集+揭示
       var rescanTimer = 0;
       if (typeof MutationObserver === 'function') {
         var mainEl = document.querySelector('.page-main');
-        if (mainEl) {
-          var mo = new MutationObserver(function () {
-            clearTimeout(rescanTimer);
-            rescanTimer = setTimeout(function () { collect(); show(); }, 80);
-          });
-          mo.observe(mainEl, { childList: true, subtree: true });
-        }
+        var docViewerEl = document.getElementById('docViewer');
+        var mo = new MutationObserver(function () {
+          clearTimeout(rescanTimer);
+          rescanTimer = setTimeout(function () { collect(); show(); }, 80);
+        });
+        if (mainEl) mo.observe(mainEl, { childList: true, subtree: true });
+        if (docViewerEl) mo.observe(docViewerEl, { childList: true, subtree: true });
       }
     })();
 
@@ -2106,6 +2121,48 @@
           openGate();
         }
       });
+    }
+
+    // =========================
+    // 窄屏导航抽屉（2026-09-07 起，对齐后台窄屏「汉堡+抽屉」模式）：≤900px 胶囊里藏导航项、汉堡唤出
+    // 左侧抽屉；点遮罩/✕/选中任一项/Esc 收起，pjax 换页经 closeAllTransientOverlays 收起；>900px 纯 CSS
+    // 藏汉堡与抽屉（不可用），跨过断点时经 matchMedia 复位状态——两种导航自由适配。抽屉项用 data-target
+    // 高亮（applyNavActive 同步），功能开关用 .nav-drawer-link[data-target] 同口径隐藏（见 site.css）
+    // =========================
+    var navToggle = document.getElementById('navToggle');
+    var navDrawer = document.getElementById('navDrawer');
+    var navDrawerMask = document.getElementById('navDrawerMask');
+    var drawerNavLinks = Array.prototype.slice.call(document.querySelectorAll('.nav-drawer-link'));
+    function isNavDrawerOpen() { return document.body.classList.contains('nav-drawer-open'); }
+    function setNavDrawer(open) {
+      if (!navDrawer || !navDrawerMask || !navToggle) return;
+      if (open === isNavDrawerOpen()) return;
+      document.body.classList.toggle('nav-drawer-open', open);
+      navDrawer.setAttribute('aria-hidden', String(!open));
+      navToggle.setAttribute('aria-expanded', String(open));
+    }
+    if (navToggle && navDrawer && navDrawerMask) {
+      navToggle.addEventListener('click', function (e) {
+        e.stopPropagation();
+        setNavDrawer(!isNavDrawerOpen());
+      });
+      navDrawerMask.addEventListener('click', function () { setNavDrawer(false); });
+      var navDrawerCloseBtn = document.getElementById('navDrawerClose');
+      if (navDrawerCloseBtn) navDrawerCloseBtn.addEventListener('click', function () { setNavDrawer(false); });
+      // 选中任一项：放行默认跳转（pjax/整页兜底都会走到），这里只收抽屉
+      navDrawer.addEventListener('click', function (e) {
+        if (e.target && e.target.closest && e.target.closest('.nav-drawer-link')) setNavDrawer(false);
+      });
+      document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape' && isNavDrawerOpen()) setNavDrawer(false);
+      });
+      // 跨回宽屏：复位抽屉状态（CSS 同时藏抽屉与汉堡）
+      if (window.matchMedia) {
+        var navDrawerMQ = window.matchMedia('(max-width: 900px)');
+        var onNavDrawerMQ = function (m) { if (!m.matches) setNavDrawer(false); };
+        if (navDrawerMQ.addEventListener) navDrawerMQ.addEventListener('change', onNavDrawerMQ);
+        else if (navDrawerMQ.addListener) navDrawerMQ.addListener(onNavDrawerMQ);
+      }
     }
     if (loginGate) {
       if (gatePassed()) {
@@ -6545,9 +6602,17 @@
         if (on) a.setAttribute('aria-current', 'page');
         else a.removeAttribute('aria-current');
       });
+      // 窄屏抽屉导航项同步高亮（data-target 直接对 key）
+      drawerNavLinks.forEach(function (a) {
+        var on = a.getAttribute('data-target') === key;
+        a.classList.toggle('active', on);
+        if (on) a.setAttribute('aria-current', 'page');
+        else a.removeAttribute('aria-current');
+      });
     }
     function closeAllTransientOverlays() {
       // 换页时收起外壳上的临时浮层（不随 <main> 换页重置）
+      try { setNavDrawer(false); } catch (e) {}
       try { closeProfileView(); } catch (e) {}
       try { closeDocViewer(); } catch (e) {}
       try { closeWeatherPicker(); } catch (e) {}

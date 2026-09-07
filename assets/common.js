@@ -2053,22 +2053,20 @@
         loginGate.classList.add('hide');
         loginGate.hidden = true;
       } else {
-        // 首次到访：先问服务器有没有仍然有效的会话（Cookie 30 天），
-        // 有就静默放行，没有再浮出登录卡片
-        document.body.classList.add('login-lock');
-        restoreLoginDraft();
-        var showGateLater = function () {
-          setTimeout(function () { loginGate.classList.add('show'); }, 300);
-        };
+        // 首次到访不弹登录卡（2026-09-07 用户要求）：先静默问服务器有没有仍然有效的会话
+        //（Cookie 30 天），有就静默恢复登录态；没有/失败都保持匿名浏览，
+        // 点顶栏头像或做需登录的动作（留言/收藏/AI 发送/课表页）时才弹出登录卡
+        loginGate.classList.add('hide');
+        loginGate.hidden = true;
         fetch('/api/user/me', { credentials: 'same-origin' })
           .then(function (r) { return r.ok ? r.json() : null; })
           .then(function (d) {
             if (d && d.ok && d.authenticated && d.username) {
               setLoginAvatar(d.avatar || null); // 恢复登录态时同步头像
               passGate(d.username);
-            } else showGateLater();
+            }
           })
-          .catch(showGateLater);
+          .catch(function () {});
       }
       // 点空白遮罩关闭：内容保留，可随时从右上角按钮重开
       loginGate.addEventListener('click', function (e) {

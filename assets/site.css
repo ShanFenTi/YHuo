@@ -268,10 +268,18 @@
     body.pjax-loading main.page-main,
     body.pjax-loading .site-footer { opacity: 0.55; }
 
+    /* 换页入场（2026-09-07 用户反馈"加载好了切换太生硬、像突然出现"）：新内容就位后 main 整体淡入，
+       统一覆盖八页（原 pageFade 只盖 tools/docs/board/ai 四页且被变暗恢复叠得生硬）。
+       ⚠️ 只动 opacity 不动 transform：transform 配 fill 会把 main 里 fixed 后代（AI 历史抽屉等）
+       的包含块改到 main 上（坑 22/28 同源）；fill:both 残留的是 opacity:1 无副作用 */
+    main.page-main.pjax-enter { animation: pjaxEnter 300ms var(--ease-out) both; }
+    @keyframes pjaxEnter { from { opacity: 0; } to { opacity: 1; } }
+
     @media (prefers-reduced-motion: reduce) {
       .progress-bar.pjax-busy { animation: none; width: 40% !important; }
       main.page-main,
       .site-footer { transition: none; }
+      main.page-main.pjax-enter { animation: none; }
     }
 
     /* ===== Site Header：居中悬浮胶囊导航 ===== */

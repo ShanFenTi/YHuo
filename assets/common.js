@@ -6541,6 +6541,12 @@
           if (key !== 'home' && c && c[key] === false) { location.replace('/'); return; }
           runPageHook(currentPage, 'destroy');
           curMain.innerHTML = nextMain.innerHTML;
+          // 新内容整体淡入（2026-09-07 用户反馈"切换太生硬像突然出现"；同批加的换页加载反馈撤变暗
+          // 与淡入叠加，观感是"内容柔和浮现"）。只动 opacity：transform 会改 main 里 fixed 后代
+          // （AI 历史抽屉）的包含块，坑 22/28 同源雷。先摘类强制 reflow 再挂回，保证每次换页都重播
+          curMain.classList.remove('pjax-enter');
+          void curMain.offsetWidth;
+          curMain.classList.add('pjax-enter');
           document.documentElement.setAttribute('data-page', key);
           document.title = doc.title || PAGE_TITLES[key] || document.title;
           applyNavActive(key);

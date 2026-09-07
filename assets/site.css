@@ -631,15 +631,17 @@
       backdrop-filter: blur(6px);
       -webkit-backdrop-filter: blur(6px);
       opacity: 0;
-      transition: opacity .18s ease;
+      transition: opacity 240ms ease;
     }
 
     .cmdk.show .cmdk-backdrop { opacity: 1; }
 
     .cmdk-panel {
       position: absolute; left: 50%; top: 13vh;
-      /* 收回态（基准）：面板缩小下移。过渡=收回方向——短促 ease-in 干脆缩回 */
-      transform: translate(-50%, 12px) scale(0.94);
+      /* 收回态（基准）：缩小下沉行程放大到 scale(0.9)/22px，让收回全程有可见位移；
+         过渡用 ease-out——运动从一开始就明显（原 ease-in 起步慢，透明度先掉完显得瞬间消失，踩过已修）。
+         淡出拉长到 240ms 与位移同步，玻璃面板半透明、淡出太快也会加重"直接消失"感 */
+      transform: translate(-50%, 22px) scale(0.9);
       width: min(580px, calc(100vw - 32px));
       max-height: 70vh;
       display: flex; flex-direction: column;
@@ -651,7 +653,7 @@
       box-shadow: 0 24px 70px rgba(0, 0, 0, .28);
       overflow: hidden;
       opacity: 0;
-      transition: opacity 150ms ease, transform 190ms cubic-bezier(0.32, 0, 0.67, 0);
+      transition: opacity 240ms ease, transform 260ms var(--ease-out, ease);
       will-change: transform, opacity;
     }
 

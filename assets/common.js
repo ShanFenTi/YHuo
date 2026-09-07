@@ -6518,8 +6518,8 @@
         if (!opened) return;
         opened = false;
         root.classList.remove('show');
-        // 210ms > 收回过渡 190ms（site.css .cmdk-panel），动画播完再摘 hidden
-        hideTimer = setTimeout(function () { root.hidden = true; }, 210);
+        // 280ms > 收回过渡 260ms（site.css .cmdk-panel），动画播完再摘 hidden
+        hideTimer = setTimeout(function () { root.hidden = true; }, 280);
       }
 
       if (toggleBtn) toggleBtn.addEventListener('click', function () { showPanel(); });

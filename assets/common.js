@@ -368,6 +368,13 @@
 
       function hqTypeText(text, done) {
         clearInterval(hqTypeTimer);
+        // 打字前先用完整文本量出这条的最终高度并锁进 min-height（占位策略下歌词条位置稳定的关键）：
+        // 窄屏一言是换行样式，行数随打字增长曾把下面的歌词条顶得上下抽搐；轮播切换的高度差
+        // 由 CSS min-height 过渡平滑缩放。桌面 nowrap 恒一行，量出来恒等、无副作用
+        heroQuote.style.minHeight = '';
+        heroQuoteText.textContent = text;
+        var finalH = heroQuote.offsetHeight;
+        if (finalH) heroQuote.style.minHeight = finalH + 'px';
         heroQuote.classList.add('typing');
         var shown = 0;
         heroQuoteText.textContent = '';
@@ -792,7 +799,8 @@
     var lyricFetchSeq = 0;     // 切歌取消上一次未完成的加载
 
     function lyricShowPlaceholder(text, waiting) {
-      if (!lyricBar || FLAGS_OFF.lyric) return;
+      if (!lyricBar) return;
+      if (FLAGS_OFF.lyric) { lyricBar.hidden = true; return; } // 功能开关：显式收起（首帧占位策略）
       clearInterval(lyricTypeTimer);
       lyricTypeTimer = null;
       lyricFull = '';
@@ -881,7 +889,8 @@
     }
 
     function lyricStartTyping(text, lineDurMs) {
-      if (!lyricBar || FLAGS_OFF.lyric) return;
+      if (!lyricBar) return;
+      if (FLAGS_OFF.lyric) { lyricBar.hidden = true; return; } // 同上
       clearInterval(lyricTypeTimer);
       lyricTypeTimer = null;
       lyricFull = text;
@@ -959,6 +968,7 @@
       lyricBar = document.getElementById('lyricBar');
       lyricText = document.getElementById('lyricText');
       if (!lyricBar) return;
+      if (FLAGS_OFF.lyric) { lyricBar.hidden = true; return; } // 功能开关：显式收起（首帧占位策略）
       // 悬浮播放器（博客款）正在播：歌词条跟随它的当前曲目（迷你条此时多半暂停/空源）
       var blogTrack = null;
       try { blogTrack = window.__blogPlayerTrack ? window.__blogPlayerTrack() : null; } catch (e) {}
@@ -4112,7 +4122,7 @@
 
     function renderWeather(loc, data) {
       if (!weatherChip || !weatherIcon || !weatherText) return;
-      if (FLAGS_OFF.weather) return; // 功能开关：天气胶囊已关闭
+      if (FLAGS_OFF.weather) { weatherChip.hidden = true; return; } // 功能开关：显式收起（首帧占位策略）
       var info = wmoInfo(data.code);
       weatherIcon.textContent = info.icon;
       weatherText.textContent = loc.city + ' ' + Math.round(data.temp) + '°C · ' + info.text +
@@ -4147,7 +4157,7 @@
           } catch (e) {}
           renderWeather(loc, payload);
         })
-        .catch(function () {}); // 失败静默：胶囊保持隐藏
+        .catch(function () { weatherChip.hidden = true; }); // 失败静默收起（首帧占位策略下须显式，否则留幻影空隙）
     }
 
     // 坐标 → 中文城市名（bigdatacloud 免费客户端接口，无需 key）

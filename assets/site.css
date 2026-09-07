@@ -925,12 +925,18 @@
       color: var(--apple-muted-foreground);
       font-size: 13px;
       line-height: 1.6;
+      /* 首帧占位策略：胶囊常驻文档流（markup 不再 hidden，靠 opacity 渐现），
+         min-height 按单行文本撑足——空胶囊与有字胶囊同高，一言到达时零布局位移 */
+      min-height: calc(1.6em + 16px);
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
       opacity: 0;
       transform: translateY(4px);
-      transition: opacity 600ms var(--ease-out), transform 600ms var(--ease-out);
+      /* min-height 过渡：一言打字前按完整文本锁最终高度（common.js hqTypeText），轮播切换的
+         高度差平滑缩放，打字期间行数增长不再顶得下面的歌词条上下抽搐（2026-09-07 用户实报） */
+      transition: opacity 600ms var(--ease-out), transform 600ms var(--ease-out),
+        min-height 260ms var(--ease-out);
     }
 
     .hero-quote.loaded {

@@ -542,6 +542,7 @@
     }
 
     .search-toggle:hover { background: var(--apple-secondary); }
+    .search-toggle:active { transform: scale(0.86); }
     .search-toggle:focus-visible { outline: 2px solid var(--apple-ring); outline-offset: 2px; }
 
     @media (max-width: 700px) {
@@ -637,7 +638,8 @@
 
     .cmdk-panel {
       position: absolute; left: 50%; top: 13vh;
-      transform: translate(-50%, 10px) scale(.98);
+      /* 收回态（基准）：面板缩小下移。过渡=收回方向——短促 ease-in 干脆缩回 */
+      transform: translate(-50%, 12px) scale(0.94);
       width: min(580px, calc(100vw - 32px));
       max-height: 70vh;
       display: flex; flex-direction: column;
@@ -649,10 +651,20 @@
       box-shadow: 0 24px 70px rgba(0, 0, 0, .28);
       overflow: hidden;
       opacity: 0;
-      transition: opacity .18s ease, transform .18s var(--ease-out, ease);
+      transition: opacity 150ms ease, transform 190ms cubic-bezier(0.32, 0, 0.67, 0);
+      will-change: transform, opacity;
     }
 
-    .cmdk.show .cmdk-panel { opacity: 1; transform: translate(-50%, 0) scale(1); }
+    /* 弹出：弹簧曲线（y>1 带轻微过冲，scale 冲过 1 再落回），2026-09-08 用户要求「弹出收回动画」 */
+    .cmdk.show .cmdk-panel {
+      opacity: 1;
+      transform: translate(-50%, 0) scale(1);
+      transition: opacity 170ms ease, transform 320ms cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .cmdk-panel, .cmdk.show .cmdk-panel { transition: none; }
+    }
 
     .cmdk-input-row {
       display: flex; align-items: center; gap: 10px;

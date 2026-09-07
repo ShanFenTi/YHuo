@@ -956,7 +956,7 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
       <p class="appear-label2" style="margin-top:0" id="noteFormTitle">新增随笔</p>
       <div class="bgset-row">
         <input type="date" id="noteDate" style="max-width:170px">
-        <input type="text" id="noteMood" placeholder="心情（可空，如 晴 / 夜）" maxlength="12" style="max-width:210px">
+        <input type="text" id="noteMood" placeholder="天气 / 时段（可空，如 晴 / 雨 / 夜）" maxlength="12" style="max-width:210px">
       </div>
       <div class="bgset-row" style="margin-top:8px;align-items:flex-start">
         <textarea id="noteText" placeholder="正文（1~2000 字；支持迷你 Markdown：**粗** *斜* 行内码 [链接](url) > 引用，前台按它渲染）" rows="4" style="max-width:680px;width:100%;resize:vertical"></textarea>

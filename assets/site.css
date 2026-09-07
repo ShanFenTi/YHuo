@@ -5337,7 +5337,7 @@
 
     /* =========================
        随笔页 /notes/（2026-09-07）：notes/notes.json 时间线（与参考博客站 /notes/ 同思路）
-       按年份分组；.note 单条 = 日期/心情 + 正文（common.js mdToHtml 输出，先转义防注入）
+       按年份分组；.note 单条 = 日期/天气时段 + 正文（common.js mdToHtml 输出，先转义防注入）
        ========================= */
     .notes-lead {
       font-size: 13.5px;

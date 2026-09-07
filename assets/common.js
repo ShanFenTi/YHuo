@@ -6502,9 +6502,29 @@
 
     var scrollMem = {};  // 离开页面时的滚动位置（返回键恢复）
     var pjaxBusy = false;
+    // 换页加载反馈（2026-09-07 用户实报慢线上"点了没反应过一会才进"）：fetch 发起 160ms 后还没返回
+    // 就亮出反馈——顶部进度条变滑动段（.pjax-busy）+ 内容轻降透明度（body.pjax-loading，见 site.css）；
+    // 160ms 内返回（本地/快线）完全不出现不闪。fetch 失败整页加载兜底时保留加载态，旧页带着进度条直到卸载
+    var pjaxLoadTimer = 0;
+    function pjaxLoadingOn() {
+      if (pjaxLoadTimer) return;
+      pjaxLoadTimer = setTimeout(function () {
+        pjaxLoadTimer = 0;
+        document.body.classList.add('pjax-loading');
+        var bar = document.getElementById('progressBar');
+        if (bar) bar.classList.add('pjax-busy');
+      }, 160);
+    }
+    function pjaxLoadingOff() {
+      if (pjaxLoadTimer) { clearTimeout(pjaxLoadTimer); pjaxLoadTimer = 0; }
+      document.body.classList.remove('pjax-loading');
+      var bar = document.getElementById('progressBar');
+      if (bar) bar.classList.remove('pjax-busy');
+    }
     function pjaxSwap(u, push, restoreY) {
       if (pjaxBusy) return;
       pjaxBusy = true;
+      pjaxLoadingOn();
       fetch(u.href, { credentials: 'same-origin' })
         .then(function (r) {
           if (!r.ok) throw new Error('http ' + r.status);
@@ -6532,6 +6552,7 @@
           initScrollReveal();
           runPageHook(key, 'init');
           if (u.hash) runPageHook(key, 'onHash', u.hash);
+          pjaxLoadingOff(); // 内容就位，撤加载态（放 postVisit 前防上报慢时残留半截反馈）
           postVisit(u.pathname);
         })
         .catch(function () {

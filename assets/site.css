@@ -251,6 +251,29 @@
       transition: width 100ms linear;
     }
 
+    /* ===== pjax 换页加载态（2026-09-07）：慢线上点击导航后到内容就位之间零反馈、像"点了没反应"，
+       发起 160ms 后还没到就亮出反馈（秒回完全不出现不闪）：顶部进度条变滑动段 + 内容轻降透明度。
+       width 用 !important 压过滚动处理器写的内联宽度，滑动走 transform 与 width 互不打架；
+       fetch 失败整页加载兜底时保留加载态，旧页带着进度条直到卸载 */
+    .progress-bar.pjax-busy {
+      width: 30% !important;
+      animation: pjaxSlide 1.1s linear infinite;
+    }
+    @keyframes pjaxSlide {
+      from { transform: translateX(-110%); }
+      to { transform: translateX(380%); }
+    }
+    main.page-main,
+    .site-footer { transition: opacity 180ms var(--ease-out); }
+    body.pjax-loading main.page-main,
+    body.pjax-loading .site-footer { opacity: 0.55; }
+
+    @media (prefers-reduced-motion: reduce) {
+      .progress-bar.pjax-busy { animation: none; width: 40% !important; }
+      main.page-main,
+      .site-footer { transition: none; }
+    }
+
     /* ===== Site Header：居中悬浮胶囊导航 ===== */
     /* 头部本身透明不挡点击（pointer-events 穿透），只有胶囊可交互；全屏层（z-151）从 52px 起，
        胶囊悬浮在层上方缝隙里，与参考站（悬浮 pill 导航）同款形态 */

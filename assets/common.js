@@ -2154,7 +2154,15 @@
         if (e.target && e.target.closest && e.target.closest('.nav-drawer-link')) setNavDrawer(false);
       });
       document.addEventListener('keydown', function (e) {
-        if (e.key === 'Escape' && isNavDrawerOpen()) setNavDrawer(false);
+        if (e.key !== 'Escape' || !isNavDrawerOpen()) return;
+        // Esc 分层：比抽屉高的浮层（登录卡 400 / 搜索面板 350）开着时先让给它们；
+        // 抽屉处理完 stopPropagation，比它低的层（docViewer/profile 等）同一帧不再被顺带关掉
+        var cmdk = document.getElementById('cmdk');
+        var gate = document.getElementById('loginGate');
+        if ((cmdk && !cmdk.hidden) || (gate && !gate.hidden)) return;
+        setNavDrawer(false);
+        // 同节点（document）的后续监听（阅读层等，注册在本块之后）要靠 stopImmediatePropagation 才拦得住
+        e.stopImmediatePropagation();
       });
       // 跨回宽屏：复位抽屉状态（CSS 同时藏抽屉与汉堡）
       if (window.matchMedia) {

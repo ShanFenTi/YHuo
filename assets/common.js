@@ -162,8 +162,8 @@
     var PAGE_KEY = document.documentElement.getAttribute('data-page') || 'home'; // 当前页面（各页 <html> 上标死）
     var onGatePassedPageHook = null; // 游客门通过后的页面回调（课表页等需登录页面注册；passGate 触发）
     var schedPageCleanup = null;     // 课表页 document 级监听的清理函数（离页摘除防叠加）
-    var PAGE_ROUTE = { home: '/', tools: '/tools/', docs: '/docs/', ai: '/ai/', board: '/board/', schedule: '/schedule/', blog: '/blog/' };
-    var PAGE_TITLES = { home: document.title, tools: '工具合集 - YHuo', docs: '关于 - YHuo', ai: 'AI 助手 - YHuo', board: '留言板 - YHuo', schedule: '课表 - YHuo', blog: '预览 - YHuo' };
+    var PAGE_ROUTE = { home: '/', tools: '/tools/', docs: '/docs/', ai: '/ai/', board: '/board/', schedule: '/schedule/', blog: '/blog/', notes: '/notes/' };
+    var PAGE_TITLES = { home: document.title, tools: '工具合集 - YHuo', docs: '关于 - YHuo', ai: 'AI 助手 - YHuo', board: '留言板 - YHuo', schedule: '课表 - YHuo', blog: '预览 - YHuo', notes: '随笔 - YHuo' };
 
     // 应用功能开关：给 <html> 打/摘 ff-* 类（CSS 负责隐藏；head 内联脚本已按 localStorage 缓存提前打过，这里按最新配置校正）
     // 并刷新缓存供下次访问首屏预隐藏；天气/歌词条由各自渲染入口判 FLAGS_OFF
@@ -5145,6 +5145,97 @@
     }
 
     // =========================
+    // 随笔页 /notes/（2026-09-07）：notes/notes.json 清单（手工维护，与 docs.json 同思路——
+    // 静态托管没有目录列表，加一条随笔 = 往数组里加一个对象）。按年份分组的时间线流，
+    // text 走 mdToHtml（先整体转义再解析，防注入）；单条锚点 id = 日期（/notes/#2026-09-07 可直达/分享）
+    // =========================
+    var notesFeed = null;   // 随笔页模块：initNotesPage 按当前 DOM 重查
+    var notesEmpty = null;
+
+    function initNotesPage() {
+      notesFeed = document.getElementById('notesFeed');
+      notesEmpty = document.getElementById('notesEmpty');
+      if (!notesFeed) return;
+      fetch('/notes/notes.json', { credentials: 'same-origin' })
+        .then(function (r) { return r.ok ? r.json() : Promise.reject(new Error('http ' + r.status)); })
+        .then(function (list) {
+          if (!notesFeed) return; // fetch 期间 pjax 切走了：当前 DOM 已不是随笔页，直接放弃
+          if (!Array.isArray(list) || !list.length) {
+            if (notesEmpty) notesEmpty.hidden = false;
+            return;
+          }
+          renderNotes(list);
+          // 直达 /notes/#日期 时内容还没渲染，原生锚点跳转会扑空，这里补定位
+          if (location.hash) locateNote(location.hash);
+        })
+        .catch(function () {
+          if (notesEmpty) {
+            notesEmpty.textContent = '随笔清单加载失败（notes/notes.json）。';
+            notesEmpty.hidden = false;
+          }
+        });
+    }
+
+    function renderNotes(list) {
+      // 日期倒序 + 年份分组；清单顺序随意，这里统一排；同日多条时锚点 id 顺延 -2/-3 防重复
+      var items = list.filter(function (n) { return n && n.date && n.text; })
+        .sort(function (a, b) { return String(a.date) < String(b.date) ? 1 : (String(a.date) > String(b.date) ? -1 : 0); });
+      if (!items.length) { if (notesEmpty) notesEmpty.hidden = false; return; }
+      var usedId = {};
+      var curYear = '';
+      var frag = document.createDocumentFragment();
+      items.forEach(function (n) {
+        var year = String(n.date).slice(0, 4);
+        if (year !== curYear) {
+          curYear = year;
+          var yh = document.createElement('h2');
+          yh.className = 'notes-year';
+          yh.textContent = year;
+          frag.appendChild(yh);
+        }
+        var id = String(n.date), k = 2;
+        while (usedId[id]) { id = n.date + '-' + k; k++; }
+        usedId[id] = true;
+        var art = document.createElement('article');
+        art.className = 'note';
+        art.id = id;
+        var meta = document.createElement('div');
+        meta.className = 'note-meta';
+        var time = document.createElement('time');
+        var dm = /^(\d{4})-(\d{1,2})-(\d{1,2})$/.exec(String(n.date));
+        if (dm) {
+          time.dateTime = n.date;
+          time.textContent = dm[1] + ' 年 ' + parseInt(dm[2], 10) + ' 月 ' + parseInt(dm[3], 10) + ' 日';
+        } else {
+          time.textContent = n.date;
+        }
+        meta.appendChild(time);
+        if (n.mood) {
+          var mood = document.createElement('span');
+          mood.className = 'note-mood';
+          mood.textContent = n.mood;
+          meta.appendChild(mood);
+        }
+        art.appendChild(meta);
+        var body = document.createElement('div');
+        body.className = 'note-body';
+        body.innerHTML = mdToHtml(String(n.text)); // mdToHtml 先整体转义再解析，防注入
+        art.appendChild(body);
+        frag.appendChild(art);
+      });
+      notesFeed.appendChild(frag);
+    }
+
+    // 从 URL 锚点定位单条随笔（/notes/#2026-09-07；全站搜索/分享直达同用此入口）
+    function locateNote(h) {
+      var el = document.getElementById(String(h || '').slice(1));
+      if (!el || !el.classList.contains('note')) return;
+      el.scrollIntoView({ block: 'center', behavior: 'smooth' });
+      el.classList.add('cmdk-flash');
+      setTimeout(function () { el.classList.remove('cmdk-flash'); }, 1600);
+    }
+
+    // =========================
     // AI 界面：对话实装（后端 /api/ai/* 代理转发，服务商 Key 只存在后台数据库）
     // 流式回复：后端把上游 SSE 归一化成 data: {"delta":"..."} / [DONE]，前端按行解析；
     // 多轮历史只存在内存里，关闭界面或点"新对话"即清空
@@ -6126,6 +6217,7 @@
         }
         // 界面（功能开关过滤：关闭的界面搜不到，AI 跟随其全局开关）；首页走原生锚点
         push('界面', '界面', '首页', function () { pjaxGo('/'); });
+        push('界面', '界面', '随笔', function () { pjaxGo('/notes/'); });
         if (!FLAGS_OFF.toolsView) push('界面', '界面', '工具', function () { pjaxGo('/tools/'); });
         if (!FLAGS_OFF.docsView) push('界面', '界面', '关于', function () { pjaxGo('/docs/'); });
         if (aiOn()) push('界面', '界面', 'AI 助手', function () { pjaxGo('/ai/'); });
@@ -6334,6 +6426,7 @@
         onHash: function (h) { var id = String(h || '').slice(1); if (/^tool/.test(id)) locateToolCard(id); }
       },
       docs:  { init: function () { initDocsPage(); } },
+      notes: { init: function () { initNotesPage(); }, onHash: function (h) { locateNote(h); } },
       ai:    { init: function () { initAiPage(); }, destroy: destroyAiPage },
       board: { init: function () { initBoardPage(); } },
       schedule: { init: function () { initSchedPage(); }, destroy: destroySchedPage }
@@ -6698,6 +6791,7 @@
     // 键 = 去尾斜杠的 pathname（与 resolveLink 的归一口径一致）
     var NAV_INFO = {
       '/':         { id: 'site', name: 'YHuo · 首页', desc: '时钟 / 寄语 / 天气 / 歌词条 / 站内曲库' },
+      '/notes':    { id: 'site', name: 'YHuo · 随笔', desc: '个人思考 / 日记 / 零碎感悟，随手记下' },
       '/tools':    { id: 'site', name: 'YHuo · 工具合集', desc: '重要日子 / 番茄钟 / 换算器 / 文本工具 / 随机决策 / 计算器' },
       '/docs':     { id: 'site', name: 'YHuo · 关于', desc: '站点介绍与更新日志' },
       '/ai':       { id: 'site', name: 'YHuo · AI 助手', desc: '多供应商多模型流式对话' },

@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="zh-CN" class="light" data-page="board">
+<html lang="zh-CN" class="light" data-page="notes">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>留言板 - YHuo</title>
+  <title>随笔 - YHuo</title>
   <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -125,10 +125,10 @@
       <a class="logo" href="/" aria-label="回到首页">YHuo</a>
     <nav class="site-nav" aria-label="主导航">
       <a href="/" class="nav-link" data-target="home">首页</a>
-      <a href="/notes/" class="nav-link" id="notesBtn">随笔</a>
+      <a href="/notes/" class="nav-link active" id="notesBtn" aria-current="page">随笔</a>
       <a href="/tools/" class="nav-link" id="toolsBtn">工具</a>
       <a href="/ai/" class="nav-link ai-entry" id="aiBtn">AI</a>
-      <a href="/board/" class="nav-link active" id="boardBtn" aria-current="page">留言</a>
+      <a href="/board/" class="nav-link" id="boardBtn">留言</a>
       <a href="/schedule/" class="nav-link" id="scheduleBtn">课表</a>
       <a href="/blog/" class="nav-link" id="blogBtn">预览</a>
       <a href="/docs/" class="nav-link" id="docsBtn">关于</a>
@@ -155,33 +155,19 @@
   </header>
 
   <main class="page-main">
-  <div id="boardView" class="tools-view" aria-label="留言板">
     <header class="album-bar">
-      <p class="album-title">留言板 · BOARD</p>
+      <p class="album-title">随笔 · NOTES</p>
     </header>
-    <div class="tools-scroll">
-      <div class="tool-block">
-        <div class="apple-card">
-          <div class="card-padding">
-            <p class="card-eyebrow">留言板 · MESSAGE BOARD</p>
-            <div class="board-compose">
-              <textarea class="tool-area" id="boardInput" rows="3" maxlength="500" placeholder="写下你的留言…（登录后可发布，500 字以内）"></textarea>
-              <div class="board-compose-foot">
-                <span class="board-hint" id="boardHint"></span>
-                <span class="board-count" id="boardCount">0 / 500</span>
-                <button class="tool-btn primary" id="boardPost" type="button">发布留言</button>
-              </div>
-            </div>
-            <div class="board-list" id="boardList"></div>
-            <p class="empty-hint" id="boardEmpty" hidden>还没有留言，来抢个沙发！</p>
-            <div style="text-align:center;margin-top:12px;">
-              <button class="appear-btn" id="boardMore" type="button" hidden>加载更多</button>
-            </div>
-          </div>
+    <div class="tool-block">
+      <div class="apple-card">
+        <div class="card-padding">
+          <p class="card-eyebrow">随笔 · NOTES</p>
+          <p class="notes-lead">一些个人思考、日记和零碎的感悟——不成文章，随手记下。</p>
+          <div class="notes-feed" id="notesFeed"></div>
+          <p class="empty-hint" id="notesEmpty" hidden>还没有随笔。写一条：往 notes/notes.json 加一条 {date, mood, text}（date 形如 2026-09-07，mood 可留空）。</p>
         </div>
       </div>
     </div>
-  </div>
   </main>
 
   <!-- 外观设置抽屉：默认靠右隐藏，点击箭头弹出 -->

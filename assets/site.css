@@ -5334,3 +5334,89 @@
       html[data-page="ai"] .page-main { padding-left: 8px; padding-right: 8px; }
       html[data-page="ai"] .ai-chat { padding-left: 2px; padding-right: 2px; }
     }
+
+    /* =========================
+       随笔页 /notes/（2026-09-07）：notes/notes.json 时间线（与参考博客站 /notes/ 同思路）
+       按年份分组；.note 单条 = 日期/心情 + 正文（common.js mdToHtml 输出，先转义防注入）
+       ========================= */
+    .notes-lead {
+      font-size: 13.5px;
+      color: var(--apple-muted-foreground);
+      margin: -6px 0 12px;
+    }
+
+    .notes-year {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin: 20px 0 2px;
+      font-size: 14px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      color: var(--primary);
+    }
+
+    .notes-year::after {
+      content: "";
+      flex: 1;
+      height: 1px;
+      background: var(--apple-border);
+    }
+
+    .note {
+      padding: 14px 2px 13px;
+      border-bottom: 1px solid var(--apple-border);
+      border-radius: 10px;
+    }
+
+    .note:last-child { border-bottom-color: transparent; }
+
+    .note-meta {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 6px;
+    }
+
+    .note-meta time {
+      font-size: 12.5px;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      color: var(--apple-muted-foreground);
+      font-variant-numeric: tabular-nums;
+    }
+
+    .note-mood {
+      font-size: 11.5px;
+      line-height: 1;
+      padding: 4px 9px;
+      border-radius: 999px;
+      color: var(--primary);
+      background: color-mix(in srgb, var(--primary) 12%, transparent);
+      border: 1px solid color-mix(in srgb, var(--primary) 22%, transparent);
+    }
+
+    .note-body {
+      font-size: 14.5px;
+      line-height: 1.75;
+      color: var(--apple-foreground);
+    }
+
+    .note-body p + p { margin-top: 6px; }
+    .note-body a { color: var(--primary); text-decoration: underline; text-underline-offset: 3px; }
+    .note-body code {
+      font-family: var(--font-mono);
+      font-size: 0.92em;
+      padding: 1px 6px;
+      border-radius: 6px;
+      background: var(--apple-muted);
+    }
+    .note-body ul, .note-body ol { padding-left: 20px; margin: 4px 0; }
+    .note-body ul { list-style: disc; }
+    .note-body ol { list-style: decimal; }
+    .note-body blockquote {
+      margin: 6px 0;
+      padding: 2px 0 2px 12px;
+      border-left: 3px solid color-mix(in srgb, var(--primary) 45%, transparent);
+      color: var(--apple-muted-foreground);
+    }

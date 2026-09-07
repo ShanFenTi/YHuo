@@ -2163,6 +2163,9 @@
         if (navDrawerMQ.addEventListener) navDrawerMQ.addEventListener('change', onNavDrawerMQ);
         else if (navDrawerMQ.addListener) navDrawerMQ.addListener(onNavDrawerMQ);
       }
+      // 整页加载时抽屉项高亮只存在于 pjax 路径（applyNavActive 只在 pjaxSwap 里调），
+      // 静态页 markup 里抽屉项没写死 active——启动按 <html data-page> 补一次
+      applyNavActive(document.documentElement.getAttribute('data-page') || 'home');
     }
     if (loginGate) {
       if (gatePassed()) {

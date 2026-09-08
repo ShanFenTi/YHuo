@@ -1644,16 +1644,16 @@
       });
     }
 
-    // 外观圆钮自由拖动（2026-09-08 用户要求）：钮挂在面板内，而面板 transform 会劫持 fixed（坑 28 同机制），
-    // 拖动改写相对包容块 .appear-dock 的 right/bottom 内联偏移；位移 ≥5px 判为拖动（收尾 click 被跳过），否则是点击。
-    // 坐标纪律：位置统一按「视口 client 坐标」存取（clientWidth/Height，不含滚动条），回贴时用 dock 实时 rect 换算——
-    // innerWidth 含滚动条宽，与 rect 系混用会出现 15px 级漂移（踩过已修）；全程 clamp 钮在屏内
+    // 外观圆钮自由拖动（2026-09-08 用户要求）：位移 ≥5px 判为拖动（收尾 click 用 _dragMoved 跳过），否则是点击开关抽屉；
+    // 位置按「视口右距/下距」存 localStorage（yhuoAppearKnob），加载与 resize 时重贴并 clamp 在屏内
     (function () {
       if (!appearTab) return;
-      var dock = appearTab.parentElement; // 包容块 .appear-dock（fixed）：按钮是面板的兄弟，closest(面板) 为 null
+      // 脱离 .appear-dock：dock 收起时 translateX(100%) 右移出屏、展开时左移回来，挂在里面钮会跟着被带出屏外
+      //（用户实报「按钮靠左点击后左移到屏幕外面」）；且 dock 的 transform 会劫持 fixed（坑 28 同机制）——
+      // 挂到 body 下做真正的视口固定定位，抽屉开合与钮完全无关
+      if (appearDock && appearDock.contains(appearTab)) document.body.appendChild(appearTab);
       var KEY = 'yhuoAppearKnob';
-      var dragging = false, moved = false;
-      var startPX = 0, startPY = 0, startKnobL = 0, startKnobT = 0, startR = 0, startB = 0;
+      var dragging = false, moved = false, startPX = 0, startPY = 0, startR = 0, startB = 0;
 
       function vw() { return document.documentElement.clientWidth; }
       function vh() { return document.documentElement.clientHeight; }
@@ -1662,20 +1662,16 @@
         var pos = null;
         try { pos = JSON.parse(localStorage.getItem(KEY) || 'null'); } catch (e) {}
         if (!pos) return;
-        pos.right = Math.max(0, Math.min(pos.right, vw() - 40));
-        pos.bottom = Math.max(0, Math.min(pos.bottom, vh() - 40));
-        var dr = dock.getBoundingClientRect();
-        appearTab.style.right = (dr.right - (vw() - pos.right)) + 'px';
-        appearTab.style.bottom = (dr.bottom - (vh() - pos.bottom)) + 'px';
+        appearTab.style.right = Math.max(40, Math.min(pos.right, vw() - 40)) + 'px';
+        appearTab.style.bottom = Math.max(40, Math.min(pos.bottom, vh() - 40)) + 'px';
       }
 
       appearTab.addEventListener('pointerdown', function (e) {
         if (e.button !== 0) return;
-        var kr = appearTab.getBoundingClientRect(), dr = dock.getBoundingClientRect();
+        var kr = appearTab.getBoundingClientRect();
         dragging = true; moved = false;
         startPX = e.clientX; startPY = e.clientY;
-        startKnobL = kr.left; startKnobT = kr.top;
-        startR = dr.right - kr.right; startB = dr.bottom - kr.bottom;
+        startR = vw() - kr.right; startB = vh() - kr.bottom;
         try { appearTab.setPointerCapture(e.pointerId); } catch (err) {}
         e.preventDefault();
       });
@@ -1684,10 +1680,8 @@
         if (!dragging) return;
         var dx = e.clientX - startPX, dy = e.clientY - startPY;
         if (!moved) { if (Math.abs(dx) + Math.abs(dy) < 5) return; moved = true; }
-        dx = Math.max(-startKnobL, Math.min(dx, vw() - 40 - startKnobL));
-        dy = Math.max(-startKnobT, Math.min(dy, vh() - 40 - startKnobT));
-        appearTab.style.right = (startR - dx) + 'px';
-        appearTab.style.bottom = (startB - dy) + 'px';
+        appearTab.style.right = Math.max(40, Math.min(startR - dx, vw() - 40)) + 'px';
+        appearTab.style.bottom = Math.max(40, Math.min(startB - dy, vh() - 40)) + 'px';
       });
       document.addEventListener('pointerup', function (e) {
         if (!dragging) return;

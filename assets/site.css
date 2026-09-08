@@ -3078,15 +3078,16 @@
       color: var(--apple-foreground);
     }
 
-    /* 外观入口：圆形毛玻璃小钮（2026-09-08 用户嫌白色耳朵突兀，选定圆钮方案）。
-       仍挂在面板左缘随面板滑动：关着露出 34px 成独立圆钮，开着贴回面板边当圆形把手；
-       毛玻璃配方与顶栏胶囊同款，深浅主题各一档；bottom 84px 避让回顶钮(≤62)与音乐球(≤60) */
+    /* 外观入口：圆形毛玻璃小钮（2026-09-08 用户嫌白色耳朵突兀，选定圆钮方案；同日追加自由拖动）。
+       视口固定定位（position:fixed + z 165）：高于外观面板 160——开着时浮在面板上就是关闭把手，
+       低于搜索 350/登录卡 400；bottom 84px 避让回顶钮(≤62)与音乐球(≤60)。
+       按钮本体由 common.js 挪到 body 下——曾挂在 .appear-dock 内，dock 收起 translateX(100%)
+       会把拖到左侧的钮一并带出屏外（用户实报） */
     .appear-tab {
-      position: absolute;
+      position: fixed;
       bottom: 84px;
-      /* 搭接 11px：≤900 包容块关闭位内收 15px，搭 11px 圆钮恰全在屏内 */
-      right: calc(100% - 11px);
-      z-index: 1;
+      right: 12px;
+      z-index: 165;
       width: 40px;
       height: 40px;
       display: flex;
@@ -3111,10 +3112,6 @@
       box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.07), 0 8px 28px rgba(0, 0, 0, 0.42);
     }
 
-    /* 桌面（>900）：包容块关闭位与屏缘齐平，改外离 6px 留出缝隙（搭接会让圆钮悬出屏外） */
-    @media (min-width: 901px) {
-      .appear-tab { right: calc(100% + 4px); }
-    }
 
     .appear-tab:hover {
       color: var(--apple-primary);

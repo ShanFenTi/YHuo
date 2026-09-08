@@ -3112,6 +3112,10 @@
       box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.07), 0 8px 28px rgba(0, 0, 0, 0.42);
     }
 
+    /* AI 页不显示外观圆钮（2026-09-08 用户要求）：全屏聊天布局自足，避免遮挡输入区。
+       面板本体无需同规则——只能由圆钮打开，pjax 进 AI 页时 closeAllTransientOverlays 已收起 */
+    html[data-page="ai"] .appear-tab { display: none !important; }
+
 
     .appear-tab:hover {
       color: var(--apple-primary);

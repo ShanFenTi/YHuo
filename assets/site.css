@@ -5318,8 +5318,8 @@
 
     .preview-links {
       display: flex;
-      flex-wrap: wrap;
-      align-items: baseline;
+      flex-direction: column;
+      align-items: flex-start;
       gap: 10px;
       margin: 0;
       font-size: 1.05rem;
@@ -5333,8 +5333,6 @@
     }
 
     .preview-links a:hover { border-bottom-style: solid; }
-
-    .preview-sep { color: var(--muted-foreground); }
 
     /* =========================
        AI 页隐藏播放条（2026-09-06 用户要求）：迷你条/悬浮球都不显示，聊天输入条独占底部；

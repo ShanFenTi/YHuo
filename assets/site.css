@@ -3078,37 +3078,62 @@
       color: var(--apple-foreground);
     }
 
+    /* 外观入口：圆形毛玻璃小钮（2026-09-08 用户嫌白色耳朵突兀，选定圆钮方案）。
+       仍挂在面板左缘随面板滑动：关着露出 34px 成独立圆钮，开着贴回面板边当圆形把手；
+       毛玻璃配方与顶栏胶囊同款，深浅主题各一档；bottom 84px 避让回顶钮(≤62)与音乐球(≤60) */
     .appear-tab {
       position: absolute;
-      bottom: 0;
-      /* 右移 1px 盖住面板左边框，消除箭头与面板之间的接缝线 */
-      right: calc(100% - 1px);
+      bottom: 84px;
+      /* 搭接 11px：≤900 包容块关闭位内收 15px，搭 11px 圆钮恰全在屏内 */
+      right: calc(100% - 11px);
       z-index: 1;
-      width: 34px;
-      height: 60px;
+      width: 40px;
+      height: 40px;
       display: flex;
       align-items: center;
       justify-content: center;
-      border: 1px solid var(--apple-border);
-      border-right: none;
-      border-radius: var(--radius) 0 0 var(--radius);
-      background: var(--apple-card);
+      padding: 0;
+      border: 1px solid rgba(255, 255, 255, 0.55);
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.6);
+      -webkit-backdrop-filter: saturate(1.8) blur(22px);
+      backdrop-filter: saturate(1.8) blur(22px);
       color: var(--apple-card-foreground);
-      box-shadow: var(--shadow-sm);
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.45), 0 8px 28px rgba(0, 0, 0, 0.1);
       cursor: pointer;
-      transition: background-color 300ms var(--ease-out), box-shadow 250ms var(--ease-out);
+      transition: background-color 300ms var(--ease-out), box-shadow 250ms var(--ease-out), color 300ms var(--ease-out);
+    }
+
+    .dark .appear-tab {
+      background: rgba(30, 30, 32, 0.58);
+      border-color: rgba(255, 255, 255, 0.1);
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.07), 0 8px 28px rgba(0, 0, 0, 0.42);
+    }
+
+    /* 桌面（>900）：包容块关闭位与屏缘齐平，改外离 6px 留出缝隙（搭接会让圆钮悬出屏外） */
+    @media (min-width: 901px) {
+      .appear-tab { right: calc(100% + 6px); }
     }
 
     .appear-tab:hover {
-      box-shadow: var(--shadow-md);
+      color: var(--apple-primary);
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.45), 0 10px 32px rgba(0, 0, 0, 0.16);
+    }
+
+    .dark .appear-tab:hover {
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.07), 0 10px 32px rgba(0, 0, 0, 0.5);
     }
 
     .appear-tab svg {
       transition: transform 350ms var(--ease-out);
     }
 
+    body.appear-open .appear-tab {
+      color: var(--apple-primary);
+    }
+
     body.appear-open .appear-tab svg {
-      transform: rotate(180deg);
+      transform: rotate(90deg);
     }
 
     /* ===== Card Component ===== */

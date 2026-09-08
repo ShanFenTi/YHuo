@@ -4074,22 +4074,6 @@
         padding: 4px 6px 4px 12px;
       }
 
-      .site-nav {
-        flex: 1;
-        min-width: 0;
-        overflow-x: auto;
-        scrollbar-width: none;
-        -webkit-overflow-scrolling: touch;
-      }
-
-      .site-nav::-webkit-scrollbar { display: none; }
-
-      .nav-link {
-        height: 30px;
-        padding: 0 10px;
-        font-size: 12px;
-      }
-
       .page-main {
         padding: 0 4vw;
       }
@@ -4148,12 +4132,6 @@
         margin-left: 0;
       }
 
-      .nav-link {
-        height: 30px;
-        padding: 0 9px;
-        font-size: 11.5px;
-      }
-
       .page-main {
         padding: 0 5vw;
       }
@@ -4209,14 +4187,6 @@
       .back-top .svg-icon {
         width: 18px;
         height: 18px;
-      }
-    }
-
-    /* 超小屏 (≤360px) */
-    @media (max-width: 360px) {
-      .nav-link {
-        padding: 0 8px;
-        font-size: 10px;
       }
     }
 

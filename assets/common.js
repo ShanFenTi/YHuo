@@ -6244,6 +6244,16 @@
       var av = document.createElement('div');
       av.className = 'board-avatar';
       av.textContent = it.isAdmin ? '站' : (it.username || '?').slice(0, 1).toUpperCase();
+      if (it.avatar) {
+        // 有头像：img 覆盖在首字块上；加载失败移除 img 回落首字（已注销用户无 avatar 自然回落）
+        var img = document.createElement('img');
+        img.className = 'board-avatar-img';
+        img.alt = '';
+        img.loading = 'lazy';
+        img.addEventListener('error', function () { if (img.parentNode) img.parentNode.removeChild(img); });
+        img.src = '/media/' + it.avatar; // avatar_key 服务端生成（avatars/u{id}-{hex}.ext），非用户输入
+        av.appendChild(img);
+      }
       item.appendChild(av);
       var body = document.createElement('div');
       body.className = 'board-body';

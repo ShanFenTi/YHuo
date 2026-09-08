@@ -25,6 +25,7 @@ export async function onRequestGet({ request, env }) {
   const offset = Math.max(0, parseInt(url.searchParams.get('offset') || '0', 10) || 0);
   const res = await env.DB.prepare(
     'SELECT m.id, m.content, m.created_at, m.is_admin, m.user_id, ' +
+    'u.avatar_key AS avatar, ' +
     "COALESCE(NULLIF(u.nickname, ''), u.username) AS username " +
     'FROM messages m LEFT JOIN users u ON u.id = m.user_id ' +
     'ORDER BY m.id DESC LIMIT ? OFFSET ?'
@@ -40,6 +41,12 @@ export async function onRequestGet({ request, env }) {
       .all();
     (cRes.results || []).forEach((r) => { counts[r.user_id] = r.n; });
   }
+  // 站长头像（后台「我的」页设置，存 site_settings 'admin_avatar'，KV 键）：页面里有站长留言才查
+  let adminAvatar = null;
+  if (rows.some((r) => r.is_admin)) {
+    const aRow = await env.DB.prepare("SELECT value FROM site_settings WHERE key = 'admin_avatar'").first();
+    adminAvatar = (aRow && aRow.value) || null;
+  }
   const list = rows.slice(0, PAGE_SIZE).map((r) => {
     const lv = levelOf(counts[r.user_id] || 0);
     return {
@@ -47,6 +54,7 @@ export async function onRequestGet({ request, env }) {
       content: r.content,
       created_at: r.created_at,
       username: r.is_admin ? '站长' : (r.username || '已注销用户'),
+      avatar: r.is_admin ? adminAvatar : (r.avatar || null),
       isAdmin: !!r.is_admin,
       level: r.is_admin ? null : { lv: lv.lv, name: lv.name },
     };

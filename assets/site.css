@@ -557,13 +557,14 @@
     .board-list { margin-top: 14px; }
     .board-item { display: flex; gap: 12px; padding: 13px 2px; border-bottom: 1px solid var(--apple-border); }
     .board-item:last-child { border-bottom: none; }
-    .board-avatar {
+    .board-avatar { position: relative; 
       width: 38px; height: 38px; border-radius: 50%; flex: none;
       background: var(--apple-primary); color: #fff;
       display: flex; align-items: center; justify-content: center;
       font-size: 15px; font-weight: 700;
     }
     .board-item.is-admin .board-avatar { background: linear-gradient(135deg, #c99416, #e9b949); }
+    .board-avatar-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; border-radius: 50%; }
     .board-body { flex: 1; min-width: 0; }
     .board-head { display: flex; align-items: center; gap: 8px; }
     .board-name { font-size: 13px; font-weight: 700; }

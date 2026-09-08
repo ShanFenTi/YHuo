@@ -2,6 +2,8 @@
 
 ## 2026-09-08
 
+* **前台+后端：留言板显示留言用户真实头像（用户问「为什么不显示留言用户的头像」后拍板实现）**——原实现只渲染「首字字母头像」（用户名首字色块，管理员「站」），留言接口也从不返回头像数据。现：①后端 `GET /api/messages` 查询带出 `users.avatar_key`（返回 avatar 字段）；页面含站长留言时才查一次 `site_settings.admin_avatar`（站长头像用后台「我的」页设置的那个）；②前端 `boardItem`：有头像渲染 `<img class="board-avatar-img" src="/media/{键}">` 绝对定位盖在首字块上（object-fit cover 圆形裁切、lazy 加载），**加载失败移除 img 回落首字块**（坏键/已注销用户无 avatar 自然回落），无头像保持原首字；③CSS `.board-avatar` 加 relative + `.board-avatar-img` 覆盖规则。avatar_key 为服务端生成键（avatars/u{id}-{hex}.ext）非用户输入，src 直接拼接安全。实测（本地桩 /api/messages + 临时 /media 文件）：成功路径真实图片渲染盖住首字、坏键回落首字、无头像回落首字、站长无后台头像回落「站」四条路径全过；校验全过。已推送上线
+
 * **前台：AI 页不显示外观圆钮（用户要求）**——全屏聊天布局自足，外观圆钮浮在上面容易遮挡输入区。一条规则：`html[data-page="ai"] .appear-tab { display:none !important; }`（面板本体无需同规则：只能由圆钮打开，pjax 进 AI 页时 closeAllTransientOverlays 已收起）。实测 AI 页隐藏/其他页正常；校验全过。已推送上线
 
 * **前台：修外观圆钮「点击展开抽屉后被带出屏外」（用户实报：拖到左侧后点击展开，按钮直接左移出屏）**——圆钮此前挂在 `.appear-dock` 内，dock 收起时 `translateX(100%)` 右移出屏、展开时左移 300px 回来，圆钮跟着停靠架一起走：拖到屏幕左侧的钮一开抽屉就被带出左屏。修：**圆钮挪出 dock、挂到 body 下用真正的 `position: fixed; right:12px; bottom:84px; z 165` 视口固定定位**（transformed 祖先会劫持 fixed，dock 内 fixed 不可用——坑 28 同机制；z 165 高于外观面板 160，开着时浮在面板上就是关闭把手，低于搜索 350/登录 400）。拖动/持久化逻辑随之大幅简化：拖动偏移与存取全部变成纯视口坐标（无需再做面板 rect 换算），clamp 保证钮永远整颗在屏内；dock 的外点关闭判断不受影响（钮自身 click 有 stopPropagation）。实测（本地 8001）：拖到 (100,240) → 点开抽屉钮原地不动浮于面板上（z165）→ 再点收起 → 刷新位置保持 (100,240)；开合功能正常；校验全过。已推送上线

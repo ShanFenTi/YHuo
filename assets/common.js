@@ -5611,7 +5611,7 @@
     // 随笔页 /notes/（2026-09-07）：数据源链 = /api/notes（D1，后台「随笔」页维护）
     // → 失败或空库回落静态 notes/notes.json（手工维护，与 docs.json 同思路——静态托管没有目录列表）。
     // 按年份分组的时间线流，text 走 mdToHtml（先整体转义再解析，防注入）；
-    // 单条锚点 id = 日期（/notes/#2026-09-07 可直达/分享）
+    // 单条锚点 id = 日期（/notes/#2026-09-07 可直达/分享）；条目尾部另有「生成分享图」小钮（见下方同名段）
     // =========================
     var notesFeed = null;   // 随笔页模块：initNotesPage 按当前 DOM 重查
     var notesEmpty = null;
@@ -5703,6 +5703,23 @@
         body.className = 'note-body';
         body.innerHTML = mdToHtml(String(n.text)); // mdToHtml 先整体转义再解析，防注入
         art.appendChild(body);
+        // 条目尾部「生成分享图」小钮（样式在 site.css 末尾「随笔分享卡片」段）。
+        // 坑 29：顶栏悬停预览的 iframe 是完整第二实例，里面不渲染按钮，避免预览帧白挂一份下载逻辑
+        if (!noteInPreviewFrame()) {
+          var foot = document.createElement('div');
+          foot.className = 'note-foot';
+          var shareBtn = document.createElement('button');
+          shareBtn.type = 'button';
+          shareBtn.className = 'note-share-btn';
+          shareBtn.setAttribute('aria-label', '生成这张随笔的分享图');
+          shareBtn.innerHTML = // 下载箭头图标，与 AI 历史对话「导出」同款
+            '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+            '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/><path d="M12 15V3"/></svg>' +
+            '<span>生成分享图</span>';
+          shareBtn.addEventListener('click', function () { noteShareDownload(n, shareBtn); });
+          foot.appendChild(shareBtn);
+          art.appendChild(foot);
+        }
         frag.appendChild(art);
       });
       notesFeed.appendChild(frag);
@@ -5715,6 +5732,229 @@
       el.scrollIntoView({ block: 'center', behavior: 'smooth' });
       el.classList.add('cmdk-flash');
       setTimeout(function () { el.classList.remove('cmdk-flash'); }, 1600);
+    }
+
+    // =========================
+    // 随笔分享卡片（2026-09-09）：每条随笔一键 canvas 绘卡 → PNG 下载。
+    // 固定暖白纸感风格（不随深浅主题）：底 #f8f7f4 + 顶部 #cc7442 径向光晕，对齐站点浅色主题观感；
+    // DPR 2 倍绘制（900×1200 逻辑尺寸 → 1800×2400 物理像素）保证导出清晰；
+    // 不做预览浮层，点按钮直接下载；toBlob 失败静默复原按钮（无动画，不涉 reduced-motion）。
+    // =========================
+    var NOTE_SHARE_FONT = "'DM Sans', 'PingFang SC', 'Microsoft YaHei', sans-serif"; // 系统回退即可，不加载网络字体
+
+    // 坑 29 守卫：顶栏悬停预览的 iframe 是完整第二实例（window.self !== window.top），里面不渲染分享按钮
+    function noteInPreviewFrame() {
+      try { return window.self !== window.top; } catch (e) { return true; }
+    }
+
+    // 随笔正文剥 Markdown 成纯文本（思路对齐 functions/feed.xml.js 的 stripMarkdown，两处加强：
+    // 保留换行作段落间隙——画卡排版需要段落结构；链接/图片去语法留文字，不做整体压平截断）。
+    // 正则清单：![alt](url)→alt；[text](url)→text；行首列表符 -/+/*/1. 去除；--- 分隔线整行清空；
+    // 残余标记字符 #>*_`~ 全删（_ 与 feed.xml.js 同口径全删，中文随笔几乎不会误伤）；行内连续空白压成单空格
+    function noteStripMd(src) {
+      var out = String(src || '').split(/\r?\n/).map(function (line) {
+        return line
+          .replace(/!\[([^\]]*)\]\([^)]*\)/g, '$1') // 图片：去语法留 alt
+          .replace(/\[([^\]]+)\]\([^)]*\)/g, '$1')  // 链接：去语法留文字
+          .replace(/^\s*(?:[-+*]|\d+\.)\s+/, '')    // 行首列表标记（正文内的 - 不动，日期 2026-09-07 安全）
+          .replace(/^\s*-{3,}\s*$/, '')             // --- 分隔线整行清空
+          .replace(/[#>*_`~]/g, '')                 // 残余标记字符（含 ** * ` > 等）
+          .replace(/\s+/g, ' ')
+          .trim();
+      }).join('\n');
+      while (out.charAt(0) === '\n') out = out.slice(1);  // 掐头去尾空行（中间空行保留作段间距）
+      while (out.slice(-1) === '\n') out = out.slice(0, -1);
+      return out;
+    }
+
+    // 中文逐字测宽折行：不依赖空格断词，逐字符累加测宽、超宽即换行（中英文一视同仁，分享卡场景足够）；
+    // 单字符就超宽的极端情况也硬切进行，保证推进不死循环。空行保留为占位行（绘制时跳过但占一行高，
+    // 天然形成段间距）。纯函数不碰 canvas——measure 由调用方注入（页面传 ctx.measureText 包一层，
+    // node 单测传假测宽），返回 { lines: 行数组, overflow: 是否超出 maxLines }
+    function noteWrapLines(text, measure, maxWidth, maxLines) {
+      var out = [];
+      var paras = String(text || '').replace(/\r\n?/g, '\n').split('\n');
+      for (var p = 0; p < paras.length; p++) {
+        var line = paras[p];
+        if (!line) { out.push(''); continue; }
+        var cur = '';
+        for (var i = 0; i < line.length; i++) {
+          var ch = line.charAt(i);
+          if (cur && measure(cur + ch) > maxWidth) { out.push(cur); cur = ch; }
+          else cur += ch;
+        }
+        out.push(cur);
+      }
+      while (out.length && out[out.length - 1] === '') out.pop(); // 首尾空行不计行数
+      while (out.length && out[0] === '') out.shift();
+      if (out.length <= maxLines) return { lines: out, overflow: false };
+      return { lines: out.slice(0, maxLines), overflow: true };
+    }
+
+    // 超行数封顶：末行尾补「……」，加后超宽则从尾部逐字回删直到放得下（省略号本体始终保留）
+    function noteClipEllipsis(line, measure, maxWidth) {
+      var s = String(line || '') + '……';
+      while (measure(s) > maxWidth && s.length > 2) s = s.slice(0, -3) + '……';
+      return s;
+    }
+
+    // 逐字绘制拉开字距（每字后追加等宽间距，末字后不加）；返回总宽。
+    // 不用 ctx.letterSpacing——各浏览器兼容不齐，手动绘制最稳
+    function drawSpacedText(ctx, text, x, y, spacing) {
+      var cx = x;
+      for (var i = 0; i < text.length; i++) {
+        var ch = text.charAt(i);
+        ctx.fillText(ch, cx, y);
+        cx += ctx.measureText(ch).width + spacing;
+      }
+      return cx - spacing - x;
+    }
+
+    // 圆角矩形路径（ctx.roundRect 较新，手绘保证旧浏览器同样出图）
+    function noteRoundRectPath(ctx, x, y, w, h, r) {
+      r = Math.min(r, w / 2, h / 2);
+      ctx.beginPath();
+      ctx.moveTo(x + r, y);
+      ctx.arcTo(x + w, y, x + w, y + h, r);
+      ctx.arcTo(x + w, y + h, x, y + h, r);
+      ctx.arcTo(x, y + h, x, y, r);
+      ctx.arcTo(x, y, x + w, y, r);
+      ctx.closePath();
+    }
+
+    // 离屏绘卡：竖版 3:4（900×1200 逻辑），DPR 2 倍绘制。布局全部按逻辑坐标手排，
+    // 正文区最多 14 行，底部恒留出分隔线 + 水印的位置，正文再长也不侵入
+    function drawNoteShareCard(item) {
+      var W = 900, H = 1200, DPR = 2;
+      var canvas = document.createElement('canvas');
+      canvas.width = W * DPR;
+      canvas.height = H * DPR;
+      var ctx = canvas.getContext('2d');
+      if (!ctx) return null;
+      ctx.scale(DPR, DPR);
+      var INK = '#3f3a33', MUTED = '#8f8375', ACCENT = '#b0532b'; // 墨色/弱化/陶土色，固定不走主题变量
+      var font = function (size, weight) { return (weight || 400) + ' ' + size + 'px ' + NOTE_SHARE_FONT; };
+
+      // 底色 + 顶部径向光晕（对齐浅色主题观感）
+      ctx.fillStyle = '#f8f7f4';
+      ctx.fillRect(0, 0, W, H);
+      var glow = ctx.createRadialGradient(W / 2, 30, 0, W / 2, 30, 500);
+      glow.addColorStop(0, 'rgba(204, 116, 66, 0.30)');
+      glow.addColorStop(1, 'rgba(204, 116, 66, 0)');
+      ctx.fillStyle = glow;
+      ctx.fillRect(0, 0, W, 560);
+
+      // 内卡：暖白纸上再垫一层更亮的卡面，四周留边 + 内边距充足
+      var cx = 48, cy = 72, cw = W - 96, ch = H - 144, pad = 60;
+      ctx.save();
+      ctx.shadowColor = 'rgba(63, 47, 32, 0.10)';
+      ctx.shadowBlur = 28;
+      ctx.shadowOffsetY = 12;
+      ctx.fillStyle = '#fffdf9';
+      noteRoundRectPath(ctx, cx, cy, cw, ch, 26);
+      ctx.fill();
+      ctx.restore();
+      ctx.strokeStyle = 'rgba(176, 83, 43, 0.14)';
+      ctx.lineWidth = 1;
+      noteRoundRectPath(ctx, cx, cy, cw, ch, 26);
+      ctx.stroke();
+
+      var tx = cx + pad;      // 内容左缘
+      var tw = cw - pad * 2;  // 内容宽
+      var measure = function (s) { return ctx.measureText(s).width; };
+      ctx.textBaseline = 'alphabetic';
+      var y = cy + 88;
+
+      // 顶部小字「YHUO · 随笔」（字距拉开）
+      ctx.fillStyle = ACCENT;
+      ctx.font = font(15, 600);
+      drawSpacedText(ctx, 'YHUO · 随笔', tx, y, 6);
+
+      // 大号日期 + 天气/时段胶囊（mood 非空才画，与页面 .note-mood 同语义）
+      y += 66;
+      var date = String(item.date || '');
+      ctx.fillStyle = INK;
+      ctx.font = font(46, 700);
+      ctx.fillText(date, tx, y);
+      if (item.mood) {
+        var moodTxt = String(item.mood);
+        ctx.font = font(17, 500);
+        var mx = tx + ctx.measureText(date).width + 26;
+        var my = y - 30;
+        ctx.fillStyle = 'rgba(176, 83, 43, 0.08)';
+        noteRoundRectPath(ctx, mx, my, ctx.measureText(moodTxt).width + 30, 38, 19);
+        ctx.fill();
+        ctx.strokeStyle = 'rgba(176, 83, 43, 0.45)';
+        noteRoundRectPath(ctx, mx, my, ctx.measureText(moodTxt).width + 30, 38, 19);
+        ctx.stroke();
+        ctx.fillStyle = ACCENT;
+        ctx.fillText(moodTxt, mx + 15, y - 4);
+      }
+
+      // 正文：先剥 md 成纯文本，再逐字测宽折行；最多 14 行，超出末行加「……」
+      var wrapped = noteWrapLines(noteStripMd(item.text), measure, tw, 14);
+      var lines = wrapped.lines;
+      if (wrapped.overflow) lines[13] = noteClipEllipsis(lines[13], measure, tw);
+      y += 56;
+      ctx.fillStyle = 'rgba(63, 58, 51, 0.92)';
+      ctx.font = font(20, 400);
+      for (var i = 0; i < lines.length; i++) {
+        if (lines[i]) ctx.fillText(lines[i], tx, y); // 空行 = 段间距占位，跳过绘制
+        y += 38;
+      }
+
+      // 底部：分隔线 + 水印 + 陶土色小圆点装饰
+      var by = cy + ch - 118;
+      ctx.strokeStyle = 'rgba(63, 47, 32, 0.14)';
+      ctx.beginPath();
+      ctx.moveTo(tx, by + 0.5);
+      ctx.lineTo(tx + tw, by + 0.5);
+      ctx.stroke();
+      var wy = by + 52;
+      ctx.fillStyle = ACCENT;
+      ctx.beginPath();
+      ctx.arc(tx + 5, wy - 6, 5, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = MUTED;
+      ctx.font = font(17, 500);
+      drawSpacedText(ctx, 'yhuo.pages.dev · 190963.xyz', tx + 22, wy, 1);
+
+      return canvas;
+    }
+
+    // 绘卡 → toBlob → a[download] 直接下载「随笔-日期.png」；任一步失败静默复原按钮。
+    // 成功后按钮短暂变「已生成 ✓」，1.5 秒复原
+    function noteShareDownload(item, btn) {
+      if (btn.dataset.busy) return; // 连点防护：生成期间忽略再次点击
+      btn.dataset.busy = '1';
+      var label = btn.querySelector('span');
+      var canvas = null;
+      try {
+        canvas = drawNoteShareCard(item);
+      } catch (e) { canvas = null; }
+      if (!canvas) { noteShareResetBtn(btn, label); return; }
+      try {
+        canvas.toBlob(function (blob) {
+          if (!blob) { noteShareResetBtn(btn, label); return; } // toBlob 失败：静默复原
+          var url = URL.createObjectURL(blob);
+          var a = document.createElement('a');
+          a.href = url;
+          a.download = '随笔-' + String(item.date || '分享') + '.png';
+          document.body.appendChild(a);
+          a.click();
+          a.remove();
+          setTimeout(function () { URL.revokeObjectURL(url); }, 4000); // 等下载起跑再回收
+          btn.classList.add('is-done');
+          if (label) label.textContent = '已生成 ✓';
+          setTimeout(function () { noteShareResetBtn(btn, label); }, 1500);
+        }, 'image/png');
+      } catch (e) { noteShareResetBtn(btn, label); }
+    }
+
+    function noteShareResetBtn(btn, label) {
+      delete btn.dataset.busy;
+      btn.classList.remove('is-done');
+      if (label) label.textContent = '生成分享图';
     }
 
     // =========================

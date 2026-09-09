@@ -6372,3 +6372,50 @@
       color: var(--apple-muted-foreground); background: var(--apple-secondary);
       border-radius: 999px; padding: 0 7px; white-space: nowrap;
     }
+
+    /* =========================
+       随笔分享卡片（2026-09-09，common.js 随笔页「随笔分享卡片」段）：每条随笔尾部「生成分享图」小钮，
+       点击离屏 canvas 绘暖白纸感分享卡 → PNG 直接下载（无预览浮层）。按钮随条目 JS 渲染，无外壳同步问题；
+       顶栏悬停预览 iframe（坑 29）里 common.js 不渲染按钮。观感对齐随笔页 .note-mood 胶囊
+       ========================= */
+    .note-foot {
+      margin-top: 10px;
+    }
+
+    .note-share-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 5px 12px;
+      font: inherit;
+      font-size: 12px;
+      font-weight: 600;
+      line-height: 1;
+      color: var(--apple-muted-foreground);
+      background: var(--apple-secondary);
+      border: 1px solid var(--apple-border);
+      border-radius: 999px;
+      cursor: pointer;
+      transition: color 180ms var(--ease-out, ease), border-color 180ms var(--ease-out, ease),
+        background-color 180ms var(--ease-out, ease), transform 180ms var(--ease-out, ease);
+    }
+
+    .note-share-btn:hover {
+      color: var(--primary);
+      border-color: color-mix(in srgb, var(--primary) 30%, transparent);
+      background: color-mix(in srgb, var(--primary) 8%, transparent);
+    }
+
+    .note-share-btn:active { transform: scale(0.96); }
+
+    .note-share-btn:focus-visible {
+      outline: 2px solid var(--primary);
+      outline-offset: 2px;
+    }
+
+    /* 「已生成 ✓」短暂成功态（1.5 秒后 JS 复原），底色同 .note-mood 的主题色 12% 混合 */
+    .note-share-btn.is-done {
+      color: var(--primary);
+      border-color: color-mix(in srgb, var(--primary) 35%, transparent);
+      background: color-mix(in srgb, var(--primary) 12%, transparent);
+    }

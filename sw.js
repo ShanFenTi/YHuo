@@ -5,7 +5,7 @@
 //   /music/ /video/ /images/ → cache-first（上限 60 条，超出删最旧）
 //   其余同源 GET → network-first（简单版，无超时控制）
 // 注意：本文件是普通根文件（非 ESM、不在页面里），改完用 node --check sw.js 验语法。
-const SW_VERSION = 'yhuo-sw-v1';
+const SW_VERSION = 'yhuo-sw-v2';
 const PRECACHE = SW_VERSION + '-precache'; // install 精装（刻意轻量，绝不整站 precache）
 const RUNTIME = SW_VERSION + '-runtime';   // 导航 + /assets/* 运行时缓存
 const MEDIA = SW_VERSION + '-media';       // 音视频图片（有条数上限）
@@ -70,7 +70,9 @@ async function handleNavigate(request) {
     const response = await fetch(request, { signal: controller.signal });
     if (response && response.ok) {
       const cache = await caches.open(RUNTIME);
-      cache.put(request, response.clone()); // 顺手进运行时缓存，断网可回看
+      // navigate 请求对象按规范会被 Cache.put 直接 reject（且此处未 catch），换普通 GET 请求对象做键，
+      // match 按 URL 仍能命中；.catch 静默：写缓存失败不影响本次导航
+      cache.put(new Request(request.url, { method: 'GET' }), response.clone()).catch(() => {}); // 顺手进运行时缓存，断网可回看
     }
     return response;
   } catch (e) {
@@ -95,7 +97,8 @@ function staleWhileRevalidate(request) {
   return {
     value: cachePromise
       .then((cache) => cache.match(request))
-      .then((cached) => cached || network.then((r) => r || offlineText())),
+      .then((cached) => cached || network.then((r) => r || offlineText()))
+      .catch(() => offlineText()), // 无缓存且网络 fetch 失败：不能让 respondWith 拿到 rejected promise（首访离线硬失败）
     update: network.then(() => {}, () => {}),
   };
 }

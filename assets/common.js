@@ -8573,7 +8573,9 @@
     function trackPlay(el) {
       activeEl = el;
       hintEl.classList.remove('is-visible');
-      if (inited && ctx && ctx.state === 'suspended') ctx.resume().catch(noteResumeFail);
+      // 只要有接管过源就尝试 resume（不依赖 inited 标志）：系统中断把 Context 挂起后，
+      // 接管元素的声音全走 Context，不唤醒就是静音
+      if (ctx && sourced.length && ctx.state === 'suspended') ctx.resume().catch(noteResumeFail);
       if (enabled && reduceMotion) drawFrame(); // 减弱动态档：切歌/重播补一帧静态
     }
     function attachPlayTracking() {
@@ -8585,6 +8587,12 @@
       });
     }
     attachPlayTracking();
+    // 系统中断恢复钩：iOS 锁屏/来电中断后 ctx suspended 而音频元素仍处于 playing，不会再发
+    // play 事件（上面的 trackPlay 钩不到），只能靠页面回到前台时补 resume（音频未暂停才需要）
+    document.addEventListener('visibilitychange', function () {
+      if (document.hidden || !ctx || !sourced.length || ctx.state !== 'suspended') return;
+      if (activeEl && !activeEl.paused) ctx.resume().catch(noteResumeFail);
+    });
 
     // —— AudioContext 生命周期：只在开关点击（用户手势）里经 initGraph 创建；此后不 close、
     // 不 disconnect——技术上 disconnect 也回不去了，关开关只是停 rAF 收面板 ——
@@ -8613,14 +8621,18 @@
         attachPlayTracking(); // 兜底：极端缓存外壳下启动时还没出现的元素此刻补挂
         if (ctx.state === 'suspended') ctx.resume().catch(noteResumeFail); // 就在本次手势里唤醒
       } catch (e) {
-        // 初始化失败：未建源的元素仍走原生输出，播放零影响；按钮置灰 + title 提示
+        // 初始化失败：未建源的元素仍走原生输出，播放零影响；按钮置灰 + title 提示。
+        // 但已接管过源（sourced 非空）的元素声音已走 Context：inited 按实际接管数记 true 并当场
+        // resume，否则 play 事件里的 resume 挂钩永不触发 = 已接管元素从此永久静音
         initFailed = true;
+        inited = sourced.length > 0;
         buttons.forEach(function (b) {
           b.disabled = true;
           b.classList.add('is-broken');
           b.title = '当前浏览器不支持频谱';
         });
         syncButtons();
+        if (ctx && ctx.state === 'suspended') ctx.resume().catch(noteResumeFail);
         return false;
       }
       return true;
@@ -8843,10 +8855,16 @@
       }
     });
 
-    // —— 离开标签页标题彩蛋：hidden 换哭脸，回来恢复。标题取页面加载时的快照，不猜字符串 ——
-    var originTitle = document.title;
+    // —— 离开标签页标题彩蛋：hidden 换哭脸，回来恢复。恢复用离开瞬间的实时快照（首载快照在
+    // pjax 换页后会过期，恢复成旧页标题），不猜字符串 ——
+    var originTitle = document.title; // 仅作初值
     document.addEventListener('visibilitychange', function () {
-      document.title = document.hidden ? ':( 回来看看嘛…' : originTitle;
+      if (document.hidden) {
+        originTitle = document.title; // 先存当前标题再换彩蛋
+        document.title = ':( 回来看看嘛…';
+      } else {
+        document.title = originTitle;
+      }
     });
   })();
 

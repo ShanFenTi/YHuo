@@ -26,13 +26,11 @@ function stripMarkdown(text) {
   return plain.length > 500 ? plain.slice(0, 500) + '…' : plain;
 }
 
-// 随笔日期（YYYY-MM-DD，北京时间口径）→ RFC 822 pubDate；解析失败回落当前时间
+// 随笔日期（YYYY-MM-DD，北京时间口径）→ RFC 822 pubDate；坏日期时 new Date 返回 Invalid Date
+// 而不抛错，故用 isNaN 兜底：无效返回 null，item 里整个省略 pubDate（lastBuildDate 回落当前时间）
 function toPubDate(date) {
-  try {
-    return new Date(date + 'T00:00:00+08:00').toUTCString();
-  } catch (e) {
-    return new Date().toUTCString();
-  }
+  const d = new Date(date + 'T00:00:00+08:00');
+  return isNaN(d.getTime()) ? null : d.toUTCString();
 }
 
 export async function onRequestGet({ env, request }) {
@@ -57,17 +55,19 @@ export async function onRequestGet({ env, request }) {
   const items = list.map((n) => {
     const mood = n.mood ? ` · ${n.mood}` : '';
     const guid = `note-${n.id != null ? n.id : n.date}`; // 静态清单条目没有 id，退用日期
+    const pubDate = toPubDate(n.date);
     return [
       '    <item>',
       `      <title>${xmlEscape(`随笔 · ${n.date}${mood}`)}</title>`,
       `      <guid>${xmlEscape(guid)}</guid>`,
-      `      <pubDate>${toPubDate(n.date)}</pubDate>`,
+      // 坏日期省略整个 pubDate 元素，绝不输出 <pubDate>Invalid Date</pubDate>
+      ...(pubDate ? [`      <pubDate>${pubDate}</pubDate>`] : []),
       `      <description>${xmlEscape(stripMarkdown(n.text))}</description>`,
       '    </item>',
     ].join('\n');
   }).join('\n');
 
-  const lastBuildDate = list.length && list[0].date ? toPubDate(list[0].date) : new Date().toUTCString();
+  const lastBuildDate = (list.length && list[0].date && toPubDate(list[0].date)) || new Date().toUTCString();
   const xml = [
     '<?xml version="1.0" encoding="UTF-8"?>',
     '<rss version="2.0">',

@@ -1,0 +1,20 @@
+# CI 代码校验：与本地双击「校验代码.bat」完全同源（node check-code.mjs）。
+# check-code.mjs 只用 node 内置模块（fs/path/url/child_process/os，内联脚本走 new Function、
+# functions/ 走 node --check），零 npm 依赖——不装 node_modules 直接跑，简单克制一个 job。
+name: check
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  check-code:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: node check-code.mjs

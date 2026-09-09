@@ -6419,3 +6419,64 @@
       border-color: color-mix(in srgb, var(--primary) 35%, transparent);
       background: color-mix(in srgb, var(--primary) 12%, transparent);
     }
+
+    /* ===== 首页 Hero 视差光斑（2026-09-09）=====
+       两枚陶土色柔光斑（时钟后 #cc7442 一层、视频盒旁 #e7a37c 一层），这里只是默认态：
+       绝对定位 + 模糊渐变圆 + 低透明度，z 压在全部内容之下，深浅主题都当"色斑"不抢戏。
+       指针跟随在 common.js 首页模块（heroGlowFx）。坑 22/28 铁律：transform 只加在光斑自身
+       （普通绝对定位、无 fixed 后代，安全），绝不给 .hero-section/.page-main 加 transform/animation——
+       hero 的 fadeInUp（fill:forwards）本就让容器持续构成包含块/层叠上下文，别再叠加放大布局雷。 */
+    .hero-section {
+      position: relative;      /* 光斑定位上下文；不加 z-index，容器层叠维持现状（坑 28） */
+      isolation: isolate;      /* 显式收敛层叠上下文，光斑 z:-1 不会漏到 hero 之外，不依赖入场动画是否在"filling"态 */
+    }
+
+    .hero-glow {
+      position: absolute;
+      z-index: -1;             /* 内容之下：hero 自成层叠上下文，-1 只压到 hero 内容底、不会钻到页面背景后 */
+      pointer-events: none;
+      border-radius: 50%;
+      filter: blur(60px);
+      opacity: 0.16;
+      transform: translate3d(0, 0, 0); /* 静态归零；跟随逻辑只改这一个属性，走合成层不触发重排 */
+      will-change: transform;
+    }
+
+    /* 时钟后方一层：色深一点、跟随幅度小（JS 里 0.5%），近乎凝住 */
+    .hero-glow--clock {
+      width: 420px;
+      height: 420px;
+      left: -8%;
+      top: -12%;
+      background: radial-gradient(circle, rgba(204, 116, 66, 0.55), rgba(204, 116, 66, 0) 70%);
+    }
+
+    /* 视频盒附近一层：色浅一点、跟随幅度大（JS 里 2%），视差主层 */
+    .hero-glow--video {
+      width: 360px;
+      height: 360px;
+      right: -6%;
+      top: 10%;
+      background: radial-gradient(circle, rgba(231, 163, 124, 0.6), rgba(231, 163, 124, 0) 70%);
+    }
+
+    /* 暗色主题：透明度再压一档，避免暗底上泛灰发脏 */
+    .dark .hero-glow {
+      opacity: 0.12;
+    }
+
+    @media (max-width: 900px) {
+      .hero-glow {
+        filter: blur(48px);
+      }
+
+      .hero-glow--clock {
+        width: 300px;
+        height: 300px;
+      }
+
+      .hero-glow--video {
+        width: 260px;
+        height: 260px;
+      }
+    }

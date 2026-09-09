@@ -205,6 +205,10 @@
 
       <!-- Hero / 时钟区域 -->
       <section class="hero-section" aria-label="本地时间">
+        <!-- 视差光斑：纯装饰，默认态全在 CSS（site.css 末段）；指针跟随在 common.js 首页模块——
+             transform 只加在光斑自身（普通绝对定位、无 fixed 后代），绝不加到 hero 容器/main（坑 22/28） -->
+        <i class="hero-glow hero-glow--clock" aria-hidden="true"></i>
+        <i class="hero-glow hero-glow--video" aria-hidden="true"></i>
         <p class="hero-greeting" id="heroGreeting">你好</p>
         <div class="hero-row">
           <div class="clock-hud">

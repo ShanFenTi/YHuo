@@ -7914,6 +7914,81 @@
     })();
 
     // =========================
+    // 首页 Hero 视差光斑（2026-09-09）
+    // 光斑默认态全在 CSS（site.css 末段 .hero-glow），这里只做指针跟随：监听 hero 区 mousemove（rAF 节流，
+    // 帧里统一读 rect 换算），目标位与指针方向相反，lerp 阻尼 0.06 逼近，光斑以 transform: translate3d
+    // 做 0.5%~2% 幅度的反向缓移（时钟后那层 0.5% 近乎凝住、视频盒旁那层 2% 为主视差层）。
+    // 坑 22/28 铁律：transform 只加在光斑自身（普通绝对定位、无 fixed 后代，安全），绝不加到 hero 容器或 main 上。
+    // 启用条件（init 时判定，任一不满足就不绑监听、只留 CSS 静态光斑）：触屏（hover: none）、
+    // prefers-reduced-motion: reduce、预览缩略图 iframe（window.self !== window.top，坑 29：iframe 是完整
+    // 站点，一切自动行为会在里面再跑一份）三者任一命中即不启用；仅首页 init 调 start，pjax 进出重绑。
+    // rAF 循环只在指针位于 hero 内、或离开后尚未渐回原位时运转，回正即停，不空转。
+    // =========================
+    var heroGlowFx = (function () {
+      var hero = null, glows = [], raf = 0, inside = false, px = 0, py = 0;
+      // 每层一份状态：amp = 跟随幅度（最大位移占 hero 宽/高的百分比）、x/y 当前位移、tx/ty 目标位移
+      var layers = [
+        { amp: 0.005, x: 0, y: 0, tx: 0, ty: 0 },
+        { amp: 0.02,  x: 0, y: 0, tx: 0, ty: 0 }
+      ];
+      function frame() {
+        raf = 0;
+        if (!hero) return;
+        var r = hero.getBoundingClientRect();
+        var nx = (px - r.left) / (r.width || 1) - 0.5;   // 指针在 hero 内的相对位置，-0.5 ~ 0.5
+        var ny = (py - r.top) / (r.height || 1) - 0.5;
+        var settled = true;
+        for (var i = 0; i < layers.length; i++) {
+          var L = layers[i];
+          L.tx = -nx * 2 * L.amp * r.width;              // 反向：光斑朝指针反方向缓移，幅度上限 = amp × hero 尺寸
+          L.ty = -ny * 2 * L.amp * r.height;
+          L.x += (L.tx - L.x) * 0.06;                    // lerp 阻尼 0.06，柔缓跟随
+          L.y += (L.ty - L.y) * 0.06;
+          if (Math.abs(L.tx - L.x) > 0.05 || Math.abs(L.ty - L.y) > 0.05) settled = false;
+          if (glows[i]) glows[i].style.transform = 'translate3d(' + L.x.toFixed(2) + 'px,' + L.y.toFixed(2) + 'px,0)';
+        }
+        // 指针在 hero 内持续跟；离开后目标已归零，转到基本回正才收 rAF（渐回原位）
+        if (inside || !settled) raf = requestAnimationFrame(frame);
+      }
+      function onMove(e) {
+        px = e.clientX; py = e.clientY; inside = true;
+        if (!raf) raf = requestAnimationFrame(frame);
+      }
+      function onLeave() {
+        inside = false;
+        for (var i = 0; i < layers.length; i++) { layers[i].tx = 0; layers[i].ty = 0; }
+        if (!raf) raf = requestAnimationFrame(frame);
+      }
+      return {
+        start: function () {
+          if (window.self !== window.top) return;                            // 坑 29：预览 iframe 不启用
+          if (!window.matchMedia) return;
+          if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+          if (window.matchMedia('(hover: none)').matches) return;            // 触屏无悬停指针，不启用
+          hero = document.querySelector('.hero-section');
+          if (!hero) return;
+          glows = Array.prototype.slice.call(hero.querySelectorAll('.hero-glow'));
+          if (!glows.length) { hero = null; return; }
+          inside = false;
+          hero.addEventListener('mousemove', onMove);
+          hero.addEventListener('mouseleave', onLeave);
+        },
+        stop: function () {
+          // pjax 换页连 <main> 一起换，残留监听必须摘、rAF 必须停；hero 引用可能是旧的（已脱离文档）也照摘
+          var el = hero || document.querySelector('.hero-section');
+          if (el) {
+            el.removeEventListener('mousemove', onMove);
+            el.removeEventListener('mouseleave', onLeave);
+          }
+          if (raf) { cancelAnimationFrame(raf); raf = 0; }
+          // transform 残留随节点销毁本会消失，仍手动清一遍兜底局部刷新场景
+          Array.prototype.forEach.call(document.querySelectorAll('.hero-glow'), function (g) { g.style.transform = ''; });
+          hero = null; glows = [];
+        }
+      };
+    })();
+
+    // =========================
     // 多页面核心：pjax 无缝换页（2026-09-05）
     // 七个页面都是真实 HTML（/、/tools/、/docs/、/ai/、/board/、/schedule/、/blog/），直接输入网址/刷新/分享全部可用；
     // 站内导航在这里拦截：fetch 目标页 → 只替换 <main>（头部/播放器/浮层/页脚都在外壳里不动）→ 音乐跨页不断播。
@@ -7921,8 +7996,8 @@
     // =========================
     var PAGE_MODULES = {
       home: {
-        init: function () { startHomeClock(); startHomeQuote(); startHomeVideo(); startHomeWeather(); lyricRebind(); },
-        destroy: function () { stopHomeClock(); destroyHomeQuote(); clearInterval(lyricTypeTimer); lyricTypeTimer = null; }
+        init: function () { startHomeClock(); startHomeQuote(); startHomeVideo(); startHomeWeather(); lyricRebind(); heroGlowFx.start(); },
+        destroy: function () { stopHomeClock(); destroyHomeQuote(); clearInterval(lyricTypeTimer); lyricTypeTimer = null; heroGlowFx.stop(); }
       },
       tools: {
         init: function () { initToolsPage(); },

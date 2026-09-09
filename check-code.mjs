@@ -1,8 +1,8 @@
 // 一键代码检查（双击 校验代码.bat 运行）：
-//   1. 八个前台页面（/ 与 tools/docs/ai/board/schedule/blog/notes 七个子页）+ functions/admin/index.js 的内联 <script> 做 new Function 语法校验
+//   1. 九个前台页面（/ 与 tools/docs/ai/board/schedule/blog/notes/games 八个子页）+ functions/admin/index.js 的内联 <script> 做 new Function 语法校验
 //   2. functions/ 下所有 ESM 文件的 import/export 语法 + 相对导入路径真实存在（嵌套目录层级写错当场拦住）
 //   3. 各页面 <script src>/<link href> 引用的本地文件存在
-//   4. 八页外壳一致性（坑 23：头部/浮层/页脚/播放器等外壳 markup 八页各一份拷贝，漏同步当场报错）
+//   4. 九页外壳一致性（坑 23：头部/浮层/页脚/播放器等外壳 markup 九页各一份拷贝，漏同步当场报错）
 // 退出码非 0 = 有问题；推送前跑一遍，几类"语法没错但一跑就炸"的错误当场现形
 import { readFileSync, existsSync, writeFileSync, rmSync, readdirSync, statSync } from 'node:fs';
 import { dirname, join, resolve, relative } from 'node:path';
@@ -16,8 +16,8 @@ const fail = (msg) => { errors++; console.log('  ✗ ' + msg); };
 const ok = (msg) => console.log('  ✓ ' + msg);
 
 // 多页面改造（2026-09-05）后的前台页面（2026-09-06 增课表页 /schedule/ 与预览页 /blog/、同日移除杂项页 /misc/；
-// 2026-09-07 增随笔页 /notes/，现共八个）；改外壳（头部/导航/浮层）要多处同步，这里全部把关
-const PAGES = ['index.html', 'tools/index.html', 'docs/index.html', 'ai/index.html', 'board/index.html', 'schedule/index.html', 'blog/index.html', 'notes/index.html'];
+// 2026-09-07 增随笔页 /notes/，2026-09-09 增游戏页 /games/，现共九个）；改外壳（头部/导航/浮层）要多处同步，这里全部把关
+const PAGES = ['index.html', 'tools/index.html', 'docs/index.html', 'ai/index.html', 'board/index.html', 'schedule/index.html', 'blog/index.html', 'notes/index.html', 'games/index.html'];
 
 // ---------- 1. 内联 <script> 语法 ----------
 function checkInlineScripts(file, label) {
@@ -92,19 +92,21 @@ console.log('[3] 前台页面本地引用');
     while ((m = refRe.exec(src))) {
       const path = m[1].split('?')[0].split('#')[0];
       if (path.startsWith('/api/') || path.startsWith('/media/') || path === '/admin') continue;
+      if (path === '/feed.xml') continue; // functions/feed.xml.js 文件路由提供（RSS），静态目录里没有该文件，跳过存在性检查
       const target = join(ROOT, path);
       checked++;
       if (!existsSync(target)) { bad++; fail(`${p} 引用 ${path} 不存在`); }
     }
   }
-  if (!bad) ok(`八个页面本地静态引用 ${checked} 个全部存在`);
+  if (!bad) ok(`九个页面本地静态引用 ${checked} 个全部存在`);
 }
 
 // ---------- 4. 八页外壳一致性（坑 23） ----------
 // 外壳 = <main>…</main> 之外的全部内容（head + 头部胶囊 + 浮层 + 页脚 + 播放器 + script 引用）。
-// 八页本就只差 data-page / <title> / 导航高亮三处，归一化掉之后应当逐行相等；
+// 九页本就只差 data-page / <title> / 每页专属描述与 og:*（2026-09-09 SEO 起）/ 导航高亮四处，
+// 归一化掉之后应当逐行相等；
 // 不等 = 改外壳时漏同步了某个页面，当场报出错页与首个差异行。
-console.log('[4] 八页外壳一致性');
+console.log('[4] 九页外壳一致性');
 {
   const MAIN_OPEN = /<main[\s>]/g;
   const MAIN_CLOSE = /<\/main>/g;
@@ -120,11 +122,15 @@ console.log('[4] 八页外壳一致性');
     }
     return src.slice(0, openAt) + src.slice(closeAt + '</main>'.length);
   });
-  // 差异白名单：三处页间合法差异（ai-entry 类不在白名单里，各页本就一致，剥掉反而会放过漏改）
+  // 差异白名单：页间合法差异（ai-entry 类不在白名单里，各页本就一致，剥掉反而会放过漏改）。
+  // 2026-09-09 PWA/SEO 批次起，每页专属的 meta description / og:* 行也按内容剔除后比对
+  //（og:title 与各页 <title> 一致，属合法差异；其余 head 行仍要求逐行一致）。
+  // 前面已统一 \r\n → \n（坑 8），行尾再兜一层 \s* 兼容残余 \r。
   const norm = (s) => s.replace(/\r\n/g, '\n')
     .replace(/data-page="[^"]*"/g, 'data-page="*"')
     .replace(/<title>[^<]*<\/title>/g, '<title>*</title>')
     .split('\n')
+    .filter((line) => !/^\s*<meta (?:name="description"|property="og:)[^>]*>\s*$/.test(line))
     .map((line) => line.includes('nav-link')
       ? line.replace(/\s+aria-current="page"/g, '').replace(/\s+active(?=["\s])/g, '')
       : line)
@@ -146,7 +152,7 @@ console.log('[4] 八页外壳一致性');
       const snippet = (b[ln] || '(该页外壳提前结束)').trim().slice(0, 60);
       fail(`${PAGES[i]} 外壳与首页不一致（归一化后第 ${ln + 1} 行）：${snippet}`);
     }
-    if (!bad) ok(`七个子页外壳与首页一致（比对 ${base.split('\n').length} 行；白名单：data-page/标题/导航高亮）`);
+    if (!bad) ok(`八个子页外壳与首页一致（比对 ${base.split('\n').length} 行；白名单：data-page/标题/描述与 og:*/导航高亮）`);
   }
 }
 

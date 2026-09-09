@@ -1,11 +1,11 @@
 <!DOCTYPE html>
-<html lang="zh-CN" class="light" data-page="notes">
+<html lang="zh-CN" class="light" data-page="games">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="YHuo 的随笔时间线：零碎想法与日常记录，支持 RSS 订阅。">
-  <meta property="og:title" content="随笔 - YHuo">
-  <meta property="og:description" content="YHuo 的随笔时间线：零碎想法与日常记录，支持 RSS 订阅。">
+  <meta name="description" content="YHuo 收录的网页小游戏，即点即玩。">
+  <meta property="og:title" content="游戏 - YHuo">
+  <meta property="og:description" content="YHuo 收录的网页小游戏，即点即玩。">
   <meta property="og:type" content="website">
   <meta name="theme-color" media="(prefers-color-scheme: light)" content="#f8f7f4">
   <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#000000">
@@ -14,7 +14,7 @@
   <link rel="apple-touch-icon" href="/assets/icons/apple-touch-icon.png">
   <link rel="manifest" href="/manifest.webmanifest">
   <link rel="alternate" type="application/rss+xml" title="YHuo 随笔与更新" href="/feed.xml">
-  <title>随笔 - YHuo</title>
+  <title>游戏 - YHuo</title>
   <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -146,9 +146,9 @@
       <a class="logo" href="/" aria-label="回到首页">YHuo</a>
     <nav class="site-nav" aria-label="主导航">
       <a href="/" class="nav-link" data-target="home">首页</a>
-      <a href="/notes/" class="nav-link active" id="notesBtn" aria-current="page">随笔</a>
+      <a href="/notes/" class="nav-link" id="notesBtn">随笔</a>
       <a href="/tools/" class="nav-link" id="toolsBtn">工具</a>
-      <a href="/games/" class="nav-link" id="gamesBtn">游戏</a>
+      <a href="/games/" class="nav-link active" id="gamesBtn" aria-current="page">游戏</a>
       <a href="/ai/" class="nav-link ai-entry" id="aiBtn">AI</a>
       <a href="/board/" class="nav-link" id="boardBtn">留言</a>
       <a href="/schedule/" class="nav-link" id="scheduleBtn">课表</a>
@@ -201,15 +201,76 @@
 
   <main class="page-main">
     <header class="album-bar">
-      <p class="album-title">随笔 · NOTES</p>
+      <p class="album-title">游戏 · GAMES</p>
     </header>
     <div class="tool-block">
       <div class="apple-card">
         <div class="card-padding">
-          <p class="card-eyebrow">随笔 · NOTES</p>
-          <p class="notes-lead">一些个人思考、日记和零碎的感悟——不成文章，随手记下。</p>
-          <div class="notes-feed" id="notesFeed"></div>
-          <p class="empty-hint" id="notesEmpty" hidden>还没有随笔。写一条：往 notes/notes.json 加一条 {date, mood, text}（date 形如 2026-09-07，mood=天气/时段如 晴/夜，可留空），或直接在后台「随笔」页写。</p>
+          <p class="card-eyebrow">小游戏 · ARCADE</p>
+          <!-- 副文案复用随笔页 .notes-lead（样式与滚动揭示清单均已就位，见 site.css「随笔页」段） -->
+          <p class="notes-lead">三款纯本地小游戏——不联网、零加载，随时来一局。</p>
+
+          <div class="games-grid">
+            <!-- 卡 1：2048（逻辑在 assets/common.js PAGE_MODULES.games，这里只放 DOM 骨架） -->
+            <div class="game-card" id="game2048">
+              <div class="game-card-head">
+                <p class="game-card-title">🔢 2048<span class="game-badge" id="g2048Best">最高 0</span></p>
+                <button class="game-btn" id="g2048Restart" type="button">重开</button>
+              </div>
+              <div class="game-scorebar"><span>分数 <b id="g2048Score">0</b></span></div>
+              <div class="g2048-board" id="g2048Board">
+                <span class="g2048-cell"></span><span class="g2048-cell"></span><span class="g2048-cell"></span><span class="g2048-cell"></span>
+                <span class="g2048-cell"></span><span class="g2048-cell"></span><span class="g2048-cell"></span><span class="g2048-cell"></span>
+                <span class="g2048-cell"></span><span class="g2048-cell"></span><span class="g2048-cell"></span><span class="g2048-cell"></span>
+                <span class="g2048-cell"></span><span class="g2048-cell"></span><span class="g2048-cell"></span><span class="g2048-cell"></span>
+                <div class="g2048-tiles" id="g2048Tiles" aria-hidden="true"></div>
+                <div class="game-overlay" id="g2048Overlay" hidden>
+                  <p class="game-overlay-title" id="g2048OverlayTitle">游戏结束</p>
+                  <button class="game-btn primary" id="g2048OverlayBtn" type="button">重开一局</button>
+                </div>
+              </div>
+              <p class="game-hint">方向键 / WASD / 触屏滑动移动方块，相同数字合并，合成 2048。</p>
+            </div>
+
+            <!-- 卡 2：贪吃蛇（canvas 绘制，尺寸随卡片宽度自适应） -->
+            <div class="game-card" id="gameSnake">
+              <div class="game-card-head">
+                <p class="game-card-title">🐍 贪吃蛇<span class="game-badge" id="gsnakeBest">最高 0</span></p>
+                <button class="game-btn" id="gsnakeRestart" type="button">重开</button>
+              </div>
+              <div class="game-scorebar">
+                <span>分数 <b id="gsnakeScore">0</b></span>
+                <button class="game-btn primary" id="gsnakeToggle" type="button">开始</button>
+              </div>
+              <div class="gsnake-wrap" id="gsnakeWrap">
+                <canvas id="gsnakeCanvas" width="400" height="400" aria-label="贪吃蛇游戏画面"></canvas>
+                <div class="game-overlay" id="gsnakeOverlay" hidden>
+                  <p class="game-overlay-title">游戏结束</p>
+                  <p class="game-overlay-sub" id="gsnakeOverlaySub">得 0 分</p>
+                  <button class="game-btn primary" id="gsnakeOverlayBtn" type="button">再来一局</button>
+                </div>
+              </div>
+              <p class="game-hint">方向键 / WASD 转向（不能 180° 回头），空格暂停；触屏在棋盘上滑动转向。每 50 分加速一档。</p>
+            </div>
+
+            <!-- 卡 3：记忆翻牌（4×4 共 8 对，通关按步数计最佳） -->
+            <div class="game-card" id="gameMem">
+              <div class="game-card-head">
+                <p class="game-card-title">🧠 记忆翻牌<span class="game-badge" id="gmemBest">最佳 —</span></p>
+                <button class="game-btn" id="gmemRestart" type="button">重开</button>
+              </div>
+              <div class="game-scorebar"><span>步数 <b id="gmemSteps">0</b></span><span>用时 <b id="gmemTime">0s</b></span></div>
+              <div class="gmem-wrap">
+                <div class="gmem-grid" id="gmemGrid"></div>
+                <div class="game-overlay" id="gmemOverlay" hidden>
+                  <p class="game-overlay-title">通关！</p>
+                  <p class="game-overlay-sub" id="gmemOverlaySub">0 步 · 0s</p>
+                  <button class="game-btn primary" id="gmemOverlayBtn" type="button">再来一局</button>
+                </div>
+              </div>
+              <p class="game-hint">点开两张找相同图案，配对成功保持翻开，全部配对即通关。</p>
+            </div>
+          </div>
         </div>
       </div>
     </div>

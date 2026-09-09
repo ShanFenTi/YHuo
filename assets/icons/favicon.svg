@@ -1,0 +1,9 @@
+<!-- YHuo 站点图标（矢量版，与 tools/gen-icons.mjs 生成的 PNG 同样式：陶土圆角方块 + 白色几何「Y」） -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <rect width="100" height="100" rx="22" fill="#b0532b"/>
+  <g stroke="#ffffff" stroke-width="16" stroke-linecap="round" fill="none">
+    <path d="M30 16 L50 50"/>
+    <path d="M70 16 L50 50"/>
+    <path d="M50 50 L50 86"/>
+  </g>
+</svg>

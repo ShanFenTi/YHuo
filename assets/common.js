@@ -20,7 +20,7 @@
       var reduceMQ = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)');
       if (!reduceMQ || reduceMQ.matches) return;
       if (!document.documentElement.classList.contains('fx-reveal')) return;
-      var SEL = '.page-main :is(.album-bar, .apple-card, .tool-card, .tool-more, .doc-card, .note, .notes-year, .notes-lead)';
+      var SEL = '.page-main :is(.album-bar, .apple-card, .tool-card, .tool-more, .doc-card, .note, .notes-year, .notes-lead, .game-card)';
       // 文档阅读层（docViewer 是外壳浮层，不在 .page-main 内，单独一档）：mdToHtml 的顶层块 +
       // 更新日志时间轴按天（.cl-day）逐块揭示；只在阅读层开着时采集（关着 display:none 量到 0 会全部被误判已入视口）
       var SEL_DOC = '#docArticle > :is(h1,h2,h3,h4,h5,h6,p,ul,ol,pre,blockquote,table,img,div:not(.cl-timeline)), #docArticle .cl-day';
@@ -236,8 +236,8 @@
     var PAGE_KEY = document.documentElement.getAttribute('data-page') || 'home'; // 当前页面（各页 <html> 上标死）
     var onGatePassedPageHook = null; // 游客门通过后的页面回调（课表页等需登录页面注册；passGate 触发）
     var schedPageCleanup = null;     // 课表页 document 级监听的清理函数（离页摘除防叠加）
-    var PAGE_ROUTE = { home: '/', tools: '/tools/', docs: '/docs/', ai: '/ai/', board: '/board/', schedule: '/schedule/', blog: '/blog/', notes: '/notes/' };
-    var PAGE_TITLES = { home: document.title, tools: '工具合集 - YHuo', docs: '关于 - YHuo', ai: 'AI 助手 - YHuo', board: '留言板 - YHuo', schedule: '课表 - YHuo', blog: '预览 - YHuo', notes: '随笔 - YHuo' };
+    var PAGE_ROUTE = { home: '/', tools: '/tools/', docs: '/docs/', ai: '/ai/', board: '/board/', schedule: '/schedule/', blog: '/blog/', notes: '/notes/', games: '/games/' };
+    var PAGE_TITLES = { home: document.title, tools: '工具合集 - YHuo', docs: '关于 - YHuo', ai: 'AI 助手 - YHuo', board: '留言板 - YHuo', schedule: '课表 - YHuo', blog: '预览 - YHuo', notes: '随笔 - YHuo', games: '游戏 - YHuo' };
 
     // 应用功能开关：给 <html> 打/摘 ff-* 类（CSS 负责隐藏；head 内联脚本已按 localStorage 缓存提前打过，这里按最新配置校正）
     // 并刷新缓存供下次访问首屏预隐藏；天气/歌词条由各自渲染入口判 FLAGS_OFF
@@ -713,6 +713,7 @@
     // 音乐播放器
     // =========================
     var audio = new Audio();
+    window.__miniAudioEl = audio; // 供文件尾部「音乐频谱可视化」IIFE 建 MediaElementSource 用（坑 29 的预览 iframe 实例跑不到那里，不会重复接管）
     var AUDIO_EXT = ['.mp3', '.wav', '.m4a', '.flac', '.ogg', '.aac', '.opus', '.aiff', '.aif', '.weba'];
 
     function isAudio(name) {
@@ -1859,11 +1860,86 @@
       probe.src = src + (src.indexOf('?') === -1 ? '?' : '&') + '_ck=' + Date.now();
     }
 
+    // 「今日壁纸」首格：拉必应每日一图（GET /api/wallpaper，functions/api/wallpaper.js），图址再经
+    // 站内代理 /api/wallpaper/image?u=...（functions/api/wallpaper/image.js，白名单+反代防防盗链）
+    // 设为背景。存档完全复用既有背景选中机制：applyBgFromSrc 写 bgLayer + body.has-custom-bg 门控
+    // + 图挂了自动清；idbPut('customBg','') 清本地 blob 存档（URL 背景优先）；localStorage
+    // customBgSrc（BG_SRC_KEY）存代理地址供启动恢复。openBgPicker 每次开抽屉都重跑且网格被
+    // innerHTML 清空，所以每次重建一个节点（按 id 查重防的是面板被重复注入的极端情况）。
+    function injectWallpaperEntry(savedSrc) {
+      if (document.getElementById('bgWallpaperEntry')) return;
+      var entry = document.createElement('button');
+      entry.type = 'button';
+      entry.id = 'bgWallpaperEntry';
+      entry.className = 'bg-wallpaper-entry';
+      entry.setAttribute('aria-label', '把必应今日壁纸设为背景');
+      if (savedSrc && savedSrc.indexOf('/api/wallpaper/image') === 0) entry.classList.add('picked');
+      entry.innerHTML =
+        '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+        '<rect x="3" y="4" width="18" height="17" rx="3"/><line x1="3" y1="9" x2="21" y2="9"/>' +
+        '<line x1="8" y1="2.5" x2="8" y2="6"/><line x1="16" y1="2.5" x2="16" y2="6"/>' +
+        '<circle cx="15.3" cy="13.2" r="1.3"/><path d="M5.8 18.6l3.3-3.9 2.7 3.1 1.9-2.3 4.5 4.5"/></svg>' +
+        '<span>今日壁纸</span>';
+      entry.addEventListener('click', function () {
+        if (entry.disabled) return;
+        var label = entry.querySelector('span');
+        var note = ensureWallpaperNote();
+        if (note) { note.hidden = true; note.classList.remove('is-error'); }
+        entry.disabled = true;
+        if (label) label.textContent = '获取中…';
+        fetch('/api/wallpaper', { credentials: 'same-origin' })
+          .then(function (r) { return r.ok ? r.json() : Promise.reject(new Error('http ' + r.status)); })
+          .then(function (d) {
+            if (!d || !d.ok || !d.url) throw new Error('bad payload');
+            var src = '/api/wallpaper/image?u=' + encodeURIComponent(d.url);
+            applyBgFromSrc(src); // 与站内图选中同一条代码路径（含背景失效自动清除）
+            idbPut('customBg', '');
+            try { localStorage.setItem(BG_SRC_KEY, src); } catch (e) {}
+            entry.classList.add('picked');
+            if (note) {
+              note.hidden = false;
+              note.textContent = '已设为今日壁纸 · 📷 ' + (d.copyright || d.title || 'Bing Daily');
+            }
+            window.setTimeout(closeBgPicker, 1600); // 留一眼版权小字再收面板（用户也可先手动关）
+          })
+          .catch(function () {
+            // 失败走面板提示行（站点不引 toast 组件）；网格里其余站内图照常可挑
+            if (note) {
+              note.hidden = false;
+              note.classList.add('is-error');
+              note.textContent = '今日壁纸获取失败，稍后再试，或先选一张站内图片。';
+            }
+          })
+          .finally(function () {
+            entry.disabled = false;
+            if (label) label.textContent = '今日壁纸';
+          });
+      });
+      bgPickerGrid.appendChild(entry); // 先 append：站内图缩略格之后才插入，天然保持首格
+    }
+
+    // 版权/结果小字：挂在选择器面板底部（bg-picker-panel 是常驻外壳，节点只建一次按 id 复用）
+    function ensureWallpaperNote() {
+      if (!bgPicker) return null;
+      var host = bgPicker.querySelector('.bg-picker-panel');
+      if (!host) return null;
+      var note = document.getElementById('bgWallpaperNote');
+      if (!note) {
+        note = document.createElement('p');
+        note.id = 'bgWallpaperNote';
+        note.className = 'bg-wallpaper-note';
+        note.hidden = true;
+        host.appendChild(note);
+      }
+      return note;
+    }
+
     function openBgPicker() {
       bgPickerGrid.innerHTML = '';
       if (bgPickerEmpty) bgPickerEmpty.hidden = false; // 先显示空态，图拉到了再收
       var savedSrc = null;
       try { savedSrc = localStorage.getItem(BG_SRC_KEY); } catch (e) {}
+      injectWallpaperEntry(savedSrc); // 首格固定项「今日壁纸」
       // 站内图来源：画廊已随杂项页移除，这里现场拉清单（后台清单失败回落静态 manifest）
       var fill = function (imgs) {
         if (bgPickerEmpty) bgPickerEmpty.hidden = imgs.length > 0;
@@ -5316,6 +5392,7 @@
       docsGrid = document.getElementById('docsGrid');
       docsEmpty = document.getElementById('docsEmpty');
       if (!docsGrid) return;
+      initSiteDataCard(); // 站点数据卡（2026-09-10）：与文档清单互不影响，pjax 进页天然重入
       fetch('/docs/docs.json', { credentials: 'same-origin' })
         .then(function (r) { return r.ok ? r.json() : Promise.reject(new Error('http ' + r.status)); })
         .then(function (list) {
@@ -5352,6 +5429,47 @@
             docsEmpty.textContent = '文档清单加载失败（docs/docs.json）。';
             docsEmpty.hidden = false;
           }
+        });
+    }
+
+    // 站点数据卡（2026-09-10，关于页）：/api/summary 公开聚合接口 → 8 个统计位 600ms 计数上滚。
+    // 失败/ok:false（坑 2：伪 200 也要判）/payload 不对 → 整卡隐藏（class 切换，坑 14 不用 [hidden]）。
+    function initSiteDataCard() {
+      var card = document.getElementById('siteDataCard');
+      if (!card) return;
+      // 隐藏规则走注入样式 + class（一次性；[hidden] 会被 Tailwind 基础层 display:none!important 永久压住，坑 14）
+      if (!document.getElementById('sdHideStyle')) {
+        var st = document.createElement('style');
+        st.id = 'sdHideStyle';
+        st.textContent = '#siteDataCard.sd-hide{display:none!important}';
+        document.head.appendChild(st);
+      }
+      card.classList.remove('sd-hide');
+      fetch('/api/summary', { credentials: 'same-origin' })
+        .then(function (r) { return r.ok ? r.json() : Promise.reject(new Error('http ' + r.status)); })
+        .then(function (d) {
+          if (!d || !d.ok || !d.data) throw new Error('bad payload');
+          var slots = card.querySelectorAll('[data-sd]');
+          var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+          slots.forEach(function (el) {
+            var target = Number(d.data[el.getAttribute('data-sd')]);
+            if (!isFinite(target)) target = 0;
+            if (reduce || !window.requestAnimationFrame) { // 减弱动态：直接显示终值
+              el.textContent = target.toLocaleString();
+              return;
+            }
+            var t0 = null;
+            function step(ts) { // 600ms ease-out 上滚，从 0 数到目标值
+              if (t0 === null) t0 = ts;
+              var p = Math.min(1, (ts - t0) / 600);
+              el.textContent = Math.round(target * (1 - Math.pow(1 - p, 3))).toLocaleString();
+              if (p < 1) window.requestAnimationFrame(step);
+            }
+            window.requestAnimationFrame(step);
+          });
+        })
+        .catch(function () {
+          card.classList.add('sd-hide'); // 接口挂了：数据卡整体让位，文档卡照常
         });
     }
 
@@ -5463,6 +5581,460 @@
       el.scrollIntoView({ block: 'center', behavior: 'smooth' });
       el.classList.add('cmdk-flash');
       setTimeout(function () { el.classList.remove('cmdk-flash'); }, 1600);
+    }
+
+    // =========================
+    // 游戏页 /games/（2026-09-09）：2048 / 贪吃蛇 / 记忆翻牌，纯 vanilla 零依赖无图片素材。
+    // 游戏逻辑全部收在本模块——pjax 只换 main 的 innerHTML，页面内联脚本不会重跑，
+    // 每次进页由 PAGE_MODULES.games.init 重查 DOM 重绑（对局状态都收在 init 闭包里，
+    // pjax 进出天然重入；最高分/最佳纪录走 localStorage）；离页 destroyGamesPage 摘
+    // document 级监听、清定时器防叠加（坑 24：这里被吞错，改完逐函数自查引用）
+    // =========================
+    var gamesKeyHandler = null;     // 2048 + 贪吃蛇共用的 document 键盘路由（destroy 摘除）
+    var gamesResizeHandler = null;  // 贪吃蛇 canvas 响应式（destroy 摘除）
+    var snakeTimer = null;          // 贪吃蛇步进 setInterval（destroy 清除）
+    var gmemFlipTimer = null;       // 记忆翻牌「盖回」setTimeout（destroy 清除）
+    var gmemTickTimer = null;       // 记忆翻牌计时 setInterval（destroy 清除）
+
+    // 最高分/最佳纪录读写（无痕模式等场景 localStorage 会抛，统一兜底）
+    function gameBestGet(key) { try { return parseInt(localStorage.getItem(key), 10) || 0; } catch (e) { return 0; } }
+    function gameBestSet(key, v) { try { localStorage.setItem(key, String(v)); } catch (e) {} }
+
+    function initGamesPage() {
+      // —— DOM 重查（pjax 后是全新节点，旧引用一律作废）——
+      var gBoard = document.getElementById('g2048Board');
+      var sWrap = document.getElementById('gsnakeWrap');
+      var mGrid = document.getElementById('gmemGrid');
+      if (!gBoard && !sWrap && !mGrid) return; // 非游戏页（防御，正常不会发生）
+
+      // ===== 卡 1：2048（4×4；gGrid 是 4×4 数字阵，0 = 空）=====
+      var gTiles = document.getElementById('g2048Tiles');
+      var gScoreEl = document.getElementById('g2048Score');
+      var gBestEl = document.getElementById('g2048Best');
+      var gRestartBtn = document.getElementById('g2048Restart');
+      var gOverlay = document.getElementById('g2048Overlay');
+      var gOverlayTitle = document.getElementById('g2048OverlayTitle');
+      var gOverlayBtn = document.getElementById('g2048OverlayBtn');
+      var gGrid = [[0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0]];
+      var gScore = 0, gWon = false, gOver = false, gOverlayMode = '';
+      var gBest = gameBestGet('yhuoGame2048Best');
+
+      function g2048Spawn() {
+        var empty = [];
+        for (var r = 0; r < 4; r++) {
+          for (var c = 0; c < 4; c++) { if (!gGrid[r][c]) empty.push([r, c]); }
+        }
+        if (!empty.length) return;
+        var p = empty[Math.floor(Math.random() * empty.length)];
+        gGrid[p[0]][p[1]] = Math.random() < 0.9 ? 2 : 4;
+      }
+
+      // 整盘重渲染（任务口径：不做 tile 复用动画）；变化过的格子挂 .pop 播短动画兜住生硬感
+      function g2048Render(prev) {
+        gScoreEl.textContent = gScore;
+        gBestEl.textContent = '最高 ' + gBest;
+        gTiles.innerHTML = '';
+        for (var r = 0; r < 4; r++) {
+          for (var c = 0; c < 4; c++) {
+            var v = gGrid[r][c];
+            if (!v) continue;
+            var t = document.createElement('span');
+            t.className = 'g2048-tile';
+            t.textContent = v;
+            t.setAttribute('data-v', Math.min(v, 2048)); // 4096+ 彩蛋档回退顶档配色
+            t.style.gridRow = r + 1;
+            t.style.gridColumn = c + 1;
+            if (prev && prev[r][c] !== v) t.classList.add('pop');
+            gTiles.appendChild(t);
+          }
+        }
+      }
+
+      // 取一条线压缩 + 合并（[2,2,4] → [4,0,4] 式），合并加分；返回补零后的新线
+      function g2048Line(line) {
+        var arr = line.filter(function (v) { return v; });
+        var out = [];
+        for (var i = 0; i < arr.length; i++) {
+          if (i + 1 < arr.length && arr[i] === arr[i + 1]) {
+            out.push(arr[i] * 2);
+            gScore += arr[i] * 2;
+            i++; // 被合并的那块跳过
+          } else {
+            out.push(arr[i]);
+          }
+        }
+        while (out.length < 4) out.push(0);
+        return out;
+      }
+
+      function g2048CanMove() {
+        for (var r = 0; r < 4; r++) {
+          for (var c = 0; c < 4; c++) {
+            if (!gGrid[r][c]) return true;
+            if (c < 3 && gGrid[r][c] === gGrid[r][c + 1]) return true;
+            if (r < 3 && gGrid[r][c] === gGrid[r + 1][c]) return true;
+          }
+        }
+        return false;
+      }
+
+      // v = [dx, dy]：[-1,0] 左 / [1,0] 右 / [0,-1] 上 / [0,1] 下
+      function g2048Move(v) {
+        if (gOver || !gBoard) return;
+        var prev = gGrid.map(function (row) { return row.slice(); });
+        for (var i = 0; i < 4; i++) {
+          var coords = [];
+          for (var j = 0; j < 4; j++) {
+            // 统一转成「从挤压一侧往内」的线，合并后再按原坐标写回
+            if (v[1] !== 0) coords.push([v[1] < 0 ? j : 3 - j, i]);
+            else coords.push([i, v[0] < 0 ? j : 3 - j]);
+          }
+          var nl = g2048Line(coords.map(function (rc) { return gGrid[rc[0]][rc[1]]; }));
+          for (var k = 0; k < 4; k++) gGrid[coords[k][0]][coords[k][1]] = nl[k];
+        }
+        if (JSON.stringify(prev) === JSON.stringify(gGrid)) return; // 没动就不落新块
+        g2048Spawn();
+        if (gScore > gBest) { gBest = gScore; gameBestSet('yhuoGame2048Best', gBest); }
+        var hit2048 = false;
+        for (var r2 = 0; r2 < 4; r2++) {
+          for (var c2 = 0; c2 < 4; c2++) { if (gGrid[r2][c2] >= 2048) hit2048 = true; }
+        }
+        if (hit2048 && !gWon) { gWon = true; g2048ShowOverlay('win'); } // 一次性提示，可继续挑战
+        g2048Render(prev);
+        if (!g2048CanMove()) { gOver = true; g2048ShowOverlay('over'); }
+      }
+
+      // 键盘是否归 2048：对局没结束且提示层收着
+      function g2048Alive() { return !!gBoard && !gOver && gOverlay.hidden; }
+
+      function g2048ShowOverlay(mode) {
+        gOverlayMode = mode;
+        gOverlayTitle.textContent = mode === 'win' ? '你赢了！已合成 2048' : '游戏结束';
+        gOverlayBtn.textContent = mode === 'win' ? '继续挑战' : '重开一局';
+        gOverlay.hidden = false;
+      }
+
+      function g2048Reset() {
+        gGrid = [[0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0]];
+        gScore = 0; gWon = false; gOver = false;
+        g2048Spawn();
+        g2048Spawn();
+        gOverlay.hidden = true;
+        g2048Render(null);
+      }
+
+      if (gRestartBtn) gRestartBtn.addEventListener('click', g2048Reset);
+      if (gOverlayBtn) gOverlayBtn.addEventListener('click', function () {
+        if (gOverlayMode === 'win') gOverlay.hidden = true; // 「继续挑战」只收提示，局面不动
+        else g2048Reset();
+      });
+      // 触屏滑动：touchstart/touchend 位移 ≥30px 判向（棋盘 touch-action:none，滑动不带动页面滚动）
+      var gTouch = null;
+      gBoard.addEventListener('touchstart', function (e) { gTouch = e.changedTouches[0]; }, { passive: true });
+      gBoard.addEventListener('touchend', function (e) {
+        if (!gTouch) return;
+        var dx = e.changedTouches[0].clientX - gTouch.clientX;
+        var dy = e.changedTouches[0].clientY - gTouch.clientY;
+        gTouch = null;
+        if (Math.max(Math.abs(dx), Math.abs(dy)) < 30) return;
+        g2048Move(Math.abs(dx) > Math.abs(dy) ? [dx > 0 ? 1 : -1, 0] : [0, dy > 0 ? 1 : -1]);
+      }, { passive: true });
+      g2048Reset();
+
+      // ===== 卡 2：贪吃蛇（canvas 20×20 网格；颜色走语义变量，init 读一次随深浅主题）=====
+      var S_N = 20;
+      var sCanvas = document.getElementById('gsnakeCanvas');
+      var sCtx = sCanvas ? sCanvas.getContext('2d') : null;
+      var sScoreEl = document.getElementById('gsnakeScore');
+      var sBestEl = document.getElementById('gsnakeBest');
+      var sToggleBtn = document.getElementById('gsnakeToggle');
+      var sRestartBtn = document.getElementById('gsnakeRestart');
+      var sOverlay = document.getElementById('gsnakeOverlay');
+      var sOverlaySub = document.getElementById('gsnakeOverlaySub');
+      var sOverlayBtn = document.getElementById('gsnakeOverlayBtn');
+      var sBody = [], sDir = [1, 0], sQueue = [], sFood = null;
+      var sScore = 0, sSpeed = 0, sRunning = false, sDead = false, sStarted = false;
+      var sBest = gameBestGet('yhuoSnakeBest');
+      var sCell = 0; // 单格 CSS 像素（绘制经 setTransform 按 dpr 缩放，retina 不发虚）
+      var snakeColors = { body: '#b0532b', food: '#d64545', line: 'rgba(128,128,128,0.25)' };
+      try {
+        var _cs = getComputedStyle(document.documentElement);
+        snakeColors.body = (_cs.getPropertyValue('--primary') || '').trim() || snakeColors.body;
+        snakeColors.food = (_cs.getPropertyValue('--apple-destructive') || '').trim() || snakeColors.food;
+        snakeColors.line = (_cs.getPropertyValue('--apple-border') || '').trim() || snakeColors.line;
+      } catch (e) {}
+
+      // canvas 正方形随卡片宽度，物理像素乘 devicePixelRatio 保证清晰
+      function snakeSize() {
+        if (!sWrap || !sCtx) return;
+        var w = sWrap.clientWidth || 320;
+        var dpr = Math.max(1, window.devicePixelRatio || 1);
+        sCanvas.width = Math.round(w * dpr);
+        sCanvas.height = Math.round(w * dpr);
+        sCanvas.style.width = w + 'px';
+        sCanvas.style.height = w + 'px';
+        sCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        sCell = w / S_N;
+        snakeDraw();
+      }
+
+      function snakeDraw() {
+        if (!sCtx) return;
+        var w = sCell * S_N;
+        sCtx.clearRect(0, 0, w, w);
+        sCtx.strokeStyle = snakeColors.line;
+        sCtx.lineWidth = 1;
+        for (var i = 1; i < S_N; i++) {
+          sCtx.beginPath(); sCtx.moveTo(i * sCell, 0); sCtx.lineTo(i * sCell, w); sCtx.stroke();
+          sCtx.beginPath(); sCtx.moveTo(0, i * sCell); sCtx.lineTo(w, i * sCell); sCtx.stroke();
+        }
+        if (sFood) {
+          sCtx.fillStyle = snakeColors.food;
+          sCtx.beginPath();
+          sCtx.arc((sFood[0] + 0.5) * sCell, (sFood[1] + 0.5) * sCell, sCell * 0.32, 0, Math.PI * 2);
+          sCtx.fill();
+        }
+        for (var j = sBody.length - 1; j >= 0; j--) {
+          sCtx.fillStyle = snakeColors.body;
+          sCtx.globalAlpha = j === 0 ? 1 : Math.max(0.4, 1 - j * 0.05); // 蛇头实色，蛇身沿节渐淡
+          sCtx.fillRect(sBody[j][0] * sCell + 1.5, sBody[j][1] * sCell + 1.5, sCell - 3, sCell - 3);
+        }
+        sCtx.globalAlpha = 1;
+      }
+
+      function snakeSpeedMs() { return Math.max(70, 150 - sSpeed * 18); } // 每 50 分加速一档，下限 70ms
+
+      function snakeHitsBody(h) {
+        // 尾巴这一步会让位不算撞；吃到食物那步先 unshift 再跳过 pop，同样成立
+        for (var i = 0; i < sBody.length - 1; i++) {
+          if (sBody[i][0] === h[0] && sBody[i][1] === h[1]) return true;
+        }
+        return false;
+      }
+
+      function snakePlaceFood() {
+        var cells = [];
+        for (var r = 0; r < S_N; r++) {
+          for (var c = 0; c < S_N; c++) {
+            var on = false;
+            for (var i = 0; i < sBody.length; i++) { if (sBody[i][0] === r && sBody[i][1] === c) { on = true; break; } }
+            if (!on) cells.push([r, c]);
+          }
+        }
+        sFood = cells.length ? cells[Math.floor(Math.random() * cells.length)] : null;
+      }
+
+      function snakeSetTimer() {
+        if (snakeTimer) clearInterval(snakeTimer);
+        snakeTimer = setInterval(snakeStep, snakeSpeedMs());
+      }
+
+      function snakeStep() {
+        if (!sRunning) return;
+        if (sQueue.length) sDir = sQueue.shift();
+        var h = [sBody[0][0] + sDir[0], sBody[0][1] + sDir[1]];
+        if (h[0] < 0 || h[0] >= S_N || h[1] < 0 || h[1] >= S_N || snakeHitsBody(h)) { snakeDie(); return; }
+        sBody.unshift(h);
+        if (sFood && h[0] === sFood[0] && h[1] === sFood[1]) {
+          sScore += 10;
+          sScoreEl.textContent = sScore;
+          if (sScore > sBest) { sBest = sScore; gameBestSet('yhuoSnakeBest', sBest); sBestEl.textContent = '最高 ' + sBest; }
+          var lvl = Math.floor(sScore / 50);
+          if (lvl > sSpeed) { sSpeed = lvl; snakeSetTimer(); } // 加速一档 = 换更短的定时间隔
+          snakePlaceFood();
+        } else {
+          sBody.pop();
+        }
+        snakeDraw();
+      }
+
+      // 转向：禁止 180° 回头；待应用队列 ≤2，连按两步时第二步按第一步校验，杜绝排队期间回头
+      function snakeTurn(v) {
+        if (!sRunning) return;
+        var last = sQueue.length ? sQueue[sQueue.length - 1] : sDir;
+        if ((v[0] === -last[0] && v[1] === -last[1]) || (v[0] === last[0] && v[1] === last[1])) return;
+        if (sQueue.length < 2) sQueue.push(v);
+      }
+
+      function snakeStart() {
+        if (sDead) snakeReset();
+        sStarted = true;
+        sRunning = true;
+        sToggleBtn.textContent = '暂停';
+        sOverlay.hidden = true;
+        snakeSetTimer();
+      }
+
+      function snakePause() {
+        sRunning = false;
+        sToggleBtn.textContent = '继续';
+        if (snakeTimer) { clearInterval(snakeTimer); snakeTimer = null; }
+      }
+
+      function snakeToggle() { if (sRunning) snakePause(); else snakeStart(); }
+
+      function snakeDie() {
+        sDead = true;
+        sRunning = false;
+        if (snakeTimer) { clearInterval(snakeTimer); snakeTimer = null; }
+        sToggleBtn.textContent = '重玩';
+        sOverlaySub.textContent = '得 ' + sScore + ' 分';
+        sOverlay.hidden = false;
+      }
+
+      function snakeReset() {
+        if (snakeTimer) { clearInterval(snakeTimer); snakeTimer = null; }
+        sBody = [[9, 10], [8, 10], [7, 10]]; // 初始 3 节，朝右
+        sDir = [1, 0]; sQueue = [];
+        sScore = 0; sSpeed = 0; sRunning = false; sDead = false; sStarted = false;
+        sScoreEl.textContent = '0';
+        sToggleBtn.textContent = '开始';
+        sOverlay.hidden = true;
+        snakePlaceFood();
+        snakeDraw();
+      }
+
+      function snakeIsRunning() { return sRunning; }
+      function snakeOwnsSpace() { return sStarted && !sDead; } // 空格只管开局后的暂停/继续，不劫持页面滚动
+
+      if (sBestEl) sBestEl.textContent = '最高 ' + sBest;
+      if (sToggleBtn) sToggleBtn.addEventListener('click', snakeToggle);
+      if (sRestartBtn) sRestartBtn.addEventListener('click', snakeReset);
+      if (sOverlayBtn) sOverlayBtn.addEventListener('click', function () { snakeReset(); snakeStart(); });
+      if (sWrap) {
+        var sTouch = null;
+        sWrap.addEventListener('touchstart', function (e) { sTouch = e.changedTouches[0]; }, { passive: true });
+        sWrap.addEventListener('touchend', function (e) {
+          if (!sTouch) return;
+          var dx = e.changedTouches[0].clientX - sTouch.clientX;
+          var dy = e.changedTouches[0].clientY - sTouch.clientY;
+          sTouch = null;
+          if (Math.max(Math.abs(dx), Math.abs(dy)) < 30) return;
+          snakeTurn(Math.abs(dx) > Math.abs(dy) ? [dx > 0 ? 1 : -1, 0] : [0, dy > 0 ? 1 : -1]);
+        }, { passive: true });
+      }
+      snakeSize();
+      snakeReset();
+
+      // ===== 卡 3：记忆翻牌（4×4 = 8 对；最佳纪录 = 最少步数）=====
+      var M_ICONS = ['🎧', '🍩', '🚀', '🌈', '🐱', '⚽', '🌵', '🔥'];
+      var mStepsEl = document.getElementById('gmemSteps');
+      var mTimeEl = document.getElementById('gmemTime');
+      var mBestEl = document.getElementById('gmemBest');
+      var mRestartBtn = document.getElementById('gmemRestart');
+      var mOverlay = document.getElementById('gmemOverlay');
+      var mOverlaySub = document.getElementById('gmemOverlaySub');
+      var mOverlayBtn = document.getElementById('gmemOverlayBtn');
+      var mDeck = [], mOpen = [], mDone = [];
+      var mSteps = 0, mMatched = 0, mSeconds = 0, mLock = false, mStarted = false;
+      var mBest = gameBestGet('yhuoCardBest');
+
+      function memBestText() { return mBest ? '最佳 ' + mBest + ' 步' : '最佳 —'; }
+
+      function memReset() {
+        if (gmemFlipTimer) { clearTimeout(gmemFlipTimer); gmemFlipTimer = null; }
+        if (gmemTickTimer) { clearInterval(gmemTickTimer); gmemTickTimer = null; }
+        mDeck = M_ICONS.concat(M_ICONS);
+        for (var i = mDeck.length - 1; i > 0; i--) { // Fisher-Yates 洗牌
+          var j = Math.floor(Math.random() * (i + 1));
+          var t = mDeck[i]; mDeck[i] = mDeck[j]; mDeck[j] = t;
+        }
+        mOpen = []; mDone = []; mSteps = 0; mMatched = 0; mSeconds = 0; mLock = false; mStarted = false;
+        mStepsEl.textContent = '0';
+        mTimeEl.textContent = '0s';
+        mBestEl.textContent = memBestText();
+        mOverlay.hidden = true;
+        mGrid.innerHTML = '';
+        mDeck.forEach(function (ico, i2) {
+          var b = document.createElement('button');
+          b.type = 'button';
+          b.className = 'gmem-card';
+          b.setAttribute('aria-label', '第 ' + (i2 + 1) + ' 张牌');
+          // 图案是内置 emoji 常量非用户输入，innerHTML 拼接安全（比四趟 createElement 省事）
+          b.innerHTML = '<span class="gmem-inner"><span class="gmem-face gmem-back"></span><span class="gmem-face gmem-front">' + ico + '</span></span>';
+          b.addEventListener('click', function () { memFlip(i2, b); });
+          mGrid.appendChild(b);
+        });
+      }
+
+      function memTickStart() {
+        if (gmemTickTimer) return; // 首次翻牌起表，通关/重开停表
+        gmemTickTimer = setInterval(function () { mSeconds++; mTimeEl.textContent = mSeconds + 's'; }, 1000);
+      }
+
+      function memFlip(i, b) {
+        if (mLock || mDone[i] || mOpen.indexOf(i) >= 0) return;
+        if (!mStarted) { mStarted = true; memTickStart(); }
+        b.classList.add('open');
+        mOpen.push(i);
+        if (mOpen.length < 2) return;
+        mSteps++;
+        mStepsEl.textContent = mSteps;
+        var a = mOpen[0], d = mOpen[1];
+        if (mDeck[a] === mDeck[d]) {
+          mDone[a] = mDone[d] = true;
+          mGrid.children[a].classList.add('done');
+          mGrid.children[d].classList.add('done');
+          mOpen = [];
+          mMatched++;
+          if (mMatched === M_ICONS.length) memWin();
+        } else {
+          mLock = true; // 不匹配：800ms 后盖回，期间锁输入
+          gmemFlipTimer = setTimeout(function () {
+            gmemFlipTimer = null;
+            mGrid.children[a].classList.remove('open');
+            mGrid.children[d].classList.remove('open');
+            mOpen = [];
+            mLock = false;
+          }, 800);
+        }
+      }
+
+      function memWin() {
+        if (gmemTickTimer) { clearInterval(gmemTickTimer); gmemTickTimer = null; }
+        if (!mBest || mSteps < mBest) { mBest = mSteps; gameBestSet('yhuoCardBest', mBest); }
+        mBestEl.textContent = memBestText();
+        mOverlaySub.textContent = mSteps + ' 步 · ' + mSeconds + 's';
+        mOverlay.hidden = false;
+      }
+
+      if (mRestartBtn) mRestartBtn.addEventListener('click', memReset);
+      if (mOverlayBtn) mOverlayBtn.addEventListener('click', memReset);
+      memReset();
+
+      // —— 键盘路由（document 级；离页 destroyGamesPage 摘除防叠加）——
+      // 归属规则：贪吃蛇进行中方向键/WASD 归蛇；空格 = 暂停/继续（开局后才接管）；
+      // 其余时候方向键/WASD 归 2048。只在实际消费时 preventDefault，平时页面滚动不受劫持；
+      // 输入控件聚焦或窗口失焦（document.hasFocus）时一律不响应
+      var GAMES_DIRS = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] };
+      gamesKeyHandler = function (e) {
+        if (!document.hasFocus()) return; // 失焦自动暂停键盘响应
+        var tag = e.target && e.target.tagName;
+        if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+        var k = e.key;
+        var dir = GAMES_DIRS[k] || null;
+        var ch = k && k.length === 1 ? k.toLowerCase() : '';
+        if (!dir && ch === 'a') dir = [-1, 0];
+        else if (!dir && ch === 'd') dir = [1, 0];
+        else if (!dir && ch === 'w') dir = [0, -1];
+        else if (!dir && ch === 's') dir = [0, 1];
+        if (k === ' ' && sWrap && snakeOwnsSpace()) { e.preventDefault(); snakeToggle(); return; }
+        if (dir && sWrap && snakeIsRunning()) { e.preventDefault(); snakeTurn(dir); return; }
+        if (dir && g2048Alive()) { e.preventDefault(); g2048Move(dir); }
+      };
+      document.addEventListener('keydown', gamesKeyHandler);
+      if (sWrap) {
+        gamesResizeHandler = function () { snakeSize(); };
+        window.addEventListener('resize', gamesResizeHandler);
+      }
+    }
+
+    function destroyGamesPage() {
+      if (gamesKeyHandler) { document.removeEventListener('keydown', gamesKeyHandler); gamesKeyHandler = null; }
+      if (gamesResizeHandler) { window.removeEventListener('resize', gamesResizeHandler); gamesResizeHandler = null; }
+      if (snakeTimer) { clearInterval(snakeTimer); snakeTimer = null; }
+      if (gmemFlipTimer) { clearTimeout(gmemFlipTimer); gmemFlipTimer = null; }
+      if (gmemTickTimer) { clearInterval(gmemTickTimer); gmemTickTimer = null; }
     }
 
     // =========================
@@ -6463,6 +7035,7 @@
         push('界面', '界面', '首页', function () { pjaxGo('/'); });
         push('界面', '界面', '随笔', function () { pjaxGo('/notes/'); });
         if (!FLAGS_OFF.toolsView) push('界面', '界面', '工具', function () { pjaxGo('/tools/'); });
+        push('界面', '界面', '游戏', function () { pjaxGo('/games/'); });
         if (!FLAGS_OFF.docsView) push('界面', '界面', '关于', function () { pjaxGo('/docs/'); });
         if (aiOn()) push('界面', '界面', 'AI 助手', function () { pjaxGo('/ai/'); });
         push('界面', '界面', '留言板', function () { pjaxGo('/board/'); });
@@ -6672,6 +7245,7 @@
       },
       docs:  { init: function () { initDocsPage(); } },
       notes: { init: function () { initNotesPage(); }, onHash: function (h) { locateNote(h); } },
+      games: { init: function () { initGamesPage(); }, destroy: destroyGamesPage },
       ai:    { init: function () { initAiPage(); }, destroy: destroyAiPage },
       board: { init: function () { initBoardPage(); } },
       schedule: { init: function () { initSchedPage(); }, destroy: destroySchedPage }
@@ -6716,6 +7290,7 @@
       // 换页时收起外壳上的临时浮层（不随 <main> 换页重置）
       try { setNavDrawer(false); } catch (e) {}
       try { if (window.__blogPlayerClosePanel) window.__blogPlayerClosePanel(); } catch (e) {}
+      try { if (window.__visClosePanel) window.__visClosePanel(); } catch (e) {} // 频谱面板（common.js 尾部 IIFE 注册；pjax 换页随手收起）
       try { closeProfileView(); } catch (e) {}
       try { closeDocViewer(); } catch (e) {}
       try { closeWeatherPicker(); } catch (e) {}
@@ -7073,6 +7648,7 @@
     var NAV_INFO = {
       '/':         { id: 'site', name: 'YHuo · 首页', desc: '时钟 / 寄语 / 天气 / 歌词条 / 站内曲库' },
       '/notes':    { id: 'site', name: 'YHuo · 随笔', desc: '个人思考 / 日记 / 零碎感悟，随手记下' },
+      '/games':    { id: 'site', name: 'YHuo · 游戏', desc: '2048 / 贪吃蛇 / 记忆翻牌，三款纯本地小游戏' },
       '/tools':    { id: 'site', name: 'YHuo · 工具合集', desc: '重要日子 / 番茄钟 / 换算器 / 文本工具 / 随机决策 / 计算器' },
       '/docs':     { id: 'site', name: 'YHuo · 关于', desc: '站点介绍与更新日志' },
       '/ai':       { id: 'site', name: 'YHuo · AI 助手', desc: '多供应商多模型流式对话' },
@@ -7134,4 +7710,381 @@
     window.addEventListener('blur', hide);
     document.addEventListener('wheel', hide, { passive: true });
     document.addEventListener('touchmove', hide, { passive: true });
+  })();
+
+  // Service Worker 注册（PWA 可安装 + 离线兜底，2026-09-09 接入；SW 逻辑本体在根目录 sw.js）：
+  // ① window.top 守卫——顶栏悬停预览的缩略图 iframe 是完整第二实例（坑 29），不许它注册/干扰；
+  // ② 只在 https / localhost 下注册（SW 协议要求）；③ load 事件后注册不抢首屏；④ 全程 try/catch
+  // 静默降级——SW 注册失败绝不影响站点本体。
+  (function () {
+    if (window.self !== window.top) return;
+    if (!('serviceWorker' in navigator)) return;
+    if (location.protocol !== 'https:' && ['localhost', '127.0.0.1'].indexOf(location.hostname) === -1) return;
+    function swRegister() {
+      try {
+        navigator.serviceWorker.register('/sw.js').catch(function () {});
+      } catch (e) { /* 静默降级 */ }
+    }
+    if (document.readyState === 'complete') swRegister();
+    else window.addEventListener('load', swRegister);
+  })();
+
+  // 音乐频谱可视化（2026-09-10 批次）：迷你播放条与悬浮播放器各 JS 注入一枚频谱开关小钮，
+  // 开启后在底部播放条上方弹出 canvas 频谱面板（48 根竖条，颜色读 --apple-accent）。
+  // 「谁在播画谁」：两个 <audio>（迷你条 __miniAudioEl / 悬浮款 [data-music-audio]）在 IIFE 启动时
+  // 就挂 play 记录 activeEl，与开关状态无关。铁律：MediaElementSource 一旦创建，该元素的声音就
+  // 永久走 AudioContext——所以 Context 建了绝不 close、链路当场接全（source→analyser→destination）、
+  // 任何 resume 失败都在按钮 title 上提示；整个初始化包 try/catch，失败按钮置灰，绝不影响正常播放。
+  (function () {
+    if (window.self !== window.top) return; // 坑 29：顶栏悬停预览 iframe 是完整第二实例，不注入不抢音频
+    if (!(window.AudioContext || window.webkitAudioContext)) return; // 无 Web Audio：不注入（老浏览器无感降级）
+
+    var LS_KEY = 'yhuoVisualizer'; // 两枚按钮共用的开关存档（默认关）
+    var BAR_COUNT = 48;
+    var reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    var ctx = null;          // AudioContext：首次开启（用户手势）才建；建后绝不 close
+    var analyser = null;
+    var sourced = [];        // 已 createMediaElementSource 的元素（Map 缓存语义：每元素只建一次）
+    var inited = false;
+    var initFailed = false;  // 初始化失败：按钮置灰 + title 提示，开关不再响应
+    var activeEl = null;     // 最后 play 的音频元素
+    var enabled = false;
+    var rafId = 0;
+    var freqData = null;
+    var accentColor = '';    // 主题色缓存：至多每秒重读一次 getComputedStyle，不许每帧读
+    var accentReadAt = 0;
+    try { enabled = localStorage.getItem(LS_KEY) === '1'; } catch (e) {}
+
+    // —— 面板：毛玻璃圆角卡（对齐底部迷你播放条胶囊），fixed 在播放条上方居中，JS 注入一次 ——
+    var panel = document.createElement('div');
+    panel.className = 'vis-panel';
+    panel.hidden = true; // hidden 只作初始态；此后显隐走 show 类（坑 14：动态显隐不用 [hidden]）
+    panel.innerHTML =
+      '<canvas class="vis-panel__canvas" aria-hidden="true"></canvas>' +
+      '<span class="vis-panel__hint">先播放一首歌，频谱会在这里跳动</span>' +
+      '<button type="button" class="vis-panel__close" aria-label="关闭频谱面板" title="关闭">' +
+      '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>' +
+      '</button>';
+    document.body.appendChild(panel);
+    var canvas = panel.querySelector('.vis-panel__canvas');
+    var hintEl = panel.querySelector('.vis-panel__hint');
+
+    // —— 两枚开关小钮（自绘三根柱状 SVG；共用一份开关状态与存档） ——
+    var VIS_SVG = '<svg width="14" height="14" viewBox="0 0 24 24" aria-hidden="true"><g fill="currentColor"><rect x="4" y="10" width="3.4" height="9" rx="1.4"/><rect x="10.3" y="4" width="3.4" height="15" rx="1.4"/><rect x="16.6" y="7" width="3.4" height="12" rx="1.4"/></g></svg>';
+    var buttons = [];
+    function makeVisButton(extraClass) {
+      var b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'vis-toggle ' + extraClass;
+      b.setAttribute('aria-label', '频谱面板');
+      b.setAttribute('aria-pressed', 'false');
+      b.title = '频谱面板';
+      b.innerHTML = VIS_SVG;
+      b.addEventListener('click', function () { onToggleClick(); });
+      buttons.push(b);
+      return b;
+    }
+    // 宿主 1：底部迷你播放条 #miniPlayer 控制区（播放列表按钮之后、绝对定位的列表面板之前）
+    var miniHost = document.getElementById('miniPlayer');
+    if (miniHost) {
+      var bMini = makeVisButton('vis-toggle--mini');
+      var playlistEl = document.getElementById('miniPlaylist');
+      if (playlistEl) miniHost.insertBefore(bMini, playlistEl);
+      else miniHost.appendChild(bMini);
+    }
+    // 宿主 2：悬浮播放器（博客款）面板头部动作区（静音钮旁；外壳常驻，pjax 不换壳不重注）
+    var blogActions = document.querySelector('.music-player[data-music-player] .music-player__header-actions');
+    if (blogActions) {
+      var bBlog = makeVisButton('vis-toggle--panel');
+      var closeAnchor = blogActions.querySelector('[data-music-close]');
+      if (closeAnchor) blogActions.insertBefore(bBlog, closeAnchor);
+      else blogActions.appendChild(bBlog);
+    }
+    function syncButtons() {
+      buttons.forEach(function (b) {
+        b.setAttribute('aria-pressed', enabled ? 'true' : 'false');
+        b.classList.toggle('is-on', enabled);
+      });
+    }
+
+    // —— play 跟踪：IIFE 启动即挂、与开关状态无关（谁在播画谁 + 顺手唤醒被挂起的 Context） ——
+    function trackPlay(el) {
+      activeEl = el;
+      hintEl.classList.remove('is-visible');
+      if (inited && ctx && ctx.state === 'suspended') ctx.resume().catch(noteResumeFail);
+      if (enabled && reduceMotion) drawFrame(); // 减弱动态档：切歌/重播补一帧静态
+    }
+    function attachPlayTracking() {
+      [window.__miniAudioEl, document.querySelector('audio[data-music-audio]')].forEach(function (el) {
+        if (el && !el.__visPlayTracked) {
+          el.__visPlayTracked = true;
+          el.addEventListener('play', function () { trackPlay(el); });
+        }
+      });
+    }
+    attachPlayTracking();
+
+    // —— AudioContext 生命周期：只在开关点击（用户手势）里经 initGraph 创建；此后不 close、
+    // 不 disconnect——技术上 disconnect 也回不去了，关开关只是停 rAF 收面板 ——
+    function noteResumeFail() {
+      buttons.forEach(function (b) { if (!b.disabled) b.title = '音频通道唤醒失败，请再点一次频谱按钮'; });
+    }
+    function initGraph() {
+      if (inited) return true;
+      if (initFailed) return false;
+      try {
+        var AC = window.AudioContext || window.webkitAudioContext;
+        ctx = new AC();
+        analyser = ctx.createAnalyser();
+        analyser.fftSize = 256;
+        analyser.smoothingTimeConstant = 0.8;
+        // 先接 analyser→destination 再逐个建源：即使个别元素建源抛错，已建源元素的声音链路
+        // 也是完整的（建了源声音就走 Context，半途链路断裂 = 静音，绝不允许）
+        analyser.connect(ctx.destination);
+        [window.__miniAudioEl, document.querySelector('audio[data-music-audio]')].forEach(function (el) {
+          if (!el || sourced.indexOf(el) !== -1) return;
+          var src = ctx.createMediaElementSource(el);
+          src.connect(analyser);
+          sourced.push(el);
+        });
+        inited = true;
+        attachPlayTracking(); // 兜底：极端缓存外壳下启动时还没出现的元素此刻补挂
+        if (ctx.state === 'suspended') ctx.resume().catch(noteResumeFail); // 就在本次手势里唤醒
+      } catch (e) {
+        // 初始化失败：未建源的元素仍走原生输出，播放零影响；按钮置灰 + title 提示
+        initFailed = true;
+        buttons.forEach(function (b) {
+          b.disabled = true;
+          b.classList.add('is-broken');
+          b.title = '当前浏览器不支持频谱';
+        });
+        syncButtons();
+        return false;
+      }
+      return true;
+    }
+
+    // —— 开关：开 = 建图（首次）+ 出面板 + 起 rAF；关 = 只停 rAF 收面板 ——
+    function setEnabled(next) {
+      if (enabled === next) return;
+      enabled = next;
+      try { localStorage.setItem(LS_KEY, enabled ? '1' : '0'); } catch (e) {}
+      syncButtons();
+      if (enabled) {
+        hintEl.classList.toggle('is-visible', !(inited && activeEl));
+        panel.hidden = false;
+        void panel.offsetWidth; // 触发重排再挂 show 类，播放入场过渡（与 bgPicker 同款节奏）
+        panel.classList.add('show');
+        startLoop();
+      } else {
+        hidePanel();
+      }
+    }
+    function onToggleClick() {
+      if (!inited && !initGraph()) return; // 初始化失败：按钮已置灰+title 提示，开关原地不动
+      setEnabled(!enabled);
+    }
+    // 收面板入口（Esc / 面板 ✕ / closeAllTransientOverlays 都走这里）：关面板 = 关开关，状态一致
+    window.__visClosePanel = function () {
+      if (!panel.hidden && enabled) setEnabled(false);
+    };
+    panel.querySelector('.vis-panel__close').addEventListener('click', window.__visClosePanel);
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape' && !panel.hidden) window.__visClosePanel();
+    });
+    function hidePanel() {
+      stopLoop();
+      panel.classList.remove('show');
+      window.setTimeout(function () {
+        if (!panel.classList.contains('show')) panel.hidden = true;
+      }, 250);
+    }
+
+    // —— 绘制 ——
+    function readAccent() {
+      var now = Date.now();
+      if (!accentColor || now - accentReadAt > 1000) { // 至多每秒重读一次，主题切换下一秒内跟上
+        try {
+          accentColor = getComputedStyle(document.documentElement).getPropertyValue('--apple-accent').trim() || '#0a84ff';
+        } catch (e) { accentColor = '#0a84ff'; }
+        accentReadAt = now;
+      }
+      return accentColor;
+    }
+    function drawFrame() {
+      var g = canvas.getContext('2d');
+      if (!g) return;
+      var dpr = window.devicePixelRatio || 1;
+      var cw = canvas.clientWidth, ch = canvas.clientHeight;
+      if (!cw || !ch) return;
+      if (canvas.width !== Math.round(cw * dpr) || canvas.height !== Math.round(ch * dpr)) {
+        canvas.width = Math.round(cw * dpr);
+        canvas.height = Math.round(ch * dpr);
+      }
+      g.clearRect(0, 0, canvas.width, canvas.height);
+      var data = null;
+      if (analyser && activeEl && sourced.indexOf(activeEl) !== -1) {
+        if (!freqData || freqData.length !== analyser.frequencyBinCount) {
+          freqData = new Uint8Array(analyser.frequencyBinCount);
+        }
+        analyser.getByteFrequencyData(freqData);
+        data = freqData;
+      }
+      var color = readAccent();
+      var gap = 3 * dpr;
+      var bw = (canvas.width - gap * (BAR_COUNT - 1)) / BAR_COUNT;
+      g.fillStyle = color;
+      for (var i = 0; i < BAR_COUNT; i++) {
+        var v = 0;
+        if (data) {
+          // 128 个 bin 摊到 48 根：按 1.6 次幂的“准对数”分段取段内最大值（均分会让高频段常年贴 0）
+          var start = Math.floor(Math.pow(i / BAR_COUNT, 1.6) * data.length);
+          var end = Math.max(start + 1, Math.floor(Math.pow((i + 1) / BAR_COUNT, 1.6) * data.length));
+          for (var j = start; j < end; j++) { if (data[j] > v) v = data[j]; }
+          v /= 255;
+        }
+        var bh = Math.max(2 * dpr, v * (canvas.height - 2 * dpr));
+        g.globalAlpha = 0.4 + 0.6 * v;
+        g.fillRect(i * (bw + gap), canvas.height - bh, bw, bh);
+      }
+      g.globalAlpha = 1;
+    }
+    function loop() {
+      rafId = 0;
+      if (!enabled || panel.hidden) return; // rAF 只在开关开且面板可见时跑
+      drawFrame();
+      rafId = window.requestAnimationFrame(loop);
+    }
+    function startLoop() {
+      if (rafId || !enabled || panel.hidden) return;
+      if (reduceMotion) { drawFrame(); return; } // 减弱动态：只画静态单帧，不进循环（不砍功能）
+      rafId = window.requestAnimationFrame(loop);
+    }
+    function stopLoop() {
+      if (rafId) { window.cancelAnimationFrame(rafId); rafId = 0; }
+    }
+    // 标签页隐藏停 rAF，回来自动续上
+    document.addEventListener('visibilitychange', function () {
+      if (document.hidden) stopLoop();
+      else if (enabled && !panel.hidden) startLoop();
+    });
+
+    // 上次会话开着：面板直接出（AudioContext 必须等用户手势，首次点按钮时才建，见 initGraph；
+    // 在此之前面板画待机底条，歌一播 hint 即收）
+    if (enabled) {
+      syncButtons();
+      hintEl.classList.add('is-visible');
+      panel.hidden = false;
+      panel.classList.add('show');
+      startLoop();
+    }
+  })();
+
+  // 彩蛋系统（2026-09-10 批次）：Konami 秘技彩带 + 离开标签页标题卖萌。
+  // 独立 IIFE 挂文件尾部，不碰外壳不碰主 IIFE；坑 29：顶栏悬停预览 iframe 是完整第二实例，
+  // 整个彩蛋在帧内不启动（预览帧不许抢戏）。
+  (function () {
+    if (window.self !== window.top) return; // 坑 29
+    var reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    // —— 提示：复用外壳现成的顶部欢迎浮窗 #adminToast（九页外壳各有一份）。showTopToast 在主 IIFE
+    // 闭包里够不着，这里直接驱动同一 DOM：换文案、藏「进入后台」钮、挂 show，3 秒自毁；
+    // 主 IIFE 下次 showTopToast 会重写文案与按钮显隐，两边互不残留 ——
+    var toastTimer = 0;
+    function eggToast(text) {
+      var toast = document.getElementById('adminToast');
+      if (!toast) return;
+      var textEl = document.getElementById('adminToastText');
+      var adminBtn = document.getElementById('adminToastAdminBtn');
+      if (textEl) textEl.textContent = text;
+      if (adminBtn) adminBtn.style.display = 'none';
+      toast.classList.add('show');
+      if (toastTimer) clearTimeout(toastTimer);
+      toastTimer = window.setTimeout(function () { toast.classList.remove('show'); }, 3000);
+    }
+
+    // —— 彩带：一次性 fixed canvas（z 360：高于内容与各浮层、低于登录卡 400），~140 粒 2.5 秒落完即拆 ——
+    function confetti() {
+      if (reduceMotion || !window.requestAnimationFrame) return; // 减弱动态：不放彩带，提示浮窗照常
+      var colors = ['#b0532b', '#8b5cf6', '#ec4899', '#10b981', '#f59e0b']; // 外观抽屉五枚主题色
+      try {
+        var accent = getComputedStyle(document.documentElement).getPropertyValue('--apple-accent').trim();
+        if (accent) colors.push(accent); // 当前主题色凑第 6 色
+      } catch (e) {}
+      var cv = document.createElement('canvas');
+      var dpr = window.devicePixelRatio || 1;
+      cv.width = Math.round(window.innerWidth * dpr);
+      cv.height = Math.round(window.innerHeight * dpr);
+      cv.setAttribute('aria-hidden', 'true');
+      cv.style.cssText = 'position:fixed;inset:0;width:100vw;height:100vh;pointer-events:none;z-index:360;';
+      document.body.appendChild(cv);
+      var g = cv.getContext('2d');
+      if (!g) { cv.remove(); return; }
+      var parts = [];
+      for (var i = 0; i < 140; i++) {
+        parts.push({
+          x: Math.random() * cv.width,
+          y: -Math.random() * cv.height * 0.3 - 20 * dpr,        // 从视口上方飘进来
+          w: (5 + Math.random() * 6) * dpr,
+          h: (8 + Math.random() * 8) * dpr,
+          vy: (2.2 + Math.random() * 2.8) * dpr,                 // 每帧下落速度
+          vx: (Math.random() - 0.5) * 1.6 * dpr,                 // 轻微横向漂移
+          r: Math.random() * Math.PI,
+          vr: (Math.random() - 0.5) * 0.25,
+          c: colors[i % colors.length]
+        });
+      }
+      var t0 = performance.now();
+      (function frame(now) {
+        g.clearRect(0, 0, cv.width, cv.height);
+        var alive = false;
+        parts.forEach(function (p) {
+          p.x += p.vx; p.y += p.vy; p.r += p.vr;
+          if (p.y < cv.height + 20 * dpr) alive = true;
+          g.save();
+          g.translate(p.x, p.y);
+          g.rotate(p.r);
+          g.fillStyle = p.c;
+          g.globalAlpha = Math.max(0, Math.min(1, (2500 - (now - t0)) / 600)); // 尾段整体淡出
+          g.fillRect(-p.w / 2, -p.h / 2, p.w, p.h);
+          g.restore();
+        });
+        if (alive && now - t0 < 2500) window.requestAnimationFrame(frame);
+        else cv.remove(); // 动完即拆，不留常驻层
+      })(t0);
+    }
+
+    // —— Konami 秘技：↑↑↓↓←→←→BA（B/A 是键值 66/65）。命中放彩带 + 浮提示，序列复位，可反复触发 ——
+    var SEQ = ['arrowup', 'arrowup', 'arrowdown', 'arrowdown', 'arrowleft', 'arrowleft', 'arrowright', 'arrowright', 'b', 'a'];
+    var pos = 0;
+    document.addEventListener('keydown', function (e) {
+      // 不劫持打字：焦点在输入类元素时不记键；Ctrl+K 全站搜索面板 / 登录卡开着也不记（同 ：2313 口径）
+      var t = e.target;
+      var tag = t && t.tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || (t && t.isContentEditable)) return;
+      var cmdk = document.getElementById('cmdk');
+      var gate = document.getElementById('loginGate');
+      if ((cmdk && !cmdk.hidden) || (gate && !gate.hidden)) return;
+      var k = String(e.key || '').toLowerCase();
+      if (e.keyCode === 66) k = 'b';       // B/A 兜底认键值（老浏览器 e.key 缺失也能触发）
+      else if (e.keyCode === 65) k = 'a';
+      if (k && k === SEQ[pos]) {
+        pos++;
+        if (pos === SEQ.length) {
+          pos = 0;
+          confetti();
+          eggToast('🎮 你发现了隐藏彩蛋！');
+        }
+      } else {
+        // 失配回退：若当前键恰好是序列第一步则从 1 起算（连按 ↑ 不断片），否则归零
+        pos = k === SEQ[0] ? 1 : 0;
+      }
+    });
+
+    // —— 离开标签页标题彩蛋：hidden 换哭脸，回来恢复。标题取页面加载时的快照，不猜字符串 ——
+    var originTitle = document.title;
+    document.addEventListener('visibilitychange', function () {
+      document.title = document.hidden ? ':( 回来看看嘛…' : originTitle;
+    });
   })();

@@ -9,3 +9,12 @@
 
 /images/*
   Cache-Control: public, max-age=86400
+
+# PWA（2026-09-09 批次）：SW 文件必须即时更新（默认长缓存会让装上的版本卡死在旧代码）；
+# manifest 防止被当成默认 octet-stream（安装时识别不了）
+/sw.js
+  Cache-Control: no-cache
+
+/manifest.webmanifest
+  Content-Type: application/manifest+json
+  Cache-Control: no-cache

@@ -6190,6 +6190,35 @@
     var aiBusy = false;
     var aiAbort = null;
 
+    // ---------- AI 人格预设：纯前端清单，非标准人格在发送时于 POST body 附带 system 字段 ----------
+    // （服务端 chat.js 截 500 字后拼在供应商系统提示词后面，两个协议分支共用这一处；历史对话不回放人格）
+    var AI_PERSONAS = [
+      { key: 'standard', name: '标准', icon: '', prompt: '' }, // 标准：不发送 system 字段
+      { key: 'translator', name: '翻译官', icon: '🏛', prompt: '你是专业中英互译。用户发英文你译成地道中文，发中文译成流畅英文，只输出译文，不要解释。' },
+      { key: 'coder', name: '程序员', icon: '💻', prompt: '你是资深工程师，回答注重代码正确性与边界情况，给出现代写法的代码示例，先结论后解释，用中文。' },
+      { key: 'writer', name: '文案写手', icon: '✍️', prompt: '你是新媒体文案高手，擅长起标题、改写口语为有传播力的短文案，输出给 2~3 个风格候选，用中文。' },
+      { key: 'teacher', name: '解题老师', icon: '🧮', prompt: '你是耐心的老师，一步步拆解题目，先给思路再给完整解答，最后用一行总结答案，用中文。' },
+      { key: 'catgirl', name: '猫娘', icon: '🐱', prompt: '你是一只可爱的猫娘助手，说话在句尾带「喵」，回答仍然准确有用，不过度卖萌。' }
+    ];
+    var AI_PERSONA_LS = 'yhuoAiPersona'; // 只存人格 key，跨刷新保持
+    var aiPersona = 'standard';
+    // 坑 29：顶栏悬停预览 iframe 是第二个完整站点、同源共享 localStorage——人格的读写在里面一律跳过，
+    // 避免预览帧悄悄改写（或带走）主页面选的人格
+    function aiInPreviewFrame() {
+      try { return window.self !== window.top; } catch (e) { return true; }
+    }
+    function aiPersonaCur() {
+      return AI_PERSONAS.filter(function (p) { return p.key === aiPersona; })[0] || AI_PERSONAS[0];
+    }
+    function aiPersonaLoad() {
+      if (aiInPreviewFrame()) return;
+      try {
+        var k = localStorage.getItem(AI_PERSONA_LS);
+        if (k && AI_PERSONAS.some(function (p) { return p.key === k; })) aiPersona = k;
+      } catch (e) {}
+    }
+    aiPersonaLoad();
+
     function addAiMsg(role, text, pending) {
       if (!aiMessages) return null;
       var el = document.createElement('div');
@@ -6303,6 +6332,58 @@
       return m ? m.name : '';
     }
 
+    // 人格入口：照模型菜单的实现模式——「纯文字 + ⌄」向上弹小菜单（清单 + 当前项 ✓ + 底部说明一行）
+    function aiPersonaLabelText() {
+      var p = aiPersonaCur();
+      return (p.icon ? p.icon + ' ' : '') + p.name;
+    }
+    function aiSyncPersonaSwitcher() {
+      var btn = document.getElementById('aiPersonaBtn');
+      var label = document.getElementById('aiPersonaLabel');
+      var menu = document.getElementById('aiPersonaMenu');
+      if (!btn || !label || !menu) return;
+      // AI 未启用时与模型钮一起隐藏（输入条本来就发不出去）
+      if (!(aiConfig && aiConfig.enabled)) {
+        btn.hidden = true;
+        menu.hidden = true;
+        return;
+      }
+      label.textContent = aiPersonaLabelText();
+      btn.hidden = false;
+      menu.innerHTML = '';
+      AI_PERSONAS.forEach(function (p) {
+        var it = document.createElement('button');
+        it.type = 'button';
+        it.className = 'ai-model-item' + (p.key === aiPersona ? ' active' : '');
+        it.setAttribute('role', 'option');
+        it.setAttribute('aria-selected', p.key === aiPersona ? 'true' : 'false');
+        var nm = document.createElement('span');
+        nm.textContent = (p.icon ? p.icon + ' ' : '') + p.name;
+        it.appendChild(nm);
+        var chk = document.createElement('span');
+        chk.className = 'chk';
+        chk.textContent = '✓';
+        it.appendChild(chk);
+        it.addEventListener('click', function () {
+          if (p.key !== aiPersona) {
+            aiPersona = p.key;
+            try { if (!aiInPreviewFrame()) localStorage.setItem(AI_PERSONA_LS, aiPersona); } catch (e) {}
+            label.textContent = aiPersonaLabelText();
+          }
+          menu.hidden = true;
+        });
+        menu.appendChild(it);
+      });
+      // 底部说明一行：人格只在发送时附带，历史对话恢复时不带人格
+      var foot = document.createElement('div');
+      foot.className = 'ai-model-foot';
+      var note = document.createElement('div');
+      note.className = 'ai-persona-note';
+      note.textContent = '人格只影响之后的回复';
+      foot.appendChild(note);
+      menu.appendChild(foot);
+    }
+
     function fetchAiConfig(force) {
       if (aiConfig && !force) return Promise.resolve(aiConfig);
       return fetch('/api/ai/config', { credentials: 'same-origin' })
@@ -6321,6 +6402,7 @@
             } catch (e) {}
           }
           aiSyncModelSwitcher();
+          aiSyncPersonaSwitcher();
           return aiConfig;
         });
     }
@@ -6710,11 +6792,16 @@
         }
       }
 
+      // 组装 payload：非标准人格在 body 附带 system 字段（服务端截 500 字、拼在供应商系统提示词后；
+      // 只随本次请求走，历史 messages 不掺人格，恢复对话即"不回放"）
+      var persona = aiPersonaCur();
+      var payload = { messages: messages.slice(-20), model: aiCurrentModel };
+      if (persona && persona.prompt) payload.system = persona.prompt;
       fetch('/api/ai/chat', {
         method: 'POST',
         credentials: 'same-origin',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ messages: messages.slice(-20), model: aiCurrentModel }),
+        body: JSON.stringify(payload),
         signal: ctl ? ctl.signal : undefined
       }).then(function (res) {
         if (res.status === 401) throw { aiAuth: true };
@@ -6827,20 +6914,33 @@
       // 顶栏切换模型：只影响之后的回复，当前对话历史延续（菜单逻辑见 aiSyncModelSwitcher）
       var aiModelBtn = document.getElementById('aiModelBtn');
       var aiModelMenu = document.getElementById('aiModelMenu');
+      // 人格切换：与模型菜单同款交互，两菜单互斥（清单见 AI_PERSONAS，选中存 localStorage）
+      var aiPersonaBtn = document.getElementById('aiPersonaBtn');
+      var aiPersonaMenu = document.getElementById('aiPersonaMenu');
       if (aiModelBtn && aiModelMenu) {
         aiModelBtn.addEventListener('click', function (e) {
           e.stopPropagation();
+          if (aiPersonaMenu) aiPersonaMenu.hidden = true;
           aiModelMenu.hidden = !aiModelMenu.hidden;
+        });
+      }
+      if (aiPersonaBtn && aiPersonaMenu) {
+        aiPersonaBtn.addEventListener('click', function (e) {
+          e.stopPropagation();
+          if (aiModelMenu) aiModelMenu.hidden = true;
+          aiPersonaMenu.hidden = !aiPersonaMenu.hidden;
         });
       }
       // document 级监听登记起来，离开页面时移除（防 pjax 反复进出叠加监听）
       var onDocClick = function (e) {
         if (aiModelMenu && !aiModelMenu.hidden && !e.target.closest('#aiModelSwitch')) aiModelMenu.hidden = true;
+        if (aiPersonaMenu && !aiPersonaMenu.hidden && !e.target.closest('#aiPersonaSwitch')) aiPersonaMenu.hidden = true;
       };
-      // Esc：先收模型菜单，再收历史抽屉（退出页面交给浏览器返回键，不再有"关界面"动作）
+      // Esc：先收模型/人格菜单，再收历史抽屉（退出页面交给浏览器返回键，不再有"关界面"动作）
       var onDocKey = function (e) {
         if (e.key !== 'Escape') return;
         if (aiModelMenu && !aiModelMenu.hidden) { aiModelMenu.hidden = true; return; }
+        if (aiPersonaMenu && !aiPersonaMenu.hidden) { aiPersonaMenu.hidden = true; return; }
         if (aiDrawerOpen()) aiCloseHistoryDrawer();
       };
       document.addEventListener('click', onDocClick);
@@ -6855,6 +6955,7 @@
     function destroyAiPage() {
       if (aiDocCleanup) { aiDocCleanup(); aiDocCleanup = null; }
       if (aiAbort) { try { aiAbort.abort(); } catch (e) {} aiAbort = null; }
+      if (aiMicRec) { try { aiMicRec.stop(); } catch (e) {} aiMicRec = null; } // pjax 离开页面时结束识别
     }
 
     // ---------- 附件：＋上传文件（图片→视觉模型 base64；文本文件→上下文注入，不存服务器） ----------
@@ -6930,6 +7031,65 @@
       }
     }
 
+    // ---------- 语音输入（Web Speech API）：识别结果实时填入输入框末尾，不自动发送 ----------
+    var aiMicRec = null; // 进行中的识别实例（非空 = 正在听，再点一次手动停止）
+    // 特性检测：不支持的浏览器（Firefox/Safari 旧版等）按钮压根不渲染，而不是渲染出来再禁用
+    function aiMicBind() {
+      if (!(window.SpeechRecognition || window.webkitSpeechRecognition)) return;
+      var fileBtn = document.getElementById('aiFileBtn');
+      if (!fileBtn || !fileBtn.parentNode || document.getElementById('aiMicBtn')) return;
+      var btn = document.createElement('button');
+      btn.type = 'button';
+      btn.id = 'aiMicBtn';
+      btn.className = 'ai-tool-icon ai-mic-btn';
+      btn.title = '语音输入';
+      btn.setAttribute('aria-label', '语音输入');
+      btn.setAttribute('aria-pressed', 'false');
+      btn.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" x2="12" y1="19" y2="22"/></svg>';
+      fileBtn.parentNode.insertBefore(btn, fileBtn.nextSibling); // 紧挨「＋」
+      btn.addEventListener('click', function () {
+        if (aiMicRec) { try { aiMicRec.stop(); } catch (e) {} return; } // 再点一次 = 手动停止（onend 复原）
+        var SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+        var rec;
+        try { rec = new SR(); } catch (e) { return; }
+        rec.lang = 'zh-CN';
+        rec.interimResults = true; // 中间结果实时上屏
+        rec.continuous = false;    // 单句模式：停顿即结束，再次点击可继续追加
+        // 简单方案：开始时记下输入框现有文字，本次语音段实时拼在末尾，final 后定格
+        var base = aiInput ? aiInput.value : '';
+        var finalText = '';
+        var done = false;
+        function finish() {
+          if (done) return; // onerror 后还会触发 onend，只复原一次
+          done = true;
+          aiMicRec = null;
+          btn.classList.remove('listening');
+          btn.setAttribute('aria-pressed', 'false');
+        }
+        rec.onresult = function (ev) {
+          var interim = '';
+          for (var i = ev.resultIndex; i < ev.results.length; i++) {
+            var r = ev.results[i];
+            if (r.isFinal) finalText += r[0].transcript;
+            else interim += r[0].transcript;
+          }
+          if (aiInput) aiInput.value = base + finalText + interim;
+        };
+        rec.onerror = function (ev) {
+          finish();
+          // 全部安静处理：只有麦克风权限被拒才提示一次，no-speech / network 等静默复原不打扰
+          if (ev && (ev.error === 'not-allowed' || ev.error === 'service-not-allowed')) {
+            showTopToast('麦克风权限被拒绝', false);
+          }
+        };
+        rec.onend = finish; // 正常结束/手动停止/出错后都走这里复原按钮
+        aiMicRec = rec;
+        btn.classList.add('listening');
+        btn.setAttribute('aria-pressed', 'true');
+        try { rec.start(); } catch (e) { finish(); }
+      });
+    }
+
     function aiBindPageControls() {
       // ---------- 附件：＋上传文件（图片→视觉模型 base64；文本文件→上下文注入，不存服务器） ----------
       var aiFileBtn = document.getElementById('aiFileBtn');
@@ -6941,6 +7101,7 @@
           this.value = '';
         });
       }
+      aiMicBind(); // 语音输入钮：支持 Web Speech API 才渲染（紧挨「＋」，见 aiMicBind）
 
       if (aiForm) {
         aiForm.addEventListener('submit', function (e) {

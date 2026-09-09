@@ -822,6 +822,7 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
       <button data-type="video" title="视频"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M2 8h20M2 16h20M8 4v16M16 4v16"/></svg><span>视频</span></button>
       <button data-type="image" title="图片"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m21 15-5-5L5 21"/></svg><span>图片</span></button>
       <button data-type="notes" title="随笔"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/><path d="M9 7h7M9 11h5"/></svg><span>随笔</span></button>
+      <button data-type="links" title="短链"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg><span>短链</span></button>
       <button data-type="users" title="用户"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg><span>用户</span></button>
       <button data-type="appearance" title="外观"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 2a10 10 0 0 0 0 20z" fill="currentColor" stroke="none"/></svg><span>外观</span></button>
       <button data-type="ai" title="AI 设置"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="8" width="16" height="12" rx="2"/><path d="M12 8V4"/><path d="M9 4h6"/><circle cx="9" cy="13" r="1" fill="currentColor" stroke="none"/><circle cx="15" cy="13" r="1" fill="currentColor" stroke="none"/><path d="M9 17h6"/></svg><span>AI</span></button>
@@ -844,6 +845,7 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
           <button data-type="video">视频</button>
           <button data-type="image">图片</button>
           <button data-type="notes">随笔</button>
+          <button data-type="links">短链</button>
           <button data-type="users">用户</button>
           <button data-type="appearance">外观</button>
           <button data-type="ai">AI</button>
@@ -973,6 +975,22 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
         <span class="meta2">把 notes/notes.json 里的存量随笔导入数据库（日期与正文完全相同的自动跳过）；导入后前台以数据库为准。</span>
       </div>
       <div id="notesList" style="margin-top:10px"></div>
+    </div>
+  </div>
+
+  <div id="linksPanel" hidden>
+    <p class="appear-label2" style="margin-top:0">外链缩短：创建后 /s/码 302 跳转并计次（前台直接访问 /s/码 即生效）</p>
+    <div class="card" style="margin-bottom:16px">
+      <div class="bgset-row" style="margin-top:0">
+        <input type="text" id="linkCode" placeholder="自定义短码（可空，2~32 位字母数字_-）" maxlength="32" style="max-width:250px">
+        <input type="text" id="linkUrl" placeholder="目标链接（http(s):// 开头）" style="flex:1;min-width:180px;max-width:420px">
+        <button id="linkCreateBtn" type="button">创建</button>
+      </div>
+      <p class="hint" style="margin:8px 0 0">短码留空则自动生成 6 位；与站内路由撞名的保留路径（admin / api / assets / 图片音乐等）不接受。</p>
+    </div>
+    <div class="card">
+      <div class="visit-head"><strong>全部短链</strong><span class="meta2" id="linksSumm"></span></div>
+      <div id="linksList" style="margin-top:10px"></div>
     </div>
   </div>
 
@@ -4220,6 +4238,127 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
       .catch(function () { btn.disabled = false; toast('读取 notes/notes.json 失败', 'err'); });
   });
 
+  // ---------- 短链（后台建 /s/{code}，302 跳转 + 计次；码/url 均来自用户输入，渲染一律 textContent/DOM API 防注入） ----------
+  var linksCache = [];
+
+  function loadLinks() {
+    var listEl = $('linksList');
+    listEl.innerHTML = '<p class="hint" style="margin:0">加载中…</p>';
+    api('/api/admin/links').then(function (d) {
+      if (!d.ok) { listEl.innerHTML = '<p class="hint" style="margin:0">' + escapeHtml(d.error || '加载失败') + '</p>'; return; }
+      linksCache = d.list || [];
+      renderLinksList();
+    }).catch(function () {
+      listEl.innerHTML = '<p class="hint" style="margin:0">加载失败</p>';
+    });
+  }
+
+  // 点行首短码复制完整短链（协议+域名现场拼，本地预览/线上都拿到可用地址）
+  function copyShortLink(code) {
+    var full = location.origin + '/s/' + code;
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(full).then(function () { toast('已复制', 'ok'); });
+    } else {
+      var tmp = document.createElement('input');
+      tmp.value = full;
+      document.body.appendChild(tmp);
+      tmp.select();
+      document.execCommand('copy');
+      document.body.removeChild(tmp);
+      toast('已复制', 'ok');
+    }
+  }
+
+  function renderLinksList() {
+    var listEl = $('linksList');
+    listEl.textContent = '';
+    $('linksSumm').textContent = linksCache.length ? ('共 ' + linksCache.length + ' 条 · 按创建时间倒序 · 点短码复制') : '';
+    if (!linksCache.length) {
+      var pe = document.createElement('p');
+      pe.className = 'meta2';
+      pe.textContent = '还没有短链。在上方填目标链接创建，短码留空则自动生成 6 位。';
+      listEl.appendChild(pe);
+      return;
+    }
+    var frag = document.createDocumentFragment();
+    linksCache.forEach(function (it) {
+      var row = document.createElement('div');
+      row.className = 'st-row';
+      var codeEl = document.createElement('button');
+      codeEl.className = 'icon-mini';
+      codeEl.title = '点击复制完整短链（创建于 ' + fmtDate(it.created_at) + '）';
+      codeEl.textContent = '/s/' + it.code;
+      codeEl.style.cssText = 'font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:12.5px';
+      codeEl.addEventListener('click', function () { copyShortLink(it.code); });
+      row.appendChild(codeEl);
+      var mid = document.createElement('span');
+      mid.className = 'meta2';
+      mid.style.flex = '1';
+      mid.style.minWidth = '0';
+      mid.style.overflow = 'hidden';
+      mid.style.textOverflow = 'ellipsis';
+      mid.style.whiteSpace = 'nowrap';
+      mid.textContent = it.url || '';
+      mid.title = it.url || '';
+      row.appendChild(mid);
+      var cEl = document.createElement('span');
+      cEl.className = 'meta2';
+      cEl.style.flex = 'none';
+      cEl.style.fontVariantNumeric = 'tabular-nums';
+      cEl.textContent = (it.clicks || 0) + ' 次';
+      if (it.clicks > 0) cEl.style.color = 'var(--ok)'; // 有跳转的标绿，一眼看出哪些链在用
+      row.appendChild(cEl);
+      var delBtn = document.createElement('button');
+      delBtn.className = 'icon-mini danger-hover';
+      delBtn.title = '删除';
+      delBtn.innerHTML = ICO.trash;
+      delBtn.addEventListener('click', function () {
+        ask({
+          title: '删除这个短链？',
+          msg: '/s/' + it.code + ' → ' + String(it.url || '').slice(0, 60),
+          okText: '删除',
+          danger: true,
+          cb: function (okVal) {
+            if (!okVal) return;
+            api('/api/admin/links', {
+              method: 'DELETE',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ code: it.code })
+            }).then(function (r) {
+              if (!r.ok) { toast(r.error || '删除失败', 'err'); return; }
+              toast('已删除');
+              loadLinks();
+            });
+          }
+        });
+      });
+      row.appendChild(delBtn);
+      frag.appendChild(row);
+    });
+    listEl.appendChild(frag);
+  }
+
+  $('linkCreateBtn').addEventListener('click', function () {
+    var code = $('linkCode').value.trim();
+    var url = $('linkUrl').value.trim();
+    if (!url) { toast('请填写目标链接（http(s):// 开头）', 'err'); return; }
+    if (code && !/^[A-Za-z0-9_-]{2,32}$/.test(code)) { toast('短码限 2~32 位字母、数字、下划线或连字符', 'err'); return; }
+    var btn = this;
+    btn.disabled = true;
+    api('/api/admin/links', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ code: code, url: url })
+    }).then(function (r) {
+      btn.disabled = false;
+      if (!r.ok) { toast(r.error || '创建失败', 'err'); return; }
+      $('linkCode').value = '';
+      $('linkUrl').value = '';
+      toast('已创建 /s/' + (r.code || code), 'ok');
+      loadLinks();
+    }).catch(function () { btn.disabled = false; toast('创建失败（网络异常）', 'err'); });
+  });
+
   // ---------- 顶部胶囊 + 抽屉导航（两套按钮同走 switchPage，active 同步打在两份上） ----------
   var navBtns = document.querySelectorAll('#sideNav button, #drawerNav button');
   // ---------- 我的（管理员资料 + 头像；头像 KV 键存 site_settings 'admin_avatar'） ----------
@@ -4538,9 +4677,11 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
     var isMe = type === 'me';
     var isStatus = type === 'status';
     var isNotes = type === 'notes';
+    var isLinks = type === 'links';
     $('overviewPanel').hidden = !isOverview;
-    $('mediaPanel').hidden = isOverview || isUsers || isAppear || isAi || isEmail || isMe || isStatus || isNotes;
+    $('mediaPanel').hidden = isOverview || isUsers || isAppear || isAi || isEmail || isMe || isStatus || isNotes || isLinks;
     $('notesPanel').hidden = !isNotes;
+    $('linksPanel').hidden = !isLinks;
     $('userPanel').hidden = !isUsers;
     $('appearancePanel').hidden = !isAppear;
     $('aiPanel').hidden = !isAi;
@@ -4578,11 +4719,14 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
       noteResetForm(); // 每次进页表单归零（日期预填今天），防上次的编辑草稿串场
       loadNotes();
     }
+    if (isLinks) {
+      loadLinks(); // 每次进页都拉最新：点击计数在 /s/ 侧实时累加，缓存旧列表会显示过期次数
+    }
     if (isUsers) {
       $('userSearch').value = ''; // 换进来重置搜索
       loadUsers();
     }
-    if (!isOverview && !isUsers && !isAppear && !isAi && !isEmail && !isMe && !isStatus && !isNotes) {
+    if (!isOverview && !isUsers && !isAppear && !isAi && !isEmail && !isMe && !isStatus && !isNotes && !isLinks) {
       $('fileInput').accept = TYPE_EXT[type];
       $('titleInput').value = '';
       selected = {}; // 换标签页清空勾选和搜索
@@ -4604,7 +4748,8 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
       isEmail ? $('emailPanel') :
       isMe ? $('mePanel') :
       isStatus ? $('statusPanel') :
-      isNotes ? $('notesPanel') : $('mediaPanel');
+      isNotes ? $('notesPanel') :
+      isLinks ? $('linksPanel') : $('mediaPanel');
     if (targetPanel && targetPanel !== lastEnterPanel) {
       lastEnterPanel = targetPanel;
       targetPanel.classList.remove('panel-enter');
@@ -4651,6 +4796,7 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
       ai: { name: 'AI', desc: 'AI 供应商 / 模型 / 全局开关' },
       email: { name: '邮件', desc: '邮件服务 / 验证码 / 课表提醒定时任务' },
       notes: { name: '随笔', desc: '随笔管理 · 新增 / 编辑 / 删除 / 静态清单导入' },
+      links: { name: '短链', desc: '外链缩短 · /s/码 302 跳转并计次 · 自定义短码' },
       me: { name: '我的', desc: '管理员资料 / 头像 / 安全中心' },
       status: { name: '状态', desc: '健康状态 / 数据库与 KV' }
     };

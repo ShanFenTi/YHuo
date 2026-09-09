@@ -104,6 +104,13 @@ export async function onRequestPost({ request, env }) {
     return json({ ok: false, error: wantedModel ? '所选模型暂不可用' : 'AI 对话还没有配置好，请等待站长在后台接入' }, 503);
   }
 
+  // 人格预设（前端可选）：body.system 为一句话人格提示词，服务端截 500 字。
+  // 最终系统提示 = 供应商系统提示词 + "\n\n" + 该字段（供应商未配提示词时直接用该字段）。
+  // 两个协议分支都在 buildUpstreamRequest 里读 pick.systemPrompt（lib/ai.js：
+  // anthropic → 顶层 body.system 字段；openai 兼容 → 首条 role:"system" 消息），在这并好即同时生效
+  const persona = typeof (body && body.system) === 'string' ? body.system.trim().slice(0, 500) : '';
+  if (persona) pick.systemPrompt = pick.systemPrompt ? pick.systemPrompt + '\n\n' + persona : persona;
+
   const { url, init } = buildUpstreamRequest(pick, messages, true);
   let upstream;
   try {

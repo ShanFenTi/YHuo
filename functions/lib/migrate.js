@@ -195,6 +195,14 @@ const DDL = [
     created_at TEXT NOT NULL DEFAULT (datetime('now'))
   )`,
   `CREATE INDEX IF NOT EXISTS idx_notes_date ON notes (date, id)`,
+  // 短链（后台「短链」页管理，前台 /s/{code} 302 跳转并计次）：code=短码（自定义或随机 6 位 hex），
+  // url=目标完整 http(s) 链接，clicks=跳转次数（每次命中 +1），created_at 存北京时间
+  `CREATE TABLE IF NOT EXISTS short_links (
+    code       TEXT PRIMARY KEY,
+    url        TEXT NOT NULL,
+    clicks     INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+  )`,
 ];
 
 // 同一个隔离实例里只跑一次

@@ -7171,16 +7171,17 @@
           boardMe = { loggedIn: !!(d && d.username), admin: !!(d && (d.admin || d.alsoAdmin)) };
           boardHint.textContent = boardMe.loggedIn
             ? (boardMe.admin ? (d.admin ? '以站长身份发布' : '已登录：' + d.username + '（管理员）') : '已登录：' + d.username)
-            : '登录后可发布留言';
+            : '未登录 · 将以 🎭 路人身份留言（限每分钟一条）';
         })
         .catch(function () { boardMe = { loggedIn: false, admin: false }; });
     }
     function boardItem(it) {
+      // isGuest = 服务端 is_admin=2 的路人留言（user_id 同为 0，靠该标记与站长区分）；已登录渲染完全走原逻辑
       var item = document.createElement('div');
-      item.className = 'board-item' + (it.isAdmin ? ' is-admin' : '');
+      item.className = 'board-item' + (it.isAdmin ? ' is-admin' : '') + (it.isGuest ? ' is-guest' : '');
       var av = document.createElement('div');
       av.className = 'board-avatar';
-      av.textContent = it.isAdmin ? '站' : (it.username || '?').slice(0, 1).toUpperCase();
+      av.textContent = it.isAdmin ? '站' : (it.isGuest ? '🎭' : (it.username || '?').slice(0, 1).toUpperCase());
       if (it.avatar) {
         // 有头像：img 覆盖在首字块上；加载失败移除 img 回落首字（已注销用户无 avatar 自然回落）
         var img = document.createElement('img');
@@ -7205,6 +7206,12 @@
         badge.className = 'board-admin-badge';
         badge.textContent = '站长';
         head.appendChild(badge);
+      } else if (it.isGuest) {
+        // 路人：灰色小徽章（样式见 site.css 末尾「留言板路人身份」段），区别于注册用户的等级描边徽标
+        var gb = document.createElement('span');
+        gb.className = 'board-guest-badge';
+        gb.textContent = '路人';
+        head.appendChild(gb);
       } else if (it.level) {
         var lv = document.createElement('span');
         lv.className = 'board-lv';
@@ -7294,7 +7301,8 @@
         boardPost.addEventListener('click', function () {
           var content = boardInput.value.trim();
           if (!content) { boardHint.textContent = '说点什么再发布吧'; return; }
-          if (!boardMe.loggedIn) { openGate(); return; }
+          // 未登录不再弹登录卡：直接发布，服务端按「路人」处理（is_admin=2，60 秒一条）；
+          // 登录用户照旧由服务端按会话落 user_id（boardMe 未返回时误点也不受影响，身份由服务端判定）
           boardPost.disabled = true;
           boardPost.textContent = '发布中…';
           fetch('/api/messages', {
@@ -8525,4 +8533,170 @@
     document.addEventListener('visibilitychange', function () {
       document.title = document.hidden ? ':( 回来看看嘛…' : originTitle;
     });
+  })();
+
+  // =========================
+  // 天气联动粒子层（2026-09-09）：雨天落雨丝 / 雪天飘雪片。全新的独立 IIFE，与上方流星段互不相干（勿并档）。
+  // 数据源 = 首页天气模块写下的 localStorage 缓存（键 'weatherCache'，30 分钟 TTL，结构 { ts, key, payload:{ temp, code, … } }）；
+  // 天气只在首页模块刷新时写缓存，本层每 60 秒轮询读一次（其他页面挂着也 60 秒内跟随），
+  // 缓存不存在 / 过期（天气模块被功能开关关闭、拉取失败、没进过首页）就不启用粒子层——纯前端无代理接口可挂。
+  // weathercode 类别映射：雨类（51-67、80-82）→ 雨丝（细长斜线快速下落）；雪类（71-77、85-86）→ 雪片（白点缓慢下落+左右摆动）；
+  // 其他码不绘制不挂 rAF。类别变化（雨→晴→雪）清空粒子重生成即完成平滑转换；昼夜/主题不区分（透明度低不干扰阅读）。
+  // canvas 固定层 z-index:-1 与流星层（.fx-meteors，同为 -1）同级量级、内容之下（DOM 追加在 body 尾、绘制在其上互不影响），
+  // pointer-events:none；样式见 site.css 末尾「天气联动粒子层」段。
+  // =========================
+  (function () {
+    if (window.self !== window.top) return; // 坑 29：顶栏悬停预览 iframe 是真页面，别在里面再跑一份特效
+    var reduceMQ = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)');
+    if (reduceMQ && reduceMQ.matches) return;
+    var LS_KEY = 'weatherCache';  // 与天气模块 LS_WEATHER_CACHE 一致
+    var CACHE_TTL = 30 * 60000;   // 与天气模块同口径：超 30 分钟视为无数据（等它刷新重写后 60 秒内自动恢复）
+    var POLL_MS = 60000;
+
+    var canvas = document.createElement('canvas');
+    canvas.className = 'fx-weather';
+    canvas.setAttribute('aria-hidden', 'true');
+    document.body.appendChild(canvas);
+    var ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    var particles = [];
+    var kind = 'none';  // 当前类别：'rain' | 'snow' | 'none'
+    var rafId = 0;
+    var vw = 0, vh = 0;
+
+    function sizeCanvas() {
+      // clientWidth/Height 不含滚动条（坑 30 同口径）；devicePixelRatio 缩放保证高清屏不糊
+      vw = document.documentElement.clientWidth;
+      vh = document.documentElement.clientHeight;
+      var dpr = Math.min(window.devicePixelRatio || 1, 2);
+      canvas.width = Math.max(1, Math.round(vw * dpr));
+      canvas.height = Math.max(1, Math.round(vh * dpr));
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    }
+
+    // WMO 天气码 → 粒子类别（与天气段 wmoInfo 的雨/雪分档一致）
+    function kindOf(code) {
+      code = Number(code);
+      if ((code >= 51 && code <= 67) || (code >= 80 && code <= 82)) return 'rain';
+      if ((code >= 71 && code <= 77) || code === 85 || code === 86) return 'snow';
+      return 'none';
+    }
+
+    function readKind() {
+      var cache = null;
+      try { cache = JSON.parse(localStorage.getItem(LS_KEY) || 'null'); } catch (e) {}
+      if (!cache || !cache.payload || typeof cache.payload.code === 'undefined') return 'none';
+      if (Date.now() - (cache.ts || 0) > CACHE_TTL) return 'none'; // 过期缓存≠现状，等天气模块刷新
+      return kindOf(cache.payload.code);
+    }
+
+    // 数量视口自适应（1280×720 ≈ 雨 92 / 雪 61）
+    function targetCount(k) {
+      var area = vw * vh;
+      if (k === 'rain') return Math.max(40, Math.min(140, Math.round(area / 10000)));
+      return Math.max(24, Math.min(90, Math.round(area / 15000)));
+    }
+
+    function spawn(k) {
+      if (k === 'rain') {
+        var speed = 9 + Math.random() * 6;
+        return {  // 雨丝：细长斜线，快速下落带固定微风向，透明度 0.10~0.2
+          x: Math.random() * (vw + 120) - 60,
+          y: Math.random() * vh - vh * 0.2,
+          len: 9 + Math.random() * 9,
+          dx: speed * 0.22,
+          dy: speed,
+          o: 0.10 + Math.random() * 0.10,
+        };
+      }
+      return {  // 雪片：白色小圆，缓慢下落 + 正弦左右摆动
+        x: Math.random() * vw,
+        y: Math.random() * vh - vh * 0.2,
+        r: 1 + Math.random() * 1.6,
+        dy: 0.35 + Math.random() * 0.75,
+        ph: Math.random() * Math.PI * 2,
+        sw: 0.3 + Math.random() * 0.7,
+        o: 0.16 + Math.random() * 0.24,
+      };
+    }
+
+    function stop() {
+      if (rafId) { window.cancelAnimationFrame(rafId); rafId = 0; }
+    }
+
+    // 类别切换入口：清空粒子按新类别重生成；'none' 收笔停 rAF
+    function regenerate(k) {
+      kind = k;
+      particles = [];
+      ctx.clearRect(0, 0, vw, vh);
+      if (k === 'none') { stop(); return; }
+      var n = targetCount(k);
+      for (var i = 0; i < n; i++) particles.push(spawn(k));
+      if (!rafId) rafId = window.requestAnimationFrame(tick);
+    }
+
+    function respawnTop(p, k) {
+      p.y = -10 - Math.random() * 40;
+      if (k === 'rain') p.x = Math.random() * (vw + 120) - 60;
+      else p.x = Math.random() * vw;
+    }
+
+    function tick() {
+      rafId = window.requestAnimationFrame(tick);
+      ctx.clearRect(0, 0, vw, vh);
+      var i, p;
+      if (kind === 'rain') {
+        ctx.lineWidth = 1;
+        for (i = 0; i < particles.length; i++) {
+          p = particles[i];
+          p.x += p.dx;
+          p.y += p.dy;
+          if (p.y - p.len > vh) respawnTop(p, 'rain');
+          ctx.globalAlpha = p.o;
+          ctx.strokeStyle = '#a8b6c8';
+          ctx.beginPath();
+          ctx.moveTo(p.x, p.y);
+          ctx.lineTo(p.x - p.dx * (p.len / p.dy), p.y - p.len); // 逆着速度方向画，线与轨迹同斜率
+          ctx.stroke();
+        }
+      } else if (kind === 'snow') {
+        ctx.fillStyle = '#ffffff';
+        for (i = 0; i < particles.length; i++) {
+          p = particles[i];
+          p.ph += 0.008 + p.sw * 0.012;
+          p.x += Math.sin(p.ph) * p.sw;
+          p.y += p.dy;
+          if (p.y - p.r > vh) respawnTop(p, 'snow');
+          ctx.globalAlpha = p.o;
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+      ctx.globalAlpha = 1;
+    }
+
+    // 切后台停 rAF，回前台按当前类别恢复（tick 只在 kind !== 'none' 时被挂上）
+    document.addEventListener('visibilitychange', function () {
+      if (document.hidden) stop();
+      else if (kind !== 'none' && !rafId) rafId = window.requestAnimationFrame(tick);
+    });
+
+    // 旋转屏/改窗口：200ms 防抖重设画布尺寸并按新视口重算数量（流星段同款防抖节奏）
+    var resizeTimer = 0;
+    window.addEventListener('resize', function () {
+      window.clearTimeout(resizeTimer);
+      resizeTimer = window.setTimeout(function () {
+        sizeCanvas();
+        if (kind !== 'none') regenerate(kind);
+      }, 200);
+    });
+
+    sizeCanvas();
+    regenerate(readKind());
+    setInterval(function () {
+      var k = readKind();
+      if (k !== kind) regenerate(k); // 类别变了才重建，同类别不打断正在下落的粒子
+    }, POLL_MS);
   })();

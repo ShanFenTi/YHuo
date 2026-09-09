@@ -6342,3 +6342,33 @@
       color: var(--apple-muted-foreground, var(--apple-foreground));
       opacity: 0.65;
     }
+
+    /* ========================= 天气联动粒子层（2026-09-09，common.js 末尾同名 IIFE） ========================= */
+    /* 雨天落雨丝 / 雪天飘雪片的 canvas 固定层：z-index 与流星层（.fx-meteors，同为 -1）同级量级、内容之下；
+       DOM 追加在 body 尾（流星层之后），同为负 z 时按 DOM 顺序绘制在 bg-layer/流星之上，互不影响；
+       pointer-events:none 纯装饰；启停与粒子逻辑全在 JS（天气缓存驱动），CSS 只管层叠与可访问性隐藏 */
+    .fx-weather {
+      position: fixed;
+      inset: 0;
+      z-index: -1;
+      pointer-events: none;
+    }
+
+    /* 系统减弱动态：整个层隐藏（JS 侧同条件不启动，双保险照流星段先例） */
+    @media (prefers-reduced-motion: reduce) {
+      .fx-weather { display: none; }
+    }
+
+    /* ========================= 留言板「路人」身份（2026-09-09，未登录留言） ========================= */
+    /* 路人首字块：🎭 直接写在块里，底色中性灰（区别于注册用户主题色块与站长金渐变） */
+    .board-item.is-guest .board-avatar {
+      background: var(--apple-secondary);
+      color: var(--apple-muted-foreground);
+    }
+
+    /* 路人灰徽章：与等级描边徽标（.board-lv）、站长金徽章（.board-admin-badge）三足鼎立 */
+    .board-guest-badge {
+      flex: none; font-size: 10px; font-weight: 700; line-height: 15px;
+      color: var(--apple-muted-foreground); background: var(--apple-secondary);
+      border-radius: 999px; padding: 0 7px; white-space: nowrap;
+    }

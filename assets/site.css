@@ -197,48 +197,6 @@
       stroke-width: 2;
     }
 
-    /* ===== Icon System (CSS Mask) ===== */
-    .icon {
-      display: inline-block;
-      width: 1em;
-      height: 1em;
-      background-color: currentColor;
-      -webkit-mask-size: contain;
-      mask-size: contain;
-      -webkit-mask-repeat: no-repeat;
-      mask-repeat: no-repeat;
-      -webkit-mask-position: center;
-      mask-position: center;
-      flex-shrink: 0;
-    }
-
-    .icon-house { -webkit-mask-image: url('../assets/icons/dl_builtin_apple/house.svg'); mask-image: url('../assets/icons/dl_builtin_apple/house.svg'); }
-    .icon-user { -webkit-mask-image: url('../assets/icons/dl_builtin_apple/user.svg'); mask-image: url('../assets/icons/dl_builtin_apple/user.svg'); }
-    .icon-circle-play { -webkit-mask-image: url('../assets/icons/dl_builtin_apple/circle-play.svg'); mask-image: url('../assets/icons/dl_builtin_apple/circle-play.svg'); }
-    .icon-circle-pause { -webkit-mask-image: url('../assets/icons/dl_builtin_apple/circle-pause.svg'); mask-image: url('../assets/icons/dl_builtin_apple/circle-pause.svg'); }
-    .icon-chevron-right { -webkit-mask-image: url('../assets/icons/dl_builtin_apple/chevron-right.svg'); mask-image: url('../assets/icons/dl_builtin_apple/chevron-right.svg'); }
-    .icon-chevron-left { -webkit-mask-image: url('../assets/icons/dl_builtin_apple/chevron-left.svg'); mask-image: url('../assets/icons/dl_builtin_apple/chevron-left.svg'); }
-    .icon-chevron-up { -webkit-mask-image: url('../assets/icons/dl_builtin_apple/chevron-up.svg'); mask-image: url('../assets/icons/dl_builtin_apple/chevron-up.svg'); }
-    .icon-chevron-down { -webkit-mask-image: url('../assets/icons/dl_builtin_apple/chevron-down.svg'); mask-image: url('../assets/icons/dl_builtin_apple/chevron-down.svg'); }
-
-    .icon-folder { -webkit-mask-image: url('../assets/icons/dl_builtin_apple/folder.svg'); mask-image: url('../assets/icons/dl_builtin_apple/folder.svg'); }
-    .icon-file { -webkit-mask-image: url('../assets/icons/dl_builtin_apple/file.svg'); mask-image: url('../assets/icons/dl_builtin_apple/file.svg'); }
-    .icon-heart { -webkit-mask-image: url('../assets/icons/dl_builtin_apple/heart.svg'); mask-image: url('../assets/icons/dl_builtin_apple/heart.svg'); }
-    .icon-star { -webkit-mask-image: url('../assets/icons/dl_builtin_apple/star.svg'); mask-image: url('../assets/icons/dl_builtin_apple/star.svg'); }
-    .icon-mail { -webkit-mask-image: url('../assets/icons/dl_builtin_apple/mail.svg'); mask-image: url('../assets/icons/dl_builtin_apple/mail.svg'); }
-    .icon-external-link { -webkit-mask-image: url('../assets/icons/dl_builtin_apple/external-link.svg'); mask-image: url('../assets/icons/dl_builtin_apple/external-link.svg'); }
-    .icon-trash-2 { -webkit-mask-image: url('../assets/icons/dl_builtin_apple/trash-2.svg'); mask-image: url('../assets/icons/dl_builtin_apple/trash-2.svg'); }
-    .icon-circle-play { -webkit-mask-image: url('../assets/icons/dl_builtin_apple/circle-play.svg'); mask-image: url('../assets/icons/dl_builtin_apple/circle-play.svg'); }
-    .icon-circle-pause { -webkit-mask-image: url('../assets/icons/dl_builtin_apple/circle-pause.svg'); mask-image: url('../assets/icons/dl_builtin_apple/circle-pause.svg'); }
-    .icon-circle-plus { -webkit-mask-image: url('../assets/icons/dl_builtin_apple/circle-plus.svg'); mask-image: url('../assets/icons/dl_builtin_apple/circle-plus.svg'); }
-    .icon-circle-minus { -webkit-mask-image: url('../assets/icons/dl_builtin_apple/circle-minus.svg'); mask-image: url('../assets/icons/dl_builtin_apple/circle-minus.svg'); }
-    .icon-circle-check { -webkit-mask-image: url('../assets/icons/dl_builtin_apple/circle-check.svg'); mask-image: url('../assets/icons/dl_builtin_apple/circle-check.svg'); }
-    .icon-circle-alert { -webkit-mask-image: url('../assets/icons/dl_builtin_apple/circle-alert.svg'); mask-image: url('../assets/icons/dl_builtin_apple/circle-alert.svg'); }
-    .icon-arrow-up { -webkit-mask-image: url('../assets/icons/dl_builtin_apple/arrow-up.svg'); mask-image: url('../assets/icons/dl_builtin_apple/arrow-up.svg'); }
-    .icon-arrow-down { -webkit-mask-image: url('../assets/icons/dl_builtin_apple/arrow-down.svg'); mask-image: url('../assets/icons/dl_builtin_apple/arrow-down.svg'); }
-    .icon-arrow-left { -webkit-mask-image: url('../assets/icons/dl_builtin_apple/arrow-left.svg'); mask-image: url('../assets/icons/dl_builtin_apple/arrow-left.svg'); }
-    .icon-arrow-right { -webkit-mask-image: url('../assets/icons/dl_builtin_apple/arrow-right.svg'); mask-image: url('../assets/icons/dl_builtin_apple/arrow-right.svg'); }
-
     /* ===== Reading Progress Bar ===== */
     .progress-bar {
       position: fixed;

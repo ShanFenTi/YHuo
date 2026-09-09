@@ -28,7 +28,9 @@ export async function onRequestPost({ request, env }) {
   if (!user && !isAdmin) return json({ ok: false, error: 'login' }, 401);
 
   // 每身份每小时上报次数上限：防登录态灌水刷统计与 D1 写配额
-  const who = user ? 'u' + user.id : 'admin';
+  // 字段是 userId（getUserSession 返回 {userId, username}）——误写 user.id 会变成
+  // 所有用户共享 'uundefined' 一个限流键，互相烧配额
+  const who = user ? 'u' + user.userId : 'admin';
   const hourKey = 'aiusage:' + who + ':' + new Date().toISOString().slice(0, 13);
   const capRow = await env.DB.prepare('SELECT fails FROM login_throttle WHERE key = ?').bind(hourKey).first();
   if (capRow && capRow.fails >= 120) return json({ ok: false, error: 'too many' }, 429);

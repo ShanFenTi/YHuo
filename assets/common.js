@@ -3186,7 +3186,7 @@
               var ac = new Date(String(d.created_at).replace(' ', 'T') + 'Z');
               if (!isNaN(ac)) sub += ' · 创建于 ' + fmtDate(ac);
             }
-            sub += '（收藏、课表、邮箱、改密、签到仅前台注册账号可用）';
+            sub += '（收藏、邮箱、改密、签到仅前台注册账号可用，课表可用）';
           } else {
             if (d.created_at) {
               var created = new Date(String(d.created_at).replace(' ', 'T') + 'Z');
@@ -5654,19 +5654,23 @@
         .then(function (d) {
           if (d && d.ok && d.conv) {
             aiConvId = d.conv;
-            // 更新侧栏（新建则插到最前，否则挪到最前并刷新标题/时间）
+            // 更新侧栏（新建则插到最前，否则挪到最前并刷新标题/时间/条数）
+            // 注意 filter 回调里累加的 msgs 在被移除的对象上，必须把累计值带进新对象——
+            // 否则新对象只带本次 added，侧栏「N 条」每次保存后回落为 2 不再增长
             var existed = false;
+            var accMsgs = 0;
             aiConvs = aiConvs.filter(function (c) {
               if (c.id === d.conv) {
                 c.title = d.title || c.title;
                 c.updated_at = new Date().toISOString();
                 c.msgs = (c.msgs || 0) + (d.added || 0);
+                accMsgs = c.msgs;
                 existed = true;
               }
               return c.id !== d.conv;
             });
             if (existed || d.title) {
-              var cur = { id: d.conv, title: d.title || '新对话', updated_at: new Date().toISOString(), msgs: d.added || 0 };
+              var cur = { id: d.conv, title: d.title || '新对话', updated_at: new Date().toISOString(), msgs: existed ? accMsgs : (d.added || 0) };
               aiConvs.unshift(cur);
             }
             aiRenderHistoryList();

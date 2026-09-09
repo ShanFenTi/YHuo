@@ -1219,6 +1219,15 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
       <div class="visit-head"><strong>邮件发送额度</strong><span class="meta2" id="stMailSumm"></span></div>
       <div id="stMailBody"><p class="hint" style="margin:0">加载中…</p></div>
     </div>
+    <div class="card" id="stBackupCard" style="margin-top:16px">
+      <div class="visit-head"><strong>数据备份</strong><span class="meta2" id="stBackupSumm"></span></div>
+      <div id="stBackupBody"><p class="hint" style="margin:0">加载中…</p></div>
+      <div class="bgset-row" style="margin-top:12px">
+        <button id="stBackupNowBtn" class="ghost" type="button">立即备份</button>
+        <span class="meta2" id="stBackupTip"></span>
+      </div>
+      <p class="meta2" style="margin:8px 0 0">每日自动备份到 KV，保留最近 7 份（随课表提醒的定时任务每天顺带执行）。</p>
+    </div>
   </div>
     </main>
   </div>
@@ -2645,6 +2654,54 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
       }).catch(function () {});
     }).catch(function () {});
   }
+
+  // ---------- 状态页 · 数据备份卡（D1 每日自动备份，KV 保留最近 7 份） ----------
+  function loadBackupCard() {
+    $('stBackupBody').innerHTML = '<p class="hint" style="margin:0">加载中…</p>';
+    $('stBackupSumm').textContent = '';
+    api('/api/admin/backup').then(function (d) {
+      if (!d || !d.ok) {
+        $('stBackupBody').innerHTML = '<p class="hint" style="margin:0">读取失败，请稍后重试。</p>';
+        return;
+      }
+      $('stBackupSumm').textContent = d.lastdate ? ('最近备份：' + d.lastdate) : '还没有备份';
+      if (!(d.list || []).length) {
+        $('stBackupBody').innerHTML = '<p class="hint" style="margin:0">还没有备份文件，点下方「立即备份」马上生成第一份。</p>';
+        return;
+      }
+      var rows = '';
+      d.list.forEach(function (b) {
+        var countsTxt = '明细解析失败';
+        if (b.counts) {
+          countsTxt = (b.counts.notes || 0) + ' 随笔 · ' + (b.counts.messages || 0) + ' 留言 · ' +
+            (b.counts.checkins || 0) + ' 签到 · ' + (b.counts.users || 0) + ' 用户';
+        }
+        rows += '<div class="st-row"><span class="st-name" style="width:auto">' + b.date + '</span>' +
+          '<span class="st-meta" style="flex:1;text-align:right">' + countsTxt + '</span>' +
+          '<a class="meta2" style="color:var(--fg);text-decoration:underline" href="/api/admin/backup?date=' +
+          encodeURIComponent(b.date) + '" download="yhuo-backup-' + b.date + '.json">下载</a></div>';
+      });
+      $('stBackupBody').innerHTML = rows;
+    }).catch(function () {
+      $('stBackupBody').innerHTML = '<p class="hint" style="margin:0">读取失败，请稍后重试。</p>';
+    });
+  }
+  $('stBackupNowBtn').addEventListener('click', function () {
+    var btn = $('stBackupNowBtn');
+    btn.disabled = true;
+    $('stBackupTip').textContent = '正在备份…';
+    api('/api/admin/backup', { method: 'POST' }).then(function (d) {
+      btn.disabled = false;
+      $('stBackupTip').textContent = '';
+      if (d && d.ok) toast('已备份 ' + d.date + '（' + fmtSize(d.bytes) + '）', 'ok');
+      else toast((d && d.error) || '备份失败', 'err');
+      loadBackupCard(); // 成功失败都重拉清单：成功出最新一份，失败回到旧列表态
+    }).catch(function () {
+      btn.disabled = false;
+      $('stBackupTip').textContent = '';
+      toast('网络错误，备份失败', 'err');
+    });
+  });
 
   // ---------- 拖拽排序 ----------
   var dragFrom = null;
@@ -4515,6 +4572,7 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
     }
     if (isStatus) {
       renderStatus();
+      loadBackupCard(); // 数据备份卡每次进页同刷
     }
     if (isNotes) {
       noteResetForm(); // 每次进页表单归零（日期预填今天），防上次的编辑草稿串场

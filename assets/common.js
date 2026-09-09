@@ -3134,12 +3134,66 @@
           weekEl.appendChild(cell);
         });
       }
+      ckRenderBadges(st); // 成就徽章墙：随签到数据实时刷新（挂在近 7 日圆点下方）
       if (ckBtn) {
         ckBtn.disabled = !!st.checkedToday;
         ckBtn.textContent = st.checkedToday ? '已签到 ✓' : '签到';
         ckBtn.classList.toggle('ck-btn-done', !!st.checkedToday);
       }
       ckCard.style.display = '';
+    }
+    // ---- 成就徽章墙（零后端改动）：全部由签到 GET 已返回的字段实时计算——
+    //      total=累计天数 / streak=连续天数（今天没签时即按昨天起算的历史连续）/ level.lv=当前等级（0~6）。
+    //      容器动态挂在 #ckWeek 之后（外壳 HTML 九页共享一份，不动 HTML），徽章随签到卡整体显隐：
+    //      卡片 display:none 或管理员模式不拉取（loadCheckin 早退）时，徽章墙天然不出现。
+    var CK_BADGES = [
+      { ico: '🌱', name: '初来乍到', kind: 'total', need: 1 },
+      { ico: '🔥', name: '七日之约', kind: 'total', need: 7 },
+      { ico: '🌙', name: '满月', kind: 'total', need: 30 },
+      { ico: '💯', name: '百日签到', kind: 'total', need: 100 },
+      { ico: '🌳', name: '三百回合', kind: 'total', need: 300 },
+      { ico: '👑', name: '传奇登顶', kind: 'level', need: 6, dayNeed: 300 }, // 满级 Lv6 即累计满 300 天（服务端 LEVELS 顶格），差值按累计算
+      { ico: '⚡', name: '七连击', kind: 'streak', need: 7 },
+      { ico: '🌍', name: '百日连击', kind: 'streak', need: 100 }
+    ];
+    function ckRenderBadges(st) {
+      var weekEl = document.getElementById('ckWeek');
+      if (!weekEl || !weekEl.parentNode) return;
+      var wrap = document.getElementById('ckBadges');
+      if (!wrap) {
+        wrap = document.createElement('div');
+        wrap.id = 'ckBadges';
+        wrap.className = 'ck-badges';
+        wrap.setAttribute('aria-label', '签到成就徽章');
+        weekEl.insertAdjacentElement('afterend', wrap);
+      }
+      wrap.textContent = ''; // 整墙重建：签到成功后 total/streak 变化，徽章即时刷新
+      var total = st.total || 0;
+      var streak = st.streak || 0;
+      var lv = (st.level && st.level.lv) || 0;
+      CK_BADGES.forEach(function (b) {
+        var got;
+        if (b.kind === 'streak') got = streak >= b.need;
+        else if (b.kind === 'level') got = lv >= b.need;
+        else got = total >= b.need;
+        var chip = document.createElement('span');
+        chip.className = 'ck-badge' + (got ? ' on' : '') + (got && b.kind === 'level' ? ' max' : '');
+        var ico = document.createElement('i');
+        ico.className = 'ck-badge-ico';
+        ico.textContent = b.ico;
+        chip.appendChild(ico);
+        chip.appendChild(document.createTextNode(b.name));
+        // 悬停提示：已达成给当前值；未达成按同类差值给「还差 N 天」（连续类按连续差值、等级类按累计差值；
+        // 累计/连续为 0 时（新号/断签清零）差值即门槛本身，如 🌱 显示「还差 1 天」、⚡ 显示「还差 7 天」）
+        if (got) {
+          chip.title = b.kind === 'streak' ? '已达成 · 连续 ' + streak + ' 天'
+            : (b.kind === 'level' ? '已达成 · 满级 Lv.' + lv : '已达成 · 累计 ' + total + ' 天');
+        } else {
+          var gap = b.kind === 'streak' ? b.need - streak : (b.dayNeed || b.need) - total;
+          chip.title = '还差 ' + gap + ' 天'; // 未达成时 gap 必 ≥1（got=false 即当前值 < 门槛）
+        }
+        wrap.appendChild(chip);
+      });
     }
     function loadCheckin() {
       if (!ckCard || profileIsAdmin) return;
@@ -4726,16 +4780,40 @@
         var ss = s % 60;
         return (m < 10 ? '0' : '') + m + ':' + (ss < 10 ? '0' : '') + ss;
       }
-      function todayKey() {
-        var d = new Date();
+      function todayKey(d) {
+        d = d || new Date();
         var p = function (n) { return (n < 10 ? '0' : '') + n; };
         return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate());
       }
-      function loadCount() {
+      // 历史表：yhuoPomoHist = { "YYYY-MM-DD": 完成数 }（键为本地日期）。旧格式
+      // yhuoPomo={day,n} 只存当天，读到时把旧值并入新表（取大者，天然幂等），
+      // 旧键原样保留不删——回滚旧版代码时数据不丢。
+      function loadHist() {
+        var hist = {};
         try {
-          var o = JSON.parse(localStorage.getItem('yhuoPomo') || '{}');
-          return o.day === todayKey() ? (Number(o.n) || 0) : 0;
-        } catch (e) { return 0; }
+          var o = JSON.parse(localStorage.getItem('yhuoPomoHist') || '{}');
+          if (o && typeof o === 'object' && !Array.isArray(o)) {
+            for (var k in o) {
+              var n = Math.floor(Number(o[k]));
+              if (n > 0) hist[k] = n;
+            }
+          }
+        } catch (e) {}
+        try {
+          var old = JSON.parse(localStorage.getItem('yhuoPomo') || '{}');
+          var on = Math.floor(Number(old && old.n));
+          if (typeof (old && old.day) === 'string' && on > 0 && !(Number(hist[old.day]) >= on)) {
+            hist[old.day] = on;
+            try { localStorage.setItem('yhuoPomoHist', JSON.stringify(hist)); } catch (e) {}
+          }
+        } catch (e) {}
+        return hist;
+      }
+      function saveHist(hist) {
+        try { localStorage.setItem('yhuoPomoHist', JSON.stringify(hist)); } catch (e) {}
+      }
+      function loadCount() {
+        return Number(loadHist()[todayKey()]) || 0;
       }
       function renderNote() {
         if (!note) return;
@@ -4743,8 +4821,63 @@
         note.textContent = n > 0 ? '今日完成 ' + n : '';
       }
       function addCount() {
-        try { localStorage.setItem('yhuoPomo', JSON.stringify({ day: todayKey(), n: loadCount() + 1 })); } catch (e) {}
+        var hist = loadHist();
+        var k = todayKey();
+        var n = (Number(hist[k]) || 0) + 1;
+        hist[k] = n;
+        saveHist(hist);
+        // 旧键同步双写：字段语义与旧版完全一致，单独回滚旧代码也不丢今日数
+        try { localStorage.setItem('yhuoPomo', JSON.stringify({ day: k, n: n })); } catch (e) {}
         renderNote();
+        renderHeat();
+      }
+      // ---- 历史热力图（GitHub contribution 风格）：最近 15 周 105 格，7 行 × 15 列，纯静态重绘 ----
+      function renderHeat() {
+        var card = document.getElementById('toolPomo');
+        if (!card) return;
+        var grid = document.getElementById('pomoHeatGrid');
+        var sum = document.getElementById('pomoHeatSum');
+        if (!grid || !sum) {
+          var box = document.createElement('div');
+          box.className = 'pomo-heat';
+          grid = document.createElement('div');
+          grid.className = 'pomo-heat-grid';
+          grid.id = 'pomoHeatGrid';
+          sum = document.createElement('p');
+          sum.className = 'pomo-heat-sum';
+          sum.id = 'pomoHeatSum';
+          box.appendChild(grid);
+          box.appendChild(sum);
+          card.appendChild(box);
+        }
+        var hist = loadHist();
+        var total = 0;
+        for (var hk in hist) total += Number(hist[hk]) || 0;
+        var today = new Date();
+        today.setHours(0, 0, 0, 0);
+        // 列=周（15 列），行=周一~周日；起点 = 14 周前那周的周一，最后一列是本周（今天之后留空位）
+        var start = new Date(today);
+        start.setDate(start.getDate() - (14 * 7 + (today.getDay() + 6) % 7));
+        grid.textContent = '';
+        for (var i = 0; i < 105; i++) {
+          var d = new Date(start);
+          d.setDate(d.getDate() + i);
+          var n = Number(hist[todayKey(d)]) || 0;
+          var future = d > today;
+          var cell = document.createElement('span');
+          cell.className = 'pomo-heat-cell' + (future ? '' : n >= 5 ? ' lv3' : n >= 3 ? ' lv2' : n >= 1 ? ' lv1' : '');
+          if (!future) cell.title = n + ' 个番茄 · ' + (d.getMonth() + 1) + '月' + d.getDate() + '日';
+          grid.appendChild(cell);
+        }
+        // 连续天数：今天有完成从今天起算，今天还没有则从昨天往回（断档即停）
+        var cursor = new Date(today);
+        if (!(Number(hist[todayKey(cursor)]) > 0)) cursor.setDate(cursor.getDate() - 1);
+        var streak = 0;
+        while (Number(hist[todayKey(cursor)]) > 0) {
+          streak++;
+          cursor.setDate(cursor.getDate() - 1);
+        }
+        sum.textContent = '累计 ' + total + ' 个番茄 · 连续 ' + streak + ' 天';
       }
       function render() { display.textContent = fmt(left); }
       function setMode(m) {
@@ -4813,6 +4946,7 @@
         setMode(mode);
       });
       renderNote();
+      renderHeat();
       render();
       pomoStopHook = stop; // 交给页面模块：pjax 离开工具页时停表
     }
@@ -6251,6 +6385,60 @@
         .catch(function () {});
     }
 
+    // —— 导出对话为 Markdown：标题 + 逐条「**用户：**/**AI：**」消息，Blob + a[download] 下载 ——
+    // 内存 content 是原始 Markdown 字符串（bot 存流式累积全文，渲染才走 mdToHtml）；发图时是多模态
+    // parts 数组，图片 part 导出为「[图片]」占位（与服务端入库归一化同款，见 functions/api/ai/history.js toText）。
+    // D1 侧 ai_chat_history 只存 role/content 无时间戳字段，导出因此不附时间行。
+    function aiMsgPlainText(content) {
+      if (typeof content === 'string') return content;
+      if (!Array.isArray(content)) return '';
+      var out = '';
+      content.forEach(function (p) {
+        if (!p || typeof p !== 'object') return;
+        if (p.type === 'text' && typeof p.text === 'string') out += (out ? '\n' : '') + p.text;
+        else if (p.type === 'image_url') out += (out ? '\n' : '') + '[图片]';
+      });
+      return out;
+    }
+
+    function aiSafeFileName(title) {
+      // Windows 非法字符与换行替换为下划线，截 50 字防超长文件名
+      var name = String(title || '对话').replace(/[\\/:*?"<>|\r\n]+/g, '_').trim().slice(0, 50);
+      return name || '对话';
+    }
+
+    function aiDownloadMd(conv) {
+      var md = '# ' + (conv.title || '新对话') + '\n\n';
+      (conv.msgs || []).forEach(function (m) {
+        md += '**' + (m.role === 'user' ? '用户' : 'AI') + '：**' + aiMsgPlainText(m.content) + '\n\n';
+      });
+      var blob = new Blob([md], { type: 'text/markdown;charset=utf-8' });
+      var url = URL.createObjectURL(blob);
+      var a = document.createElement('a');
+      a.href = url;
+      a.download = aiSafeFileName(conv.title) + '.md';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+    }
+
+    // 当前对话直接用内存 aiHistory 免请求；其余对话按 conv id 拉服务端消息
+    function aiExportConv(c) {
+      if (c.id === aiConvId && aiHistory.length) {
+        aiDownloadMd({ title: c.title, msgs: aiHistory });
+        return;
+      }
+      fetch('/api/ai/history?conv=' + c.id, { credentials: 'same-origin' })
+        .then(function (r) { return r.ok ? r.json() : null; })
+        .then(function (d) {
+          if (!d || !d.ok) { showTopToast('导出失败，请稍后再试', false); return; }
+          if (!(d.messages || []).length) { showTopToast('该对话还没有消息', false); return; }
+          aiDownloadMd({ title: c.title, msgs: d.messages });
+        })
+        .catch(function () { showTopToast('导出失败，请稍后再试', false); });
+    }
+
     // 渲染左侧历史栏
     function aiRenderHistoryList() {
       var list = document.getElementById('aiHistoryList');
@@ -6281,6 +6469,18 @@
         main.appendChild(t);
         main.appendChild(meta);
         it.appendChild(main);
+        // 导出钮：样式尺寸与删除钮同款（hi-exp 镜像 hi-del，CSS 在 site.css 末尾新段）
+        var exp = document.createElement('span');
+        exp.className = 'hi-exp';
+        exp.title = '导出对话';
+        exp.setAttribute('role', 'button');
+        exp.setAttribute('aria-label', '导出此对话');
+        exp.innerHTML = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/><path d="M12 15V3"/></svg>';
+        exp.addEventListener('click', function (e) {
+          e.stopPropagation(); // 别触发条目本身的「打开对话」
+          aiExportConv(c);
+        });
+        it.appendChild(exp);
         var del = document.createElement('span');
         del.className = 'hi-del';
         del.title = '删除对话';
@@ -7120,7 +7320,82 @@
         if (cur && cur.scrollIntoView) cur.scrollIntoView({ block: 'nearest' });
       }
 
+      // —— = 开头进入算数模式：只显示结果行，不显示常规搜索结果 ——
+      // 求值与工具页计算器同款：白名单只放行数字与四则/括号/小数点/百分号/空白，杜绝任意代码执行
+      function mathExprOf(v) {
+        return v.charAt(0) === '=' ? v.slice(1) : null; // null=非算数模式
+      }
+      function evalMath(expr) {
+        if (!/^[0-9+\-*/().%\s]+$/.test(expr)) return null;
+        try {
+          var val = Function('"use strict";return (' + expr + ')')();
+          if (typeof val !== 'number' || !isFinite(val)) return null;
+          return val;
+        } catch (e) { return null; }
+      }
+      // 整数直接显示；小数最多 10 位有效数字（换算器 fmtNum 同款）
+      function fmtMathNum(v) {
+        return v % 1 === 0 ? String(v) : String(Number(v.toPrecision(10)));
+      }
+      var lastMath = null; // Enter 复制用的最近一次有效结果 {text}
+      function renderMath() {
+        lastMath = null;
+        var expr = mathExprOf(input.value);
+        listEl.textContent = '';
+        var wrap = document.createElement('div');
+        wrap.className = 'cmdk-math';
+        var line = document.createElement('p');
+        line.className = 'cmdk-math-line';
+        var sub = document.createElement('p');
+        sub.className = 'cmdk-math-sub';
+        if (!expr.trim()) {
+          // 只敲了一个 =：给个用法提示，Enter 无结果可复制（copyMathResult 直接跳过）
+          line.textContent = '以 = 开头直接算数';
+          sub.textContent = '例如 =1+2*3 → 3 · Enter 复制结果';
+        } else {
+          var val = evalMath(expr);
+          if (val === null) {
+            line.textContent = '无法计算';
+            sub.textContent = expr;
+          } else {
+            lastMath = { text: fmtMathNum(val) };
+            line.textContent = expr + ' = ' + lastMath.text;
+            sub.textContent = 'Enter 复制结果';
+          }
+        }
+        wrap.appendChild(line);
+        wrap.appendChild(sub);
+        listEl.appendChild(wrap);
+      }
+      // Enter 复制：优先 navigator.clipboard，失败降级 execCommand，再失败 toast 提示
+      function copyMathResult() {
+        if (!lastMath) return;
+        var t = lastMath.text;
+        var done = function () {
+          closePanel();
+          showTopToast('已复制 ' + t, false);
+        };
+        var legacy = function () {
+          var ta = document.createElement('textarea');
+          ta.value = t;
+          ta.style.position = 'fixed';
+          ta.style.opacity = '0';
+          document.body.appendChild(ta);
+          ta.select();
+          var ok = false;
+          try { ok = document.execCommand('copy'); } catch (e) {}
+          document.body.removeChild(ta);
+          if (ok) done();
+          else showTopToast('复制失败，请手动复制', false);
+        };
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(t).then(done, legacy);
+        } else legacy();
+      }
+
       function render() {
+        // 算数模式：结果区只放一条特殊结果行（进入即不再走常规搜索渲染）
+        if (mathExprOf(input.value) !== null) { renderMath(); return; }
         items = buildItems(input.value);
         active = 0;
         listEl.textContent = '';
@@ -7206,6 +7481,8 @@
           if (items.length) setActive(active + (e.key === 'ArrowDown' ? 1 : -1));
         } else if (e.key === 'Enter') {
           e.preventDefault();
+          // 算数模式：Enter = 复制结果并关面板（无有效结果则无动作）；Esc 关面板由下方捕获层照旧处理
+          if (mathExprOf(input.value) !== null) { copyMathResult(); return; }
           runItem(items[active]);
         }
       });

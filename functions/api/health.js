@@ -30,5 +30,15 @@ export async function onRequestGet({ env }) {
       report.mediaOk = false;
     }
   }
+  // 只读观测：最近一次每日备份的日期（KV backup:lastdate，由 /api/schedule/tick 每天顺带写入；
+  // 读取失败置 null，不影响本接口）
+  report.backupLastDate = null;
+  if (report.media) {
+    try {
+      report.backupLastDate = (await env.MEDIA.get('backup:lastdate')) || null;
+    } catch (e) {
+      report.backupLastDate = null;
+    }
+  }
   return json(report, 200, { 'Cache-Control': 'no-store' });
 }

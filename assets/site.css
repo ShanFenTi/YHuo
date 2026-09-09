@@ -6186,3 +6186,130 @@
     }
 
     .bg-wallpaper-note.is-error { color: #e5484d; }
+
+    /* ===== 2026-09-10 新增：AI 历史导出钮 / Ctrl+K 算数模式 / 番茄钟热力图 ===== */
+
+    /* —— AI 历史条目「导出」图标钮：完全镜像上方 .hi-del（24px、悬停浮现、触屏常显） —— */
+    .ai-history-item .hi-exp {
+      flex: none;
+      display: none;
+      width: 24px;
+      height: 24px;
+      align-items: center;
+      justify-content: center;
+      border: none;
+      border-radius: 7px;
+      background: none;
+      color: var(--apple-muted-foreground);
+      cursor: pointer;
+      transition: background-color 150ms var(--ease-out), color 150ms var(--ease-out);
+    }
+
+    /* 桌面悬停浮现；触屏没有 hover，常显否则导不出（hi-del 同款约定） */
+    .ai-history-item:hover .hi-exp { display: inline-flex; }
+
+    @media (hover: none) {
+      .ai-history-item .hi-exp { display: inline-flex; }
+    }
+
+    /* 悬停高亮用主题色（区别于删除钮的红色武装感） */
+    .ai-history-item .hi-exp:hover {
+      color: var(--apple-primary);
+      background: color-mix(in srgb, var(--apple-primary) 12%, transparent);
+    }
+
+    /* —— Ctrl+K 算数模式结果行（= 开头时结果区只显示这一条） —— */
+    .cmdk-math {
+      padding: 18px 4px 22px;
+      text-align: center;
+    }
+
+    .cmdk-math-line {
+      margin: 0;
+      font-size: 20px;
+      font-weight: 600;
+      color: var(--apple-foreground);
+      font-variant-numeric: tabular-nums;
+      overflow-wrap: anywhere;
+    }
+
+    .cmdk-math-sub {
+      margin: 6px 0 0;
+      font-size: 12px;
+      color: var(--apple-muted-foreground);
+    }
+
+    /* —— 番茄钟历史热力图（common.js initPomo 动态挂在 #toolPomo 卡片底部） —— */
+    .pomo-heat { margin-top: 14px; }
+
+    /* 7 行 × 15 列（列=周，行=周一~周日）；390px 下约 18px 一格放得下，无需横向滚动 */
+    .pomo-heat-grid {
+      display: grid;
+      grid-template-rows: repeat(7, 1fr);
+      grid-template-columns: repeat(15, 1fr);
+      grid-auto-flow: column;
+      gap: 3px;
+    }
+
+    .pomo-heat-cell {
+      min-width: 0;
+      aspect-ratio: 1 / 1;
+      border-radius: 3px;
+      background: var(--apple-secondary, rgba(128, 128, 128, 0.12));
+    }
+
+    /* 0=无色；1~2 / 3~4 / 5+ 三档主题色透明度梯度 */
+    .pomo-heat-cell.lv1 { background: color-mix(in srgb, var(--apple-primary) 30%, transparent); }
+    .pomo-heat-cell.lv2 { background: color-mix(in srgb, var(--apple-primary) 60%, transparent); }
+    .pomo-heat-cell.lv3 { background: var(--apple-primary); }
+
+    /* 本周今天之后的占位格：无色 */
+    .pomo-heat-cell.future { background: transparent; }
+
+    .pomo-heat-sum {
+      margin: 8px 0 0;
+      font-size: 11px;
+      color: var(--apple-muted-foreground);
+    }
+
+    /* ===================== 签到成就徽章 ===================== */
+    /* common.js ckRenderBadges 动态挂在个人主页签到卡近 7 日圆点（#ckWeek）下方，
+       全部由签到 GET 已返回数据实时计算，随签到卡整体显隐（管理员/未拉到数据时不出现）。
+       静态小 chips：flex wrap 一行放不下换行，窄屏 390px 不溢出；无动画（reduced-motion 无需另处理），提示走悬停 title */
+    .ck-badges {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 12px;
+    }
+
+    .ck-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      max-width: 100%;
+      padding: 5px 10px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 600;
+      line-height: 1.2;
+      white-space: nowrap;
+      cursor: default;
+      /* 未达成默认态：灰底 + 半透明文字 */
+      background: var(--apple-secondary, rgba(128, 128, 128, 0.14));
+      color: color-mix(in srgb, var(--apple-muted-foreground) 75%, transparent);
+    }
+
+    .ck-badge-ico { font-style: normal; font-size: 13px; }
+
+    /* 已达成：主题色柔和高亮底 + 正常文字 */
+    .ck-badge.on {
+      background: color-mix(in srgb, var(--apple-primary) 15%, transparent);
+      color: var(--apple-foreground);
+    }
+
+    /* 满级金徽章（👑 传奇登顶达成）：照抄 .ck-lv.max 的金色渐变先例 */
+    .ck-badge.on.max {
+      background: linear-gradient(135deg, #c99416, #e9b949);
+      color: #fff;
+    }

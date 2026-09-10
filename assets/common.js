@@ -2,6 +2,78 @@
 // YHuo 全站脚本（多页面改造：由原 index.html 主 IIFE 提取）
 // 所有页面共用； meteor 流星特效已并入文件尾部。
 // =============================================
+// =============================================
+// 前端错误自动上报（RUM，2026-09-10）：全站最早的独立采集段，放在主 IIFE 之前——
+// 哪怕主脚本自己加载/启动失败，这里的钩子也已就位。三路采集：
+//   window.onerror（同步 JS 错误）+ unhandledrejection（未处理的 Promise 拒绝）+ 捕获阶段
+//   error 监听（资源加载失败 css/js/img 404，error 不冒泡只有捕获阶段抓得到），
+//   统一 POST /api/rum 入 D1，后台状态页「前端错误」卡可看可清。
+// 自保护三律（采集器自己绝不能产生新错误）：
+//   ① 过滤：消息含 chrome-extension:// / extension:// / ResizeObserver loop 直接忽略（扩展报错与无害噪音）；
+//   ② 节流：每 10 秒最多发 1 条（lastSent 在发请求前置位，失败也不补发，与服务端 X-Err-Id 限速配对）；
+//   ③ 静默：上报 fetch 用 keepalive（页面随即卸载也发得出去）+ 整体 try/catch + .catch 空处理，
+//      响应体不读不判断——服务端永远返回 200，任何一步炸都当没发生。
+// 预览 iframe 不采集（坑 29：window.self !== window.top 直接退出——缩略帧是同源同码的完整
+// 第二实例，帧里报的错主站同样会报，采了只刷噪音）。
+// =============================================
+  (function () {
+    if (window.self !== window.top) return; // 坑 29：预览 iframe 是完整第二实例，别刷错误噪音
+    var lastSent = 0;
+    function ver() {
+      try {
+        var m = document.querySelector('meta[name="build-version"]');
+        return (m && m.content) || 'dev';
+      } catch (e) { return 'dev'; }
+    }
+    function errId() {
+      // 会话随机 id：服务端按它做「每 10 秒最多 1 条」限速；sessionStorage 不可用（隐私模式等）就退化为空
+      try {
+        var id = sessionStorage.getItem('yhuoErrId');
+        if (!id) {
+          id = Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
+          sessionStorage.setItem('yhuoErrId', id);
+        }
+        return id;
+      } catch (e) { return ''; }
+    }
+    function send(msg, stack) {
+      try {
+        msg = String(msg || '');
+        if (!msg) return;
+        // ① 过滤：浏览器扩展注入脚本的报错与 ResizeObserver 无害噪音，不入库
+        if (msg.indexOf('chrome-extension://') > -1 || msg.indexOf('extension://') > -1 || msg.indexOf('ResizeObserver loop') > -1) return;
+        // ② 节流：每 10 秒最多 1 条；时间戳先置位——上报失败不重试不补发，杜绝错误风暴
+        var now = Date.now();
+        if (now - lastSent < 10000) return;
+        lastSent = now;
+        fetch('/api/rum', {
+          method: 'POST',
+          keepalive: true,
+          headers: { 'Content-Type': 'application/json', 'X-Err-Id': errId() },
+          body: JSON.stringify({
+            msg: msg.slice(0, 300),
+            stack: String(stack || '').slice(0, 1200),
+            path: location.pathname,
+            version: ver()
+          })
+        }).catch(function () {}); // ③ 静默：网络失败也当没发生
+      } catch (e) { /* ③ 静默：采集器任何一步都不能抛新错 */ }
+    }
+    window.onerror = function (msg, src, line, col, err) {
+      send(msg, err && err.stack);
+    };
+    window.addEventListener('unhandledrejection', function (e) {
+      var r = e && e.reason;
+      send(r && r.message ? r.message : String(r), r && r.stack);
+    });
+    // 资源加载失败（css/js/img 404 等）：捕获阶段监听（error 不冒泡）；target 有 src/href 才是资源
+    // 错误（target=window 的是 JS 错误，已由 onerror 处理，跳过防双报），msg 加 [资源] 前缀 + URL
+    window.addEventListener('error', function (e) {
+      var t = e && e.target;
+      if (t && t !== window && (t.src || t.href)) send('[资源] ' + (t.src || t.href), '');
+    }, true);
+  })();
+
   (function () {
     'use strict';
 

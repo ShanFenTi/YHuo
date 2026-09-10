@@ -203,6 +203,18 @@ const DDL = [
     clicks     INTEGER NOT NULL DEFAULT 0,
     created_at TEXT NOT NULL DEFAULT (datetime('now'))
   )`,
+  // 前端错误上报（RUM）：前台 common.js 顶部采集段把 window.onerror / unhandledrejection /
+  // 资源加载失败发到 /api/rum（公开写入，防风暴限速在接口侧），后台状态页「前端错误」卡展示；
+  // 表只留最近 200 条（api/rum.js 每次写入顺手删旧）
+  `CREATE TABLE IF NOT EXISTS error_reports (
+    id         INTEGER PRIMARY KEY AUTOINCREMENT,
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    path       TEXT NOT NULL DEFAULT '',
+    msg        TEXT NOT NULL,
+    stack      TEXT,
+    version    TEXT,
+    ua         TEXT
+  )`,
 ];
 
 // 同一个隔离实例里只跑一次

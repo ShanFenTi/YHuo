@@ -1,5 +1,8 @@
+# /assets/* immutable 一年（2026-09-10 性能批次）：JS/CSS 由 functions/[[path]].js 在 HTML 里注入
+# ?v=部署commit 指纹，内容一变引用即变，长缓存才安全；该类路由已被 _routes.json 排除在函数外，
+# 这条头由静态服务直接应用。改 JS/CSS 后无需任何清缓存动作，新 HTML 引用新 URL
 /assets/*
-  Cache-Control: public, max-age=3600
+  Cache-Control: public, max-age=31536000, immutable
 
 /music/*
   Cache-Control: public, max-age=86400

@@ -1246,6 +1246,15 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
       </div>
       <p class="meta2" style="margin:8px 0 0">每日自动备份到 KV，保留最近 7 份（随课表提醒的定时任务每天顺带执行）。</p>
     </div>
+    <div class="card" id="stRumCard" style="margin-top:16px">
+      <div class="visit-head"><strong>前端错误</strong><span class="meta2" id="stRumSumm"></span></div>
+      <div id="stRumBody"><p class="hint" style="margin:0">加载中…</p></div>
+      <div class="bgset-row" style="margin-top:12px">
+        <button id="stRumClearBtn" class="ghost" type="button">清空</button>
+        <span class="meta2" id="stRumTip"></span>
+      </div>
+      <p class="meta2" style="margin:8px 0 0">前台脚本报错自动上报（JS 异常 / 未处理的 Promise 拒绝 / 资源加载失败），保留最近 200 条，悬停错误行可看完整调用栈。</p>
+    </div>
   </div>
     </main>
   </div>
@@ -2718,6 +2727,99 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
       btn.disabled = false;
       $('stBackupTip').textContent = '';
       toast('网络错误，备份失败', 'err');
+    });
+  });
+
+  // ---------- 状态页 · 前端错误卡（RUM：前台报错经 /api/rum 入库，本卡只读+清空） ----------
+  var rumTotal = 0; // 最近一次拉到的总条数，「清空」确认弹窗文案用
+  function loadRumCard() {
+    $('stRumBody').innerHTML = '<p class="hint" style="margin:0">加载中…</p>';
+    $('stRumSumm').textContent = '';
+    api('/api/admin/rum').then(function (d) {
+      if (!d || !d.ok) {
+        $('stRumBody').innerHTML = '<p class="hint" style="margin:0">读取失败，请稍后重试。</p>';
+        return;
+      }
+      var list = d.list || [];
+      rumTotal = d.total || 0;
+      // 摘要行：0 条绿色安心话术，有错条数用 --warn 提醒（色走变量不写死 hex）
+      var summ = $('stRumSumm');
+      summ.textContent = '';
+      if (!rumTotal) {
+        var okSpan = document.createElement('span');
+        okSpan.style.color = 'var(--ok)';
+        okSpan.textContent = '还没有收到前端错误，一切正常';
+        summ.appendChild(okSpan);
+      } else {
+        var warnSpan = document.createElement('span');
+        warnSpan.style.color = 'var(--warn)';
+        warnSpan.textContent = '共 ' + rumTotal + ' 条';
+        summ.appendChild(warnSpan);
+        summ.appendChild(document.createTextNode(list[0] ? ' · 最近：' + fmtDate(list[0].created_at) : ''));
+      }
+      if (!list.length) {
+        $('stRumBody').innerHTML = '<p class="hint" style="margin:0">还没有收到前端错误，一切正常。</p>';
+        return;
+      }
+      // 最近 10 条列表：时间 · path · msg 首行；全部 textContent 组装（错误消息来自访客端，防注入），
+      // 整行悬停 title 显示完整调用栈
+      $('stRumBody').innerHTML = '';
+      list.slice(0, 10).forEach(function (r) {
+        var row = document.createElement('div');
+        row.className = 'st-row';
+        row.title = r.stack || r.msg || '';
+        var time = document.createElement('span');
+        time.className = 'st-name';
+        time.style.width = 'auto';
+        time.style.flex = 'none';
+        time.textContent = fmtDate(r.created_at);
+        var path = document.createElement('span');
+        path.className = 'st-meta';
+        path.style.flex = '0 1 auto';
+        path.style.minWidth = '0';
+        path.style.overflow = 'hidden';
+        path.style.textOverflow = 'ellipsis';
+        path.style.whiteSpace = 'nowrap';
+        path.textContent = r.path || '/';
+        var msg = document.createElement('span');
+        msg.className = 'st-meta';
+        msg.style.flex = '1';
+        msg.style.minWidth = '0';
+        msg.style.overflow = 'hidden';
+        msg.style.textOverflow = 'ellipsis';
+        msg.style.whiteSpace = 'nowrap';
+        msg.style.textAlign = 'right';
+        msg.textContent = String(r.msg || '').split('\n')[0]; // 只取首行，完整 stack 悬停看
+        row.appendChild(time);
+        row.appendChild(path);
+        row.appendChild(msg);
+        $('stRumBody').appendChild(row);
+      });
+    }).catch(function () {
+      $('stRumBody').innerHTML = '<p class="hint" style="margin:0">读取失败，请稍后重试。</p>';
+    });
+  }
+  $('stRumClearBtn').addEventListener('click', function () {
+    ask({
+      title: '清空前端错误',
+      msg: '确定清空全部 ' + rumTotal + ' 条前端错误记录吗？清空后不可恢复。',
+      okText: '清空', danger: true,
+      cb: function (ok) {
+        if (!ok) return;
+        var btn = $('stRumClearBtn');
+        btn.disabled = true;
+        $('stRumTip').textContent = '正在清空…';
+        api('/api/admin/rum', { method: 'DELETE' }).then(function (d) {
+          btn.disabled = false;
+          $('stRumTip').textContent = '';
+          if (d && d.ok) { toast('已清空', 'ok'); loadRumCard(); }
+          else toast((d && d.error) || '清空失败', 'err');
+        }).catch(function () {
+          btn.disabled = false;
+          $('stRumTip').textContent = '';
+          toast('网络错误，清空失败', 'err');
+        });
+      }
     });
   });
 
@@ -4714,6 +4816,7 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
     if (isStatus) {
       renderStatus();
       loadBackupCard(); // 数据备份卡每次进页同刷
+      loadRumCard(); // 前端错误卡同刷：新上报随时进来看最新
     }
     if (isNotes) {
       noteResetForm(); // 每次进页表单归零（日期预填今天），防上次的编辑草稿串场

@@ -5,7 +5,7 @@
 //   /music/ /video/ /images/ → cache-first（上限 60 条，超出删最旧）
 //   其余同源 GET → network-first（简单版，无超时控制）
 // 注意：本文件是普通根文件（非 ESM、不在页面里），改完用 node --check sw.js 验语法。
-const SW_VERSION = 'yhuo-sw-v2';
+const SW_VERSION = 'yhuo-sw-v3';
 const PRECACHE = SW_VERSION + '-precache'; // install 精装（刻意轻量，绝不整站 precache）
 const RUNTIME = SW_VERSION + '-runtime';   // 导航 + /assets/* 运行时缓存
 const MEDIA = SW_VERSION + '-media';       // 音视频图片（有条数上限）
@@ -50,6 +50,10 @@ self.addEventListener('fetch', (event) => {
     return;
   }
   if (url.pathname.startsWith('/assets/')) {
+    // 带 ?v= 版本号的资产（2026-09-10 性能批次：边缘指纹注入 + immutable 一年）不拦——
+    // HTTP 缓存本身就是"内容一变引用即变"的最新版，SW 再缓存一份纯浪费还会积攒旧版本；
+    // 不带查询参数的（本地 http.server 场景）继续走下面的 SWR
+    if (url.searchParams.has('v')) return;
     const { value, update } = staleWhileRevalidate(request);
     event.respondWith(value);
     event.waitUntil(update); // 后台更新期间保活 SW

@@ -16,9 +16,17 @@
   <link rel="alternate" type="application/rss+xml" title="YHuo 随笔与更新" href="/feed.xml">
   <title>关于 - YHuo</title>
   <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+  <!-- 悬停预取（Speculation Rules API，2026-09-10 性能批次）：moderate=悬停/指针按下才预取，保守不费流量；
+       document 规则默认只匹配同源文档链接，HTML 是 GET 静态无副作用预取安全，/admin/* 会触发会话故排除，
+       /api 是 XHR 不会被命中；不支持的浏览器静默忽略。八页外壳同步块（坑 23），改请八处同步 -->
+  <script type="speculationrules">{"prefetch":[{"source":"document","where":{"and":[{"href_matches":"/*"},{"not":{"href_matches":"/admin/*"}}]},"eagerness":"moderate"}]}</script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,100..1000;1,9..40,100..1000&family=JetBrains+Mono:wght@100..800&display=swap" rel="stylesheet">
+  <!-- 首屏防白闪引导色（2026-09-10 性能批次）：只垫 html 底色防样式加载前白闪，与 site.css 背景变量
+       保持一致（:root --background=#f8f7f4 / .dark --background-900=#000000，底色与光晕都画在 html
+       画布层、body 透明），改动记得同步；刻意不做完整 critical CSS——抽取越多与 site.css 漂移风险越大 -->
+  <style id="boot-css">html{background:#f8f7f4}html.dark{background:#000000}</style>
   <style type="text/tailwindcss">
     @theme inline {
       --color-background: var(--apple-background);

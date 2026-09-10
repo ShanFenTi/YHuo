@@ -2789,7 +2789,7 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
         msg.style.textOverflow = 'ellipsis';
         msg.style.whiteSpace = 'nowrap';
         msg.style.textAlign = 'right';
-        msg.textContent = String(r.msg || '').split('\n')[0]; // 只取首行，完整 stack 悬停看
+        msg.textContent = String(r.msg || '').split('\\n')[0]; // 只取首行，完整 stack 悬停看（坑 18：模板里反斜杠必须双写，否则换行转义被求值成真换行打断字符串）
         row.appendChild(time);
         row.appendChild(path);
         row.appendChild(msg);

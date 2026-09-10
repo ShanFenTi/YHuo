@@ -4,7 +4,7 @@
 
 ## 2026-09-10（上午）
 
-* **前台：移除站点图标 favicon（2026-09-10 上午，用户要求「不要显示那个 Y」）**——八页 head 删 `<link rel="icon">`（svg/png）与 `<link rel="apple-touch-icon">` 三行；标签页恢复浏览器默认图标。`assets/icons/` 图标文件与 `tools/gen-icons.mjs` 生成器留档不删（不再被引用），想要图标时九页 head 加回三行即可。theme-color/description/OG 等 SEO 标签不受影响
+* **前台：移除站点图标 favicon（2026-09-10 上午，用户要求「不要显示那个 Y」）**——八页 head 删 `<link rel="icon">`（svg/png）与 `<link rel="apple-touch-icon">` 三行；标签页恢复浏览器默认图标。`assets/icons/` 图标文件与 `tools/gen-icons.mjs` 生成器留档不删（不再被引用），想要图标时九页 head 加回三行即可。同日稍后：assets/icons/ 六个文件与 tools/gen-icons.mjs 生成器也一并从仓库删除（应用户要求彻底移除；均可在 git 历史找回）。theme-color/description/OG 等 SEO 标签不受影响
 ## 2026-09-10（上午）
 
 * **前台：移除 PWA（2026-09-10 上午，用户要求）+ 修 admin 白屏（914f2f3 → 本次）**——①**admin 白屏急修**：状态页前端错误卡的 `split('换行转义')` 未按坑 18 双写反斜杠，admin/index.js 是模板字符串，求值时转义符变真换行把字符串字面量截断，服务出的整段启动脚本语法错误、登录门永不显示（页面只剩吉祥物），本地与线上同时中招；改双写反斜杠修复。诊断方法沉淀：**check-code 只验源码模板，验不出「求值后转义」类问题——curl 服务输出的 script 块逐块 node --check 才是这类白屏的正解**。②**PWA 整体移除**：删 manifest.webmanifest/offline.html；common.js 删注册 IIFE；九页 head 删 manifest link（favicon/theme-color/RSS 等非 PWA 专属标签保留）；_headers 删 manifest 规则、保留 /sw.js no-cache；**sw.js 改为自卸载器**（v4：注销自身+清光历史缓存，给装过旧版的访客自动拆除，恢复 PWA 找回 22a03bf）；_redirects 补 /manifest.webmanifest 301。实测：首页无 manifest link、无 SW 控制器、九页校验全过、后台登录/渲染正常

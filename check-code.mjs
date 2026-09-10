@@ -1,8 +1,8 @@
 // 一键代码检查（双击 校验代码.bat 运行）：
-//   1. 九个前台页面（/ 与 tools/docs/ai/board/schedule/blog/notes/games 八个子页）+ functions/admin/index.js 的内联 <script> 做 new Function 语法校验
+//   1. 八个前台页面（/ 与 tools/docs/ai/board/schedule/blog/notes 七个子页）+ functions/admin/index.js 的内联 <script> 做 new Function 语法校验
 //   2. functions/ 下所有 ESM 文件的 import/export 语法 + 相对导入路径真实存在（嵌套目录层级写错当场拦住）
 //   3. 各页面 <script src>/<link href> 引用的本地文件存在
-//   4. 九页外壳一致性（坑 23：头部/浮层/页脚/播放器等外壳 markup 九页各一份拷贝，漏同步当场报错）
+//   4. 八页外壳一致性（坑 23：头部/浮层/页脚/播放器等外壳 markup 八页各一份拷贝，漏同步当场报错）
 // 退出码非 0 = 有问题；推送前跑一遍，几类"语法没错但一跑就炸"的错误当场现形
 import { readFileSync, existsSync, writeFileSync, rmSync, readdirSync, statSync } from 'node:fs';
 import { dirname, join, resolve, relative } from 'node:path';
@@ -16,8 +16,8 @@ const fail = (msg) => { errors++; console.log('  ✗ ' + msg); };
 const ok = (msg) => console.log('  ✓ ' + msg);
 
 // 多页面改造（2026-09-05）后的前台页面（2026-09-06 增课表页 /schedule/ 与预览页 /blog/、同日移除杂项页 /misc/；
-// 2026-09-07 增随笔页 /notes/，2026-09-09 增游戏页 /games/，现共九个）；改外壳（头部/导航/浮层）要多处同步，这里全部把关
-const PAGES = ['index.html', 'tools/index.html', 'docs/index.html', 'ai/index.html', 'board/index.html', 'schedule/index.html', 'blog/index.html', 'notes/index.html', 'games/index.html'];
+// 2026-09-07 增随笔页 /notes/，2026-09-09 深夜增游戏页、同日应用户要求移除，现共八个）；改外壳（头部/导航/浮层）要多处同步，这里全部把关
+const PAGES = ['index.html', 'tools/index.html', 'docs/index.html', 'ai/index.html', 'board/index.html', 'schedule/index.html', 'blog/index.html', 'notes/index.html'];
 
 // ---------- 1. 内联 <script> 语法 ----------
 function checkInlineScripts(file, label) {
@@ -98,15 +98,15 @@ console.log('[3] 前台页面本地引用');
       if (!existsSync(target)) { bad++; fail(`${p} 引用 ${path} 不存在`); }
     }
   }
-  if (!bad) ok(`九个页面本地静态引用 ${checked} 个全部存在`);
+  if (!bad) ok(`八个页面本地静态引用 ${checked} 个全部存在`);
 }
 
 // ---------- 4. 八页外壳一致性（坑 23） ----------
 // 外壳 = <main>…</main> 之外的全部内容（head + 头部胶囊 + 浮层 + 页脚 + 播放器 + script 引用）。
-// 九页本就只差 data-page / <title> / 每页专属描述与 og:*（2026-09-09 SEO 起）/ 导航高亮四处，
+// 八页本就只差 data-page / <title> / 每页专属描述与 og:*（2026-09-09 SEO 起）/ 导航高亮四处，
 // 归一化掉之后应当逐行相等；
 // 不等 = 改外壳时漏同步了某个页面，当场报出错页与首个差异行。
-console.log('[4] 九页外壳一致性');
+console.log('[4] 八页外壳一致性');
 {
   const MAIN_OPEN = /<main[\s>]/g;
   const MAIN_CLOSE = /<\/main>/g;

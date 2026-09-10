@@ -4,6 +4,8 @@
 
 （2026-09-09 深夜自主执行批次，七个 commit 全部**本地已提交未推送**——按站内 §10 约定等用户明说才推；全部过 check-code 并本地 wrangler + 浏览器实测）
 
+* **前台：移除游戏页 /games/（2026-09-10 上午，用户看后要求删除）**——按昨晚批次 A 接入清单逆向整体拆除：删 `games/index.html`；八页顶栏导航「游戏」（gamesBtn）与窄屏抽屉「游戏」条目两处 DOM 移除（九项回八项）；common.js 删 PAGE_ROUTE/PAGE_TITLES games 键、PAGE_MODULES.games 注册、NAV_INFO `/games` 条目、Ctrl+K 搜索快跳「游戏」项、整个 `initGamesPage`/`destroyGamesPage` 函数块（约 450 行）、顶部揭示 IIFE SEL 清单 `.game-card`；site.css 删末尾「游戏页」整段（约 280 行，含抽屉 nth-child(9) 级联档）与「滚动模糊揭示」段两处 `.game-card` 引用；sitemap.xml 删 `/games/`、check-code.mjs PAGES 回八页；`_redirects` 照 /misc 先例补 `/games`、`/games/` 301 防伪 200。roadmap「游戏页」回 ⬜、《创意规划.md》K1 翻 ❌ 放弃（代码在 8c131d4 批次 A 可找回）。check-code 全过（八页外壳一致性），common.js `node --check` 过
+
 * **前台+后端：全量代码审查六处修复（667c2d1）**——🔴**sw.js 导航缓存从未生效**（`cache.put` 对 mode:navigate 的请求按规范直接 reject 且未 catch，RUNTIME 从未写入、「已打开页面断网可回看」整条链路落空；改 `new Request(url,{method:'GET'})` 做键 + 静默 catch，SW_VERSION 升 v2）；SWR 分支补 `.catch(offlineText)`（首访离线 /assets 曾硬失败）；🟡频谱 initGraph 半途抛错时 `inited` 恒 false 致已接管元素永久静音（改按 sourced.length 记状态 + catch 内补 resume）；Context 被系统中断后无恢复钩（trackPlay resume 不再依赖 inited + visibilitychange 回前台补 resume）；标题彩蛋快照过期（pjax 换页后恢复成旧页标题，改 hidden 时实时快照）；feed.xml 坏日期不再输出 `<pubDate>Invalid Date</pubDate>`（isNaN 省略 + lastBuildDate 回落）。审查同时确认：注入面 / SQL 参数化 / SSRF 白名单（endsWith 带点后缀）/ 路人限速兜底 / init-destroy 配对全部干净
 
 * **前台+工程：批次 K 三件套 + 工程亮点文档（34148bd）**——①**GitHub Actions CI**（.github/workflows/check.yml：push/PR 到 main 跑 `node check-code.mjs`，零依赖 node20 单 job）；②**首页鼠标视差光斑**（hero 内两枚 .hero-glow 柔光斑，mousemove rAF 节流 + lerp 阻尼反向缓移，reduced-motion/触屏/预览 iframe 只留静态光斑，destroy 全清理，transform 只加光斑自身不碰容器守坑 22/28）；③**《工程亮点》上站**（docs/highlights.md + docs.json 第四条：pjax 不断播 / 双协议 AI 代理 / 课表提醒链路 / 每日备份 / 短链 / RSS / PWA，访客可见的作品展示区）

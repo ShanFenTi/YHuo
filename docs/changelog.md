@@ -2,6 +2,10 @@
 
 ## 2026-09-10
 
+## 2026-09-10（上午）
+
+* **前台+后端：性能工程批次 L1/L2（22a03bf）+ 游戏页移除（623b171）**——上午用户过目后要求移除游戏页（已整体拆除，见上一条 changelog），随后落地四件性能工程：①**资源指纹边缘注入**：新增根级 functions/[[path]].js catch-all + 手写 _routes.json（assets/music/video/images 四类静态直连排除），服务 HTML 时动态把 common.js/site.css/blog-player.js 改写为 `?v=<部署SHA前8位>` 并注入 build-version meta；_headers /assets/* 升级 `max-age=31536000, immutable`——**每次部署自动全员换新，改版不再等 1 小时缓存/Ctrl+F5**；HTML max-age=300；非 HTML 逐字节透传；全程 fail-open（函数挂了回落纯静态，站点不倒）；sw.js 对带 ?v= 资产放行（浏览器 immutable 兜底），SW_VERSION 升 v3；②**悬停预取**：九页 head 加 Speculation Rules（prefetch moderate，悬停预取点击秒开，排除 /admin/*，不支持则静默忽略）；③**首屏防白闪**：head 内联两行引导背景色（与 site.css 变量同值）——完整 critical CSS 评估后主动放弃（无构建工具下手工抽取漂移风险大于收益）；④**前端错误自动上报 RUM**：common.js 顶部采集（onerror/unhandledrejection/资源失败，扩展噪音过滤、10 秒节流、keepalive 静默、iframe 守卫）→ POST /api/rum（公开、字段截断、单会话+全局双层限速、永远 200、表自动留 200 条、北京时间入库）→ 后台状态页「前端错误」卡（最近 10 条+总数+两段式清空）。实测：首页含 ?v=<sha>、immutable 头、既有函数路由零劫持（api/admin/s/media/feed 与 /games 301 全过）、RUM 中文负载入库→后台查询全通；check-code 全过
+
 （2026-09-09 深夜自主执行批次，七个 commit 全部**本地已提交未推送**——按站内 §10 约定等用户明说才推；全部过 check-code 并本地 wrangler + 浏览器实测）
 
 * **前台：移除游戏页 /games/（2026-09-10 上午，用户看后要求删除）**——按昨晚批次 A 接入清单逆向整体拆除：删 `games/index.html`；八页顶栏导航「游戏」（gamesBtn）与窄屏抽屉「游戏」条目两处 DOM 移除（九项回八项）；common.js 删 PAGE_ROUTE/PAGE_TITLES games 键、PAGE_MODULES.games 注册、NAV_INFO `/games` 条目、Ctrl+K 搜索快跳「游戏」项、整个 `initGamesPage`/`destroyGamesPage` 函数块（约 450 行）、顶部揭示 IIFE SEL 清单 `.game-card`；site.css 删末尾「游戏页」整段（约 280 行，含抽屉 nth-child(9) 级联档）与「滚动模糊揭示」段两处 `.game-card` 引用；sitemap.xml 删 `/games/`、check-code.mjs PAGES 回八页；`_redirects` 照 /misc 先例补 `/games`、`/games/` 301 防伪 200。roadmap「游戏页」回 ⬜、《创意规划.md》K1 翻 ❌ 放弃（代码在 8c131d4 批次 A 可找回）。check-code 全过（八页外壳一致性），common.js `node --check` 过

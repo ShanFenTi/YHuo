@@ -4,6 +4,8 @@
 
 ## 2026-09-10（上午）
 
+* **前台：移除 PWA（2026-09-10 上午，用户要求）+ 修 admin 白屏（914f2f3 → 本次）**——①**admin 白屏急修**：状态页前端错误卡的 `split('换行转义')` 未按坑 18 双写反斜杠，admin/index.js 是模板字符串，求值时转义符变真换行把字符串字面量截断，服务出的整段启动脚本语法错误、登录门永不显示（页面只剩吉祥物），本地与线上同时中招；改双写反斜杠修复。诊断方法沉淀：**check-code 只验源码模板，验不出「求值后转义」类问题——curl 服务输出的 script 块逐块 node --check 才是这类白屏的正解**。②**PWA 整体移除**：删 manifest.webmanifest/offline.html；common.js 删注册 IIFE；九页 head 删 manifest link（favicon/theme-color/RSS 等非 PWA 专属标签保留）；_headers 删 manifest 规则、保留 /sw.js no-cache；**sw.js 改为自卸载器**（v4：注销自身+清光历史缓存，给装过旧版的访客自动拆除，恢复 PWA 找回 22a03bf）；_redirects 补 /manifest.webmanifest 301。实测：首页无 manifest link、无 SW 控制器、九页校验全过、后台登录/渲染正常
+
 * **前台+后端：性能工程批次 L1/L2（22a03bf）+ 游戏页移除（623b171）**——上午用户过目后要求移除游戏页（已整体拆除，见上一条 changelog），随后落地四件性能工程：①**资源指纹边缘注入**：新增根级 functions/[[path]].js catch-all + 手写 _routes.json（assets/music/video/images 四类静态直连排除），服务 HTML 时动态把 common.js/site.css/blog-player.js 改写为 `?v=<部署SHA前8位>` 并注入 build-version meta；_headers /assets/* 升级 `max-age=31536000, immutable`——**每次部署自动全员换新，改版不再等 1 小时缓存/Ctrl+F5**；HTML max-age=300；非 HTML 逐字节透传；全程 fail-open（函数挂了回落纯静态，站点不倒）；sw.js 对带 ?v= 资产放行（浏览器 immutable 兜底），SW_VERSION 升 v3；②**悬停预取**：九页 head 加 Speculation Rules（prefetch moderate，悬停预取点击秒开，排除 /admin/*，不支持则静默忽略）；③**首屏防白闪**：head 内联两行引导背景色（与 site.css 变量同值）——完整 critical CSS 评估后主动放弃（无构建工具下手工抽取漂移风险大于收益）；④**前端错误自动上报 RUM**：common.js 顶部采集（onerror/unhandledrejection/资源失败，扩展噪音过滤、10 秒节流、keepalive 静默、iframe 守卫）→ POST /api/rum（公开、字段截断、单会话+全局双层限速、永远 200、表自动留 200 条、北京时间入库）→ 后台状态页「前端错误」卡（最近 10 条+总数+两段式清空）。实测：首页含 ?v=<sha>、immutable 头、既有函数路由零劫持（api/admin/s/media/feed 与 /games 301 全过）、RUM 中文负载入库→后台查询全通；check-code 全过
 
 （2026-09-09 深夜自主执行批次，七个 commit 全部**本地已提交未推送**——按站内 §10 约定等用户明说才推；全部过 check-code 并本地 wrangler + 浏览器实测）

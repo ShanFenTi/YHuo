@@ -6,3 +6,4 @@
 # 2026-09-10 游戏页 /games/ 移除（同 /misc 先例，防 SPA 回退以 200 返回首页内容）
 /games / 301
 /games/ / 301
+/manifest.webmanifest / 301

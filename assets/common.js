@@ -8088,22 +8088,6 @@
     document.addEventListener('touchmove', hide, { passive: true });
   })();
 
-  // Service Worker 注册（PWA 可安装 + 离线兜底，2026-09-09 接入；SW 逻辑本体在根目录 sw.js）：
-  // ① window.top 守卫——顶栏悬停预览的缩略图 iframe 是完整第二实例（坑 29），不许它注册/干扰；
-  // ② 只在 https / localhost 下注册（SW 协议要求）；③ load 事件后注册不抢首屏；④ 全程 try/catch
-  // 静默降级——SW 注册失败绝不影响站点本体。
-  (function () {
-    if (window.self !== window.top) return;
-    if (!('serviceWorker' in navigator)) return;
-    if (location.protocol !== 'https:' && ['localhost', '127.0.0.1'].indexOf(location.hostname) === -1) return;
-    function swRegister() {
-      try {
-        navigator.serviceWorker.register('/sw.js').catch(function () {});
-      } catch (e) { /* 静默降级 */ }
-    }
-    if (document.readyState === 'complete') swRegister();
-    else window.addEventListener('load', swRegister);
-  })();
 
   // 音乐频谱可视化（2026-09-10 批次）：迷你播放条与悬浮播放器各 JS 注入一枚频谱开关小钮，
   // 开启后在底部播放条上方弹出 canvas 频谱面板（48 根竖条，颜色读 --apple-accent）。

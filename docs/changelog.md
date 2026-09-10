@@ -4,6 +4,9 @@
 
 ## 2026-09-10（上午）
 
+* **前台：站点图标换成站长指定图（2026-09-10 上午）**——用户给的 1280 方图经 PIL 居中裁方缩出 `assets/icons/favicon.png`（128）与 `apple-touch-icon.png`（180），八页 head 在 RSS 行后加回 `<link rel="icon">` 与 `<link rel="apple-touch-icon">`；`functions/[[path]].js` 指纹清单同步加入两个图标路径——**以后换图标图只需覆盖文件，?v= 随部署自动变化**，不会再踩「边缘缓存旧图标一年」的坑。实测：本地 HTML 引用带指纹、图标 200 image/png、check-code 全过
+## 2026-09-10（上午）
+
 * **前台：移除站点图标 favicon（2026-09-10 上午，用户要求「不要显示那个 Y」）**——八页 head 删 `<link rel="icon">`（svg/png）与 `<link rel="apple-touch-icon">` 三行；标签页恢复浏览器默认图标。`assets/icons/` 图标文件与 `tools/gen-icons.mjs` 生成器留档不删（不再被引用），想要图标时九页 head 加回三行即可。同日稍后：assets/icons/ 六个文件与 tools/gen-icons.mjs 生成器也一并从仓库删除（应用户要求彻底移除；均可在 git 历史找回）。theme-color/description/OG 等 SEO 标签不受影响
 ## 2026-09-10（上午）
 

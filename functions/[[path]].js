@@ -8,8 +8,9 @@
 // 二进制直连静态服务不进函数）；/api /admin /media /s /feed.xml 等既有函数目录更具体，按 Pages
 // "具体性优先"继续命中各自文件，本文件只兜真正没有专属函数的路径（含静态 HTML）。
 
-// 需要指纹化的资产引用（与页面 <link>/<script> 书写形式逐字对应；HTML 是纯文本，直接改写）
-const FINGERPRINT_ASSETS = ['/assets/site.css', '/assets/common.js', '/assets/blog-player.js'];
+// 需要指纹化的资产引用（与页面 <link>/<script> 书写形式逐字对应；HTML 是纯文本，直接改写）。
+// 站点图标也走指纹：换图标图只需重传文件，?v= 随部署变化，边缘/浏览器缓存自动失效（2026-09-10）
+const FINGERPRINT_ASSETS = ['/assets/site.css', '/assets/common.js', '/assets/blog-player.js', '/assets/icons/favicon.png', '/assets/icons/apple-touch-icon.png'];
 
 // 给单个资产引用补 ?v= 版本号：split 拆开后逐段检查，已带 ?v= 的段原样放回（防重复注入成 ...js?v=a?v=b 的脏 URL）
 function tagAssetRefs(html, bare, v) {

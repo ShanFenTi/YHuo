@@ -479,6 +479,58 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
   }
   .icon-btn-sm svg { display: block; }
   ul.list li:hover { background: color-mix(in srgb, var(--hover) 55%, transparent); }
+  /* ---------- 图片页缩略图网格（仅 #list.img-grid；音乐/视频仍走行式列表） ---------- */
+  ul.list.img-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(158px, 1fr)); gap: 14px; }
+  ul.list.img-grid li {
+    position: relative; display: flex; flex-direction: column; overflow: hidden;
+    padding: 0; border: 1px solid var(--border); border-radius: 14px; background: var(--card);
+    transition: border-color var(--t-fast) var(--ease-outc), box-shadow var(--t-med) var(--ease-soft), translate var(--t-med) var(--ease-spring);
+  }
+  @media (hover: hover) {
+    ul.list.img-grid li:hover {
+      translate: 0 -2px;
+      border-color: color-mix(in srgb, var(--brand) 40%, var(--border));
+      box-shadow: 0 2px 6px rgba(0, 0, 0, .06), 0 14px 30px rgba(0, 0, 0, .10);
+    }
+  }
+  ul.list.img-grid li:has(.sel:checked) { border-color: color-mix(in srgb, var(--brand) 55%, var(--border)); }
+  ul.list.img-grid li .handle { display: none; } /* 网格里排序走悬停层的 ↑↓，拖拽保留给相册归类 */
+  ul.list.img-grid li .sel {
+    position: absolute; top: 8px; left: 8px; z-index: 3; margin: 0;
+    width: 18px; height: 18px; opacity: 0; transition: opacity .15s;
+  }
+  ul.list.img-grid li:hover .sel, ul.list.img-grid li:focus-within .sel,
+  ul.list.img-grid li .sel:checked { opacity: 1; }
+  .img-grid .ic-thumbs { position: relative; }
+  .img-grid .thumb { width: 100%; height: auto; aspect-ratio: 4 / 3; display: block; border: none; border-radius: 0; background: var(--chip); }
+  .img-grid .ic-ov {
+    position: absolute; left: 0; right: 0; bottom: 0;
+    display: flex; justify-content: center; align-items: center; gap: 4px; flex-wrap: wrap;
+    padding: 30px 8px 8px;
+    background: linear-gradient(transparent, rgba(0, 0, 0, .55));
+  }
+  @media (hover: hover) and (pointer: fine) {
+    .img-grid .ic-ov { opacity: 0; pointer-events: none; transition: opacity .18s var(--ease-outc); }
+    ul.list.img-grid li:hover .ic-ov, ul.list.img-grid li:focus-within .ic-ov { opacity: 1; pointer-events: auto; }
+  }
+  /* 悬停层里的操作钮：白色玻璃底压在图片上（同前台毛玻璃配方），触屏常显不隐藏 */
+  .img-grid .ic-ov .row-actions { margin: 0; opacity: 1; pointer-events: auto; flex-basis: auto; }
+  .img-grid .ic-ov .row-actions button { background: rgba(255,255,255,.16); color: #ffffff; backdrop-filter: blur(4px); }
+  .img-grid .ic-ov .row-actions button:hover { background: rgba(255,255,255,.28); opacity: 1; }
+  .img-grid .ic-ov .row-actions button.danger:hover {
+    color: #ffffff;
+    background: color-mix(in srgb, var(--danger) 55%, transparent);
+    border-color: color-mix(in srgb, var(--danger) 70%, transparent);
+  }
+  .img-grid .ic-info { display: flex; flex-direction: column; gap: 3px; padding: 9px 11px 11px; min-width: 0; }
+  .img-grid .ic-info .title {
+    flex: none; font-size: 13px; font-weight: 600; cursor: pointer;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .img-grid .ic-info .title:hover { text-decoration: underline; }
+  .img-grid .ic-info .meta { color: var(--muted); font-size: 11.5px; white-space: nowrap; }
+  .img-grid .ic-info .ai-drop.row-album { align-self: flex-start; margin-top: 3px; }
+  .img-grid .ic-info .inline-edit { margin: 0 0 2px; }
   .empty { color: var(--muted); font-size: 14px; text-align: center; padding: 34px 0; }
   /* 相册/列表切换淡入动效（搜索输入不触发，仅在整表刷新与切相册时重播） */
   @keyframes listSwap { from { opacity: 0; transform: translateY(6px); filter: blur(4px); } to { opacity: 1; transform: none; filter: none; } }
@@ -2667,6 +2719,7 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
       showArr = showArr.filter(function (it) { return (it.album || '').trim() === albumFilter; });
     }
     var filtering = !!q || (currentType === 'image' && !!albumFilter); // 筛选视图只读，不排不拖
+    list.classList.toggle('img-grid', currentType === 'image'); // 图片页走缩略图网格，音乐/视频走行式
     list.innerHTML = '';
     var ebox = $('empty');
     ebox.hidden = showArr.length > 0;
@@ -2675,12 +2728,22 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
       ebox.querySelector('.es-hint').textContent = '没有文件名包含「' + q + '」，换个关键词试试。';
     } else {
       ebox.querySelector('.es-title').textContent = '还没有内容';
-      ebox.querySelector('.es-hint').textContent = '先上传一个文件吧；也可以拖动条目调整顺序。';
+      ebox.querySelector('.es-hint').textContent = '先上传一个文件吧。';
     }
     showArr.forEach(function (it) {
       var i = arr.indexOf(it);
       var li = document.createElement('li');
       li.draggable = !filtering || currentType === 'image';
+      // 图片网格：缩略图容器 + 悬停操作层 + 下方信息区；音乐/视频仍是平铺行
+      var icThumbs = null, icOv = null, icInfo = null;
+      if (currentType === 'image') {
+        icThumbs = document.createElement('div');
+        icThumbs.className = 'ic-thumbs';
+        icOv = document.createElement('div');
+        icOv.className = 'ic-ov';
+        icInfo = document.createElement('div');
+        icInfo.className = 'ic-info';
+      }
 
       var chk = document.createElement('input');
       chk.type = 'checkbox';
@@ -2708,7 +2771,9 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
         thumb.src = '/media/' + it.r2_key;
         thumb.style.cursor = 'zoom-in';
         thumb.addEventListener('click', function () { openPreview(it); });
-        li.appendChild(thumb);
+        icThumbs.appendChild(thumb);
+        icThumbs.appendChild(icOv);
+        li.appendChild(icThumbs);
       }
 
       var title = document.createElement('span');
@@ -2721,8 +2786,9 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
       meta.className = 'meta';
       meta.textContent = fmtSize(it.size) + ' · ' + fmtDate(it.created_at);
 
-      li.appendChild(title);
-      li.appendChild(meta);
+      var titleHost = currentType === 'image' ? icInfo : li;
+      titleHost.appendChild(title);
+      titleHost.appendChild(meta);
 
       // 视频行挂媒体地址与标题：行悬停预览卡用（见「视频行悬停预览」模块）。
       // 注意 _vkey/_vtitle 是 JS 属性不是 class，querySelector('#list li._vkey') 永远查不到
@@ -2760,7 +2826,7 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
             });
           },
         });
-        li.appendChild(ahost);
+        icInfo.appendChild(ahost);
       }
 
       // 图片行可拖到左侧相册栏归类（勾选状态下拖任意已选行 = 整批移动）；
@@ -2782,9 +2848,9 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
         });
       }
 
-      // 行内操作按钮组（桌面悬停/聚焦浮现，触屏常显，窄屏换行到第二行）
+      // 行内操作按钮组（桌面悬停/聚焦浮现，触屏常显，窄屏换行到第二行；图片网格时放进悬停层）
       var actions = document.createElement('div');
-      actions.className = 'row-actions';
+      actions.className = 'row-actions' + (currentType === 'image' ? ' ic-act' : '');
 
       var renameBtn = document.createElement('button');
       renameBtn.className = 'ghost icon-btn-sm';
@@ -2866,7 +2932,8 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
       del.addEventListener('click', function () { removeItem(it); });
       actions.appendChild(del);
 
-      li.appendChild(actions);
+      if (currentType === 'image') { icOv.appendChild(actions); li.appendChild(icInfo); }
+      else li.appendChild(actions);
 
       list.appendChild(li);
     });

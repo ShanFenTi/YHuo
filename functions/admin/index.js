@@ -431,10 +431,13 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
   .file-pick-btn { flex: none; display: inline-flex; align-items: center; gap: 6px; }
   .file-pick-btn svg { display: block; }
   .file-pick-info {
-    width: 100%; display: none; color: var(--muted); font-size: 12px; line-height: 1.5;
-    margin-top: 2px; animation: fpiIn .18s ease;
+    display: none; width: 100%; margin-top: 10px;
+    padding: 9px 13px; border-radius: 10px; font-size: 12.5px; line-height: 1.6; color: var(--fg);
+    background: color-mix(in srgb, var(--ok) 8%, transparent);
+    border: 1px solid color-mix(in srgb, var(--ok) 30%, var(--border));
   }
-  .file-pick-info.show { display: block; }
+  .file-pick-info.show { display: block; animation: fpiIn .18s ease; }
+  .file-pick-info::before { content: "✓ 已选择"; margin-right: 6px; font-weight: 700; color: var(--ok); }
   @keyframes fpiIn { from { opacity: 0; transform: translateY(-2px); } to { opacity: 1; transform: none; } }
   .progress { height: 4px; background: var(--chip); border-radius: 2px; margin-top: 12px; overflow: hidden; display: none; }
   .progress i { display: block; height: 100%; width: 0; background: var(--brand); transition: width .2s; }
@@ -1082,11 +1085,11 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
       <button type="button" class="ghost file-pick-btn" id="filePickBtn">点击选择文件</button>
       <p class="upload-hint" id="uploadHint">支持一次选多个文件，也可以把文件或整个文件夹拖进来；与已有内容同名的自动跳过；单文件上限 24MB。</p>
     </div>
+    <p class="file-pick-info" id="filePickInfo"></p>
     <div class="upload-actions">
       <input type="text" id="titleInput" placeholder="显示名称（可选，仅单个文件时生效）">
       <button id="uploadBtn">上传</button>
     </div>
-    <p class="file-pick-info" id="filePickInfo"></p>
     <div class="video-mode-bar" id="videoModeBar" hidden>
       <span class="meta2">首页视频播放</span>
       <button type="button" class="ghost vm-chip" data-m="seq">顺序循环</button>
@@ -5756,9 +5759,13 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
     var info = $('filePickInfo');
     if (!files || !files.length) { info.classList.remove('show'); return; }
     var names = [];
-    for (var i = 0; i < Math.min(files.length, 3); i++) names.push(files[i].name);
-    if (files.length > 3) names.push('…');
-    info.textContent = '已选 ' + files.length + ' 个文件：' + names.join('、') + '（可再点按钮更换）';
+    var total = 0;
+    for (var i = 0; i < files.length; i++) total += files[i].size || 0;
+    for (var j = 0; j < Math.min(files.length, 3); j++) {
+      names.push(files[j].name + '（' + fmtSize(files[j].size) + '）');
+    }
+    if (files.length > 3) names.push('等 ' + files.length + ' 个');
+    info.textContent = files.length + ' 个文件，共 ' + fmtSize(total) + '：' + names.join('、') + (files.length > 3 ? '' : '。可再点「点击选择文件」更换');
     info.classList.add('show');
   });
 

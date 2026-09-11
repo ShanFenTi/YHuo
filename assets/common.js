@@ -408,9 +408,11 @@
     var heroGreeting = null;
     var lastSecond = null;
     var homeClockTimers = [];
+    var clockMsText = null; // 毫秒位常驻文本节点：滚数只改 nodeValue，不替换节点
     function stopHomeClock() {
       homeClockTimers.forEach(clearInterval);
       homeClockTimers = [];
+      clockMsText = null;
     }
     function startHomeClock() {
       stopHomeClock();
@@ -420,12 +422,24 @@
       clockMsEl = document.getElementById('clockMs');
       clockDateEl = document.getElementById('clockDate');
       heroGreeting = document.getElementById('heroGreeting');
+      // 毫秒位必须走 nodeValue（characterData 突变）：textContent 每 50ms 替换文本节点 = childList 突变，
+      // 会把「滚动模糊揭示」模块挂在 .page-main 上的 80ms 防抖重扫永远清零——换页回首页后内容区
+      // 卡片永不揭示、只能整页刷新的根因（2026-09-11）。该 observer 只监听 childList/subtree
+      if (clockMsEl) {
+        clockMsText = clockMsEl.firstChild;
+        if (!clockMsText || clockMsText.nodeType !== 3) {
+          clockMsText = document.createTextNode('.000');
+          clockMsEl.textContent = '';
+          clockMsEl.appendChild(clockMsText);
+        }
+      }
       updateClock();
       homeClockTimers.push(setInterval(updateClock, 200));
       // 毫秒滚数
-      if (clockMsEl) {
+      if (clockMsText) {
         homeClockTimers.push(setInterval(function () {
-          clockMsEl.textContent = '.' + ('00' + new Date().getMilliseconds()).slice(-3);
+          if (!clockMsText.parentNode) return; // 节点已随换页摘除（定时器由 destroy 负责清理，此处兜底）
+          clockMsText.nodeValue = '.' + ('00' + new Date().getMilliseconds()).slice(-3);
         }, 50));
       }
     }
@@ -5638,6 +5652,128 @@
         });
     }
 
+    // =========================
+    // 首页内容区（2026-09-11）：hero 下方「门面」层。最新随笔走 /api/notes → notes/notes.json 回落
+    // （与随笔页 initNotesPage 同一条数据链），站点数据行走 /api/summary（与关于页 initSiteDataCard 同源，
+    // 失败整行保持隐藏——同「失败整卡隐藏」口径）。摘要是纯文本（noteStripMd 剥 md，textContent 装配防注入），
+    // 点击经 /notes/#日期 走 pjax，随笔页 onHash 的 locateNote 负责定位高亮。
+    // 按当前 DOM 重查重绑（pjax 换页可重入）；离页 homeLowerAbort() 摘掉未完成的 fetch。
+    // =========================
+    var homeLowerCtl = null;   // 当前内容区的 AbortController（pjax 离页 / 重复进入时 abort 上一轮）
+    var homeNotesListEl = null;
+    var homeNotesEmptyEl = null;
+
+    function startHomeLower() {
+      var notesList = document.getElementById('homeNotesList');
+      var statsEl = document.getElementById('homeStats');
+      homeLowerAbort(); // 防重入：先摘上一轮（同 startHomeWeather 按当前 DOM 重查的约定）
+      if (!notesList && !statsEl) return;
+      var ctl = new AbortController();
+      homeLowerCtl = ctl;
+      var signal = ctl.signal;
+
+      if (notesList) {
+        homeNotesListEl = notesList;
+        homeNotesEmptyEl = document.getElementById('homeNotesEmpty');
+        var finishNotes = function (list) {
+          if (!homeNotesListEl || signal.aborted) return; // fetch 期间 pjax 切走了：直接放弃
+          homeNotesRender(list);
+        };
+        fetch('/api/notes', { credentials: 'same-origin', signal })
+          .then(function (r) { return r.ok ? r.json() : Promise.reject(new Error('http ' + r.status)); })
+          .then(function (d) {
+            var dataList = (d && d.ok && Array.isArray(d.list)) ? d.list : null;
+            if (dataList && dataList.length) return dataList;   // 后台录了数据
+            return fetch('/notes/notes.json', { credentials: 'same-origin', signal }) // 空库 → 静态清单
+              .then(function (r) { return r.ok ? r.json() : Promise.reject(new Error('http ' + r.status)); });
+          })
+          .then(finishNotes)
+          .catch(function () {
+            if (!homeNotesListEl || signal.aborted) return;
+            homeNotesListEl.classList.remove('is-loading');
+            if (homeNotesEmptyEl) homeNotesEmptyEl.hidden = false; // 两路都失败：提示行（不收卡，布局稳）
+          });
+      }
+
+      if (statsEl) {
+        fetch('/api/summary', { credentials: 'same-origin', signal })
+          .then(function (r) { return r.ok ? r.json() : Promise.reject(new Error('http ' + r.status)); })
+          .then(function (d) {
+            if (!statsEl || signal.aborted) return;
+            if (!d || !d.ok || !d.data) throw new Error('bad payload'); // 坑 2：伪 200 也要判
+            var s = d.data;
+            var num = function (v) { var n = Number(v); return isFinite(n) ? Math.round(n).toLocaleString() : '0'; };
+            var parts = [
+              ['已运行 ', num(s.days), ' 天'],
+              ['', num(s.notes), ' 条随笔'],
+              ['', num(s.messages), ' 条留言'],
+              ['', num(s.tracks), ' 首曲目'],
+              ['总访问 ', num(s.totalVisits), ' 次']
+            ];
+            statsEl.textContent = '';
+            parts.forEach(function (p, i) {
+              if (i) statsEl.appendChild(document.createTextNode(' · '));
+              if (p[0]) statsEl.appendChild(document.createTextNode(p[0]));
+              var b = document.createElement('b');
+              b.textContent = p[1];
+              statsEl.appendChild(b);
+              statsEl.appendChild(document.createTextNode(p[2]));
+            });
+            statsEl.hidden = false;
+          })
+          .catch(function () {
+            if (statsEl && !signal.aborted) statsEl.hidden = true; // 接口挂了：整行让位
+          });
+      }
+    }
+
+    function homeNotesRender(list) {
+      var ul = homeNotesListEl;
+      if (!ul) return;
+      var items = (Array.isArray(list) ? list : []).filter(function (n) { return n && n.date && n.text; })
+        .sort(function (a, b) { return String(a.date) < String(b.date) ? 1 : (String(a.date) > String(b.date) ? -1 : 0); })
+        .slice(0, 3); // 只要最新三条，全量在随笔页
+      ul.classList.remove('is-loading');
+      if (!items.length) {
+        if (homeNotesEmptyEl) homeNotesEmptyEl.hidden = false;
+        return;
+      }
+      var frag = document.createDocumentFragment();
+      items.forEach(function (n) {
+        var li = document.createElement('li');
+        var a = document.createElement('a');
+        a.className = 'home-note-item';
+        a.href = '/notes/#' + String(n.date); // pjax 换页后 locateNote 定位 + cmdk-flash 高亮
+        var d = document.createElement('span');
+        d.className = 'hn-date';
+        d.textContent = String(n.date).slice(5); // MM-DD，完整年份在随笔页
+        a.appendChild(d);
+        if (n.mood) {
+          var m = document.createElement('span');
+          m.className = 'note-mood'; // 复用随笔页天气/时段胶囊样式
+          m.textContent = n.mood;
+          a.appendChild(m);
+        }
+        var t = document.createElement('span');
+        t.className = 'hn-text';
+        t.textContent = noteStripMd(String(n.text)).replace(/\s+/g, ' '); // 纯文本单行省略
+        a.appendChild(t);
+        li.appendChild(a);
+        frag.appendChild(li);
+      });
+      ul.textContent = ''; // 清掉骨架三根条
+      ul.appendChild(frag);
+    }
+
+    function homeLowerAbort() {
+      if (homeLowerCtl) {
+        try { homeLowerCtl.abort(); } catch (e) {}
+        homeLowerCtl = null;
+      }
+      homeNotesListEl = null;
+      homeNotesEmptyEl = null;
+    }
+
     // 站点数据卡（2026-09-10，关于页）：/api/summary 公开聚合接口 → 8 个统计位 600ms 计数上滚。
     // 失败/ok:false（坑 2：伪 200 也要判）/payload 不对 → 整卡隐藏（class 切换，坑 14 不用 [hidden]）。
     function initSiteDataCard() {
@@ -7613,8 +7749,8 @@
     // =========================
     var PAGE_MODULES = {
       home: {
-        init: function () { startHomeClock(); startHomeQuote(); startHomeVideo(); startHomeWeather(); lyricRebind(); heroGlowFx.start(); },
-        destroy: function () { stopHomeClock(); destroyHomeQuote(); clearInterval(lyricTypeTimer); lyricTypeTimer = null; heroGlowFx.stop(); }
+        init: function () { startHomeClock(); startHomeQuote(); startHomeVideo(); startHomeWeather(); startHomeLower(); lyricRebind(); heroGlowFx.start(); },
+        destroy: function () { stopHomeClock(); destroyHomeQuote(); homeLowerAbort(); clearInterval(lyricTypeTimer); lyricTypeTimer = null; heroGlowFx.stop(); }
       },
       tools: {
         init: function () { initToolsPage(); },

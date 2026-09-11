@@ -6199,3 +6199,250 @@
         height: 260px;
       }
     }
+
+    /* =========================
+       首页内容区（2026-09-11）：hero 下方「门面」层——最新随笔 / 快捷入口 / 站点数据行。
+       只存在于首页 main（不碰外壳，坑 23 免同步）；.apple-card 自动进滚动模糊揭示清单（site.css「滚动模糊揭示」段）。
+       功能开关同口径：ff-* 关掉的页面，对应入口磁贴一并隐藏（对齐窄屏抽屉的 [data-target] 规则）。
+       ========================= */
+    html.ff-tools-off .home-entry[data-target="tools"],
+    html.ff-ai-off .home-entry[data-target="ai"],
+    html.ff-boot-hide .home-entry[data-target="tools"],
+    html.ff-ai-boot-hide .home-entry[data-target="ai"] { display: none !important; }
+
+    .home-lower {
+      padding: 6px 0 28px;
+    }
+
+    /* 随笔卡被后台整体关闭（隐藏清单）或将来摘除时，入口卡自动满宽不破格 */
+    .home-lower.no-notes .home-lower-grid {
+      grid-template-columns: minmax(0, 1fr);
+    }
+
+    .home-lower-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr);
+      gap: 18px;
+      align-items: stretch;
+    }
+
+    /* ----- 最新随笔 ----- */
+    .home-notes-list {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+      min-height: 118px; /* 三条摘要的预期高度：异步到达前后零布局位移（同天气/一言首帧占位思路） */
+    }
+
+    /* 加载骨架：三根浅色横条轻微呼吸；数据到达 JS 摘掉 is-loading 换真内容 */
+    .home-notes-list.is-loading li {
+      height: 16px;
+      margin: 14px 2px;
+      border-radius: 8px;
+      background: color-mix(in srgb, var(--apple-muted-foreground) 14%, transparent);
+      animation: homeNotesPulse 1.6s ease-in-out infinite;
+    }
+
+    .home-notes-list.is-loading li:nth-child(2) { width: 86%; }
+    .home-notes-list.is-loading li:nth-child(3) { width: 64%; }
+
+    @keyframes homeNotesPulse {
+      0%, 100% { opacity: 0.55; }
+      50% { opacity: 1; }
+    }
+
+    .home-notes-list li {
+      border-bottom: 1px solid var(--apple-border);
+    }
+
+    .home-notes-list li:last-child {
+      border-bottom-color: transparent;
+    }
+
+    .home-note-item {
+      display: flex;
+      align-items: baseline;
+      gap: 10px;
+      padding: 11px 2px;
+      color: inherit;
+      text-decoration: none;
+    }
+
+    .hn-date {
+      flex: none;
+      min-width: 46px;
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      color: var(--apple-muted-foreground);
+      font-variant-numeric: tabular-nums;
+    }
+
+    .home-note-item .note-mood {
+      flex: none;
+      font-size: 10.5px;
+      padding: 3px 8px;
+    }
+
+    .hn-text {
+      flex: 1;
+      min-width: 0;
+      font-size: 13.5px;
+      color: var(--apple-muted-foreground);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      transition: color 200ms var(--ease-out);
+    }
+
+    .home-note-item:hover .hn-text,
+    .home-note-item:focus-visible .hn-text {
+      color: var(--primary);
+    }
+
+    .home-note-item:focus-visible {
+      outline: 2px solid var(--primary);
+      outline-offset: 2px;
+      border-radius: 6px;
+    }
+
+    .home-more-link {
+      display: inline-block;
+      margin-top: 12px;
+      font-size: 12.5px;
+      color: var(--primary);
+      text-decoration: none;
+    }
+
+    .home-more-link:hover {
+      text-decoration: underline;
+      text-underline-offset: 3px;
+    }
+
+    /* ----- 快捷入口磁贴 ----- */
+    .home-entry-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    .home-entry {
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      gap: 5px;
+      min-height: 84px;
+      padding: 13px 14px 12px;
+      border: 1px solid var(--apple-border);
+      border-radius: calc(var(--radius) * 0.75);
+      background: var(--apple-secondary);
+      color: inherit;
+      text-decoration: none;
+      transition: transform 220ms var(--ease-out), border-color 220ms var(--ease-out), box-shadow 220ms var(--ease-out);
+    }
+
+    .home-entry:hover {
+      transform: translateY(-2px);
+      border-color: color-mix(in srgb, var(--primary) 45%, var(--apple-border));
+      box-shadow: var(--shadow-sm);
+    }
+
+    .home-entry:focus-visible {
+      outline: 2px solid var(--primary);
+      outline-offset: 2px;
+    }
+
+    .home-entry svg {
+      color: var(--primary);
+      margin-bottom: 2px;
+    }
+
+    .he-name {
+      font-size: 13.5px;
+      font-weight: 650;
+    }
+
+    .he-desc {
+      font-size: 11.5px;
+      line-height: 1.35;
+      color: var(--apple-muted-foreground);
+    }
+
+    /* 悬停浮现的 ↗：轻推一下表示「能点」，不喧宾夺主 */
+    .he-arrow {
+      position: absolute;
+      top: 10px;
+      right: 12px;
+      font-size: 12px;
+      color: var(--apple-muted-foreground);
+      opacity: 0;
+      transform: translate(-4px, 4px);
+      transition: opacity 200ms var(--ease-out), transform 200ms var(--ease-out);
+    }
+
+    .home-entry:hover .he-arrow,
+    .home-entry:focus-visible .he-arrow {
+      opacity: 1;
+      transform: none;
+    }
+
+    /* ----- 站点数据行 ----- */
+    .home-stats {
+      margin: 14px 4px 0;
+      text-align: center;
+      font-size: 12px;
+      letter-spacing: 0.02em;
+      color: var(--apple-muted-foreground);
+      font-variant-numeric: tabular-nums;
+    }
+
+    .home-stats b {
+      font-weight: 600;
+      color: var(--primary);
+    }
+
+    /* 随笔卡整体收起（数据两路都拿不到时不收卡，只给提示行；这里仅备用满宽规则） */
+    .home-notes-card[hidden] {
+      display: none !important;
+    }
+
+    /* ----- 响应式 ----- */
+    @media (max-width: 900px) {
+      .home-lower-grid {
+        grid-template-columns: minmax(0, 1fr); /* 必须 minmax(0,·)：裸 1fr 的 min-width:auto 会被单行省略文本撑破视口 */
+        gap: 14px;
+      }
+
+      .home-lower {
+        padding-bottom: 22px;
+      }
+    }
+
+    @media (max-width: 480px) {
+      .home-entry-grid {
+        gap: 8px;
+      }
+
+      .home-entry {
+        min-height: 76px;
+        padding: 11px 12px 10px;
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .home-notes-list.is-loading li {
+        animation: none;
+      }
+
+      .home-entry,
+      .he-arrow,
+      .hn-text {
+        transition: none;
+      }
+
+      .home-entry:hover {
+        transform: none;
+      }
+    }
+

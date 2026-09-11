@@ -964,10 +964,35 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
       position: fixed; left: 0; top: 0; z-index: 200;
       width: 220px; height: 100vh; padding: 14px 12px;
       background: var(--card); border-right: 1px solid var(--border);
-      transform: translateX(-100%); transition: transform .22s;
+      transform: translateX(-100%); transition: transform .32s var(--ease-outc), box-shadow .28s var(--ease-outc);
       overflow-y: auto;
     }
     body.nav-open aside.sidenav { transform: translateX(0); box-shadow: 0 0 0 100vmax rgba(0,0,0,.45); }
+    /* 开抽屉条目级联滑入（对齐前台 nav-drawer：420ms ease-out backwards + 70ms 起始每项 36ms 级联，
+       遮罩由 box-shadow 过渡渐隐渐现）。同前台套路：keyframes from 隐藏 + fill backwards 盖住延迟期，
+       不设 opacity:0 基准态——基准若隐藏条目会永远隐形；关抽屉摘类即停，重开自动重播 */
+    @media (prefers-reduced-motion: no-preference) {
+      .sidenav-links button:nth-child(1) { --i: 0; }
+      .sidenav-links button:nth-child(2) { --i: 1; }
+      .sidenav-links button:nth-child(3) { --i: 2; }
+      .sidenav-links button:nth-child(4) { --i: 3; }
+      .sidenav-links button:nth-child(5) { --i: 4; }
+      .sidenav-links button:nth-child(6) { --i: 5; }
+      .sidenav-links button:nth-child(7) { --i: 6; }
+      .sidenav-links button:nth-child(8) { --i: 7; }
+      .sidenav-links button:nth-child(9) { --i: 8; }
+      .sidenav-links button:nth-child(10) { --i: 9; }
+      .sidenav-links button:nth-child(11) { --i: 10; }
+      .sidenav-links button:nth-child(12) { --i: 11; }
+      body.nav-open .sidenav-links button {
+        animation: sidenav-item-in 420ms var(--ease-outc) backwards;
+        animation-delay: calc(70ms + var(--i, 0) * 36ms);
+      }
+    }
+    @keyframes sidenav-item-in {
+      from { opacity: 0; transform: translateX(-10px); }
+      to { opacity: 1; transform: none; }
+    }
     main.content { padding: 16px 16px 40px; }
     .card { padding: 16px; border-radius: 14px; }
     .section-card { padding: 16px; border-radius: 14px; }

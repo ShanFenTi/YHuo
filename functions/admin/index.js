@@ -480,7 +480,7 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
   .icon-btn-sm svg { display: block; }
   ul.list li:hover { background: color-mix(in srgb, var(--hover) 55%, transparent); }
   /* ---------- 图片页缩略图网格（仅 #list.img-grid；音乐/视频仍走行式列表） ---------- */
-  ul.list.img-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(158px, 1fr)); gap: 14px; }
+  ul.list.img-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(164px, 1fr)); gap: 14px; }
   ul.list.img-grid li {
     position: relative; display: flex; flex-direction: column; overflow: hidden;
     padding: 0; border: 1px solid var(--border); border-radius: 14px; background: var(--card);
@@ -506,7 +506,7 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
   .img-grid .ic-ov {
     position: absolute; left: 0; right: 0; bottom: 0;
     display: flex; justify-content: center; align-items: center; gap: 4px; flex-wrap: wrap;
-    padding: 30px 8px 8px;
+    padding: 24px 6px 6px;
     background: linear-gradient(transparent, rgba(0, 0, 0, .55));
   }
   @media (hover: hover) and (pointer: fine) {
@@ -514,13 +514,17 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
     ul.list.img-grid li:hover .ic-ov, ul.list.img-grid li:focus-within .ic-ov { opacity: 1; pointer-events: auto; }
   }
   /* 悬停层里的操作钮：白色玻璃底压在图片上（同前台毛玻璃配方），触屏常显不隐藏；
-     网格里按钮只留图标（文字 span 隐藏，说明走 title 提示）并允许居中换行，窄卡片不再溢出裁切 */
+     网格里按钮只留图标（文字 span 隐藏，说明走 title 提示）并紧凑化保证单行——
+     5 钮（图标 14 + padding 4×5 = 24px/钮，gap 3）共 ~132px，最小列 164px 去掉层内边距剩 ~152px，
+     数学上必单行；flex-wrap 仅作极端情况的兜底（坑 36 前身 b881dcf 的「允许换行」治标不治本：
+     原 30~36px/钮一行需 ~186px，158px 最小列怎么都放不下，用户实拍仍是 4+1 两行） */
   .img-grid .ic-ov .row-actions {
     margin: 0; opacity: 1; pointer-events: auto; flex-basis: auto;
-    flex-wrap: wrap; justify-content: center; max-width: 100%; row-gap: 4px;
+    flex-wrap: wrap; justify-content: center; max-width: 100%; gap: 3px; row-gap: 4px;
   }
   .img-grid .ic-ov .row-actions span { display: none; }
-  .img-grid .ic-ov .row-actions button { background: rgba(255,255,255,.16); color: #ffffff; backdrop-filter: blur(4px); }
+  .img-grid .ic-ov .row-actions button { padding: 4px 5px !important; background: rgba(255,255,255,.16); color: #ffffff; backdrop-filter: blur(4px); }
+  .img-grid .ic-ov .row-actions button svg { width: 14px; height: 14px; }
   .img-grid .ic-ov .row-actions button:hover { background: rgba(255,255,255,.28); opacity: 1; }
   .img-grid .ic-ov .row-actions button.danger:hover {
     color: #ffffff;

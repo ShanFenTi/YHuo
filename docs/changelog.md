@@ -1,5 +1,11 @@
 # 更新日志
 
+## 2026-09-11（晚间：首页内容区 + 坑 36）
+
+* **前台：首页 hero 下新增「内容区」——把首页从一屏钟表屏保变成能滚的门面（2026-09-11 晚间，用户「首页好单调」看法采纳第 1 条）**——hero 之下三件套：①**最新随笔卡**（.home-notes-card）：取最新 3 条（MM-DD 日期 + note-mood 天气胶囊 + noteStripMd 剥 md 单行省略摘要），数据链与随笔页完全同源（/api/notes → 空库/失败回落 notes/notes.json，startHomeLower 内 AbortController 串链）；点击经 `/notes/#日期` pjax 换页 + locateNote 定位高亮；底部「去随笔页看全部 →」；加载期三根骨架条呼吸（min-height 锁高度零布局位移），两路全失败显示提示行不收卡。②**快捷入口卡**：随笔/工具/AI/留言四枚磁贴（2×2，≤900px 内容区单列、磁贴仍 2 列，≤480px 收紧），图标复用导航抽屉那套，悬停浮起+↗ 提示；ff-tools-off/ff-ai-off（含 boot-hide 档）同口径隐藏磁贴（本地未配 AI 供应商时只剩三枚属正常）。③**站点数据行**（#homeStats）：/api/summary → 「已运行 N 天 · N 条随笔 · N 条留言 · N 首曲目 · 总访问 N 次」（数字 <b> 主题色、textContent 组装防注入），失败整行保持 hidden（与关于页数据卡同口径）。改动只动首页 main + site.css 末尾「首页内容区」段 + common.js 首页模块（startHomeLower/homeNotesRender/homeLowerAbort，PAGE_MODULES.home init/destroy 挂钩，pjax 离页 abort），不碰八页外壳（坑 23 免同步）；.apple-card 自动进滚动模糊揭示清单；顺带修：≤900px 网格覆写裸 1fr 会被单行省略文本的 min-content 撑破视口（必须 minmax(0,1fr)）。实测：check-code 全过；本地 wrangler 深浅主题桌面/390 窄屏、随笔回落链、pjax 点击链、ff-* 隐藏全过
+
+* **前台：根治坑 36——毫秒时钟 50ms textContent 写入把「滚动模糊揭示」的 80ms 防抖重扫饿死，换页回首页新内容永不显现（2026-09-11 晚间，用户实报「切换到别的界面之后再点击主页，添加的内容会消失」）**——揭示模块（common.js 顶部 IIFE）在 .page-main 上挂 MutationObserver(childList+subtree) 防抖 80ms 重扫 collect()/show()；首页毫秒位每 50ms `textContent = …` 替换文本节点 = childList 突变，定时器每 tick 被清零重排 → 只要停在首页重扫永远不落定，pjax 回首页后新卡片不被采集也不被揭示（滚动也没用，targets 数组停在上一页），只有整页刷新（IIFE 启动同步 collect+show）才显示；其他子页无毫秒时钟故无恙——首页内容区是第一个踩中此潜伏饥饿 bug 的揭示目标。**修法**：startHomeClock 毫秒位改保留文本节点 `clockMsText.nodeValue` 写入（characterData 突变不在该 observer 监听配置内，零扰动），节点缺失/非文本兜底重建，stopHomeClock 清引用。**教训**：高频 DOM 写入（周期 < 防抖窗口）会饿死一切「防抖等平静」的观察者——凡 textContent 轮询写常驻元素，改用常驻文本节点 nodeValue；决定性排查手法：摘掉可疑高频写入源看症状是否立刻消失（实测摘 #clockMs 症状即刻恢复）。修复后基线+留言/工具/随笔三链路换页回首页卡片全部揭示、毫秒位照常跳动；check-code 全过
+
 ## 2026-09-11（输入细节打磨）
 
 * **后台：修图片网格悬停操作层按钮溢出裁切（2026-09-11 第七轮，用户截图实报）**——网格卡片窄（~158px），操作条是 flex:none 不换行的整块（查看/删除带文字总宽超卡片），整块溢出被卡片 overflow:hidden 裁掉、重命名钮被挤没；修复=网格悬停层里按钮只留图标（`.img-grid .ic-ov .row-actions span { display:none }`，说明走 title 提示）+ 操作条允许居中换行（flex-wrap + max-width:100%），删除钮补 title。实测：check-code 全过 + 悬停验证 5 个按钮（重命名/查看/上移/下移/删除）全部在卡片边界内

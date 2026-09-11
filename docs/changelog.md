@@ -1,5 +1,9 @@
 # 更新日志
 
+## 2026-09-11（晚间二：图片网格操作钮单行）
+
+* **后台：修图片网格悬停操作钮仍 4+1 两行（2026-09-11 晚间二，用户实拍「还是有按钮被遮挡」）**——b881dcf 的「按钮只留图标 + 允许换行」治标不治本：5 钮按原尺寸（图标 16 + padding 5×7/5×10 = 30~36px/钮、gap 6）一行需 **~186px**，而 158px 最小列去掉操作层内边距只有 **~142px** 可用——无论窗口多宽，卡片落在最小列附近就必然换成 4+1 两行，孤零零的第二行删除钮压在缩略图上。**根治 = 紧凑化让单行数学上必成立**：图标 16→14、padding 统一 4px 5px（!important 覆盖 icon-btn-sm 的 5px 7px 与行钮 5px 10px）、gap 6→3、操作层侧边距 8→6、最小列 158→164px——5 钮一行共 **~132px**，最坏情况（最小列）可用 ~152px，冗余 20px；flex-wrap 保留仅作极端兜底（正常永不触发）。实测：check-code 全过 + 本地 wrangler 登录后台用真实图片数据（8 张）四档视口（1440/900/500/390）强制显示悬停层逐卡量测 rows 全部 = 1（最坏 390 视口卡宽 167px 仍单行，操作条 133px/卡 179px）
+
 ## 2026-09-11（晚间：首页内容区 + 坑 36）
 
 * **前台：首页 hero 下新增「内容区」——把首页从一屏钟表屏保变成能滚的门面（2026-09-11 晚间，用户「首页好单调」看法采纳第 1 条）**——hero 之下三件套：①**最新随笔卡**（.home-notes-card）：取最新 3 条（MM-DD 日期 + note-mood 天气胶囊 + noteStripMd 剥 md 单行省略摘要），数据链与随笔页完全同源（/api/notes → 空库/失败回落 notes/notes.json，startHomeLower 内 AbortController 串链）；点击经 `/notes/#日期` pjax 换页 + locateNote 定位高亮；底部「去随笔页看全部 →」；加载期三根骨架条呼吸（min-height 锁高度零布局位移），两路全失败显示提示行不收卡。②**快捷入口卡**：随笔/工具/AI/留言四枚磁贴（2×2，≤900px 内容区单列、磁贴仍 2 列，≤480px 收紧），图标复用导航抽屉那套，悬停浮起+↗ 提示；ff-tools-off/ff-ai-off（含 boot-hide 档）同口径隐藏磁贴（本地未配 AI 供应商时只剩三枚属正常）。③**站点数据行**（#homeStats）：/api/summary → 「已运行 N 天 · N 条随笔 · N 条留言 · N 首曲目 · 总访问 N 次」（数字 <b> 主题色、textContent 组装防注入），失败整行保持 hidden（与关于页数据卡同口径）。改动只动首页 main + site.css 末尾「首页内容区」段 + common.js 首页模块（startHomeLower/homeNotesRender/homeLowerAbort，PAGE_MODULES.home init/destroy 挂钩，pjax 离页 abort），不碰八页外壳（坑 23 免同步）；.apple-card 自动进滚动模糊揭示清单；顺带修：≤900px 网格覆写裸 1fr 会被单行省略文本的 min-content 撑破视口（必须 minmax(0,1fr)）。实测：check-code 全过；本地 wrangler 深浅主题桌面/390 窄屏、随笔回落链、pjax 点击链、ff-* 隐藏全过

@@ -404,12 +404,28 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
   .stat .ico svg { width: 20px; height: 20px; }
   .stat .num { font-size: 22px; font-weight: 700; line-height: 1.1; }
   .stat .lbl { font-size: 12px; color: var(--muted); }
+  /* 上传区：居中式大拖放区（点击/拖入均可；拖入高亮走 .dragover） */
   .upload-row {
-    display: flex; gap: 10px; flex-wrap: wrap; align-items: center;
-    padding: 14px; background: var(--hover); border-radius: 14px;
-    border: 1.5px dashed var(--border);
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 7px;
+    min-height: 130px; padding: 24px 20px; text-align: center; cursor: pointer;
+    background: color-mix(in srgb, var(--hover) 40%, transparent);
+    border: 1.5px dashed var(--border); border-radius: 16px;
+    transition: border-color var(--t-fast) var(--ease-outc), background var(--t-fast) var(--ease-outc);
   }
-  .upload-row input[type=text] { flex: 1 1 160px; margin: 0; }
+  .upload-row:hover {
+    border-color: color-mix(in srgb, var(--brand) 55%, var(--border));
+    background: color-mix(in srgb, var(--brand) 5%, transparent);
+  }
+  .upload-row .ur-ico {
+    width: 44px; height: 44px; border-radius: 14px; margin-bottom: 2px; flex: none;
+    display: flex; align-items: center; justify-content: center;
+    background: color-mix(in srgb, var(--brand) 12%, transparent); color: var(--brand);
+  }
+  .upload-row .ur-ico svg { width: 22px; height: 22px; display: block; }
+  .upload-row .upload-hint { margin: 0; max-width: 580px; line-height: 1.6; }
+  .upload-actions { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-top: 12px; }
+  .upload-actions input[type=text] { flex: 1 1 220px; margin: 0; }
+  .upload-actions button { flex: none; }
   /* 原生 file input 视觉隐藏（保留多选/文件夹/accept 能力），由自定义"选择文件"按钮触发 */
   #fileInput { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
   .file-pick-btn { flex: none; display: inline-flex; align-items: center; gap: 6px; }
@@ -450,11 +466,11 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
   /* 相册/列表切换淡入动效（搜索输入不触发，仅在整表刷新与切相册时重播） */
   @keyframes listSwap { from { opacity: 0; transform: translateY(6px); filter: blur(4px); } to { opacity: 1; transform: none; filter: none; } }
   #list.list-swap { animation: listSwap .22s ease; }
-  .upload-row.dragover { border-color: var(--brand); background: var(--chip); }
+  .upload-row.dragover { border-color: var(--brand); border-style: solid; background: color-mix(in srgb, var(--brand) 9%, transparent); }
   /* 状态页信息行/用量条改用组件层的 .list-row / .meter-row（2026-09-11 UI 现代化），旧 .st-row 已删 */
   .mail-quota { display: flex; flex-direction: column; gap: 8px; font-size: 13px; }
   .mq-line { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
-  .upload-hint { color: var(--muted); font-size: 12px; margin-top: 8px; line-height: 1.5; }
+  .upload-hint { color: var(--muted); font-size: 12px; line-height: 1.6; }
   .queue-info { font-size: 13px; color: var(--muted); margin-top: 8px; min-height: 0; }
   /* 首页视频播放模式栏 */
   .video-mode-bar {
@@ -1062,15 +1078,15 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
     </div>
     <div class="upload-row" id="uploadRow">
       <input type="file" id="fileInput" multiple>
-      <button type="button" class="ghost file-pick-btn" id="filePickBtn">
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M17 8l-5-5-5 5M12 3v12"/></svg>
-        选择文件
-      </button>
+      <div class="ur-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M17 8l-5-5-5 5M12 3v12"/></svg></div>
+      <button type="button" class="ghost file-pick-btn" id="filePickBtn">点击选择文件</button>
+      <p class="upload-hint" id="uploadHint">支持一次选多个文件，也可以把文件或整个文件夹拖进来；与已有内容同名的自动跳过；单文件上限 24MB。</p>
+    </div>
+    <div class="upload-actions">
       <input type="text" id="titleInput" placeholder="显示名称（可选，仅单个文件时生效）">
       <button id="uploadBtn">上传</button>
     </div>
     <p class="file-pick-info" id="filePickInfo"></p>
-    <p class="upload-hint" id="uploadHint">支持一次选多个文件，也可以把文件或整个文件夹拖进来；与已有内容同名的自动跳过；单文件上限 24MB。</p>
     <div class="video-mode-bar" id="videoModeBar" hidden>
       <span class="meta2">首页视频播放</span>
       <button type="button" class="ghost vm-chip" data-m="seq">顺序循环</button>
@@ -5730,6 +5746,11 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
 
   // 自定义"选择文件"按钮：触发原生 input（功能完全等价：多选/文件夹/accept 限制）
   $('filePickBtn').addEventListener('click', function () { $('fileInput').click(); });
+  // 拖放区整块可点：点空白处等同「选择文件」（按钮/输入框上的点击直接返回，防重复弹文件框）
+  $('uploadRow').addEventListener('click', function (e) {
+    if (e.target.closest('button') || e.target.closest('input')) return;
+    $('fileInput').click();
+  });
   $('fileInput').addEventListener('change', function () {
     var files = this.files;
     var info = $('filePickInfo');

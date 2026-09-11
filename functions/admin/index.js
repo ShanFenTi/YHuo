@@ -436,8 +436,22 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
     background: color-mix(in srgb, var(--ok) 8%, transparent);
     border: 1px solid color-mix(in srgb, var(--ok) 30%, var(--border));
   }
-  .file-pick-info.show { display: block; animation: fpiIn .18s ease; }
-  .file-pick-info::before { content: "✓ 已选择"; margin-right: 6px; font-weight: 700; color: var(--ok); }
+  .file-pick-info.show { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; animation: fpiIn .18s ease; }
+  .file-pick-info::before { content: "✓ 已选择"; margin-right: 2px; font-weight: 700; color: var(--ok); flex: none; }
+  .pick-chip {
+    display: inline-flex; align-items: center; gap: 5px; max-width: 100%;
+    padding: 2px 4px 2px 10px; border-radius: 999px; font-size: 12px;
+    background: var(--card); border: 1px solid color-mix(in srgb, var(--ok) 28%, var(--border));
+  }
+  .pick-chip .pc-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 240px; }
+  .pick-x {
+    width: 18px; height: 18px; padding: 0; flex: none;
+    border: none; border-radius: 50%; background: var(--chip); color: var(--muted);
+    display: inline-flex; align-items: center; justify-content: center; cursor: pointer;
+    transition: background .15s, color .15s;
+  }
+  .pick-x:hover { background: color-mix(in srgb, var(--danger) 15%, var(--chip)); color: var(--danger); opacity: 1; }
+  .pick-x svg { width: 10px; height: 10px; display: block; }
   @keyframes fpiIn { from { opacity: 0; transform: translateY(-2px); } to { opacity: 1; transform: none; } }
   .progress { height: 4px; background: var(--chip); border-radius: 2px; margin-top: 12px; overflow: hidden; display: none; }
   .progress i { display: block; height: 100%; width: 0; background: var(--brand); transition: width .2s; }
@@ -5754,20 +5768,47 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
     if (e.target.closest('button') || e.target.closest('input')) return;
     $('fileInput').click();
   });
-  $('fileInput').addEventListener('change', function () {
-    var files = this.files;
+  // 选中文件确认条：每个文件一枚胶囊，点 ✕ 单独移除（经 DataTransfer 重建 input.files，全部移完自动收起）
+  function renderPickInfo() {
+    var input = $('fileInput');
     var info = $('filePickInfo');
-    if (!files || !files.length) { info.classList.remove('show'); return; }
-    var names = [];
+    var files = input.files;
+    if (!files || !files.length) { info.classList.remove('show'); info.textContent = ''; return; }
+    info.textContent = '';
+    info.classList.add('show');
     var total = 0;
     for (var i = 0; i < files.length; i++) total += files[i].size || 0;
-    for (var j = 0; j < Math.min(files.length, 3); j++) {
-      names.push(files[j].name + '（' + fmtSize(files[j].size) + '）');
+    var head = document.createElement('span');
+    head.textContent = files.length + ' 个文件，共 ' + fmtSize(total) + '：';
+    info.appendChild(head);
+    for (var k = 0; k < files.length; k++) {
+      (function (f, idx) {
+        var chip = document.createElement('span');
+        chip.className = 'pick-chip';
+        var nm = document.createElement('span');
+        nm.className = 'pc-name';
+        nm.textContent = f.name + '（' + fmtSize(f.size) + '）';
+        nm.title = f.name;
+        chip.appendChild(nm);
+        var x = document.createElement('button');
+        x.type = 'button';
+        x.className = 'pick-x';
+        x.title = '移除 ' + f.name;
+        x.setAttribute('aria-label', '移除 ' + f.name);
+        x.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>';
+        x.addEventListener('click', function () {
+          var dt = new DataTransfer();
+          var list = input.files;
+          for (var m = 0; m < list.length; m++) { if (m !== idx) dt.items.add(list[m]); }
+          input.files = dt.files;
+          renderPickInfo();
+        });
+        chip.appendChild(x);
+        info.appendChild(chip);
+      })(files[k], k);
     }
-    if (files.length > 3) names.push('等 ' + files.length + ' 个');
-    info.textContent = files.length + ' 个文件，共 ' + fmtSize(total) + '：' + names.join('、') + (files.length > 3 ? '' : '。可再点「点击选择文件」更换');
-    info.classList.add('show');
-  });
+  }
+  $('fileInput').addEventListener('change', renderPickInfo);
 
   // 拖拽上传：绑在整个媒体面板上；内部拖拽排序（dragFrom 有值）不抢
   var mediaPanel = $('mediaPanel');

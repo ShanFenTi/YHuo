@@ -16,19 +16,23 @@ const PAGE = `<!DOCTYPE html>
 try { document.documentElement.setAttribute('data-theme', localStorage.getItem('adminTheme') || 'light'); } catch (e) {}
 </script>
 <style>
+  /* 语义变量对齐前台 site.css 暖白纸感（浅色）/ 纯黑纸面（深色）；改色值要两块同步 */
   :root, [data-theme="light"] {
-    --bg: #f5f5f7; --card: #ffffff; --fg: #1d1d1f; --bg-fg: #ffffff;
-    --muted: #86868b; --border: #d2d2d7; --chip: #ececf0; --chip-hover: #e0e0e5;
-    --input-bg: #ffffff; --hover: #f0f0f2; --row-line: #ececee;
-    --shadow: 0 1px 3px rgba(0,0,0,.07), 0 12px 32px rgba(0,0,0,.05);
+    --bg: #f8f7f4; --card: #ffffff; --fg: #1b1c1e; --bg-fg: #f8f7f4;
+    --muted: #5f6166; --border: #e6e3da; --chip: #f0ede6; --chip-hover: #e7e3d8;
+    --input-bg: #ffffff; --hover: #f0ede6; --row-line: #eceae1;
+    --shadow: 0 1px 3px rgba(28,25,20,.06), 0 12px 32px rgba(28,25,20,.07);
     --ok: #16a34a; --warn: #d97706; --danger: #dc2626;
+    /* 陶土主题色（对齐前台 terracotta #b0532b）：主按钮/焦点环/进度条/图表强调/开关选中走这里 */
+    --brand: #b0532b; --on-brand: #ffffff;
   }
   [data-theme="dark"] {
-    --bg: #111113; --card: #1c1c1e; --fg: #f5f5f7; --bg-fg: #111113;
-    --muted: #98989d; --border: #3a3a3c; --chip: #2c2c2e; --chip-hover: #3a3a3c;
-    --input-bg: #2a2a2c; --hover: #2c2c2e; --row-line: #2c2c2e;
+    --bg: #000000; --card: #1c1c1e; --fg: #f5f5f7; --bg-fg: #000000;
+    --muted: #8e8e93; --border: #2c2c2e; --chip: #2c2c2e; --chip-hover: #3a3a3c;
+    --input-bg: #232325; --hover: #2c2c2e; --row-line: #2c2c2e;
     --shadow: 0 1px 3px rgba(0,0,0,.5);
     --ok: #4ade80; --warn: #fbbf24; --danger: #f87171;
+    --brand: #c96a42; --on-brand: #ffffff;
   }
   /* ---------- 动效令牌（对齐参考博客站的缓动体系：长缓出 + 轻回弹） ---------- */
   :root {
@@ -194,7 +198,10 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
     border: 1px solid var(--border); border-radius: 10px; font-size: 15px;
     background: var(--input-bg); color: var(--fg);
   }
-  input:focus { outline: 2px solid var(--fg); outline-offset: -1px; border-color: transparent; }
+  input:focus, textarea:focus, select:focus {
+    outline: none; border-color: var(--brand);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--brand) 20%, transparent);
+  }
   textarea {
     width: 100%; padding: 10px 12px; margin: 6px 0 4px;
     border: 1px solid var(--border); border-radius: 10px; font-size: 14px;
@@ -203,7 +210,7 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
   }
   button {
     padding: 9px 18px; border: none; border-radius: 10px; font-size: 14px;
-    background: var(--fg); color: var(--bg); cursor: pointer;
+    background: var(--brand); color: var(--on-brand); cursor: pointer;
     transition: opacity .15s, transform .18s var(--ease-spring), background .15s, color .15s, border-color .15s, box-shadow .2s var(--ease-outc);
   }
   button:hover { opacity: .82; }
@@ -230,8 +237,7 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
   .accent-row { display: flex; gap: 10px; }
   .accent-dot { width: 34px; height: 34px; border-radius: 50%; border: 3px solid transparent; padding: 0; }
   .accent-dot.active { border-color: var(--fg); }
-  .player-mode-btn.active { background: var(--fg); color: var(--bg); border-color: var(--fg); font-weight: 700; }
-  .player-mode-btn.active:hover { background: var(--fg); color: var(--bg); opacity: 1; }
+  .player-mode-btn.active:hover { opacity: 1; } /* 激活态本体走组件层的分组规则（与 vm-chip/el-chip/range-btn 同一份反色 chip） */
   .bgset-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
   .bg-preview { width: 160px; height: 90px; object-fit: cover; border-radius: 10px; border: 1px solid var(--border); }
   .meta2 { color: var(--muted); font-size: 13px; }
@@ -358,7 +364,7 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
   @keyframes panelReveal { from { opacity: 0; transform: translateY(14px); filter: blur(10px); } to { opacity: 1; transform: none; filter: none; } }
   @keyframes cardReveal { from { opacity: 0; transform: translateY(12px); filter: blur(6px); } to { opacity: 1; transform: none; filter: none; } }
   .panel-enter { animation: panelReveal var(--t-reveal) var(--ease-soft); }
-  .panel-enter .card, .panel-enter .stat { animation: cardReveal .5s var(--ease-soft) backwards; animation-delay: calc(var(--stagger-i, 0) * 55ms); }
+  .panel-enter .card, .panel-enter .stat, .panel-enter .section-card, .panel-enter .page-head { animation: cardReveal .5s var(--ease-soft) backwards; animation-delay: calc(var(--stagger-i, 0) * 55ms); }
   /* 登录门卡片切换（初始化/登录/找回密码/网络错误）与进入主界面的入场动效：同样靠 hidden 切换自动重播 */
   @keyframes gateIn { from { opacity: 0; transform: translateY(16px) scale(.98); filter: blur(8px); } to { opacity: 1; transform: none; filter: none; } }
   #gateWrap .card:not([hidden]) { animation: gateIn .5s var(--ease-soft); }
@@ -415,7 +421,7 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
   .file-pick-info.show { display: block; }
   @keyframes fpiIn { from { opacity: 0; transform: translateY(-2px); } to { opacity: 1; transform: none; } }
   .progress { height: 4px; background: var(--chip); border-radius: 2px; margin-top: 12px; overflow: hidden; display: none; }
-  .progress i { display: block; height: 100%; width: 0; background: var(--fg); transition: width .2s; }
+  .progress i { display: block; height: 100%; width: 0; background: var(--brand); transition: width .2s; }
   ul.list { list-style: none; padding: 0; margin-top: 14px; }
   ul.list li {
     display: flex; align-items: center; gap: 10px;
@@ -445,15 +451,7 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
   @keyframes listSwap { from { opacity: 0; transform: translateY(6px); filter: blur(4px); } to { opacity: 1; transform: none; filter: none; } }
   #list.list-swap { animation: listSwap .22s ease; }
   .upload-row.dragover { border-color: var(--fg); background: var(--chip); }
-  /* 状态页：存储分区条 / 邮件额度 */
-  .st-row { display: flex; align-items: center; gap: 10px; padding: 9px 0; font-size: 13px; border-bottom: 1px solid var(--row-line); }
-  .st-row:last-child { border-bottom: none; }
-  .st-row .st-name { flex: none; width: 64px; color: var(--muted); }
-  .st-row .st-bar { flex: 1; height: 8px; border-radius: 999px; background: var(--chip); overflow: hidden; }
-  .st-row .st-bar i { display: block; height: 100%; background: var(--fg); border-radius: 999px; transition: width .3s ease; }
-  .st-row .st-bar i.warn { background: var(--warn); }
-  .st-row .st-bar i.danger { background: var(--danger); }
-  .st-row .st-meta { flex: none; font-size: 12px; color: var(--muted); white-space: nowrap; }
+  /* 状态页信息行/用量条改用组件层的 .list-row / .meter-row（2026-09-11 UI 现代化），旧 .st-row 已删 */
   .mail-quota { display: flex; flex-direction: column; gap: 8px; font-size: 13px; }
   .mq-line { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
   .upload-hint { color: var(--muted); font-size: 12px; margin-top: 8px; line-height: 1.5; }
@@ -470,13 +468,12 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
     transition: background .15s, color .15s, border-color .15s;
   }
   .vm-chip:hover { color: var(--fg); border-color: var(--muted); }
-  .vm-chip.active { background: var(--fg); color: var(--bg); border-color: var(--fg); }
   .vm-single { color: var(--ok); font-size: 12px; }
   .row-actions button.vm-set { color: var(--warn); }
   .storage-line { margin-top: 16px; }
   .storage-line > span { font-size: 12px; color: var(--muted); }
   .storage-bar { height: 6px; background: var(--chip); border-radius: 3px; overflow: hidden; margin-top: 6px; }
-  .storage-bar i { display: block; height: 100%; width: 0; background: var(--fg); transition: width .3s; }
+  .storage-bar i { display: block; height: 100%; width: 0; background: var(--brand); transition: width .3s; }
   .list-tools { display: flex; gap: 10px; align-items: center; margin-top: 18px; flex-wrap: wrap; }
   .list-tools input[type=text] { flex: 1 1 180px; margin: 0; }
   .list-tools label { font-size: 13px; color: var(--muted); cursor: pointer; }
@@ -505,13 +502,12 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
   .visit-head strong { font-size: 15px; }
   .visit-head .spacer { flex: 1; }
   .range-btn { padding: 5px 12px; font-size: 12px; border-radius: 8px; }
-  .range-btn.active { background: var(--fg); color: var(--bg); }
   .range-btn svg { display: block; } /* 图标型视图切换按钮 */
   #visitChart svg { width: 100%; height: 170px; display: block; }
   #visitChart .gl { stroke: var(--border); stroke-width: 1; }
   #visitChart .gt { fill: var(--muted); font-size: 10px; font-family: inherit; }
   #visitChart .bar-hit { fill: transparent; pointer-events: all; cursor: pointer; } /* 命中层固定静止，柱子上浮不再丢 hover */
-  #visitChart .bar { fill: var(--fg); opacity: .82;
+  #visitChart .bar { fill: var(--brand); opacity: .82;
     transition: transform .2s cubic-bezier(.2,.7,.3,1.25), opacity .2s ease, filter .2s ease;
     transform-box: fill-box; transform-origin: center; pointer-events: none; /* 不设就绕 SVG 左上原点缩放，右侧的柱悬停会横向漂移 */
   }
@@ -563,7 +559,7 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
     background: var(--chip); border: 1px solid var(--border);
     transition: background .18s ease, border-color .18s ease;
   }
-  .geo-toggle.on .gt-track { background: var(--ok); border-color: var(--ok); }
+  .geo-toggle.on .gt-track { background: var(--brand); border-color: var(--brand); } /* on 态走陶土主题色（与新 .switch 统一） */
   .geo-toggle .gt-thumb {
     position: absolute; top: 50%; left: 2px; width: 14px; height: 14px;
     border-radius: 50%; background: var(--card); box-shadow: var(--shadow);
@@ -575,7 +571,7 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
   /* 邮件统计：趋势 + 发送明细 */
   .mail-sec-title { font-size: 12px; color: var(--muted); margin: 14px 0 4px; }
   #mailTrend svg { width: 100%; height: 70px; display: block; }
-  #mailTrend .mt-bar { fill: var(--fg); opacity: .78; }
+  #mailTrend .mt-bar { fill: var(--brand); opacity: .78; }
   #mailTrend .mt-bar:hover { opacity: 1; }
   #mailTrend .mt-t { fill: var(--muted); font-size: 9px; font-family: inherit; }
   .el-filters { display: flex; flex-wrap: wrap; gap: 6px; margin: 4px 0 8px; }
@@ -585,7 +581,6 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
     transition: background .15s, color .15s, border-color .15s;
   }
   .el-chip:hover { color: var(--fg); border-color: var(--muted); }
-  .el-chip.active { background: var(--fg); color: var(--bg); border-color: var(--fg); }
   #mailLogBox .el-row {
     display: flex; align-items: center; gap: 10px; padding: 7px 0;
     font-size: 13px; border-bottom: 1px solid var(--row-line);
@@ -680,15 +675,13 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
     display: flex; align-items: center; justify-content: center;
   }
   .avatar img { width: 100%; height: 100%; object-fit: cover; display: block; }
-  .badge { font-size: 11px; padding: 2px 9px; border-radius: 99px; white-space: nowrap; border: 1px solid var(--border); }
-  .badge.ok { color: var(--muted); }
-  .badge.banned { background: var(--fg); color: var(--bg); border-color: var(--fg); font-weight: 700; }
   [hidden] { display: none !important; }
   /* 行内操作按钮组：桌面悬停/聚焦浮现，触屏设备常显 */
   .row-actions { display: flex; gap: 6px; margin-left: auto; flex: none; }
   @media (hover: hover) and (pointer: fine) {
     .row-actions { opacity: 0; pointer-events: none; transition: opacity .15s; }
-    ul.list li:hover .row-actions, ul.list li:focus-within .row-actions { opacity: 1; pointer-events: auto; }
+    ul.list li:hover .row-actions, ul.list li:focus-within .row-actions,
+    .list-row:hover .row-actions, .list-row:focus-within .row-actions { opacity: 1; pointer-events: auto; }
   }
   /* 行内改名输入框 */
   .inline-edit {
@@ -720,6 +713,127 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
   /* 登录/初始化/网络错误：独立居中卡，不套框架 */
   .gate-wrap { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 24px; }
   .gate-wrap .card { width: min(420px, 100%); margin-bottom: 0; }
+  /* ---------- 组件层（2026-09-11 UI 现代化）：页面标题区/分组卡/字段/表格/列表行/空态/骨架屏/开关/分段/用量条 ----------
+     全部走语义变量与动效令牌；选择器特异性压过上方基础控件规则（同特异性时靠书写顺序靠后取胜） */
+  .page-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 10px 18px; flex-wrap: wrap; margin: 4px 0 18px; }
+  .page-head h2 { font-size: 22px; font-weight: 800; letter-spacing: -0.01em; line-height: 1.25; }
+  .page-head .ph-desc { color: var(--muted); font-size: 13px; line-height: 1.6; margin-top: 4px; max-width: 660px; }
+  .page-head .ph-actions { display: flex; gap: 8px; align-items: center; flex: none; }
+  .page-head .ph-actions button { flex: none; white-space: nowrap; }
+  .section-card {
+    background: var(--card); border: 1px solid var(--border); border-radius: 18px;
+    box-shadow: var(--shadow); padding: 20px 22px 22px; margin-bottom: 16px;
+  }
+  .section-title { font-size: 15px; font-weight: 700; margin-bottom: 2px; }
+  .section-sub { color: var(--muted); font-size: 12.5px; line-height: 1.65; margin-bottom: 12px; }
+  @media (hover: hover) {
+    .section-card { transition: border-color var(--t-fast) var(--ease-outc); }
+    .section-card:hover { border-color: color-mix(in srgb, var(--fg) 22%, var(--border)); }
+  }
+  .field { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+  .field > label { font-size: 12.5px; font-weight: 600; color: var(--muted); }
+  .field .sub { font-size: 12px; color: var(--muted); line-height: 1.6; }
+  .field input[type=text], .field input[type=password], .field textarea, .field select { margin: 0; }
+  .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 14px 18px; }
+  .form-grid .field-full { grid-column: 1 / -1; }
+  .data-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .data-table th {
+    text-align: left; font-size: 12px; font-weight: 600; color: var(--muted);
+    padding: 6px 10px; border-bottom: 1px solid var(--border); white-space: nowrap;
+  }
+  .data-table td { padding: 9px 10px; border-top: 1px solid var(--row-line); }
+  .data-table tbody tr:first-child td { border-top: none; }
+  .data-table th.num, .data-table td.num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .data-table td.ellip { max-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .data-table tbody tr { transition: background .15s ease; }
+  .data-table tbody tr:hover { background: color-mix(in srgb, var(--hover) 60%, transparent); }
+  /* 统一列表行（随笔/短链/设备/登录记录/备份清单等；媒体与用户列表仍走 ul.list） */
+  .list-row {
+    display: flex; align-items: center; gap: 12px;
+    padding: 11px 10px; border-bottom: 1px solid var(--row-line); font-size: 14px; border-radius: 10px;
+  }
+  .list-row:last-child { border-bottom: none; }
+  .list-row:hover { background: color-mix(in srgb, var(--hover) 55%, transparent); }
+  .list-row .lr-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+  .list-row .lr-title { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .list-row .lr-sub { color: var(--muted); font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .list-row .lr-grow { flex: 1; min-width: 0; text-align: right; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--muted); font-size: 12px; }
+  .list-row .lr-side { flex: none; color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .list-row .lr-side.good { color: var(--ok); }
+  .chip-tag {
+    flex: none; font-size: 11px; font-weight: 600; padding: 2px 10px; border-radius: 999px;
+    border: 1px solid var(--border); background: var(--chip); color: var(--fg); white-space: nowrap;
+  }
+  .chip-tag.mono { font-family: ui-monospace, SFMono-Regular, Consolas, monospace; font-variant-numeric: tabular-nums; }
+  .chip-tag.ok { color: var(--ok); border-color: color-mix(in srgb, var(--ok) 35%, var(--border)); background: color-mix(in srgb, var(--ok) 9%, transparent); }
+  .chip-tag.bad { color: var(--danger); border-color: color-mix(in srgb, var(--danger) 35%, var(--border)); background: color-mix(in srgb, var(--danger) 9%, transparent); }
+  .chip-tag.banned { background: var(--fg); color: var(--bg); border-color: var(--fg); font-weight: 700; }
+  button.chip-tag { cursor: pointer; }
+  button.chip-tag:hover { border-color: var(--muted); opacity: 1; }
+  /* 空状态（图标 + 主文案 + 副文案；列表/卡片通用） */
+  .empty-state { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 5px; padding: 36px 16px; color: var(--muted); }
+  .empty-state .es-ico {
+    width: 46px; height: 46px; border-radius: 14px; margin-bottom: 4px;
+    display: flex; align-items: center; justify-content: center;
+    background: var(--chip); color: var(--muted);
+  }
+  .empty-state .es-ico svg { width: 22px; height: 22px; display: block; }
+  .empty-state .es-title { color: var(--fg); font-weight: 600; font-size: 14px; }
+  .empty-state .es-hint { font-size: 12.5px; line-height: 1.65; max-width: 430px; }
+  /* 骨架屏（加载占位；reduced-motion 由全局压缩规则一并瞬时化） */
+  @keyframes skPulse { 0%, 100% { opacity: 1; } 50% { opacity: .45; } }
+  .sk { border-radius: 8px; background: var(--chip); animation: skPulse 1.4s ease-in-out infinite; }
+  .sk-row { display: flex; align-items: center; gap: 12px; padding: 12px 4px; border-bottom: 1px solid var(--row-line); }
+  .sk-row:last-child { border-bottom: none; }
+  .sk-row .sk-dot { width: 34px; height: 34px; border-radius: 50%; flex: none; }
+  .sk-row .sk-lines { flex: 1; display: flex; flex-direction: column; gap: 8px; }
+  .sk-row .sk-l1 { height: 12px; width: 34%; }
+  .sk-row .sk-l2 { height: 10px; width: 62%; }
+  /* 自绘开关（原生 checkbox 视觉替换：input 仍保留语义与 JS 读写能力，label 包裹即切换） */
+  .switch { position: relative; display: inline-flex; flex: none; width: 40px; height: 23px; }
+  .switch input { position: absolute; opacity: 0; width: 100%; height: 100%; margin: 0; cursor: pointer; }
+  .switch .sw-track {
+    position: absolute; inset: 0; border-radius: 999px; pointer-events: none;
+    background: var(--chip); border: 1px solid var(--border);
+    transition: background .18s ease, border-color .18s ease;
+  }
+  .switch .sw-thumb {
+    position: absolute; top: 50%; left: 3px; width: 17px; height: 17px; border-radius: 50%;
+    background: var(--card); box-shadow: 0 1px 3px rgba(0,0,0,.28); pointer-events: none;
+    transform: translateY(-50%); transition: transform .18s cubic-bezier(.2,.7,.3,1.2);
+  }
+  .switch input:checked ~ .sw-track { background: var(--brand); border-color: var(--brand); }
+  .switch input:checked ~ .sw-thumb { transform: translate(15px, -50%); }
+  .switch input:disabled { cursor: default; }
+  .switch input:disabled ~ .sw-track { opacity: .45; }
+  .switch input:focus-visible ~ .sw-track { outline: 2px solid var(--fg); outline-offset: 2px; }
+  .switch-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  /* 分段/筛选钮（新标记用 .seg-btn；旧 vm-chip/el-chip/range-btn/player-mode-btn 的激活态收编为同一份反色 chip） */
+  .seg { display: inline-flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+  .seg-btn {
+    padding: 5px 13px; font-size: 12.5px; border-radius: 999px; cursor: pointer;
+    border: 1px solid var(--border); background: transparent; color: var(--muted);
+    transition: background .15s, color .15s, border-color .15s;
+  }
+  .seg-btn:hover { color: var(--fg); border-color: var(--muted); opacity: 1; }
+  .seg-btn.on { background: var(--fg); color: var(--bg); border-color: var(--fg); font-weight: 600; opacity: 1; }
+  .vm-chip.active, .el-chip.active, .range-btn.active, .player-mode-btn.active { background: var(--fg); color: var(--bg); border-color: var(--fg); }
+  /* 用量条（存储分区/邮件额度）与迷你柱状图 */
+  .meter-row { display: flex; align-items: center; gap: 12px; padding: 9px 0; font-size: 13px; border-bottom: 1px solid var(--row-line); }
+  .meter-row:last-child { border-bottom: none; }
+  .meter-row .mt-name { flex: none; min-width: 64px; color: var(--muted); }
+  .meter-row .mt-track { flex: 1; height: 8px; border-radius: 999px; background: var(--chip); overflow: hidden; }
+  .meter-row .mt-track i { display: block; height: 100%; width: 0; border-radius: 999px; background: var(--brand); transition: width .3s ease; }
+  .meter-row .mt-track i.warn { background: var(--warn); }
+  .meter-row .mt-track i.danger { background: var(--danger); }
+  .meter-row .mt-meta { flex: none; font-size: 12px; color: var(--muted); white-space: nowrap; font-variant-numeric: tabular-nums; }
+  .mini-bars { display: flex; align-items: flex-end; gap: 6px; height: 52px; padding-top: 6px; }
+  .mini-bars .mb-col { flex: 1; min-width: 0; text-align: center; }
+  .mini-bars .mb-bar { background: var(--brand); opacity: .85; border-radius: 3px; }
+  .mini-bars .mb-lbl { font-size: 10px; color: var(--muted); margin-top: 3px; }
+  /* 登录门：标题与整行按钮 */
+  .gate-title { font-size: 21px; font-weight: 800; letter-spacing: .01em; margin-bottom: 10px; }
+  .btn-block { display: block; width: 100%; margin-top: 4px; }
   /* 移动端适配 */
   @media (max-width: 900px) {
     /* 窄屏：导航回抽屉，胶囊只留 汉堡/头像/动作钮（前台式占满行宽） */
@@ -738,6 +852,11 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
     body.nav-open aside.sidenav { transform: translateX(0); box-shadow: 0 0 0 100vmax rgba(0,0,0,.45); }
     main.content { padding: 16px 16px 40px; }
     .card { padding: 16px; border-radius: 14px; }
+    .section-card { padding: 16px; border-radius: 14px; }
+    .page-head { margin-bottom: 14px; }
+    .page-head h2 { font-size: 19px; }
+    .page-head .ph-actions { width: 100%; }
+    .page-head .ph-actions .meta2 { flex: 1 1 100%; }
     ul.list li { flex-wrap: wrap; row-gap: 8px; padding: 10px 2px; }
     ul.list li .title { flex: 1 1 40%; }
     ul.list li .meta { margin-left: auto; }
@@ -773,42 +892,48 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
 <body>
 <div class="gate-wrap" id="gateWrap">
   <div class="card" id="setupCard" hidden>
+    <p class="gate-title">YHuo 管理后台</p>
     <p class="hint">首次使用：创建超级管理员账号。这个账号只创建这一次，请记好用户名和密码。</p>
-    <input type="text" id="setupUser" placeholder="用户名" autocomplete="username">
-    <input type="password" id="setupPass" placeholder="密码（至少 6 位）" autocomplete="new-password">
-    <input type="password" id="setupPass2" placeholder="再输入一遍密码" autocomplete="new-password">
-    <button id="setupBtn">创建并进入后台</button>
+    <div class="field"><label for="setupUser">用户名</label><input type="text" id="setupUser" autocomplete="username"></div>
+    <div class="field"><label for="setupPass">密码</label><input type="password" id="setupPass" placeholder="至少 6 位" autocomplete="new-password"></div>
+    <div class="field"><label for="setupPass2">确认密码</label><input type="password" id="setupPass2" placeholder="再输入一遍密码" autocomplete="new-password"></div>
+    <button id="setupBtn" class="btn-block">创建并进入后台</button>
     <div class="msg" id="setupMsg"></div>
   </div>
 
   <div class="card" id="loginCard" hidden>
+    <p class="gate-title">YHuo 管理后台</p>
     <p class="hint">请登录管理后台。</p>
-    <input type="text" id="loginUser" placeholder="用户名" autocomplete="username">
-    <input type="password" id="loginPass" placeholder="密码" autocomplete="current-password">
+    <div class="field"><label for="loginUser">用户名</label><input type="text" id="loginUser" autocomplete="username"></div>
+    <div class="field"><label for="loginPass">密码</label><input type="password" id="loginPass" autocomplete="current-password"></div>
     <!-- 管理员 2FA：开启后密码通过还要输邮箱验证码（此行默认隐藏，needCode 时出现） -->
     <input type="text" id="loginCode" placeholder="6 位邮箱验证码" inputmode="numeric" maxlength="6" autocomplete="one-time-code" style="display:none">
-    <button id="loginBtn">登录</button>
+    <button id="loginBtn" class="btn-block">登录</button>
     <!-- 忘记密码：管理员邮箱验证码重置（未绑邮箱/未启用邮件服务时隐藏，由前端拉 /api/settings 判断） -->
-    <button id="adminForgotBtn" class="ghost" type="button" style="width:100%;margin-top:8px;display:none">忘记密码？</button>
+    <button id="adminForgotBtn" class="ghost btn-block" type="button" style="margin-top:8px;display:none">忘记密码？</button>
     <div class="msg" id="loginMsg"></div>
   </div>
 
   <div class="card" id="adminResetCard" hidden>
+    <p class="gate-title">重置密码</p>
     <p class="hint">通过绑定的管理员邮箱重置密码。</p>
-    <input type="text" id="arEmail" placeholder="管理员邮箱" autocomplete="email">
-    <div style="display:flex;gap:8px">
-      <input type="text" id="arCode" inputmode="numeric" maxlength="6" placeholder="验证码" style="flex:1" autocomplete="one-time-code">
-      <button id="arSendBtn" class="ghost" type="button">发送验证码</button>
+    <div class="field"><label for="arEmail">管理员邮箱</label><input type="text" id="arEmail" autocomplete="email"></div>
+    <div class="field"><label for="arCode">验证码</label>
+      <div style="display:flex;gap:8px">
+        <input type="text" id="arCode" inputmode="numeric" maxlength="6" placeholder="6 位验证码" style="flex:1" autocomplete="one-time-code">
+        <button id="arSendBtn" class="ghost" type="button">发送验证码</button>
+      </div>
     </div>
-    <input type="password" id="arNewPass" placeholder="新密码（至少 6 位）" autocomplete="new-password">
-    <button id="arSubmitBtn">重置密码</button>
-    <button id="arBackBtn" class="ghost" type="button" style="width:100%;margin-top:8px">返回登录</button>
+    <div class="field"><label for="arNewPass">新密码</label><input type="password" id="arNewPass" placeholder="至少 6 位" autocomplete="new-password"></div>
+    <button id="arSubmitBtn" class="btn-block">重置密码</button>
+    <button id="arBackBtn" class="ghost btn-block" type="button" style="margin-top:8px">返回登录</button>
     <div class="msg" id="arMsg"></div>
   </div>
 
   <div class="card" id="neterrCard" hidden>
+    <p class="gate-title">YHuo 管理后台</p>
     <p class="hint">无法连接服务器。你的网络访问 Cloudflare 可能不稳定，请稍候点击重试（或检查代理/VPN）。</p>
-    <button id="retryBtn">重试</button>
+    <button id="retryBtn" class="btn-block">重试</button>
     <div class="msg" id="netMsg"></div>
   </div>
 </div>
@@ -869,6 +994,7 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
 
     <main class="content">
       <div id="overviewPanel">
+        <div class="page-head"><div><h2>概览</h2><p class="ph-desc">站点内容总量、访问趋势与 AI / 邮件用量一览。</p></div></div>
         <div class="stats" id="stats">
           <div class="stat"><div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg></div><div><div class="num" id="statMusic">0</div><div class="lbl">音乐</div></div></div>
           <div class="stat"><div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M2 8h20M2 16h20M8 4v16M16 4v16"/></svg></div><div><div class="num" id="statVideo">0</div><div class="lbl">视频</div></div></div>
@@ -896,18 +1022,21 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
             <strong>AI 用量</strong>
             <span class="meta2" id="aiUsageSumm"></span>
           </div>
-          <div id="aiUsageBody"><p class="hint" style="margin:0">加载中…</p></div>
+          <div id="aiUsageBody"><div class="sk-row"><span class="sk sk-dot"></span><span class="sk-lines"><span class="sk sk-l1"></span><span class="sk sk-l2"></span></span></div><div class="sk-row"><span class="sk sk-dot"></span><span class="sk-lines"><span class="sk sk-l1"></span><span class="sk sk-l2"></span></span></div></div>
         </div>
         <div class="card" id="mailUsageCard">
           <div class="visit-head">
             <strong>邮件统计</strong>
             <span class="meta2" id="mailUsageSumm"></span>
           </div>
-          <div id="mailUsageBody"><p class="hint" style="margin:0">加载中…</p></div>
+          <div id="mailUsageBody"><div class="sk-row"><span class="sk sk-dot"></span><span class="sk-lines"><span class="sk sk-l1"></span><span class="sk sk-l2"></span></span></div><div class="sk-row"><span class="sk sk-dot"></span><span class="sk-lines"><span class="sk sk-l1"></span><span class="sk sk-l2"></span></span></div></div>
         </div>
       </div>
 
       <div id="mediaPanel" hidden>
+    <div class="page-head">
+      <div><h2 id="mediaPhTitle">音乐管理</h2><p class="ph-desc" id="mediaPhDesc">站内曲库：前台迷你播放条与悬浮播放器的数据源。</p></div>
+    </div>
     <div class="upload-row" id="uploadRow">
       <input type="file" id="fileInput" multiple>
       <button type="button" class="ghost file-pick-btn" id="filePickBtn">
@@ -947,22 +1076,26 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
           <button id="batchDelBtn" class="danger" hidden>删除所选</button>
         </div>
         <ul class="list" id="list"></ul>
-        <div class="empty" id="empty" hidden>还没有内容，先上传一个文件吧。也可以拖动条目调整顺序。</div>
+        <div class="empty-state" id="empty" hidden>
+          <span class="es-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/></svg></span>
+          <span class="es-title">还没有内容</span>
+          <span class="es-hint">先上传一个文件吧；也可以拖动条目调整顺序。</span>
+        </div>
       </div>
     </div>
   </div>
 
   <div id="notesPanel" hidden>
-    <p class="appear-label2" style="margin-top:0">随笔管理（前台 /notes/ 时间线；保存后访客刷新即生效）</p>
+    <div class="page-head"><div><h2>随笔管理</h2><p class="ph-desc">前台 /notes/ 时间线的内容源；保存后访客刷新即生效。</p></div></div>
     <div class="card" style="margin-bottom:16px">
       <p class="appear-label2" style="margin-top:0" id="noteFormTitle">新增随笔（日期自动取当天）</p>
-      <div class="bgset-row">
-        <input type="text" id="noteMood" placeholder="天气 / 时段（可空，如 晴 / 雨 / 夜）" maxlength="12" style="max-width:210px">
+      <div class="field" style="max-width:280px"><label for="noteMood">天气 / 时段（可空）</label>
+        <input type="text" id="noteMood" placeholder="如 晴 / 雨 / 夜" maxlength="12">
       </div>
-      <div class="bgset-row" style="margin-top:8px;align-items:flex-start">
-        <textarea id="noteText" placeholder="正文（1~2000 字；支持迷你 Markdown：**粗** *斜* 行内码 [链接](url) > 引用，前台按它渲染）" rows="4" style="max-width:680px;width:100%;resize:vertical"></textarea>
+      <div class="field" style="margin-top:12px"><label for="noteText">正文</label>
+        <textarea id="noteText" rows="4" placeholder="1~2000 字；支持迷你 Markdown：**粗** *斜* 行内码 [链接](url) > 引用，前台按它渲染"></textarea>
       </div>
-      <div class="bgset-row" style="margin-top:8px">
+      <div class="bgset-row" style="margin-top:10px">
         <button id="noteSaveBtn" type="button">保存</button>
         <button id="noteCancelEditBtn" class="ghost" type="button" hidden>取消编辑</button>
         <span class="meta2" id="noteFormMsg"></span>
@@ -979,14 +1112,16 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
   </div>
 
   <div id="linksPanel" hidden>
-    <p class="appear-label2" style="margin-top:0">外链缩短：创建后 /s/码 302 跳转并计次（前台直接访问 /s/码 即生效）</p>
+    <div class="page-head"><div><h2>短链管理</h2><p class="ph-desc">创建 /s/码 302 跳转外链并计次；访客直接访问 /s/码 即生效。</p></div></div>
     <div class="card" style="margin-bottom:16px">
-      <div class="bgset-row" style="margin-top:0">
-        <input type="text" id="linkCode" placeholder="自定义短码（可空，2~32 位字母数字_-）" maxlength="32" style="max-width:250px">
-        <input type="text" id="linkUrl" placeholder="目标链接（http(s):// 开头）" style="flex:1;min-width:180px;max-width:420px">
-        <button id="linkCreateBtn" type="button">创建</button>
+      <div class="form-grid">
+        <div class="field"><label for="linkCode">自定义短码（可空）</label><input type="text" id="linkCode" placeholder="2~32 位字母数字_-" maxlength="32"></div>
+        <div class="field"><label for="linkUrl">目标链接</label><input type="text" id="linkUrl" placeholder="http(s):// 开头"></div>
       </div>
-      <p class="hint" style="margin:8px 0 0">短码留空则自动生成 6 位；与站内路由撞名的保留路径（admin / api / assets / 图片音乐等）不接受。</p>
+      <div class="bgset-row" style="margin-top:12px">
+        <button id="linkCreateBtn" type="button">创建短链</button>
+        <span class="meta2">短码留空则自动生成 6 位；与站内路由撞名的保留路径（admin / api / assets / 图片音乐等）不接受。</span>
+      </div>
     </div>
     <div class="card">
       <div class="visit-head"><strong>全部短链</strong><span class="meta2" id="linksSumm"></span></div>
@@ -995,59 +1130,85 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
   </div>
 
   <div id="userPanel" hidden>
-    <div class="list-tools">
-      <input type="text" id="userSearch" placeholder="搜索用户名…">
-      <button class="ghost" id="userSortBtn" title="切换排序">注册时间：新→旧</button>
+    <div class="page-head"><div><h2>用户管理</h2><p class="ph-desc">注册用户列表：搜索、封禁与删除。封禁立即踢下线；删除同时清除其数据，不可恢复。</p></div></div>
+    <div class="card">
+      <div class="list-tools" style="margin-top:0">
+        <input type="text" id="userSearch" placeholder="搜索用户名…">
+        <button class="ghost" id="userSortBtn" title="切换排序">注册时间：新→旧</button>
+      </div>
+      <ul class="list" id="userList"></ul>
+      <div class="empty-state" id="userEmpty" hidden>
+        <span class="es-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></span>
+        <span class="es-title">还没有用户</span>
+        <span class="es-hint">有访客在前台注册后会出现在这里。</span>
+      </div>
     </div>
-    <ul class="list" id="userList"></ul>
-    <div class="empty" id="userEmpty" hidden>还没有用户注册。</div>
   </div>
 
   <div id="appearancePanel" hidden>
-    <p class="hint">这里设置的是全站默认外观：访客自己在主页没改过时才会采用；改过的以访客本地选择为准。</p>
-    <p class="appear-label2">默认主题色</p>
-    <div class="accent-row" id="accentRow"></div>
-    <p class="appear-label2">默认背景图</p>
-    <div class="bgset-row">
-      <img id="bgPreview" class="bg-preview" hidden alt="当前默认背景">
-      <span id="bgNone" class="meta2">未设置（使用网站自带背景）</span>
-      <input type="file" id="bgFileInput" accept=".jpg,.jpeg,.png,.gif,.webp,.avif,.bmp" hidden>
-      <button id="bgUploadBtn2" class="ghost">上传背景图</button>
-      <button id="bgClearBtn2" class="danger">清除</button>
+    <div class="page-head"><div><h2>外观设置</h2><p class="ph-desc">全站默认外观：访客自己在主页没改过时才会采用；改过的以访客本地选择为准。</p></div></div>
+    <div class="section-card">
+      <p class="section-title">默认主题色</p>
+      <div class="accent-row" id="accentRow" style="margin-top:12px"></div>
     </div>
-    <p class="appear-label2">默认背景模糊</p>
-    <div class="bgset-row">
-      <input type="range" id="bgBlurAdmin" min="0" max="30" value="0" style="max-width:220px">
-      <span class="meta2" id="bgBlurAdminVal">未设置（访客不模糊）</span>
-      <button id="bgBlurSaveBtn" class="ghost">保存模糊度</button>
+    <div class="section-card">
+      <p class="section-title">默认背景图</p>
+      <div class="bgset-row" style="margin-top:12px">
+        <img id="bgPreview" class="bg-preview" hidden alt="当前默认背景">
+        <span id="bgNone" class="meta2">未设置（使用网站自带背景）</span>
+        <input type="file" id="bgFileInput" accept=".jpg,.jpeg,.png,.gif,.webp,.avif,.bmp" hidden>
+        <button id="bgUploadBtn2" class="ghost">上传背景图</button>
+        <button id="bgClearBtn2" class="danger">清除</button>
+      </div>
     </div>
-    <p class="appear-label2">主页寄语（保存多条后前台随机显示其一，全部删除则恢复每日一言）</p>
-    <div id="quoteRows"></div>
-    <div class="bgset-row" style="margin-top:8px">
-      <button id="quoteAddBtn" class="ghost" type="button">添加一条</button>
-      <button id="quoteSaveBtn" class="ghost" type="button">保存寄语</button>
+    <div class="section-card">
+      <p class="section-title">默认背景模糊</p>
+      <div class="bgset-row" style="margin-top:12px">
+        <input type="range" id="bgBlurAdmin" min="0" max="30" value="0" style="max-width:220px">
+        <span class="meta2" id="bgBlurAdminVal">未设置（访客不模糊）</span>
+        <button id="bgBlurSaveBtn" class="ghost">保存模糊度</button>
+      </div>
     </div>
-    <p class="appear-label2">功能开关（关闭的界面前台直接隐藏，保存后访客下次进页面生效）</p>
-    <div id="flagRows"></div>
-    <div class="bgset-row" style="margin-top:8px">
-      <button id="flagSaveBtn" class="ghost" type="button">保存功能开关</button>
-      <span class="meta2">AI 界面跟随「AI」页的全局启用开关，不在这里控制。</span>
+    <div class="section-card">
+      <p class="section-title">主页寄语</p>
+      <p class="section-sub">保存多条后前台随机显示其一；全部删除则恢复每日一言。</p>
+      <div id="quoteRows"></div>
+      <div class="bgset-row" style="margin-top:10px">
+        <button id="quoteAddBtn" class="ghost" type="button">添加一条</button>
+        <button id="quoteSaveBtn" class="ghost" type="button">保存寄语</button>
+      </div>
     </div>
-    <p class="appear-label2">底部音乐播放器样式（两种款式共用站内曲库，访客下次进页面生效）</p>
-    <div class="bgset-row">
-      <button id="playerModeMini" class="ghost player-mode-btn" type="button">迷你播放条（原版）</button>
-      <button id="playerModeBlog" class="ghost player-mode-btn" type="button">悬浮播放器（博客款）</button>
-      <button id="playerSaveBtn" class="ghost" type="button">保存播放器设置</button>
+    <div class="section-card">
+      <p class="section-title">功能开关</p>
+      <p class="section-sub">关闭的界面前台直接隐藏，保存后访客下次进页面生效。AI 界面跟随「AI」页的全局启用开关，不在这里控制。</p>
+      <div id="flagRows"></div>
+      <div class="bgset-row" style="margin-top:12px">
+        <button id="flagSaveBtn" class="ghost" type="button">保存功能开关</button>
+      </div>
     </div>
-    <p class="appear-label2">备份</p>
-    <div class="bgset-row">
-      <button id="exportBtn" class="ghost">导出媒体清单备份（JSON）</button>
-      <span class="meta2">含全部媒体条目与访问地址；KV 里的文件本体请自行下载保存。</span>
+    <div class="section-card">
+      <p class="section-title">底部音乐播放器</p>
+      <p class="section-sub">两种款式共用站内曲库，保存后访客下次进页面生效。</p>
+      <div class="seg" style="margin-top:2px">
+        <button id="playerModeMini" class="ghost player-mode-btn" type="button">迷你播放条（原版）</button>
+        <button id="playerModeBlog" class="ghost player-mode-btn" type="button">悬浮播放器（博客款）</button>
+      </div>
+      <div class="bgset-row" style="margin-top:12px">
+        <button id="playerSaveBtn" class="ghost" type="button">保存播放器设置</button>
+      </div>
+    </div>
+    <div class="section-card">
+      <p class="section-title">备份</p>
+      <div class="bgset-row" style="margin-top:12px">
+        <button id="exportBtn" class="ghost">导出媒体清单备份（JSON）</button>
+        <span class="meta2">含全部媒体条目与访问地址；KV 里的文件本体请自行下载保存。</span>
+      </div>
     </div>
   </div>
 
   <div id="aiPanel" hidden>
-    <p class="appear-label2">模型供应商</p>
+    <div class="page-head"><div><h2>AI 服务</h2><p class="ph-desc">配置模型供应商、API Key 与模型列表；前台 AI 助手经服务端代理调用，Key 永不下发到浏览器。</p></div></div>
+    <p class="appear-label2" style="margin-top:0">模型供应商</p>
     <div class="ai-mgr">
       <aside class="ai-mgr-side">
         <div class="ai-mgr-group">自定义供应商</div>
@@ -1098,75 +1259,99 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
       </div>
       <div class="ai-mgr-empty" id="aiProvEmpty">从左侧选择一个供应商，或点"添加供应商"。</div>
     </div>
-    <p class="appear-label2" style="margin-top:18px">全局开关</p>
-    <div class="bgset-row">
-      <button id="aiToggleBtn" class="ghost">停用 AI</button>
-      <span class="meta2" id="aiStateText">状态读取中…</span>
+    <div class="section-card" style="margin-top:18px">
+      <p class="section-title">全局开关</p>
+      <div class="bgset-row" style="margin-top:10px">
+        <button id="aiToggleBtn" class="ghost">停用 AI</button>
+        <span class="meta2" id="aiStateText">状态读取中…</span>
+      </div>
     </div>
   </div>
 
   <div id="emailPanel" hidden>
-    <p class="appear-label2">邮件服务（用于注册邮箱验证 / 找回密码 / 登录二次验证）</p>
-    <p class="ai-mgr-label">服务商（都走 HTTP API，Workers 原生支持）</p>
-    <span id="emailProviderDrop" class="ai-drop-full"></span>
-    <p class="ai-mgr-label">发件地址（需在服务商侧完成发件人验证）</p>
-    <input type="text" id="emailFrom" placeholder="noreply@yourdomain.com" style="max-width:320px">
-    <p class="ai-mgr-label">API Key</p>
-    <div class="ai-key-wrap">
-      <input type="password" id="emailApiKey" autocomplete="new-password" placeholder="re_…（Resend）/ xkeysib-…（Brevo）">
-      <button id="emailKeyEye" class="icon-mini ai-key-eye" type="button" title="显示/隐藏"></button>
+    <div class="page-head">
+      <div><h2>邮件服务</h2><p class="ph-desc">注册邮箱验证 / 找回密码 / 登录二次验证与课表提醒邮件都在这里配置。</p></div>
+      <div class="ph-actions">
+        <span class="meta2" id="emailStateText">状态读取中…</span>
+        <button id="emailToggleBtn" class="ghost" type="button">停用</button>
+        <button id="emailSaveBtn" type="button">保存配置</button>
+      </div>
     </div>
-    <p class="meta2" id="emailKeyHint" style="margin-top:6px">未设置</p>
-    <p class="ai-mgr-label" style="margin-top:14px">站长邮箱（"仅站长使用"模式下唯一能收验证码的地址，填你注册 Resend 的邮箱；清空后点"保存配置"即移除，"仅站长使用"会自动关闭）</p>
-    <input type="text" id="emailOwnerInput" placeholder="you@example.com" style="max-width:320px">
-    <div class="bgset-row" style="margin-top:14px">
-      <button id="emailAdminOnlyBtn" class="ghost" type="button">开启"仅站长使用"</button>
-      <span class="meta2" id="emailAdminOnlyText">关闭：所有用户可用邮箱功能</span>
+    <div class="section-card">
+      <p class="section-title">服务配置</p>
+      <p class="section-sub">服务商都走 HTTP API（Cloudflare Workers 原生支持）；API Key 保存后不再回显，编辑留空即保留原值。</p>
+      <div class="form-grid">
+        <div class="field"><label>服务商</label><span id="emailProviderDrop" class="ai-drop-full"></span></div>
+        <div class="field"><label for="emailFrom">发件地址</label><input type="text" id="emailFrom" placeholder="noreply@yourdomain.com"><span class="sub">需在服务商侧完成发件人验证。</span></div>
+        <div class="field field-full"><label for="emailApiKey">API Key</label>
+          <div class="ai-key-wrap">
+            <input type="password" id="emailApiKey" autocomplete="new-password" placeholder="re_…（Resend）/ xkeysib-…（Brevo）">
+            <button id="emailKeyEye" class="icon-mini ai-key-eye" type="button" title="显示/隐藏"></button>
+          </div>
+          <span class="sub" id="emailKeyHint">未设置</span>
+        </div>
+        <div class="field field-full"><label for="emailOwnerInput">站长邮箱</label>
+          <input type="text" id="emailOwnerInput" placeholder="you@example.com">
+          <span class="sub">「仅站长使用」模式下唯一能收验证码的地址，填你注册 Resend 的邮箱；清空后点「保存配置」即移除，「仅站长使用」会自动关闭。</span>
+        </div>
+      </div>
+      <div class="bgset-row" style="margin-top:14px">
+        <button id="emailAdminOnlyBtn" class="ghost" type="button">开启"仅站长使用"</button>
+        <span class="meta2" id="emailAdminOnlyText">关闭：所有用户可用邮箱功能</span>
+      </div>
     </div>
-    <div class="bgset-row" style="margin-top:18px">
-      <button id="emailSaveBtn" type="button">保存配置</button>
-      <button id="emailToggleBtn" class="ghost" type="button">停用</button>
-      <span class="meta2" id="emailStateText">状态读取中…</span>
+    <div class="section-card">
+      <p class="section-title">测试发送</p>
+      <div class="form-grid" style="margin-top:12px">
+        <div class="field"><label for="emailTestTo">收件邮箱</label><input type="text" id="emailTestTo" placeholder="you@example.com"></div>
+      </div>
+      <div class="bgset-row" style="margin-top:12px">
+        <button id="emailTestBtn" class="ghost" type="button">发送测试邮件</button>
+      </div>
     </div>
-    <p class="appear-label2" style="margin-top:22px">测试发送</p>
-    <div class="bgset-row">
-      <input type="text" id="emailTestTo" placeholder="收件邮箱" style="max-width:260px">
-      <button id="emailTestBtn" class="ghost" type="button">发送测试邮件</button>
+    <div class="section-card">
+      <p class="section-title">自定义邮件</p>
+      <p class="section-sub">给任意邮箱发任意内容（纯文本，支持换行，≤5000 字）。</p>
+      <div class="form-grid">
+        <div class="field"><label for="emailCustomTo">收件邮箱</label><input type="text" id="emailCustomTo" placeholder="to@example.com"></div>
+        <div class="field"><label for="emailCustomSubject">邮件主题</label><input type="text" id="emailCustomSubject" placeholder="主题"></div>
+        <div class="field field-full"><label for="emailCustomText">邮件正文</label><textarea id="emailCustomText" rows="5" placeholder="正文（纯文本，支持换行）"></textarea></div>
+      </div>
+      <div class="bgset-row" style="margin-top:12px">
+        <button id="emailCustomBtn" type="button">发送</button>
+        <span class="meta2" id="emailCustomMsg"></span>
+      </div>
     </div>
-    <p class="appear-label2" style="margin-top:22px">自定义邮件（给任意邮箱发任意内容）</p>
-    <div class="bgset-row">
-      <input type="text" id="emailCustomTo" placeholder="收件邮箱" style="max-width:260px">
-      <input type="text" id="emailCustomSubject" placeholder="邮件主题" style="max-width:320px">
+    <div class="section-card">
+      <p class="section-title">课表提醒定时任务</p>
+      <p class="section-sub">用户课表的每日早报 / 重点课课前提醒。Pages Functions 不支持定时触发，需要外部 cron 每 5 分钟访问下面的 URL——推荐 cron-job.org（免费）：注册后新建任务，地址填下面的 URL，执行间隔选「每 5 分钟」。</p>
+      <div class="field">
+        <label for="schedTickUrl">Tick 地址（首次查看自动生成密钥）</label>
+        <div class="bgset-row">
+          <input type="text" id="schedTickUrl" readonly style="flex:1;min-width:220px;max-width:520px">
+          <button id="schedTickCopyBtn" class="ghost" type="button">复制</button>
+        </div>
+      </div>
+      <p class="meta2" id="schedTickLast" style="margin-top:8px"></p>
+      <div class="bgset-row" style="margin-top:8px">
+        <button id="schedTickRegenBtn" class="ghost" type="button">重新生成密钥</button>
+        <button id="schedTickRunBtn" class="ghost" type="button">立即执行一次</button>
+        <span class="meta2" id="schedTickMsg"></span>
+      </div>
+      <div class="field" style="margin-top:18px;max-width:420px">
+        <label for="schedTestTo">发送测试提醒（收件邮箱留空 = 站长邮箱）</label>
+        <div class="bgset-row">
+          <input type="text" id="schedTestTo" placeholder="留空 = 站长邮箱" style="flex:1;min-width:200px">
+          <button id="schedTestBtn" class="ghost" type="button">发送</button>
+        </div>
+        <span class="sub" id="schedTestMsg"></span>
+      </div>
+      <p class="meta2" style="margin-top:10px">按真实课表算出「今天该发什么」，立即发送早报 / 课前提醒样式的【测试】邮件（不用等真实到点，不影响防重发记录）。收件人须是绑定了已验证邮箱且启用过课表的账号；仅站长模式下只能发到站长邮箱。</p>
     </div>
-    <div class="bgset-row" style="margin-top:8px;align-items:flex-start">
-      <textarea id="emailCustomText" placeholder="邮件正文（纯文本，支持换行，≤5000 字）" rows="5" style="max-width:560px;width:100%;resize:vertical"></textarea>
-    </div>
-    <div class="bgset-row" style="margin-top:8px">
-      <button id="emailCustomBtn" type="button">发送</button>
-      <span class="meta2" id="emailCustomMsg"></span>
-    </div>
-    <p class="appear-label2" style="margin-top:26px">课表提醒定时任务（用户课表的每日早报 / 重点课课前提醒）</p>
-    <p class="meta2">Pages Functions 不支持定时触发，需要外部 cron 每 5 分钟访问下面的 URL。推荐 cron-job.org（免费）：注册后新建任务，地址填下面的 URL，执行间隔选"每 5 分钟"。</p>
-    <div class="bgset-row" style="margin-top:10px">
-      <input type="text" id="schedTickUrl" readonly style="max-width:460px">
-      <button id="schedTickCopyBtn" class="ghost" type="button">复制</button>
-    </div>
-    <p class="meta2" id="schedTickLast" style="margin-top:8px"></p>
-    <div class="bgset-row" style="margin-top:8px">
-      <button id="schedTickRegenBtn" class="ghost" type="button">重新生成密钥</button>
-      <button id="schedTickRunBtn" class="ghost" type="button">立即执行一次</button>
-      <span class="meta2" id="schedTickMsg"></span>
-    </div>
-    <p class="appear-label2" style="margin-top:18px">发送测试提醒</p>
-    <div class="bgset-row" style="margin-top:8px">
-      <input type="text" id="schedTestTo" placeholder="收件邮箱（留空=站长邮箱）" style="max-width:260px">
-      <button id="schedTestBtn" class="ghost" type="button">发送测试提醒</button>
-      <span class="meta2" id="schedTestMsg"></span>
-    </div>
-    <p class="meta2" style="margin-top:6px">按真实课表算出"今天该发什么"，立即发送早报 / 课前提醒样式的【测试】邮件（不用等真实到点，不影响防重发记录）。收件人须是绑定了已验证邮箱且启用过课表的账号；仅站长模式下只能发到站长邮箱。</p>
   </div>
 
   <div id="mePanel" hidden>
+    <div class="page-head"><div><h2>我的</h2><p class="ph-desc">管理员资料、头像与账号安全。</p></div></div>
     <div class="card me-card">
       <div class="me-left">
         <div class="me-avatar" id="meAvatar"><span id="meAvatarMono">YH</span><img id="meAvatarImg" hidden alt="管理员头像"></div>
@@ -1183,7 +1368,8 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
       <input type="file" id="meAvatarInput" accept=".jpg,.jpeg,.png,.gif,.webp" hidden>
     </div>
     <div class="card" id="meEmailCard" style="margin-top:16px" hidden>
-      <p class="appear-label2" style="margin-top:0">管理员邮箱（绑定后可用邮箱验证码重置后台密码）</p>
+      <p class="appear-label2" style="margin-top:0">管理员邮箱</p>
+      <p class="meta2" style="margin-bottom:12px">绑定后可用邮箱验证码重置后台密码。</p>
       <div class="bgset-row" id="meEmailBoundRow" hidden>
         <span class="meta2" id="meEmailText"></span>
         <button id="meEmailRemoveBtn" class="danger" type="button">解绑</button>
@@ -1204,16 +1390,18 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
       <p class="appear-label2" style="margin-top:0">安全 · SECURITY</p>
 
       <p class="appear-label2">修改密码</p>
-      <input type="password" id="mePwdOld" placeholder="当前密码" autocomplete="current-password" style="max-width:280px">
-      <input type="password" id="mePwdNew" placeholder="新密码（6-100 位）" autocomplete="new-password" style="max-width:280px">
-      <div class="bgset-row" style="margin-top:8px">
+      <div class="form-grid" style="max-width:640px">
+        <div class="field"><label for="mePwdOld">当前密码</label><input type="password" id="mePwdOld" autocomplete="current-password"></div>
+        <div class="field"><label for="mePwdNew">新密码</label><input type="password" id="mePwdNew" placeholder="6-100 位" autocomplete="new-password"></div>
+      </div>
+      <div class="bgset-row" style="margin-top:12px">
         <button id="mePwdBtn" type="button">修改密码</button>
       </div>
       <p class="meta2" id="mePwdMsg" style="margin:8px 0 0">改密后其他设备会被退出登录，当前设备保持不变。</p>
 
       <p class="appear-label2">登录二次验证（邮箱验证码）</p>
-      <div class="bgset-row">
-        <input type="checkbox" id="me2faOn" style="width:auto;accent-color:var(--fg)">
+      <div class="switch-row">
+        <span class="switch"><input type="checkbox" id="me2faOn"><span class="sw-track"></span><span class="sw-thumb"></span></span>
         <span class="meta2">登录时向绑定的管理员邮箱发送验证码</span>
       </div>
       <p class="meta2" id="me2faMsg" style="margin:8px 0 0"></p>
@@ -1229,26 +1417,27 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
     </div>
   </div>
   <div id="statusPanel" hidden>
-    <div class="card" id="stStorageCard" style="margin-top:16px">
+    <div class="page-head"><div><h2>状态</h2><p class="ph-desc">存储空间、邮件额度、数据备份与前端错误监控。</p></div></div>
+    <div class="card" id="stStorageCard">
       <div class="visit-head"><strong>存储空间</strong><span class="meta2" id="stStorageSumm"></span></div>
-      <div id="stStorageBody"><p class="hint" style="margin:0">加载中…</p></div>
+      <div id="stStorageBody"><div class="sk-row"><span class="sk sk-dot"></span><span class="sk-lines"><span class="sk sk-l1"></span><span class="sk sk-l2"></span></span></div><div class="sk-row"><span class="sk sk-dot"></span><span class="sk-lines"><span class="sk sk-l1"></span><span class="sk sk-l2"></span></span></div></div>
     </div>
-    <div class="card" id="stMailCard" style="margin-top:16px">
+    <div class="card" id="stMailCard">
       <div class="visit-head"><strong>邮件发送额度</strong><span class="meta2" id="stMailSumm"></span></div>
-      <div id="stMailBody"><p class="hint" style="margin:0">加载中…</p></div>
+      <div id="stMailBody"><div class="sk-row"><span class="sk sk-dot"></span><span class="sk-lines"><span class="sk sk-l1"></span><span class="sk sk-l2"></span></span></div></div>
     </div>
-    <div class="card" id="stBackupCard" style="margin-top:16px">
+    <div class="card" id="stBackupCard">
       <div class="visit-head"><strong>数据备份</strong><span class="meta2" id="stBackupSumm"></span></div>
-      <div id="stBackupBody"><p class="hint" style="margin:0">加载中…</p></div>
+      <div id="stBackupBody"><div class="sk-row"><span class="sk sk-dot"></span><span class="sk-lines"><span class="sk sk-l1"></span><span class="sk sk-l2"></span></span></div><div class="sk-row"><span class="sk sk-dot"></span><span class="sk-lines"><span class="sk sk-l1"></span><span class="sk sk-l2"></span></span></div></div>
       <div class="bgset-row" style="margin-top:12px">
         <button id="stBackupNowBtn" class="ghost" type="button">立即备份</button>
         <span class="meta2" id="stBackupTip"></span>
       </div>
       <p class="meta2" style="margin:8px 0 0">每日自动备份到 KV，保留最近 7 份（随课表提醒的定时任务每天顺带执行）。</p>
     </div>
-    <div class="card" id="stRumCard" style="margin-top:16px">
+    <div class="card" id="stRumCard">
       <div class="visit-head"><strong>前端错误</strong><span class="meta2" id="stRumSumm"></span></div>
-      <div id="stRumBody"><p class="hint" style="margin:0">加载中…</p></div>
+      <div id="stRumBody"><div class="sk-row"><span class="sk sk-dot"></span><span class="sk-lines"><span class="sk sk-l1"></span><span class="sk sk-l2"></span></span></div></div>
       <div class="bgset-row" style="margin-top:12px">
         <button id="stRumClearBtn" class="ghost" type="button">清空</button>
         <span class="meta2" id="stRumTip"></span>
@@ -1328,7 +1517,24 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
     lrc: ico('<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M9 13h6M9 17h4"/>'),
     disc: ico('<circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="2.5"/>'),
     x: ico('<path d="M18 6 6 18M6 6l12 12"/>'),
+    chat: ico('<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>'),
+    shield: ico('<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>'),
+    clock: ico('<circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>'),
   };
+
+  // ---------- 骨架屏 / 空状态（列表类加载与空数据的统一形态；纯字符串拼接，禁模板字面量） ----------
+  function skListHtml(n) {
+    var out = '';
+    for (var i = 0; i < (n || 4); i++) {
+      out += '<div class="sk-row"><span class="sk sk-dot"></span><span class="sk-lines"><span class="sk sk-l1"></span><span class="sk sk-l2"></span></span></div>';
+    }
+    return out;
+  }
+  function emptyStateHtml(icon, title, hint) {
+    return '<div class="empty-state"><span class="es-ico">' + icon + '</span>' +
+      '<span class="es-title">' + escapeHtml(title) + '</span>' +
+      (hint ? '<span class="es-hint">' + escapeHtml(hint) + '</span>' : '') + '</div>';
+  }
 
   // ---------- 黑白主题切换（浅色 / 深色，本地记住） ----------
   var SUN_SVG = '<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/>';
@@ -1715,7 +1921,7 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
       if (!d.ok) return;
       var body = $('aiUsageBody');
       if (!d.total || !d.total.calls) {
-        body.innerHTML = '<p class="hint" style="margin:0">还没有 AI 对话数据，去前台聊几句就有了。</p>';
+        body.innerHTML = emptyStateHtml(ICO.chat, '还没有 AI 对话数据', '去前台聊几句，这里就会按模型汇总用量。');
         $('aiUsageSumm').textContent = '';
         return;
       }
@@ -1724,20 +1930,19 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
         return t.toLocaleString() + ' tokens / ' + r.calls + ' 次';
       }
       $('aiUsageSumm').textContent = '今日 ' + fmt(d.today) + ' · 近 14 天 ' + fmt(d.d14) + ' · 近 30 天 ' + fmt(d.d30);
-      var html = '<table style="width:100%;border-collapse:collapse;font-size:13px">';
-      html += '<tr style="color:var(--muted)">' +
-        '<th style="text-align:left;padding:4px 6px;font-weight:600">模型</th>' +
-        '<th style="text-align:right;padding:4px 6px;font-weight:600">调用</th>' +
-        '<th style="text-align:right;padding:4px 6px;font-weight:600">输入 tokens</th>' +
-        '<th style="text-align:right;padding:4px 6px;font-weight:600">输出 tokens</th></tr>';
+      var html = '<table class="data-table"><thead><tr>' +
+        '<th>模型</th>' +
+        '<th class="num">调用</th>' +
+        '<th class="num">输入 tokens</th>' +
+        '<th class="num">输出 tokens</th></tr></thead><tbody>';
       d.byModel.forEach(function (m) {
         html += '<tr>' +
-          '<td style="padding:5px 6px;border-top:1px solid var(--row-line);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:0">' + escapeHtml(m.provider + ' / ' + m.model) + '</td>' +
-          '<td style="padding:5px 6px;border-top:1px solid var(--row-line);text-align:right;white-space:nowrap">' + m.calls + '</td>' +
-          '<td style="padding:5px 6px;border-top:1px solid var(--row-line);text-align:right;white-space:nowrap">' + Number(m.prompt).toLocaleString() + '</td>' +
-          '<td style="padding:5px 6px;border-top:1px solid var(--row-line);text-align:right;white-space:nowrap">' + Number(m.completion).toLocaleString() + '</td></tr>';
+          '<td class="ellip">' + escapeHtml(m.provider + ' / ' + m.model) + '</td>' +
+          '<td class="num">' + m.calls + '</td>' +
+          '<td class="num">' + Number(m.prompt).toLocaleString() + '</td>' +
+          '<td class="num">' + Number(m.completion).toLocaleString() + '</td></tr>';
       });
-      html += '</table>';
+      html += '</tbody></table>';
       body.innerHTML = html;
     }).catch(function () {});
   }
@@ -1798,7 +2003,7 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
       }).join('') + '</div>';
       var logs = d.logs || [];
       if (!logs.length) {
-        html += '<p class="hint" style="margin:4px 0 0">暂无发送记录。</p>';
+        html += emptyStateHtml(ICO.chat, '暂无发送记录', '发出第一封邮件后，最近 20 条明细会列在这里。');
       } else {
         html += logs.map(function (l) {
           var subj = l.kind === 'code' ? '验证码邮件' : (l.subject || '');
@@ -1821,21 +2026,20 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
       $('mailUsageSumm').textContent = '今日 ' + d.today + ' · 近 14 天 ' + d.d14 + ' · 近 30 天 ' + d.d30;
       var html = '';
       if (d.total) {
-        html = '<table style="width:100%;border-collapse:collapse;font-size:13px">';
-        html += '<tr style="color:var(--muted)">' +
-          '<th style="text-align:left;padding:4px 6px;font-weight:600">用途</th>' +
-          '<th style="text-align:right;padding:4px 6px;font-weight:600">累计发送</th></tr>';
+        html = '<table class="data-table"><thead><tr>' +
+          '<th>用途</th>' +
+          '<th class="num">累计发送</th></tr></thead><tbody>';
         (d.byKind || []).forEach(function (k) {
           html += '<tr>' +
-            '<td style="padding:5px 6px;border-top:1px solid var(--row-line)">' + (MAIL_KIND_NAMES[k.kind] || k.kind || '—') + '</td>' +
-            '<td style="padding:5px 6px;border-top:1px solid var(--row-line);text-align:right;white-space:nowrap">' + k.count + '</td></tr>';
+            '<td>' + (MAIL_KIND_NAMES[k.kind] || k.kind || '—') + '</td>' +
+            '<td class="num">' + k.count + '</td></tr>';
         });
-        html += '</table>';
+        html += '</tbody></table>';
       } else {
-        html = '<p class="hint" style="margin:0">还没有成功的发送记录，发出第一封邮件后这里会有统计（失败记录见下方明细）。</p>';
+        html = emptyStateHtml(ICO.chat, '还没有成功的发送记录', '发出第一封邮件后这里会有统计（失败记录见下方明细）。');
       }
       html += '<div class="mail-sec-title">近 14 天发送趋势</div><div id="mailTrend"></div>' +
-        '<div class="mail-sec-title">发送明细（最近 20 条）</div><div id="mailLogBox"><p class="hint" style="margin:0">加载中…</p></div>';
+        '<div class="mail-sec-title">发送明细（最近 20 条）</div><div id="mailLogBox">' + skListHtml(3) + '</div>';
       $('mailUsageBody').innerHTML = html;
       renderMailTrend(d.d14days || []);
       loadMailLogs();
@@ -2338,8 +2542,15 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
     }
     var filtering = !!q || (currentType === 'image' && !!albumFilter); // 筛选视图只读，不排不拖
     list.innerHTML = '';
-    $('empty').hidden = showArr.length > 0;
-    $('empty').textContent = arr.length ? '没有匹配「' + q + '」的文件。' : '还没有内容，先上传一个文件吧。也可以拖动条目调整顺序。';
+    var ebox = $('empty');
+    ebox.hidden = showArr.length > 0;
+    if (arr.length) {
+      ebox.querySelector('.es-title').textContent = '没有匹配的文件';
+      ebox.querySelector('.es-hint').textContent = '没有文件名包含「' + q + '」，换个关键词试试。';
+    } else {
+      ebox.querySelector('.es-title').textContent = '还没有内容';
+      ebox.querySelector('.es-hint').textContent = '先上传一个文件吧；也可以拖动条目调整顺序。';
+    }
     showArr.forEach(function (it) {
       var i = arr.indexOf(it);
       var li = document.createElement('li');
@@ -2627,31 +2838,31 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
     $('stStorageSumm').textContent = fmtSize(sd.total) + ' / 1 GB（' + stPct.toFixed(1) + '%）' + (stPct >= 80 ? '，快满了请清理' : '');
     function srow(name, size, pct2, count) {
       var b = pct2 >= 90 ? ' danger' : (pct2 >= 80 ? ' warn' : '');
-      return '<div class="st-row"><span class="st-name">' + name + '</span>' +
-        '<div class="st-bar"><i class="' + b + '" style="width:' + Math.min(100, pct2).toFixed(1) + '%"></i></div>' +
-        '<span class="st-meta">' + fmtSize(size) + (count ? ' · ' + count + ' 个' : '') + '</span></div>';
+      return '<div class="meter-row"><span class="mt-name">' + name + '</span>' +
+        '<div class="mt-track"><i class="' + b + '" style="width:' + Math.min(100, pct2).toFixed(1) + '%"></i></div>' +
+        '<span class="mt-meta">' + fmtSize(size) + (count ? ' · ' + count + ' 个' : '') + '</span></div>';
     }
     $('stStorageBody').innerHTML =
       srow('全部', sd.total, stPct, sd.items.reduce(function (a, x) { return a + x.count; }, 0)) +
       sd.items.map(function (x) { return srow(x.name, x.size, x.size / CAP * 100, x.count); }).join('');
 
     // 邮件发送额度：服务商上限 - 今日已发（本地计数估算）
-    $('stMailBody').innerHTML = '<p class="hint" style="margin:0">加载中…</p>';
+    $('stMailBody').innerHTML = skListHtml(2);
     $('stMailSumm').textContent = '';
     api('/api/admin/email').then(function (cfg) {
       var cOk = cfg && cfg.ok;
       if (!cOk) {
-        $('stMailBody').innerHTML = '<p class="hint" style="margin:0">读取失败，请稍后重试。</p>';
+        $('stMailBody').innerHTML = emptyStateHtml(ICO.x, '读取失败', '请稍后重试。');
         return;
       }
       if (!cfg.enabled) {
         $('stMailSumm').textContent = '未启用';
-        $('stMailBody').innerHTML = '<p class="hint" style="margin:0">邮件服务未启用，请到「邮件」页配置并开启后再查看额度。</p>';
+        $('stMailBody').innerHTML = emptyStateHtml(ICO.clock, '邮件服务未启用', '到「邮件」页配置并开启后再查看额度。');
         return;
       }
       api('/api/admin/email/usage').then(function (u) {
         if (!u || !u.ok) {
-          $('stMailBody').innerHTML = '<p class="hint" style="margin:0">读取失败，请稍后重试。</p>';
+          $('stMailBody').innerHTML = emptyStateHtml(ICO.x, '读取失败', '请稍后重试。');
           return;
         }
         var pname = cfg.provider === 'brevo' ? 'Brevo（300 封/天）' : 'Resend（100 封/天）';
@@ -2661,9 +2872,9 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
         $('stMailSumm').textContent = '今日已发 ' + today + ' 封';
         var html = '<div class="mail-quota">' +
           '<div class="mq-line"><span class="meta2">服务商</span><span>' + pname + '</span></div>' +
-          '<div class="st-row" style="padding-left:0"><span class="st-name">今日已发</span>' +
-          '<div class="st-bar"><i class="' + (today / cap >= 0.8 ? ' warn' : '') + '" style="width:' + Math.min(100, today / cap * 100).toFixed(1) + '%"></i></div>' +
-          '<span class="st-meta">' + today + ' / ' + cap + ' 封</span></div>' +
+          '<div class="meter-row"><span class="mt-name">今日已发</span>' +
+          '<div class="mt-track"><i class="' + (today / cap >= 0.8 ? ' warn' : '') + '" style="width:' + Math.min(100, today / cap * 100).toFixed(1) + '%"></i></div>' +
+          '<span class="mt-meta">' + today + ' / ' + cap + ' 封</span></div>' +
           '<div class="mq-line"><span class="meta2">剩余免费额度</span><span><strong style="font-size:16px">' + left + '</strong> 封</span></div>' +
           '</div>';
         // 近 7 天每日发送（迷你柱状）
@@ -2671,10 +2882,10 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
         if (d7.length) {
           var m7 = 1;
           d7.forEach(function (d) { if (d.count > m7) m7 = d.count; });
-          html += '<div class="mail-sec-title">近 7 天每日发送</div><div style="display:flex;align-items:flex-end;gap:6px;height:48px;padding-top:6px">' +
+          html += '<div class="mail-sec-title">近 7 天每日发送</div><div class="mini-bars">' +
             d7.map(function (d) {
               var h = Math.max(d.count > 0 ? 3 : 1, Math.round(d.count / m7 * 38));
-              return '<div style="flex:1;text-align:center"><div style="background:var(--fg);opacity:.85;border-radius:3px;height:' + h + 'px" title="' + d.day + '：' + d.count + ' 封"></div><div style="font-size:10px;color:var(--muted);margin-top:3px">' + d.day.slice(5) + '</div></div>';
+              return '<div class="mb-col"><div class="mb-bar" style="height:' + h + 'px" title="' + d.day + '：' + d.count + ' 封"></div><div class="mb-lbl">' + d.day.slice(5) + '</div></div>';
             }).join('') + '</div>';
         }
         $('stMailBody').innerHTML = html;
@@ -2684,16 +2895,16 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
 
   // ---------- 状态页 · 数据备份卡（D1 每日自动备份，KV 保留最近 7 份） ----------
   function loadBackupCard() {
-    $('stBackupBody').innerHTML = '<p class="hint" style="margin:0">加载中…</p>';
+    $('stBackupBody').innerHTML = skListHtml(3);
     $('stBackupSumm').textContent = '';
     api('/api/admin/backup').then(function (d) {
       if (!d || !d.ok) {
-        $('stBackupBody').innerHTML = '<p class="hint" style="margin:0">读取失败，请稍后重试。</p>';
+        $('stBackupBody').innerHTML = emptyStateHtml(ICO.x, '读取失败', '请稍后重试。');
         return;
       }
       $('stBackupSumm').textContent = d.lastdate ? ('最近备份：' + d.lastdate) : '还没有备份';
       if (!(d.list || []).length) {
-        $('stBackupBody').innerHTML = '<p class="hint" style="margin:0">还没有备份文件，点下方「立即备份」马上生成第一份。</p>';
+        $('stBackupBody').innerHTML = emptyStateHtml(ICO.box, '还没有备份文件', '点下方「立即备份」马上生成第一份。');
         return;
       }
       var rows = '';
@@ -2703,14 +2914,14 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
           countsTxt = (b.counts.notes || 0) + ' 随笔 · ' + (b.counts.messages || 0) + ' 留言 · ' +
             (b.counts.checkins || 0) + ' 签到 · ' + (b.counts.users || 0) + ' 用户';
         }
-        rows += '<div class="st-row"><span class="st-name" style="width:auto">' + b.date + '</span>' +
-          '<span class="st-meta" style="flex:1;text-align:right">' + countsTxt + '</span>' +
+        rows += '<div class="list-row"><span class="chip-tag mono">' + b.date + '</span>' +
+          '<span class="lr-grow">' + countsTxt + '</span>' +
           '<a class="meta2" style="color:var(--fg);text-decoration:underline" href="/api/admin/backup?date=' +
           encodeURIComponent(b.date) + '" download="yhuo-backup-' + b.date + '.json">下载</a></div>';
       });
       $('stBackupBody').innerHTML = rows;
     }).catch(function () {
-      $('stBackupBody').innerHTML = '<p class="hint" style="margin:0">读取失败，请稍后重试。</p>';
+      $('stBackupBody').innerHTML = emptyStateHtml(ICO.x, '读取失败', '请稍后重试。');
     });
   }
   $('stBackupNowBtn').addEventListener('click', function () {
@@ -2733,11 +2944,11 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
   // ---------- 状态页 · 前端错误卡（RUM：前台报错经 /api/rum 入库，本卡只读+清空） ----------
   var rumTotal = 0; // 最近一次拉到的总条数，「清空」确认弹窗文案用
   function loadRumCard() {
-    $('stRumBody').innerHTML = '<p class="hint" style="margin:0">加载中…</p>';
+    $('stRumBody').innerHTML = skListHtml(3);
     $('stRumSumm').textContent = '';
     api('/api/admin/rum').then(function (d) {
       if (!d || !d.ok) {
-        $('stRumBody').innerHTML = '<p class="hint" style="margin:0">读取失败，请稍后重试。</p>';
+        $('stRumBody').innerHTML = emptyStateHtml(ICO.x, '读取失败', '请稍后重试。');
         return;
       }
       var list = d.list || [];
@@ -2758,7 +2969,7 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
         summ.appendChild(document.createTextNode(list[0] ? ' · 最近：' + fmtDate(list[0].created_at) : ''));
       }
       if (!list.length) {
-        $('stRumBody').innerHTML = '<p class="hint" style="margin:0">还没有收到前端错误，一切正常。</p>';
+        $('stRumBody').innerHTML = emptyStateHtml(ICO.shield, '一切正常', '还没有收到前端错误上报。');
         return;
       }
       // 最近 10 条列表：时间 · path · msg 首行；全部 textContent 组装（错误消息来自访客端，防注入），
@@ -2766,29 +2977,17 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
       $('stRumBody').innerHTML = '';
       list.slice(0, 10).forEach(function (r) {
         var row = document.createElement('div');
-        row.className = 'st-row';
+        row.className = 'list-row';
         row.title = r.stack || r.msg || '';
         var time = document.createElement('span');
-        time.className = 'st-name';
-        time.style.width = 'auto';
-        time.style.flex = 'none';
+        time.className = 'chip-tag mono';
         time.textContent = fmtDate(r.created_at);
         var path = document.createElement('span');
-        path.className = 'st-meta';
-        path.style.flex = '0 1 auto';
-        path.style.minWidth = '0';
-        path.style.overflow = 'hidden';
-        path.style.textOverflow = 'ellipsis';
-        path.style.whiteSpace = 'nowrap';
+        path.className = 'lr-side';
         path.textContent = r.path || '/';
         var msg = document.createElement('span');
-        msg.className = 'st-meta';
-        msg.style.flex = '1';
-        msg.style.minWidth = '0';
-        msg.style.overflow = 'hidden';
-        msg.style.textOverflow = 'ellipsis';
-        msg.style.whiteSpace = 'nowrap';
-        msg.style.textAlign = 'right';
+        msg.className = 'lr-grow';
+        msg.style.color = 'var(--fg)';
         msg.textContent = String(r.msg || '').split('\\n')[0]; // 只取首行，完整 stack 悬停看（坑 18：模板里反斜杠必须双写，否则换行转义被求值成真换行打断字符串）
         row.appendChild(time);
         row.appendChild(path);
@@ -2796,7 +2995,7 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
         $('stRumBody').appendChild(row);
       });
     }).catch(function () {
-      $('stRumBody').innerHTML = '<p class="hint" style="margin:0">读取失败，请稍后重试。</p>';
+      $('stRumBody').innerHTML = emptyStateHtml(ICO.x, '读取失败', '请稍后重试。');
     });
   }
   $('stRumClearBtn').addEventListener('click', function () {
@@ -3005,8 +3204,12 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
       return userSortDesc ? b.id - a.id : a.id - b.id; // id 顺序即注册顺序
     });
     list.innerHTML = '';
-    $('userEmpty').hidden = arr.length > 0;
-    $('userEmpty').textContent = users.length ? '没有匹配「' + q + '」的用户。' : '还没有用户注册。';
+    var ue = $('userEmpty');
+    ue.hidden = arr.length > 0;
+    ue.querySelector('.es-title').textContent = users.length ? '没有匹配的用户' : '还没有用户';
+    ue.querySelector('.es-hint').textContent = users.length
+      ? ('没有用户名包含「' + q + '」的注册用户，换个关键词试试。')
+      : '有访客在前台注册后会出现在这里。';
     arr.forEach(function (u) {
       var li = document.createElement('li');
 
@@ -3027,7 +3230,7 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
       title.textContent = u.username;
 
       var badge = document.createElement('span');
-      badge.className = 'badge ' + (u.banned ? 'banned' : 'ok');
+      badge.className = 'chip-tag ' + (u.banned ? 'banned' : 'ok');
       badge.textContent = u.banned ? '已禁用' : '正常';
 
       var meta = document.createElement('span');
@@ -3035,6 +3238,8 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
       meta.textContent = '注册于 ' + fmtDate(u.created_at) + ' · ' + fmtRel(u.last_seen_at)
         + (u.email ? ' · ' + u.email + (u.twofa_enabled ? '（2FA）' : '') : '');
 
+      var actions = document.createElement('div');
+      actions.className = 'row-actions';
       var ban = document.createElement('button');
       ban.className = 'ghost';
       ban.textContent = u.banned ? '解封' : '禁用';
@@ -3045,8 +3250,9 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
       del.textContent = '删除';
       del.addEventListener('click', function () { removeUser(u); });
 
+      actions.appendChild(ban); actions.appendChild(del);
       li.appendChild(avatar); li.appendChild(title); li.appendChild(badge); li.appendChild(meta);
-      li.appendChild(ban); li.appendChild(del);
+      li.appendChild(actions);
       list.appendChild(li);
     });
   }
@@ -4192,13 +4398,13 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
 
   function loadNotes() {
     var listEl = $('notesList');
-    listEl.innerHTML = '<p class="hint" style="margin:0">加载中…</p>';
+    listEl.innerHTML = skListHtml(4);
     api('/api/admin/notes').then(function (d) {
-      if (!d.ok) { listEl.innerHTML = '<p class="hint" style="margin:0">' + escapeHtml(d.error || '加载失败') + '</p>'; return; }
+      if (!d.ok) { listEl.innerHTML = emptyStateHtml(ICO.x, '加载失败', d.error || '请稍后重试。'); return; }
       notesCache = d.list || [];
       renderNotesList();
     }).catch(function () {
-      listEl.innerHTML = '<p class="hint" style="margin:0">加载失败</p>';
+      listEl.innerHTML = emptyStateHtml(ICO.x, '加载失败', '网络异常，请稍后重试。');
     });
   }
 
@@ -4207,35 +4413,40 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
     listEl.textContent = '';
     $('notesSumm').textContent = notesCache.length ? ('共 ' + notesCache.length + ' 条 · 按日期倒序') : '';
     if (!notesCache.length) {
-      var pe = document.createElement('p');
-      pe.className = 'meta2';
-      pe.textContent = '还没有随笔。在上方新增，或点「从静态清单导入」把 notes/notes.json 的存量搬进数据库。';
-      listEl.appendChild(pe);
+      listEl.innerHTML = emptyStateHtml(ICO.pencil, '还没有随笔', '在上方新增，或点「从静态清单导入」把 notes/notes.json 的存量搬进数据库。');
       return;
     }
     var frag = document.createDocumentFragment();
     notesCache.forEach(function (n) {
       var row = document.createElement('div');
-      row.className = 'st-row';
+      row.className = 'list-row';
       row.style.alignItems = 'flex-start';
       var dEl = document.createElement('span');
-      dEl.className = 'st-name';
-      dEl.style.whiteSpace = 'nowrap';
+      dEl.className = 'chip-tag mono';
       dEl.textContent = n.date;
       row.appendChild(dEl);
-      var mid = document.createElement('span');
-      mid.className = 'meta2';
-      mid.style.flex = '1';
-      mid.style.minWidth = '0';
+      var mid = document.createElement('div');
+      mid.className = 'lr-main';
+      mid.style.gap = '0';
       var t = String(n.text || '').replace(/\\s+/g, ' ');
       if (t.length > 60) t = t.slice(0, 60) + '…';
-      mid.textContent = t + (n.mood ? ('　（' + n.mood + '）') : '');
+      var txt = document.createElement('span');
+      txt.className = 'lr-title';
+      txt.style.fontWeight = '400';
+      txt.style.whiteSpace = 'normal';
+      txt.style.lineHeight = '1.55';
+      txt.textContent = t;
+      mid.appendChild(txt);
+      if (n.mood) {
+        var moodEl = document.createElement('span');
+        moodEl.className = 'lr-sub';
+        moodEl.textContent = '天气/时段：' + n.mood;
+        mid.appendChild(moodEl);
+      }
       mid.title = String(n.text || '');
       row.appendChild(mid);
       var actions = document.createElement('span');
-      actions.style.display = 'flex';
-      actions.style.gap = '4px';
-      actions.style.flex = 'none';
+      actions.className = 'row-actions';
       var editBtn = document.createElement('button');
       editBtn.className = 'icon-mini';
       editBtn.title = '编辑';
@@ -4345,13 +4556,13 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
 
   function loadLinks() {
     var listEl = $('linksList');
-    listEl.innerHTML = '<p class="hint" style="margin:0">加载中…</p>';
+    listEl.innerHTML = skListHtml(4);
     api('/api/admin/links').then(function (d) {
-      if (!d.ok) { listEl.innerHTML = '<p class="hint" style="margin:0">' + escapeHtml(d.error || '加载失败') + '</p>'; return; }
+      if (!d.ok) { listEl.innerHTML = emptyStateHtml(ICO.x, '加载失败', d.error || '请稍后重试。'); return; }
       linksCache = d.list || [];
       renderLinksList();
     }).catch(function () {
-      listEl.innerHTML = '<p class="hint" style="margin:0">加载失败</p>';
+      listEl.innerHTML = emptyStateHtml(ICO.x, '加载失败', '网络异常，请稍后重试。');
     });
   }
 
@@ -4376,40 +4587,33 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
     listEl.textContent = '';
     $('linksSumm').textContent = linksCache.length ? ('共 ' + linksCache.length + ' 条 · 按创建时间倒序 · 点短码复制') : '';
     if (!linksCache.length) {
-      var pe = document.createElement('p');
-      pe.className = 'meta2';
-      pe.textContent = '还没有短链。在上方填目标链接创建，短码留空则自动生成 6 位。';
-      listEl.appendChild(pe);
+      listEl.innerHTML = emptyStateHtml(ICO.box, '还没有短链', '在上方填目标链接创建，短码留空则自动生成 6 位。');
       return;
     }
     var frag = document.createDocumentFragment();
     linksCache.forEach(function (it) {
       var row = document.createElement('div');
-      row.className = 'st-row';
+      row.className = 'list-row';
       var codeEl = document.createElement('button');
-      codeEl.className = 'icon-mini';
+      codeEl.className = 'chip-tag mono';
       codeEl.title = '点击复制完整短链（创建于 ' + fmtDate(it.created_at) + '）';
       codeEl.textContent = '/s/' + it.code;
-      codeEl.style.cssText = 'font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:12.5px';
       codeEl.addEventListener('click', function () { copyShortLink(it.code); });
       row.appendChild(codeEl);
       var mid = document.createElement('span');
-      mid.className = 'meta2';
-      mid.style.flex = '1';
-      mid.style.minWidth = '0';
-      mid.style.overflow = 'hidden';
-      mid.style.textOverflow = 'ellipsis';
-      mid.style.whiteSpace = 'nowrap';
+      mid.className = 'lr-grow';
+      mid.style.textAlign = 'left';
+      mid.style.fontSize = '13px';
+      mid.style.color = 'var(--fg)';
       mid.textContent = it.url || '';
       mid.title = it.url || '';
       row.appendChild(mid);
       var cEl = document.createElement('span');
-      cEl.className = 'meta2';
-      cEl.style.flex = 'none';
-      cEl.style.fontVariantNumeric = 'tabular-nums';
+      cEl.className = 'lr-side' + (it.clicks > 0 ? ' good' : '');
       cEl.textContent = (it.clicks || 0) + ' 次';
-      if (it.clicks > 0) cEl.style.color = 'var(--ok)'; // 有跳转的标绿，一眼看出哪些链在用
       row.appendChild(cEl);
+      var actions = document.createElement('span');
+      actions.className = 'row-actions';
       var delBtn = document.createElement('button');
       delBtn.className = 'icon-mini danger-hover';
       delBtn.title = '删除';
@@ -4434,7 +4638,8 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
           }
         });
       });
-      row.appendChild(delBtn);
+      actions.appendChild(delBtn);
+      row.appendChild(actions);
       frag.appendChild(row);
     });
     listEl.appendChild(frag);
@@ -4603,67 +4808,54 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
     sess.textContent = '';
     (d.sessions || []).forEach(function (s) {
       var row = document.createElement('div');
-      row.className = 'st-row';
+      row.className = 'list-row';
       var name = document.createElement('span');
-      name.className = 'st-name';
-      name.textContent = s.current ? '本设备' : '其他';
-      if (s.current) { name.style.color = 'var(--ok)'; name.style.fontWeight = '700'; }
+      name.className = 'chip-tag' + (s.current ? ' ok' : '');
+      name.textContent = s.current ? '本设备' : '其他设备';
       row.appendChild(name);
       var mid = document.createElement('span');
-      mid.className = 'meta2';
-      mid.style.flex = '1';
-      mid.style.minWidth = '0';
-      mid.style.overflow = 'hidden';
-      mid.style.textOverflow = 'ellipsis';
-      mid.style.whiteSpace = 'nowrap';
+      mid.className = 'lr-grow';
+      mid.style.textAlign = 'left';
+      mid.style.fontSize = '13px';
+      mid.style.color = 'var(--fg)';
       mid.textContent = s.ua || '未知设备';
       mid.title = s.ua || '';
       row.appendChild(mid);
       var meta = document.createElement('span');
-      meta.className = 'st-meta';
+      meta.className = 'lr-side';
       meta.textContent = (s.ip || 'IP 未知') + ' · ' + fmtShortTime(s.created_at);
       row.appendChild(meta);
       sess.appendChild(row);
     });
     if (!(d.sessions || []).length) {
-      var pe = document.createElement('p');
-      pe.className = 'meta2';
-      pe.textContent = '暂无有效会话';
-      sess.appendChild(pe);
+      sess.innerHTML = emptyStateHtml(ICO.clock, '暂无有效会话', '当前登录会话生效后这里会列出全部设备。');
     }
     // 最近登录列表
     var logs = $('meLogins');
     logs.textContent = '';
     (d.logins || []).forEach(function (l) {
       var row = document.createElement('div');
-      row.className = 'st-row';
+      row.className = 'list-row';
       var mark = document.createElement('span');
-      mark.className = 'st-name';
-      mark.textContent = l.ok ? '✓' : '✕';
-      mark.style.color = l.ok ? 'var(--ok)' : 'var(--danger)';
-      mark.style.fontWeight = '700';
+      mark.className = 'chip-tag mono ' + (l.ok ? 'ok' : 'bad');
+      mark.textContent = l.ok ? '成功' : '失败';
       row.appendChild(mark);
       var mid = document.createElement('span');
-      mid.className = 'meta2';
-      mid.style.flex = '1';
-      mid.style.minWidth = '0';
-      mid.style.overflow = 'hidden';
-      mid.style.textOverflow = 'ellipsis';
-      mid.style.whiteSpace = 'nowrap';
+      mid.className = 'lr-grow';
+      mid.style.textAlign = 'left';
+      mid.style.fontSize = '13px';
+      mid.style.color = 'var(--fg)';
       mid.textContent = (l.note ? l.note + ' · ' : '') + (l.ip || '');
       mid.title = l.ua || '';
       row.appendChild(mid);
       var meta = document.createElement('span');
-      meta.className = 'st-meta';
+      meta.className = 'lr-side';
       meta.textContent = fmtShortTime(l.created_at);
       row.appendChild(meta);
       logs.appendChild(row);
     });
     if (!(d.logins || []).length) {
-      var p2 = document.createElement('p');
-      p2.className = 'meta2';
-      p2.textContent = '暂无记录（本次上线后开始积累）';
-      logs.appendChild(p2);
+      logs.innerHTML = emptyStateHtml(ICO.clock, '暂无记录', '本次上线后开始积累登录记录。');
     }
   }
 
@@ -4837,6 +5029,14 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
       $('selAll').checked = false;
       $('batchDelBtn').hidden = true;
       if (type !== 'image') albumFilter = '';
+      // 媒体页页面标题区：三档子页共用一个面板，标题/说明随当前子页切换
+      var MEDIA_DESCS = {
+        music: '站内曲库：前台迷你播放条与悬浮播放器的数据源。',
+        video: '首页右侧视频轮播的数据源，可设顺序 / 独播 / 随机。',
+        image: '相册分组与前台背景选择器的图源。'
+      };
+      $('mediaPhTitle').textContent = TYPE_NAMES[type] + '管理';
+      $('mediaPhDesc').textContent = MEDIA_DESCS[type] || '';
       renderList();
     }
     // 首页视频播放模式栏：仅视频页显示，进入时加载设置
@@ -4856,8 +5056,8 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
     if (targetPanel && targetPanel !== lastEnterPanel) {
       lastEnterPanel = targetPanel;
       targetPanel.classList.remove('panel-enter');
-      // 卡片级联入场：给面板里的卡片/统计卡按顺序写 --stagger-i（封顶 8，后面的同时入场）
-      var stag = targetPanel.querySelectorAll('.card, .stat');
+      // 卡片级联入场：给面板里的卡片/统计卡/分组卡/标题区按顺序写 --stagger-i（封顶 8，后面的同时入场）
+      var stag = targetPanel.querySelectorAll('.card, .stat, .section-card, .page-head');
       for (var si = 0; si < stag.length; si++) stag[si].style.setProperty('--stagger-i', String(Math.min(si, 8)));
       void targetPanel.offsetWidth; // 强制 reflow 以重播动画
       targetPanel.classList.add('panel-enter');

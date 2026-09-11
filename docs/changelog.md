@@ -1,5 +1,9 @@
 # 更新日志
 
+## 2026-09-11
+
+* **后台：管理界面 UI 现代化（2026-09-11，仅动 functions/admin/index.js 单文件，后端接口零改动、全部元素 ID 不动 JS 绑定零破坏）**——12 个功能页整体重排：①**配色对齐前台**：语义变量换前台暖白纸感系（浅色 #f8f7f4 纸感底/#e6e3da 边框/#f0ede6 chip，深色对齐前台纯黑底 #000 + #1c1c1e 卡），新增 `--brand`（浅 #b0532b / 深 #c96a42，对齐前台 terracotta）与 `--on-brand`——主按钮陶土化，输入焦点环/进度条/存储条/访问趋势柱/邮件趋势柱/用量条全部改 brand 强调，顶栏胶囊毛玻璃不动；②**新组件层 CSS**（集中在「组件层（2026-09-11 UI 现代化）」注释段）：`.page-head` 页面标题区（大标题+一句说明+右侧主操作，邮件页「保存配置」等主按钮上提）/ `.section-card` 分组卡 / `.field`+`.form-grid` 字段栅格 / `.data-table` 统一表格 / `.list-row`+`.chip-tag` 统一列表行 / `.empty-state` 图标空状态 / `.sk*` 骨架屏 / `.switch` 自绘开关 / `.seg-btn` 分段钮（旧 vm-chip/el-chip/range-btn/player-mode-btn 四处重复激活态收编为一份分组规则）/ `.meter-row` 用量条 / `.mini-bars` 迷你柱图；③**逐页重排**：邮件页从「label+input 平铺堆」拆成 4 张分组卡（服务配置/测试发送/自定义邮件/课表提醒定时任务），外观页拆 6 张（主题色/背景图/背景模糊/寄语/功能开关/播放器款式/备份），概览 AI 用量与邮件统计的裸内联 table 换 .data-table，状态页存储/额度换用量条、近 7 天迷你柱图去内联样式，随笔/短链/登录设备/最近登录/备份清单换列表行+chip 徽标，用户徽标换 chip-tag 且行操作收进悬停浮现组，「我的」页改密走字段栅格、2FA 原生 checkbox 换自绘开关（geo-toggle on 态同步绿→陶土统一），媒体页/AI/用户/状态/概览等面板加页面标题区（媒体页标题随音乐/视频/图片在 switchPage 动态切换），登录门四卡加标题与 label 字段、主按钮整行化；④**加载/空态收口**：新增 skListHtml()/emptyStateHtml() 字符串助手（遵守模板串禁反引号约定），约 10 处「加载中…」裸文本换骨架屏、裸段落空态换图标空状态（含接口失败态）；⑤**清债**：删旧 .st-row/.badge 死样式与重复激活态规则，renderStatus/renderSec/renderNotesList/renderLinksList/renderUsers 的逐条内联 style 补丁全部改类；级联入场选择器扩到 .section-card/.page-head。实测：check-code 全过；本地 wrangler + 浏览器 12 页逐页过——1280/390 两档 × 深浅两主题、加载/空/失败三态、随笔新增→ask 删除全链路、退出登录看登录门、重新登录、导航悬停预览卡（预览帧内也是新 UI）全过
+
 ## 2026-09-10
 
 ## 2026-09-10（上午）

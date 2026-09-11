@@ -513,8 +513,13 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
     .img-grid .ic-ov { opacity: 0; pointer-events: none; transition: opacity .18s var(--ease-outc); }
     ul.list.img-grid li:hover .ic-ov, ul.list.img-grid li:focus-within .ic-ov { opacity: 1; pointer-events: auto; }
   }
-  /* 悬停层里的操作钮：白色玻璃底压在图片上（同前台毛玻璃配方），触屏常显不隐藏 */
-  .img-grid .ic-ov .row-actions { margin: 0; opacity: 1; pointer-events: auto; flex-basis: auto; }
+  /* 悬停层里的操作钮：白色玻璃底压在图片上（同前台毛玻璃配方），触屏常显不隐藏；
+     网格里按钮只留图标（文字 span 隐藏，说明走 title 提示）并允许居中换行，窄卡片不再溢出裁切 */
+  .img-grid .ic-ov .row-actions {
+    margin: 0; opacity: 1; pointer-events: auto; flex-basis: auto;
+    flex-wrap: wrap; justify-content: center; max-width: 100%; row-gap: 4px;
+  }
+  .img-grid .ic-ov .row-actions span { display: none; }
   .img-grid .ic-ov .row-actions button { background: rgba(255,255,255,.16); color: #ffffff; backdrop-filter: blur(4px); }
   .img-grid .ic-ov .row-actions button:hover { background: rgba(255,255,255,.28); opacity: 1; }
   .img-grid .ic-ov .row-actions button.danger:hover {
@@ -2929,6 +2934,7 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
       var del = document.createElement('button');
       del.className = 'danger';
       del.innerHTML = ICO.trash + '<span>删除</span>';
+      del.title = '删除';
       del.addEventListener('click', function () { removeItem(it); });
       actions.appendChild(del);
 

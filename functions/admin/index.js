@@ -958,6 +958,7 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
     .menu-btn { display: flex; }
     .admin-header { padding: 8px 10px 0; }
     .header-pill { width: 100%; }
+    .header-pill .header-actions { margin-left: auto; } /* 头像留在汉堡旁原位，动作钮组推到最右（2026-09-11 用户要求）；胶囊 gap:6px 兜底最小间距 */
     aside.sidenav {
       display: flex; flex-direction: column;
       position: fixed; left: 0; top: 0; z-index: 200;

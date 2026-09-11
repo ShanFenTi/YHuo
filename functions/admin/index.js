@@ -450,7 +450,7 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
   /* 相册/列表切换淡入动效（搜索输入不触发，仅在整表刷新与切相册时重播） */
   @keyframes listSwap { from { opacity: 0; transform: translateY(6px); filter: blur(4px); } to { opacity: 1; transform: none; filter: none; } }
   #list.list-swap { animation: listSwap .22s ease; }
-  .upload-row.dragover { border-color: var(--fg); background: var(--chip); }
+  .upload-row.dragover { border-color: var(--brand); background: var(--chip); }
   /* 状态页信息行/用量条改用组件层的 .list-row / .meter-row（2026-09-11 UI 现代化），旧 .st-row 已删 */
   .mail-quota { display: flex; flex-direction: column; gap: 8px; font-size: 13px; }
   .mq-line { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
@@ -477,7 +477,13 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
   .list-tools { display: flex; gap: 10px; align-items: center; margin-top: 18px; flex-wrap: wrap; }
   .list-tools input[type=text] { flex: 1 1 180px; margin: 0; }
   .list-tools label { font-size: 13px; color: var(--muted); cursor: pointer; }
-  input[type="checkbox"] { width: 16px; height: 16px; accent-color: var(--fg); cursor: pointer; flex: none; }
+  input[type="checkbox"] { width: 16px; height: 16px; accent-color: var(--brand); cursor: pointer; flex: none; }
+  /* 滑杆与勾选框同走陶土主题色（原生蓝与主题不搭） */
+  input[type="range"] { accent-color: var(--brand); }
+  input[readonly] {
+    background: color-mix(in srgb, var(--hover) 55%, var(--input-bg)); color: var(--muted);
+    font-family: ui-monospace, SFMono-Regular, Consolas, monospace; font-size: 13px;
+  }
   ul.list li .sel { flex: none; }
   .modal { position: fixed; inset: 0; z-index: 999; display: flex; align-items: center; justify-content: center; }
   .modal-backdrop { position: absolute; inset: 0; background: rgba(0,0,0,.62); }
@@ -808,6 +814,23 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
   .switch input:disabled ~ .sw-track { opacity: .45; }
   .switch input:focus-visible ~ .sw-track { outline: 2px solid var(--fg); outline-offset: 2px; }
   .switch-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  /* 搜索框：左放大镜 + 右一键清空（有值才出现）；input 事件照旧驱动各页过滤 */
+  .search-box { position: relative; display: flex; align-items: center; flex: 1 1 190px; min-width: 170px; }
+  .search-box .sb-ico { position: absolute; left: 11px; display: flex; color: var(--muted); pointer-events: none; }
+  .search-box .sb-ico svg { width: 15px; height: 15px; display: block; }
+  .search-box input[type=text] { width: 100%; padding-left: 34px; padding-right: 34px; margin: 0; }
+  .search-box .sb-clear {
+    position: absolute; right: 6px; display: none; align-items: center; justify-content: center;
+    width: 22px; height: 22px; padding: 0; border: none; border-radius: 50%;
+    background: var(--chip); color: var(--muted); cursor: pointer;
+    transition: background .15s, color .15s;
+  }
+  .search-box .sb-clear:hover { background: var(--chip-hover); color: var(--fg); }
+  .search-box .sb-clear svg { width: 11px; height: 11px; display: block; }
+  .search-box.has-value .sb-clear { display: flex; }
+  /* 字数计数器（attachCounter 动态挂在输入框下方；超 90% 转警示色） */
+  .char-count { font-size: 11px; color: var(--muted); text-align: right; margin-top: 4px; font-variant-numeric: tabular-nums; }
+  .char-count.warn { color: var(--warn); font-weight: 700; }
   /* 分段/筛选钮（新标记用 .seg-btn；旧 vm-chip/el-chip/range-btn/player-mode-btn 的激活态收编为同一份反色 chip） */
   .seg { display: inline-flex; gap: 6px; flex-wrap: wrap; align-items: center; }
   .seg-btn {
@@ -1072,7 +1095,11 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
         <div class="list-tools">
           <input type="checkbox" id="selAll">
           <label for="selAll">全选</label>
-          <input type="text" id="searchInput" placeholder="搜索文件名…">
+          <span class="search-box">
+            <span class="sb-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg></span>
+            <input type="text" id="searchInput" placeholder="搜索文件名…">
+            <button type="button" class="sb-clear" data-for="searchInput" title="清空搜索" aria-label="清空搜索"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
+          </span>
           <button id="batchDelBtn" class="danger" hidden>删除所选</button>
         </div>
         <ul class="list" id="list"></ul>
@@ -1133,7 +1160,11 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
     <div class="page-head"><div><h2>用户管理</h2><p class="ph-desc">注册用户列表：搜索、封禁与删除。封禁立即踢下线；删除同时清除其数据，不可恢复。</p></div></div>
     <div class="card">
       <div class="list-tools" style="margin-top:0">
-        <input type="text" id="userSearch" placeholder="搜索用户名…">
+        <span class="search-box">
+          <span class="sb-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg></span>
+          <input type="text" id="userSearch" placeholder="搜索用户名…">
+          <button type="button" class="sb-clear" data-for="userSearch" title="清空搜索" aria-label="清空搜索"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
+        </span>
         <button class="ghost" id="userSortBtn" title="切换排序">注册时间：新→旧</button>
       </div>
       <ul class="list" id="userList"></ul>
@@ -1225,18 +1256,22 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
           <span class="ai-mgr-flex"></span>
           <button id="aiDelProvBtn" class="icon-mini" type="button" title="删除供应商"></button>
         </div>
-        <p class="ai-mgr-label">Base URL</p>
-        <input type="text" id="aiBaseUrl" placeholder="https://api.deepseek.com（留空用所选格式的官方默认）">
-        <p class="ai-mgr-label">API 格式</p>
-        <span id="aiProtocol" class="ai-drop-full"></span>
-        <p class="ai-mgr-label">API Key</p>
-        <div class="ai-key-wrap">
-          <input type="password" id="aiApiKey" autocomplete="new-password" placeholder="sk-…">
-          <button id="aiKeyEye" class="icon-mini ai-key-eye" type="button" title="显示/隐藏"></button>
+        <div class="form-grid" style="margin-top:12px">
+          <div class="field"><label for="aiBaseUrl">Base URL</label>
+            <input type="text" id="aiBaseUrl" placeholder="https://api.deepseek.com（留空用所选格式的官方默认）">
+          </div>
+          <div class="field"><label>API 格式</label><span id="aiProtocol" class="ai-drop-full"></span></div>
         </div>
-        <p class="meta2" id="aiKeyHint" style="margin-top:6px">未设置</p>
-        <p class="ai-mgr-label">系统提示词（AI 人设，可选，≤2000 字）</p>
-        <textarea id="aiPrompt" rows="3" maxlength="2000" placeholder="例如：回答简洁友好，默认用中文。"></textarea>
+        <div class="field" style="margin-top:14px"><label for="aiApiKey">API Key</label>
+          <div class="ai-key-wrap">
+            <input type="password" id="aiApiKey" autocomplete="new-password" placeholder="sk-…">
+            <button id="aiKeyEye" class="icon-mini ai-key-eye" type="button" title="显示/隐藏"></button>
+          </div>
+          <span class="sub" id="aiKeyHint">未设置</span>
+        </div>
+        <div class="field" style="margin-top:14px"><label for="aiPrompt">系统提示词（AI 人设，可选，≤2000 字）</label>
+          <textarea id="aiPrompt" rows="3" maxlength="2000" placeholder="例如：回答简洁友好，默认用中文。"></textarea>
+        </div>
         <p class="ai-mgr-label">模型列表</p>
         <div id="aiModelRows"></div>
         <div class="ai-mgr-addmodel" id="aiAddModelWrap">
@@ -1375,15 +1410,21 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
         <button id="meEmailRemoveBtn" class="danger" type="button">解绑</button>
       </div>
       <div id="meEmailFormRow">
-        <div class="bgset-row">
-          <input type="text" id="meEmailInput" placeholder="you@example.com" style="max-width:280px">
-          <button id="meEmailSendBtn" class="ghost" type="button">发送验证码</button>
+        <div class="form-grid" style="max-width:660px">
+          <div class="field"><label for="meEmailInput">管理员邮箱</label>
+            <div class="bgset-row" style="flex-wrap:nowrap">
+              <input type="text" id="meEmailInput" placeholder="you@example.com" style="flex:1;min-width:160px">
+              <button id="meEmailSendBtn" class="ghost" type="button" style="flex:none">发送验证码</button>
+            </div>
+          </div>
+          <div class="field"><label for="meEmailCode">邮箱验证码</label>
+            <div class="bgset-row" style="flex-wrap:nowrap">
+              <input type="text" id="meEmailCode" inputmode="numeric" maxlength="6" placeholder="6 位验证码" style="flex:1;min-width:130px">
+              <button id="meEmailVerifyBtn" type="button" style="flex:none">验证并绑定</button>
+            </div>
+          </div>
         </div>
-        <div class="bgset-row" style="margin-top:8px">
-          <input type="text" id="meEmailCode" inputmode="numeric" maxlength="6" placeholder="6 位验证码" style="max-width:160px">
-          <button id="meEmailVerifyBtn" type="button">验证并绑定</button>
-        </div>
-        <p class="meta2" id="meEmailMsg" style="margin:8px 0 0"></p>
+        <p class="meta2" id="meEmailMsg" style="margin:10px 0 0"></p>
       </div>
     </div>
     <div class="card" id="meSecCard" style="margin-top:16px">
@@ -1535,6 +1576,58 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
       '<span class="es-title">' + escapeHtml(title) + '</span>' +
       (hint ? '<span class="es-hint">' + escapeHtml(hint) + '</span>' : '') + '</div>';
   }
+  // 字数计数器：输入框下方 n/上限 小字，超 90% 转警示色；重复调用安全（已挂则复用）
+  function attachCounter(el, max) {
+    if (!el) return;
+    var tip = el.nextElementSibling;
+    if (!tip || tip.className.indexOf('char-count') === -1) {
+      tip = document.createElement('div');
+      tip.className = 'char-count';
+      if (el.nextSibling) el.parentNode.insertBefore(tip, el.nextSibling);
+      else el.parentNode.appendChild(tip);
+    }
+    function sync() {
+      var n = (el.value || '').length;
+      tip.textContent = n + ' / ' + max;
+      tip.className = 'char-count' + (n > max * 0.9 ? ' warn' : '');
+    }
+    el.addEventListener('input', sync);
+    sync();
+  }
+  // 单行输入按 Enter 直接触发对应按钮（登录/初始化/短链创建；不改任何提交逻辑，只是少点一次）
+  function enterToClick(inputIds, btnId) {
+    inputIds.forEach(function (id) {
+      var el = $(id);
+      if (!el) return;
+      el.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter') { e.preventDefault(); $(btnId).click(); }
+      });
+    });
+  }
+  // 输入细节初始化（脚本在 body 末尾，DOM 均已就绪；隐藏面板里的静态控件同样可挂）
+  attachCounter($('noteText'), 2000);
+  attachCounter($('emailCustomText'), 5000);
+  attachCounter($('aiPrompt'), 2000);
+  enterToClick(['loginUser', 'loginPass', 'loginCode'], 'loginBtn');
+  enterToClick(['setupUser', 'setupPass', 'setupPass2'], 'setupBtn');
+  enterToClick(['linkCode', 'linkUrl'], 'linkCreateBtn');
+  // 搜索框：has-value 态切换清空钮显隐；清空后派发 input 事件复用各页既有过滤逻辑
+  document.querySelectorAll('.search-box').forEach(function (box) {
+    var input = box.querySelector('input');
+    if (!input) return;
+    var sync = function () { box.classList.toggle('has-value', !!(input.value || '').length); };
+    input.addEventListener('input', sync);
+    sync();
+  });
+  document.querySelectorAll('.sb-clear').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var input = $(btn.getAttribute('data-for'));
+      if (!input) return;
+      input.value = '';
+      input.dispatchEvent(new Event('input'));
+      input.focus();
+    });
+  });
 
   // ---------- 黑白主题切换（浅色 / 深色，本地记住） ----------
   var SUN_SVG = '<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/>';
@@ -3392,6 +3485,7 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
       del.addEventListener('click', function () { quoteRows.splice(i, 1); renderQuoteRows(); });
       row.appendChild(input);
       row.appendChild(del);
+      attachCounter(input, 100); // 放在 append 之后，计数器插到输入框与删除钮之间
       box.appendChild(row);
     });
     if (!quoteRows.length) {
@@ -5019,6 +5113,8 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
     }
     if (isUsers) {
       $('userSearch').value = ''; // 换进来重置搜索
+      var usb = $('userSearch').closest('.search-box');
+      if (usb) usb.classList.remove('has-value');
       loadUsers();
     }
     if (!isOverview && !isUsers && !isAppear && !isAi && !isEmail && !isMe && !isStatus && !isNotes && !isLinks) {
@@ -5026,6 +5122,8 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
       $('titleInput').value = '';
       selected = {}; // 换标签页清空勾选和搜索
       $('searchInput').value = '';
+      var msb = $('searchInput').closest('.search-box');
+      if (msb) msb.classList.remove('has-value');
       $('selAll').checked = false;
       $('batchDelBtn').hidden = true;
       if (type !== 'image') albumFilter = '';

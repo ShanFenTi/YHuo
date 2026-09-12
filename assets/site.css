@@ -6051,15 +6051,62 @@
       50% { box-shadow: 0 0 0 6px color-mix(in srgb, var(--apple-primary) 0%, transparent); }
     }
 
-    /* 人格切换：入口与菜单复用 .ai-model-btn / .ai-model-menu / .ai-model-item 全套样式，
+    /* 思考强度切换：入口与菜单复用 .ai-model-btn / .ai-model-menu / .ai-model-item 全套样式，
        这里只补菜单收窄与底部说明一行的弱化态 */
-    .ai-persona-menu { min-width: 208px; }
+    .ai-effort-menu { min-width: 208px; }
 
-    .ai-persona-note {
+    .ai-effort-note {
       padding: 2px 10px 4px;
       font-size: 11.5px;
       color: var(--apple-muted-foreground, var(--apple-foreground));
       opacity: 0.65;
+    }
+
+    /* 「思考中」等待态（2026-09-11）：三点跳动（纯 CSS 动画，零 DOM 写入）+ 耗时秒数
+       （common.js 每 1s 改一次 textContent，远低于坑 36 的 80ms 高频阈值）。
+       挂在 .ai-msg.bot.pending 气泡内，首个 delta 到达即被正文整体替换 */
+    .ai-msg.bot.pending {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      width: fit-content;
+      max-width: 100%;
+    }
+
+    .ai-thinking {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      flex: none;
+    }
+
+    .ai-thinking i {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: currentColor;
+      opacity: 0.35;
+      animation: ai-think-bounce 1.2s ease-in-out infinite;
+    }
+
+    .ai-thinking i:nth-child(2) { animation-delay: 0.15s; }
+    .ai-thinking i:nth-child(3) { animation-delay: 0.3s; }
+
+    @keyframes ai-think-bounce {
+      0%, 100% { opacity: 0.3; transform: translateY(0); }
+      50% { opacity: 1; transform: translateY(-3px); }
+    }
+
+    .ai-thinking-txt { font-weight: 600; }
+
+    .ai-thinking-sec {
+      font-size: 12px;
+      opacity: 0.55;
+      font-variant-numeric: tabular-nums;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .ai-thinking i { animation: none; opacity: 0.55; }
     }
 
     /* ========================= 天气联动粒子层（2026-09-09，common.js 末尾同名 IIFE） ========================= */

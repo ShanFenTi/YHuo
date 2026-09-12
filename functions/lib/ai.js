@@ -164,8 +164,10 @@ function toAnthropicContent(content) {
   return parts;
 }
 
-// upstream: {protocol, baseUrl, apiKey, model, systemPrompt}；messages: [{role, content}]
+// upstream: {protocol, baseUrl, apiKey, model, systemPrompt, effort}；messages: [{role, content}]
 // content 可以是字符串（纯文本）或 OpenAI 风格 parts 数组（多模态：text / image_url dataURL）
+// effort：思考强度 low|medium|high（前端可选，chat.js 白名单校验）——仅 OpenAI 兼容协议附
+// reasoning_effort；Anthropic 协议参数体系不同（thinking budget）暂不支持，忽略；空 = 不发送
 export function buildUpstreamRequest(s, messages, stream) {
   if (s.protocol === 'anthropic') {
     // Anthropic 原生：system 提示词是独立字段；消息必须 user 开头、严格交替
@@ -206,6 +208,7 @@ export function buildUpstreamRequest(s, messages, stream) {
   const body = { model: s.model, stream: !!stream, messages: msgs };
   // 流式时请求上游回传 token 用量（主流 OpenAI 兼容服务商均支持）
   if (stream) body.stream_options = { include_usage: true };
+  if (s.effort) body.reasoning_effort = s.effort; // 思考强度（选了才发；Anthropic 协议忽略）
   return {
     url: s.baseUrl.replace(/\/+$/, '') + '/chat/completions',
     init: {

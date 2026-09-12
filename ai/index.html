@@ -233,13 +233,13 @@
           <input type="file" id="aiFileInput" multiple hidden
             accept="image/*,.txt,.md,.markdown,.json,.csv,.log,.js,.ts,.mjs,.py,.html,.css,.xml,.yml,.yaml,.sh,.sql,.ini,.conf">
           <span class="ai-tools-spacer"></span>
-          <!-- 人格预设入口：与模型切换同款「纯文字 + ⌄」向上弹菜单（清单/菜单项由 common.js 渲染） -->
-          <div class="ai-model-switch ai-persona-switch" id="aiPersonaSwitch">
-            <button type="button" class="ai-model-btn ai-persona-btn" id="aiPersonaBtn" hidden aria-haspopup="listbox" aria-label="切换人格">
-              <span id="aiPersonaLabel"></span>
+          <!-- 思考强度入口：与模型切换同款「纯文字 + ⌄」向上弹菜单（清单/菜单项由 common.js 渲染） -->
+          <div class="ai-model-switch ai-effort-switch" id="aiEffortSwitch">
+            <button type="button" class="ai-model-btn ai-effort-btn" id="aiEffortBtn" hidden aria-haspopup="listbox" aria-label="切换思考强度">
+              <span id="aiEffortLabel"></span>
               <svg class="chev" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
             </button>
-            <div class="ai-model-menu ai-persona-menu" id="aiPersonaMenu" hidden role="listbox" aria-label="人格列表"></div>
+            <div class="ai-model-menu ai-effort-menu" id="aiEffortMenu" hidden role="listbox" aria-label="思考强度列表"></div>
           </div>
           <div class="ai-model-switch" id="aiModelSwitch">
             <button type="button" class="ai-model-btn" id="aiModelBtn" hidden aria-haspopup="listbox" aria-label="切换模型">

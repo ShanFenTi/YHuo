@@ -6184,34 +6184,33 @@
     var aiBusy = false;
     var aiAbort = null;
 
-    // ---------- AI 人格预设：纯前端清单，非标准人格在发送时于 POST body 附带 system 字段 ----------
-    // （服务端 chat.js 截 500 字后拼在供应商系统提示词后面，两个协议分支共用这一处；历史对话不回放人格）
-    var AI_PERSONAS = [
-      { key: 'standard', name: '标准', icon: '', prompt: '' }, // 标准：不发送 system 字段
-      { key: 'translator', name: '翻译官', icon: '🏛', prompt: '你是专业中英互译。用户发英文你译成地道中文，发中文译成流畅英文，只输出译文，不要解释。' },
-      { key: 'coder', name: '程序员', icon: '💻', prompt: '你是资深工程师，回答注重代码正确性与边界情况，给出现代写法的代码示例，先结论后解释，用中文。' },
-      { key: 'writer', name: '文案写手', icon: '✍️', prompt: '你是新媒体文案高手，擅长起标题、改写口语为有传播力的短文案，输出给 2~3 个风格候选，用中文。' },
-      { key: 'teacher', name: '解题老师', icon: '🧮', prompt: '你是耐心的老师，一步步拆解题目，先给思路再给完整解答，最后用一行总结答案，用中文。' },
-      { key: 'catgirl', name: '猫娘', icon: '🐱', prompt: '你是一只可爱的猫娘助手，说话在句尾带「喵」，回答仍然准确有用，不过度卖萌。' }
+    // ---------- AI 思考强度：纯前端选项，发送时于 POST body 附带 effort 字段 ----------
+    // （服务端 chat.js 白名单校验后仅 OpenAI 兼容协议附 reasoning_effort，Anthropic 协议忽略；
+    //   空 key = 跟随服务商默认、不发送该字段，避免不支持该参数的模型报错。历史对话不回放强度）
+    var AI_EFFORTS = [
+      { key: '', name: '默认', icon: '', note: '跟随服务商默认' },
+      { key: 'low', name: '低', icon: '🌙', note: '快速回答' },
+      { key: 'medium', name: '中', icon: '⚡', note: '均衡' },
+      { key: 'high', name: '高', icon: '🧠', note: '深度思考，更慢更耗 token' }
     ];
-    var AI_PERSONA_LS = 'yhuoAiPersona'; // 只存人格 key，跨刷新保持
-    var aiPersona = 'standard';
-    // 坑 29：顶栏悬停预览 iframe 是第二个完整站点、同源共享 localStorage——人格的读写在里面一律跳过，
-    // 避免预览帧悄悄改写（或带走）主页面选的人格
+    var AI_EFFORT_LS = 'yhuoAiEffort'; // 只存强度 key，跨刷新保持
+    var aiEffort = '';
+    // 坑 29：顶栏悬停预览 iframe 是第二个完整站点、同源共享 localStorage——强度的读写在里面一律跳过，
+    // 避免预览帧悄悄改写（或带走）主页面选的强度
     function aiInPreviewFrame() {
       try { return window.self !== window.top; } catch (e) { return true; }
     }
-    function aiPersonaCur() {
-      return AI_PERSONAS.filter(function (p) { return p.key === aiPersona; })[0] || AI_PERSONAS[0];
+    function aiEffortCur() {
+      return AI_EFFORTS.filter(function (p) { return p.key === aiEffort; })[0] || AI_EFFORTS[0];
     }
-    function aiPersonaLoad() {
+    function aiEffortLoad() {
       if (aiInPreviewFrame()) return;
       try {
-        var k = localStorage.getItem(AI_PERSONA_LS);
-        if (k && AI_PERSONAS.some(function (p) { return p.key === k; })) aiPersona = k;
+        var k = localStorage.getItem(AI_EFFORT_LS);
+        if (k !== null && AI_EFFORTS.some(function (p) { return p.key === k; })) aiEffort = k;
       } catch (e) {}
     }
-    aiPersonaLoad();
+    aiEffortLoad();
 
     function addAiMsg(role, text, pending) {
       if (!aiMessages) return null;
@@ -6326,15 +6325,15 @@
       return m ? m.name : '';
     }
 
-    // 人格入口：照模型菜单的实现模式——「纯文字 + ⌄」向上弹小菜单（清单 + 当前项 ✓ + 底部说明一行）
-    function aiPersonaLabelText() {
-      var p = aiPersonaCur();
+    // 思考强度入口：照模型菜单的实现模式——「纯文字 + ⌄」向上弹小菜单（清单 + 当前项 ✓ + 底部说明一行）
+    function aiEffortLabelText() {
+      var p = aiEffortCur();
       return (p.icon ? p.icon + ' ' : '') + p.name;
     }
-    function aiSyncPersonaSwitcher() {
-      var btn = document.getElementById('aiPersonaBtn');
-      var label = document.getElementById('aiPersonaLabel');
-      var menu = document.getElementById('aiPersonaMenu');
+    function aiSyncEffortSwitcher() {
+      var btn = document.getElementById('aiEffortBtn');
+      var label = document.getElementById('aiEffortLabel');
+      var menu = document.getElementById('aiEffortMenu');
       if (!btn || !label || !menu) return;
       // AI 未启用时与模型钮一起隐藏（输入条本来就发不出去）
       if (!(aiConfig && aiConfig.enabled)) {
@@ -6342,15 +6341,15 @@
         menu.hidden = true;
         return;
       }
-      label.textContent = aiPersonaLabelText();
+      label.textContent = aiEffortLabelText();
       btn.hidden = false;
       menu.innerHTML = '';
-      AI_PERSONAS.forEach(function (p) {
+      AI_EFFORTS.forEach(function (p) {
         var it = document.createElement('button');
         it.type = 'button';
-        it.className = 'ai-model-item' + (p.key === aiPersona ? ' active' : '');
+        it.className = 'ai-model-item' + (p.key === aiEffort ? ' active' : '');
         it.setAttribute('role', 'option');
-        it.setAttribute('aria-selected', p.key === aiPersona ? 'true' : 'false');
+        it.setAttribute('aria-selected', p.key === aiEffort ? 'true' : 'false');
         var nm = document.createElement('span');
         nm.textContent = (p.icon ? p.icon + ' ' : '') + p.name;
         it.appendChild(nm);
@@ -6359,21 +6358,21 @@
         chk.textContent = '✓';
         it.appendChild(chk);
         it.addEventListener('click', function () {
-          if (p.key !== aiPersona) {
-            aiPersona = p.key;
-            try { if (!aiInPreviewFrame()) localStorage.setItem(AI_PERSONA_LS, aiPersona); } catch (e) {}
-            label.textContent = aiPersonaLabelText();
+          if (p.key !== aiEffort) {
+            aiEffort = p.key;
+            try { if (!aiInPreviewFrame()) localStorage.setItem(AI_EFFORT_LS, aiEffort); } catch (e) {}
+            label.textContent = aiEffortLabelText();
           }
           menu.hidden = true;
         });
         menu.appendChild(it);
       });
-      // 底部说明一行：人格只在发送时附带，历史对话恢复时不带人格
+      // 底部说明一行：强度只在发送时附带，且仅部分思考类模型支持
       var foot = document.createElement('div');
       foot.className = 'ai-model-foot';
       var note = document.createElement('div');
-      note.className = 'ai-persona-note';
-      note.textContent = '人格只影响之后的回复';
+      note.className = 'ai-effort-note';
+      note.textContent = '仅部分模型支持，只影响之后的回复';
       foot.appendChild(note);
       menu.appendChild(foot);
     }
@@ -6396,7 +6395,7 @@
             } catch (e) {}
           }
           aiSyncModelSwitcher();
-          aiSyncPersonaSwitcher();
+          aiSyncEffortSwitcher();
           return aiConfig;
         });
     }
@@ -6730,10 +6729,19 @@
       var ctl = typeof AbortController === 'function' ? new AbortController() : null;
       aiAbort = ctl;
       var decoder = typeof TextDecoder === 'function' ? new TextDecoder() : null;
+      // 等待耗时秒数：1s/次更新（远低于坑 36 的 80ms 高频阈值，不会饿死揭示重扫）；
+      // 首个 delta 到达时指示节点被正文替换、finish/失败/离页时停表，isConnected 兜底防僵尸计时
+      var thinkT0 = Date.now();
+      var thinkTimer = setInterval(function () {
+        if (!pending || !pending.isConnected || finished) { clearInterval(thinkTimer); return; }
+        var sec = pending.querySelector('.ai-thinking-sec');
+        if (sec) sec.textContent = Math.round((Date.now() - thinkT0) / 1000) + 's';
+      }, 1000);
 
       function finish() {
         if (finished) return;
         finished = true;
+        clearInterval(thinkTimer);
         aiAbort = null;
         if (full) {
           if (pending) {
@@ -6786,11 +6794,11 @@
         }
       }
 
-      // 组装 payload：非标准人格在 body 附带 system 字段（服务端截 500 字、拼在供应商系统提示词后；
-      // 只随本次请求走，历史 messages 不掺人格，恢复对话即"不回放"）
-      var persona = aiPersonaCur();
+      // 组装 payload：选了思考强度就在 body 附带 effort（服务端白名单校验后仅 OpenAI 兼容协议
+      // 附 reasoning_effort）；「默认」不发字段 = 跟随服务商默认。历史 messages 不掺强度
       var payload = { messages: messages.slice(-20), model: aiCurrentModel };
-      if (persona && persona.prompt) payload.system = persona.prompt;
+      var effort = aiEffortCur().key;
+      if (effort) payload.effort = effort;
       fetch('/api/ai/chat', {
         method: 'POST',
         credentials: 'same-origin',
@@ -6838,6 +6846,7 @@
         }
         return pump();
       }).catch(function (e) {
+        if (thinkTimer) clearInterval(thinkTimer); // 失败路径也停表（pending 随即被移除）
         if (e && e.aiAuth) { aiFail(messages, pending, '登录状态已过期，请重新登录后再聊'); openGate(); return; }
         if (e && e.name === 'AbortError') { aiStopBusy(); return; } // 主动中断不提示，但必须复位 aiBusy，否则重进 AI 页发送被静默拦截
         if (e && e.aiError) { aiFail(messages, pending, e.aiError); return; }
@@ -6908,33 +6917,33 @@
       // 顶栏切换模型：只影响之后的回复，当前对话历史延续（菜单逻辑见 aiSyncModelSwitcher）
       var aiModelBtn = document.getElementById('aiModelBtn');
       var aiModelMenu = document.getElementById('aiModelMenu');
-      // 人格切换：与模型菜单同款交互，两菜单互斥（清单见 AI_PERSONAS，选中存 localStorage）
-      var aiPersonaBtn = document.getElementById('aiPersonaBtn');
-      var aiPersonaMenu = document.getElementById('aiPersonaMenu');
+      // 思考强度切换：与模型菜单同款交互，两菜单互斥（清单见 AI_EFFORTS，选中存 localStorage）
+      var aiEffortBtn = document.getElementById('aiEffortBtn');
+      var aiEffortMenu = document.getElementById('aiEffortMenu');
       if (aiModelBtn && aiModelMenu) {
         aiModelBtn.addEventListener('click', function (e) {
           e.stopPropagation();
-          if (aiPersonaMenu) aiPersonaMenu.hidden = true;
+          if (aiEffortMenu) aiEffortMenu.hidden = true;
           aiModelMenu.hidden = !aiModelMenu.hidden;
         });
       }
-      if (aiPersonaBtn && aiPersonaMenu) {
-        aiPersonaBtn.addEventListener('click', function (e) {
+      if (aiEffortBtn && aiEffortMenu) {
+        aiEffortBtn.addEventListener('click', function (e) {
           e.stopPropagation();
           if (aiModelMenu) aiModelMenu.hidden = true;
-          aiPersonaMenu.hidden = !aiPersonaMenu.hidden;
+          aiEffortMenu.hidden = !aiEffortMenu.hidden;
         });
       }
       // document 级监听登记起来，离开页面时移除（防 pjax 反复进出叠加监听）
       var onDocClick = function (e) {
         if (aiModelMenu && !aiModelMenu.hidden && !e.target.closest('#aiModelSwitch')) aiModelMenu.hidden = true;
-        if (aiPersonaMenu && !aiPersonaMenu.hidden && !e.target.closest('#aiPersonaSwitch')) aiPersonaMenu.hidden = true;
+        if (aiEffortMenu && !aiEffortMenu.hidden && !e.target.closest('#aiEffortSwitch')) aiEffortMenu.hidden = true;
       };
-      // Esc：先收模型/人格菜单，再收历史抽屉（退出页面交给浏览器返回键，不再有"关界面"动作）
+      // Esc：先收模型/强度菜单，再收历史抽屉（退出页面交给浏览器返回键，不再有"关界面"动作）
       var onDocKey = function (e) {
         if (e.key !== 'Escape') return;
         if (aiModelMenu && !aiModelMenu.hidden) { aiModelMenu.hidden = true; return; }
-        if (aiPersonaMenu && !aiPersonaMenu.hidden) { aiPersonaMenu.hidden = true; return; }
+        if (aiEffortMenu && !aiEffortMenu.hidden) { aiEffortMenu.hidden = true; return; }
         if (aiDrawerOpen()) aiCloseHistoryDrawer();
       };
       document.addEventListener('click', onDocClick);
@@ -7139,7 +7148,10 @@
             aiAttach = [];
             aiRenderAttach();
             if (aiInput) aiInput.value = '';
-            var pending = addAiMsg('bot', '思考中…', true);
+            var pending = addAiMsg('bot', '', true);
+            // 等待指示：三点跳动（纯 CSS 动画）+ 耗时秒数；首 token 到达即被正文整体替换
+            pending.innerHTML = '<span class="ai-thinking" aria-hidden="true"><i></i><i></i><i></i></span>' +
+              '<span class="ai-thinking-txt">思考中</span><span class="ai-thinking-sec">0s</span>';
             streamAiReply(aiHistory, pending);
           });
         });

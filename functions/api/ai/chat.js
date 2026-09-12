@@ -111,6 +111,12 @@ export async function onRequestPost({ request, env }) {
   const persona = typeof (body && body.system) === 'string' ? body.system.trim().slice(0, 500) : '';
   if (persona) pick.systemPrompt = pick.systemPrompt ? pick.systemPrompt + '\n\n' + persona : persona;
 
+  // 思考强度（前端可选）：body.effort ∈ low|medium|high，白名单外一律视为未选。
+  // 仅 OpenAI 兼容协议在 buildUpstreamRequest 里附 reasoning_effort；Anthropic 协议不支持该参数，忽略。
+  // 「默认」= 前端不发 effort = 不向上游发送该字段（避免不支持 reasoning_effort 的模型报 400）
+  const EFFORTS = ['low', 'medium', 'high'];
+  pick.effort = body && EFFORTS.includes(body.effort) ? body.effort : '';
+
   const { url, init } = buildUpstreamRequest(pick, messages, true);
   let upstream;
   try {

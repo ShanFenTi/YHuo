@@ -1,5 +1,9 @@
 # 更新日志
 
+## 2026-09-11（晚间九：移除 AI 语音输入）
+
+* **前台：移除 AI 页语音输入功能（2026-09-11 晚间九，用户要求；该功能为 2026-09-10 深夜批次 A2 加入）**——aiMicBind 整段（Web Speech API 特性检测注入麦克风钮/zh-CN 识别/中间结果实时上屏/权限拒绝 toast）与 aiMicRec 状态、destroyAiPage 的识别停止清理、site.css 语音输入样式段（.ai-mic-btn.listening 主题色高亮 + aiMicPulse 脉冲光环）全删；「＋」上传钮原位保留，输入条工具行现为 ＋ / 思考强度 / 模型 / 发送。恢复点见 git 历史（7b13ee0 的父提交）。实测：残留检查零命中、node --check 过、check-code 全过；本地新指纹（7b13ee07）下浏览器确认 #aiMicBtn/.ai-mic-btn 零残留、其余控件在位、无页面错误
+
 ## 2026-09-11（晚间八：悬停浮起调参 + AI 页思考强度）
 
 * **前台+后端：AI 页移除人格预设，原位换思考强度选择 + 思考中等待态可感知（2026-09-11 晚间八，用户三点需求）**——①人格六选一下线（AI_PERSONAS/aiPersona* 全清，localStorage yhuoAiPersona 不再读写）；②原位换思考强度「默认/🌙低/⚡中/🧠高」（yhuoAiEffort，**默认不发字段 = 跟随服务商默认**，避免不支持 reasoning_effort 的模型报 400），payload 附 effort，chat.js 白名单校验后经 lib/ai.js buildUpstreamRequest 仅 **OpenAI 兼容协议附 reasoning_effort**（Anthropic 协议参数体系不同忽略），菜单底注「仅部分模型支持，只影响之后的回复」；③思考中等待态从孤零零静态文字改为「三点跳动（纯 CSS keyframes 零 DOM 写入）+ 思考中 + 耗时秒数（1s/次 textContent，远低于坑 36 阈值）」，首个 delta 到达即被正文替换，finish/失败/离页三路停表 + isConnected 兜底防僵尸计时；ai/index.html 人格开关 DOM 原位改思考强度开关（id/class/aria 同步），site.css ai-persona-* 改名 ai-effort-* + 新增 ai-thinking 动画段。实测：check-code 全过 + node --check common.js；本地 wrangler 配 mock OpenAI 供应商（127.0.0.1:8791 SSE 慢吐字）全链路浏览器实测——菜单四档/选高发信/**上游请求体 reasoning_effort=high 实录**/切默认上游无该字段/等待态 1.2s 时显示「思考中 1s」且三点动画声明挂载（ai-think-bounce 1.2s）/流式回复与 token 用量行正常

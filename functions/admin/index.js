@@ -1030,6 +1030,42 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
     ul.list li .handle { display: none; }
   }
   footer { margin-top: 24px; font-size: 12px; color: var(--muted); }
+  /* =========================
+     悬停语言统一（2026-09-11 晚间七）：轻浮起 + 按压回弹 + 背景平滑过渡，全走既有令牌。
+     分寸：大按钮/导航/圆钮浮起 1px，细粒度小控件（行内操作钮/选项/胶囊 ×）只变底色不位移；
+     reduced-motion 由全局 .01ms 块兜底（悬停态瞬切无动画）。
+     ========================= */
+  @media (hover: hover) {
+    button:hover { transform: translateY(-1px); }
+    button:disabled:hover { transform: none; }
+    /* 细粒度控件不位移，只走各自原有的底色/颜色变化 */
+    .row-actions button:hover, .img-grid .ic-ov .row-actions button:hover,
+    .pick-x:hover, .icon-mini:hover, .ai-drop-opt:hover, .ai-mgr-add:hover { transform: none; }
+  }
+  button:active { transform: scale(.97); } /* 重申：压过上面的 hover 浮起，按下永远是回弹 */
+  /* 顶栏胶囊导航：底色过渡已有，补 transform 过渡（浮起走全局 -1px、按下走全局 scale） */
+  nav.site-nav button { transition: background .2s var(--ease-outc), color .2s var(--ease-outc), transform .18s var(--ease-outc); }
+  /* 抽屉导航：同前台抽屉的按压手感（悬停 scale .98、按下 .96 加速） */
+  nav.sidenav-links button { transition: background .2s var(--ease-outc), color .2s var(--ease-outc), transform .18s var(--ease-outc); }
+  @media (hover: hover) {
+    nav.sidenav-links button:hover { background: var(--hover); transform: scale(.98); }
+    nav.sidenav-links button:active { transform: scale(.96); transition-duration: 80ms; }
+  }
+  /* 顶栏动作圆钮（菜单/回前台/主题/退出）：补 transform 过渡，浮起走全局 */
+  .action-btn { transition: background .2s var(--ease-outc), transform .18s var(--ease-outc); }
+  /* 列表行 / AI 供应商项：背景过渡平滑（原为瞬时切换） */
+  ul.list li { transition: background-color .18s var(--ease-outc); }
+  .ai-mgr-item { transition: background-color .18s var(--ease-outc); }
+  /* 区块卡：悬停边框微加深（大容器不抬升，只描边示意） */
+  .section-card { transition: border-color var(--t-fast) var(--ease-outc); }
+  @media (hover: hover) {
+    .section-card:hover { border-color: color-mix(in srgb, var(--fg) 14%, var(--border)); }
+  }
+  /* 数据表格行：悬停浅底平滑过渡 */
+  .data-table tbody tr { transition: background-color .18s var(--ease-outc); }
+  @media (hover: hover) {
+    .data-table tbody tr:hover { background: color-mix(in srgb, var(--hover) 55%, transparent); }
+  }
 </style>
 </head>
 <body>

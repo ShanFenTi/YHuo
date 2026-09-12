@@ -1,5 +1,9 @@
 # 更新日志
 
+## 2026-09-12（AI 菜单弹出/收回动画）
+
+* **前台：AI 页模型菜单与思考强度菜单补弹出/收回动画（2026-09-12，用户要求）**——两个菜单共用 `.ai-model-menu` 类（思考强度自动同款）：①**弹出**走 CSS `.ai-model-menu:not([hidden])` 挂 `aiMenuIn 200ms var(--ease-out) backwards`（hidden 摘除即重播，零额外 JS 状态），from 下沉 8px + scale 0.96 上浮展开，transform-origin 取菜单左下（贴输入条锚点）；②**收回**由 common.js 新增 `aiCloseMenu`（挂 `.closing` 播 `aiMenuOut 160ms forwards`，170ms 定时器到点摘类 + 真 hidden——定时器比动画长 10ms 保证定格帧盖住间隙；重开走 `aiToggleMenu` 先摘 `.closing` 防迟到定时器把新开的菜单藏掉，closing 期 `pointer-events:none` 挡误点）；③按钮 toggle/选完项/点外部/Esc/两菜单互斥共 10 处 `hidden` 直写全部改走助手函数，「AI 未配置」同步路径保留瞬时隐藏；reduced-motion 下双向 `animation: none`（hidden 语义不变，只去动画）。实测：node --check + check-code 全过；本地静态站控制台强制唤出菜单后走真实点击链路——getAnimations 采到 aiMenuIn 起始帧（opacity 0 + translateY(8px) scale(0.96)）、落定态 opacity 1 / transform none、收回 closing 类挂上后 hidden 真翻转、两菜单互斥开合正常；注：遮挡窗格会冻结 CSS 动画并节流定时器（visibilityState 仍报 visible），中帧采不到属测试环境假象，真机手感以实际为准
+
 ## 2026-09-11（晚间九：移除 AI 语音输入）
 
 * **前台：移除 AI 页语音输入功能（2026-09-11 晚间九，用户要求；该功能为 2026-09-10 深夜批次 A2 加入）**——aiMicBind 整段（Web Speech API 特性检测注入麦克风钮/zh-CN 识别/中间结果实时上屏/权限拒绝 toast）与 aiMicRec 状态、destroyAiPage 的识别停止清理、site.css 语音输入样式段（.ai-mic-btn.listening 主题色高亮 + aiMicPulse 脉冲光环）全删；「＋」上传钮原位保留，输入条工具行现为 ＋ / 思考强度 / 模型 / 发送。恢复点见 git 历史（7b13ee0 的父提交）。实测：残留检查零命中、node --check 过、check-code 全过；本地新指纹（7b13ee07）下浏览器确认 #aiMicBtn/.ai-mic-btn 零残留、其余控件在位、无页面错误

@@ -6238,6 +6238,25 @@
       if (aiMessages && !aiMessages.children.length) addAiMsg('bot', aiGreeting());
     }
 
+    // 菜单弹出/收回动画（2026-09-12）：弹出走 CSS .ai-model-menu:not([hidden]) 的 keyframes（hidden 摘除即重播），
+    // 收回挂 .closing 播完再真隐藏（延时与 CSS 收回时长 160ms 匹配；重开先行摘类防定时器把新开的菜单藏掉）
+    function aiCloseMenu(menu) {
+      if (!menu || menu.hidden || menu.classList.contains('closing')) return;
+      menu.classList.add('closing');
+      setTimeout(function () {
+        if (!menu.classList.contains('closing')) return;
+        menu.classList.remove('closing');
+        menu.hidden = true;
+      }, 170);
+    }
+
+    function aiToggleMenu(menu) {
+      if (!menu) return;
+      if (!menu.hidden) { aiCloseMenu(menu); return; }
+      menu.classList.remove('closing');
+      menu.hidden = false;
+    }
+
     // 输入条工具行的模型切换：纯文字 + ⌄，向上弹出分组菜单（仿桌面客户端，按供应商分组）
     function aiSyncModelSwitcher() {
       var btn = document.getElementById('aiModelBtn');
@@ -6302,7 +6321,7 @@
               label.textContent = m.name;
               addAiMsg('bot', '已切换到「' + m.name + '」（' + m.provider + '）～');
             }
-            menu.hidden = true;
+            aiCloseMenu(menu);
           });
           menu.appendChild(it);
         });
@@ -6363,7 +6382,7 @@
             try { if (!aiInPreviewFrame()) localStorage.setItem(AI_EFFORT_LS, aiEffort); } catch (e) {}
             label.textContent = aiEffortLabelText();
           }
-          menu.hidden = true;
+          aiCloseMenu(menu);
         });
         menu.appendChild(it);
       });
@@ -6923,27 +6942,27 @@
       if (aiModelBtn && aiModelMenu) {
         aiModelBtn.addEventListener('click', function (e) {
           e.stopPropagation();
-          if (aiEffortMenu) aiEffortMenu.hidden = true;
-          aiModelMenu.hidden = !aiModelMenu.hidden;
+          aiCloseMenu(aiEffortMenu);
+          aiToggleMenu(aiModelMenu);
         });
       }
       if (aiEffortBtn && aiEffortMenu) {
         aiEffortBtn.addEventListener('click', function (e) {
           e.stopPropagation();
-          if (aiModelMenu) aiModelMenu.hidden = true;
-          aiEffortMenu.hidden = !aiEffortMenu.hidden;
+          aiCloseMenu(aiModelMenu);
+          aiToggleMenu(aiEffortMenu);
         });
       }
       // document 级监听登记起来，离开页面时移除（防 pjax 反复进出叠加监听）
       var onDocClick = function (e) {
-        if (aiModelMenu && !aiModelMenu.hidden && !e.target.closest('#aiModelSwitch')) aiModelMenu.hidden = true;
-        if (aiEffortMenu && !aiEffortMenu.hidden && !e.target.closest('#aiEffortSwitch')) aiEffortMenu.hidden = true;
+        if (aiModelMenu && !aiModelMenu.hidden && !e.target.closest('#aiModelSwitch')) aiCloseMenu(aiModelMenu);
+        if (aiEffortMenu && !aiEffortMenu.hidden && !e.target.closest('#aiEffortSwitch')) aiCloseMenu(aiEffortMenu);
       };
       // Esc：先收模型/强度菜单，再收历史抽屉（退出页面交给浏览器返回键，不再有"关界面"动作）
       var onDocKey = function (e) {
         if (e.key !== 'Escape') return;
-        if (aiModelMenu && !aiModelMenu.hidden) { aiModelMenu.hidden = true; return; }
-        if (aiEffortMenu && !aiEffortMenu.hidden) { aiEffortMenu.hidden = true; return; }
+        if (aiModelMenu && !aiModelMenu.hidden) { aiCloseMenu(aiModelMenu); return; }
+        if (aiEffortMenu && !aiEffortMenu.hidden) { aiCloseMenu(aiEffortMenu); return; }
         if (aiDrawerOpen()) aiCloseHistoryDrawer();
       };
       document.addEventListener('click', onDocClick);

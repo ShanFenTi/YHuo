@@ -2047,6 +2047,32 @@
       z-index: 30;
     }
 
+    /* 弹出/收回动画（2026-09-12）：贴输入条向上弹——transform-origin 取菜单左下（贴锚点），
+       弹出 ease-out 上浮展开、收回 .closing 缩回下沉（common.js 挂类后延时真隐藏，hidden 语义不变）；
+       思考强度菜单复用同类名自动同款 */
+    @keyframes aiMenuIn {
+      from { opacity: 0; transform: translateY(8px) scale(0.96); }
+    }
+
+    @keyframes aiMenuOut {
+      to { opacity: 0; transform: translateY(8px) scale(0.96); }
+    }
+
+    .ai-model-menu:not([hidden]) {
+      transform-origin: 14px 100%;
+      animation: aiMenuIn 200ms var(--ease-out, ease) backwards;
+    }
+
+    /* 收回规则写在弹出之后（同特异性靠后者胜）；forwards 定格在消失帧等 JS 摘除，pointer-events 挡住收回途中误点 */
+    .ai-model-menu.closing {
+      animation: aiMenuOut 160ms var(--ease-out, ease) forwards;
+      pointer-events: none;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .ai-model-menu:not([hidden]), .ai-model-menu.closing { animation: none; }
+    }
+
     .ai-model-group {
       font-size: 11px;
       color: var(--apple-muted-foreground, var(--apple-foreground));

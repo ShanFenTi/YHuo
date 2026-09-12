@@ -1,5 +1,11 @@
 # 更新日志
 
+## 2026-09-11（晚间八：悬停浮起调参 + AI 页思考强度）
+
+* **前台+后端：AI 页移除人格预设，原位换思考强度选择 + 思考中等待态可感知（2026-09-11 晚间八，用户三点需求）**——①人格六选一下线（AI_PERSONAS/aiPersona* 全清，localStorage yhuoAiPersona 不再读写）；②原位换思考强度「默认/🌙低/⚡中/🧠高」（yhuoAiEffort，**默认不发字段 = 跟随服务商默认**，避免不支持 reasoning_effort 的模型报 400），payload 附 effort，chat.js 白名单校验后经 lib/ai.js buildUpstreamRequest 仅 **OpenAI 兼容协议附 reasoning_effort**（Anthropic 协议参数体系不同忽略），菜单底注「仅部分模型支持，只影响之后的回复」；③思考中等待态从孤零零静态文字改为「三点跳动（纯 CSS keyframes 零 DOM 写入）+ 思考中 + 耗时秒数（1s/次 textContent，远低于坑 36 阈值）」，首个 delta 到达即被正文替换，finish/失败/离页三路停表 + isConnected 兜底防僵尸计时；ai/index.html 人格开关 DOM 原位改思考强度开关（id/class/aria 同步），site.css ai-persona-* 改名 ai-effort-* + 新增 ai-thinking 动画段。实测：check-code 全过 + node --check common.js；本地 wrangler 配 mock OpenAI 供应商（127.0.0.1:8791 SSE 慢吐字）全链路浏览器实测——菜单四档/选高发信/**上游请求体 reasoning_effort=high 实录**/切默认上游无该字段/等待态 1.2s 时显示「思考中 1s」且三点动画声明挂载（ai-think-bounce 1.2s）/流式回复与 token 用量行正常
+
+* **后台：悬停浮起动画去生硬（2026-09-11 晚间八，用户反馈「浮起动画太生硬」）**——晚间七的浮起是 1px 行程配 ease-spring（过冲缓动），小振幅 + 过冲读起来是「抖一下」；改行程 1→**2px**、transform 过渡 .18s ease-spring→**.25s ease-outc**（无过冲柔和缓出，悬停进出对称），按下保持 80ms 快速回弹；覆盖全局 button 与胶囊/抽屉/动作圆钮三处 transition 声明。check-code 全过
+
 ## 2026-09-11（晚间七：后台悬停语言统一）
 
 * **后台：全后台悬停动效统一（2026-09-11 晚间七，用户要求「概览的停留动画优化一下，整个后台的停留动画都优化一下」）**——一套「悬停语言」走既有令牌（--ease-outc/--ease-spring）：①**大按钮全局轻浮起** `button:hover { transform: translateY(-1px) }`（base 已有 transform .18s ease-spring 过渡，直接生效），按下仍是全局 scale .97（active 规则重申在 hover 之后防被压过），细粒度小控件（行内操作钮/图片网格操作钮/胶囊 ✕/icon-mini/下拉选项/AI 添加框）显式排除只变底色不位移；②**胶囊导航/顶栏动作圆钮/抽屉导航**补 transform 过渡（原先只有底色瞬变），抽屉项悬停 scale .98 + 按下 .96 加速（对齐前台抽屉按压手感）；③**列表行/AI 供应商项**背景过渡平滑（原为瞬时切换）；④**section-card** 悬停边框微加深（大容器不抬升只描边）；⑤**数据表格行**加悬停浅底+过渡。reduced-motion 由既有全局 .01ms 块兜底（悬停态瞬切）。实测：check-code 全过；CSSOM 遍历确认规则落位正确（hover:hover 块顶层）、`.card/.stat` 原有悬浮不受影响；注：内嵌测试面板合成指针 hover 链路不稳定且隐藏态渲染时钟挂起（transform 过渡冻在首帧，连内联样式都被压），中帧无法在测试环境采信，真机手感以实际为准

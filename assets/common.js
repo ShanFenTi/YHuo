@@ -6189,9 +6189,9 @@
     //   空 key = 跟随服务商默认、不发送该字段，避免不支持该参数的模型报错。历史对话不回放强度）
     var AI_EFFORTS = [
       { key: '', name: '默认', icon: '', note: '跟随服务商默认' },
-      { key: 'low', name: '低', icon: '🌙', note: '快速回答' },
-      { key: 'medium', name: '中', icon: '⚡', note: '均衡' },
-      { key: 'high', name: '高', icon: '🧠', note: '深度思考，更慢更耗 token' }
+      { key: 'low', name: '低', icon: '', note: '快速回答' },
+      { key: 'medium', name: '中', icon: '', note: '均衡' },
+      { key: 'high', name: '高', icon: '', note: '深度思考，更慢更耗 token' }
     ];
     var AI_EFFORT_LS = 'yhuoAiEffort'; // 只存强度 key，跨刷新保持
     var aiEffort = '';

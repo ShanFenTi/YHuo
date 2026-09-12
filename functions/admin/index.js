@@ -1032,27 +1032,30 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
   footer { margin-top: 24px; font-size: 12px; color: var(--muted); }
   /* =========================
      悬停语言统一（2026-09-11 晚间七）：轻浮起 + 按压回弹 + 背景平滑过渡，全走既有令牌。
-     分寸：大按钮/导航/圆钮浮起 1px，细粒度小控件（行内操作钮/选项/胶囊 ×）只变底色不位移；
+     分寸：大按钮/导航/圆钮浮起 2px，细粒度小控件（行内操作钮/选项/胶囊 ×）只变底色不位移；
      reduced-motion 由全局 .01ms 块兜底（悬停态瞬切无动画）。
+     晚间八调参：1px + ease-spring（过冲）在小振幅上读起来是「抖一下」——行程 1→2px、
+     transform 过渡换 .25s ease-outc（无过冲柔和缓出），按下保持 80ms 快速回弹。
      ========================= */
+  button { transition: opacity .15s var(--ease-outc), transform .25s var(--ease-outc), background .15s var(--ease-outc), color .15s var(--ease-outc), border-color .15s var(--ease-outc), box-shadow .2s var(--ease-outc); }
   @media (hover: hover) {
-    button:hover { transform: translateY(-1px); }
+    button:hover { transform: translateY(-2px); }
     button:disabled:hover { transform: none; }
     /* 细粒度控件不位移，只走各自原有的底色/颜色变化 */
     .row-actions button:hover, .img-grid .ic-ov .row-actions button:hover,
     .pick-x:hover, .icon-mini:hover, .ai-drop-opt:hover, .ai-mgr-add:hover { transform: none; }
   }
-  button:active { transform: scale(.97); } /* 重申：压过上面的 hover 浮起，按下永远是回弹 */
-  /* 顶栏胶囊导航：底色过渡已有，补 transform 过渡（浮起走全局 -1px、按下走全局 scale） */
-  nav.site-nav button { transition: background .2s var(--ease-outc), color .2s var(--ease-outc), transform .18s var(--ease-outc); }
-  /* 抽屉导航：同前台抽屉的按压手感（悬停 scale .98、按下 .96 加速） */
-  nav.sidenav-links button { transition: background .2s var(--ease-outc), color .2s var(--ease-outc), transform .18s var(--ease-outc); }
+  button:active { transform: scale(.97); transition-duration: 80ms; } /* 重申：压过上面的 hover 浮起，按下永远是快速回弹 */
+  /* 顶栏胶囊导航：底色过渡已有，补 transform 过渡（浮起走全局 -2px、按下走全局 scale） */
+  nav.site-nav button { transition: background .2s var(--ease-outc), color .2s var(--ease-outc), transform .25s var(--ease-outc); }
+  /* 抽屉导航：同前台抽屉的按压手感（悬停 scale .98，按下 .96 加速） */
+  nav.sidenav-links button { transition: background .2s var(--ease-outc), color .2s var(--ease-outc), transform .25s var(--ease-outc); }
   @media (hover: hover) {
     nav.sidenav-links button:hover { background: var(--hover); transform: scale(.98); }
     nav.sidenav-links button:active { transform: scale(.96); transition-duration: 80ms; }
   }
   /* 顶栏动作圆钮（菜单/回前台/主题/退出）：补 transform 过渡，浮起走全局 */
-  .action-btn { transition: background .2s var(--ease-outc), transform .18s var(--ease-outc); }
+  .action-btn { transition: background .2s var(--ease-outc), transform .25s var(--ease-outc); }
   /* 列表行 / AI 供应商项：背景过渡平滑（原为瞬时切换） */
   ul.list li { transition: background-color .18s var(--ease-outc); }
   .ai-mgr-item { transition: background-color .18s var(--ease-outc); }

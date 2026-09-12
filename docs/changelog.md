@@ -1,5 +1,9 @@
 # 更新日志
 
+## 2026-09-11（晚间七：后台悬停语言统一）
+
+* **后台：全后台悬停动效统一（2026-09-11 晚间七，用户要求「概览的停留动画优化一下，整个后台的停留动画都优化一下」）**——一套「悬停语言」走既有令牌（--ease-outc/--ease-spring）：①**大按钮全局轻浮起** `button:hover { transform: translateY(-1px) }`（base 已有 transform .18s ease-spring 过渡，直接生效），按下仍是全局 scale .97（active 规则重申在 hover 之后防被压过），细粒度小控件（行内操作钮/图片网格操作钮/胶囊 ✕/icon-mini/下拉选项/AI 添加框）显式排除只变底色不位移；②**胶囊导航/顶栏动作圆钮/抽屉导航**补 transform 过渡（原先只有底色瞬变），抽屉项悬停 scale .98 + 按下 .96 加速（对齐前台抽屉按压手感）；③**列表行/AI 供应商项**背景过渡平滑（原为瞬时切换）；④**section-card** 悬停边框微加深（大容器不抬升只描边）；⑤**数据表格行**加悬停浅底+过渡。reduced-motion 由既有全局 .01ms 块兜底（悬停态瞬切）。实测：check-code 全过；CSSOM 遍历确认规则落位正确（hover:hover 块顶层）、`.card/.stat` 原有悬浮不受影响；注：内嵌测试面板合成指针 hover 链路不稳定且隐藏态渲染时钟挂起（transform 过渡冻在首帧，连内联样式都被压），中帧无法在测试环境采信，真机手感以实际为准
+
 ## 2026-09-11（晚间六：后台抽屉级联动画）
 
 * **后台：窄屏抽屉展开动画对齐前台（2026-09-11 晚间六，用户要求「侧边栏展开动画和前台一样」）**——原后台抽屉是裸 `.22s` 平移 + 遮罩（100vmax box-shadow）瞬现；现整体移植前台 nav-drawer 的动画机制：①**条目级联滑入**——12 个导航项 nth-child 注入 `--i`，开抽屉播 `sidenav-item-in 420ms var(--ease-outc) backwards`，延迟 `calc(70ms + var(--i) × 36ms)`（70~466ms 逐项递增），from 隐藏 + fill backwards 盖住延迟期、**不设 opacity:0 基准态**（前台踩过的坑：基准隐藏条目会永远隐形），关抽屉摘类即停、重开自动重播；②**抽屉平移** .22s（默认 ease）→ .32s ease-outc；③**遮罩渐现**——box-shadow 加进 transition（.28s）不再瞬现；④整段套 `prefers-reduced-motion: no-preference` 门控，纯 CSS 零 JS 改动（body.nav-open 类切换即驱动，无高频 DOM 写入不踩坑 36）。实测：check-code 全过 + 本地 500px 视口 getAnimations 确认 12 个动画延迟 70/106/…/466ms 与公式一致、落定帧 12 项全部显示且遮罩正常（后台标签页定时器节流抓不到中帧，级联手感以真机为准）

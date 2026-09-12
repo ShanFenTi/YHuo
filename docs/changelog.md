@@ -1,5 +1,9 @@
 # 更新日志
 
+## 2026-09-12
+
+* **前台：思考强度菜单去掉 emoji 图标（2026-09-12，用户要求）**——AI_EFFORTS 清单 icon 字段清空（默认/低/中/高纯文字，✓ 选中标记保留），菜单项与入口标签渲染逻辑不变（icon 为空自然不拼）。实测：check-code 全过；线上新指纹（57de6085）下精确确认清单 icon 全空
+
 ## 2026-09-12（AI 菜单弹出/收回动画）
 
 * **前台：AI 页模型菜单与思考强度菜单补弹出/收回动画（2026-09-12，用户要求）**——两个菜单共用 `.ai-model-menu` 类（思考强度自动同款）：①**弹出**走 CSS `.ai-model-menu:not([hidden])` 挂 `aiMenuIn 200ms var(--ease-out) backwards`（hidden 摘除即重播，零额外 JS 状态），from 下沉 8px + scale 0.96 上浮展开，transform-origin 取菜单左下（贴输入条锚点）；②**收回**由 common.js 新增 `aiCloseMenu`（挂 `.closing` 播 `aiMenuOut 160ms forwards`，170ms 定时器到点摘类 + 真 hidden——定时器比动画长 10ms 保证定格帧盖住间隙；重开走 `aiToggleMenu` 先摘 `.closing` 防迟到定时器把新开的菜单藏掉，closing 期 `pointer-events:none` 挡误点）；③按钮 toggle/选完项/点外部/Esc/两菜单互斥共 10 处 `hidden` 直写全部改走助手函数，「AI 未配置」同步路径保留瞬时隐藏；reduced-motion 下双向 `animation: none`（hidden 语义不变，只去动画）。实测：node --check + check-code 全过；本地静态站控制台强制唤出菜单后走真实点击链路——getAnimations 采到 aiMenuIn 起始帧（opacity 0 + translateY(8px) scale(0.96)）、落定态 opacity 1 / transform none、收回 closing 类挂上后 hidden 真翻转、两菜单互斥开合正常；注：遮挡窗格会冻结 CSS 动画并节流定时器（visibilityState 仍报 visible），中帧采不到属测试环境假象，真机手感以实际为准

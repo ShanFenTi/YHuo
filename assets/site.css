@@ -6033,23 +6033,7 @@
       color: #fff;
     }
 
-    /* ========================= AI 输入条：语音输入钮 + 人格切换（2026-09-09） ========================= */
-    /* 语音输入：与「＋」上传钮同款 .ai-tool-icon（按钮由 common.js aiMicBind 特性检测后才渲染）。
-       识别中主题色高亮 + 脉冲光环；reduced-motion 只变色不脉冲 */
-    .ai-mic-btn.listening {
-      color: var(--apple-primary);
-      opacity: 1;
-      background: color-mix(in srgb, var(--apple-primary) 12%, transparent);
-    }
-
-    @media (prefers-reduced-motion: no-preference) {
-      .ai-mic-btn.listening { animation: aiMicPulse 1.4s ease-in-out infinite; }
-    }
-
-    @keyframes aiMicPulse {
-      0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--apple-primary) 35%, transparent); }
-      50% { box-shadow: 0 0 0 6px color-mix(in srgb, var(--apple-primary) 0%, transparent); }
-    }
+    /* ========================= AI 输入条：思考强度切换（2026-09-11） ========================= */
 
     /* 思考强度切换：入口与菜单复用 .ai-model-btn / .ai-model-menu / .ai-model-item 全套样式，
        这里只补菜单收窄与底部说明一行的弱化态 */

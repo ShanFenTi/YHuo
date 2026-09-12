@@ -6958,7 +6958,6 @@
     function destroyAiPage() {
       if (aiDocCleanup) { aiDocCleanup(); aiDocCleanup = null; }
       if (aiAbort) { try { aiAbort.abort(); } catch (e) {} aiAbort = null; }
-      if (aiMicRec) { try { aiMicRec.stop(); } catch (e) {} aiMicRec = null; } // pjax 离开页面时结束识别
     }
 
     // ---------- 附件：＋上传文件（图片→视觉模型 base64；文本文件→上下文注入，不存服务器） ----------
@@ -7034,65 +7033,6 @@
       }
     }
 
-    // ---------- 语音输入（Web Speech API）：识别结果实时填入输入框末尾，不自动发送 ----------
-    var aiMicRec = null; // 进行中的识别实例（非空 = 正在听，再点一次手动停止）
-    // 特性检测：不支持的浏览器（Firefox/Safari 旧版等）按钮压根不渲染，而不是渲染出来再禁用
-    function aiMicBind() {
-      if (!(window.SpeechRecognition || window.webkitSpeechRecognition)) return;
-      var fileBtn = document.getElementById('aiFileBtn');
-      if (!fileBtn || !fileBtn.parentNode || document.getElementById('aiMicBtn')) return;
-      var btn = document.createElement('button');
-      btn.type = 'button';
-      btn.id = 'aiMicBtn';
-      btn.className = 'ai-tool-icon ai-mic-btn';
-      btn.title = '语音输入';
-      btn.setAttribute('aria-label', '语音输入');
-      btn.setAttribute('aria-pressed', 'false');
-      btn.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" x2="12" y1="19" y2="22"/></svg>';
-      fileBtn.parentNode.insertBefore(btn, fileBtn.nextSibling); // 紧挨「＋」
-      btn.addEventListener('click', function () {
-        if (aiMicRec) { try { aiMicRec.stop(); } catch (e) {} return; } // 再点一次 = 手动停止（onend 复原）
-        var SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-        var rec;
-        try { rec = new SR(); } catch (e) { return; }
-        rec.lang = 'zh-CN';
-        rec.interimResults = true; // 中间结果实时上屏
-        rec.continuous = false;    // 单句模式：停顿即结束，再次点击可继续追加
-        // 简单方案：开始时记下输入框现有文字，本次语音段实时拼在末尾，final 后定格
-        var base = aiInput ? aiInput.value : '';
-        var finalText = '';
-        var done = false;
-        function finish() {
-          if (done) return; // onerror 后还会触发 onend，只复原一次
-          done = true;
-          aiMicRec = null;
-          btn.classList.remove('listening');
-          btn.setAttribute('aria-pressed', 'false');
-        }
-        rec.onresult = function (ev) {
-          var interim = '';
-          for (var i = ev.resultIndex; i < ev.results.length; i++) {
-            var r = ev.results[i];
-            if (r.isFinal) finalText += r[0].transcript;
-            else interim += r[0].transcript;
-          }
-          if (aiInput) aiInput.value = base + finalText + interim;
-        };
-        rec.onerror = function (ev) {
-          finish();
-          // 全部安静处理：只有麦克风权限被拒才提示一次，no-speech / network 等静默复原不打扰
-          if (ev && (ev.error === 'not-allowed' || ev.error === 'service-not-allowed')) {
-            showTopToast('麦克风权限被拒绝', false);
-          }
-        };
-        rec.onend = finish; // 正常结束/手动停止/出错后都走这里复原按钮
-        aiMicRec = rec;
-        btn.classList.add('listening');
-        btn.setAttribute('aria-pressed', 'true');
-        try { rec.start(); } catch (e) { finish(); }
-      });
-    }
-
     function aiBindPageControls() {
       // ---------- 附件：＋上传文件（图片→视觉模型 base64；文本文件→上下文注入，不存服务器） ----------
       var aiFileBtn = document.getElementById('aiFileBtn');
@@ -7104,8 +7044,6 @@
           this.value = '';
         });
       }
-      aiMicBind(); // 语音输入钮：支持 Web Speech API 才渲染（紧挨「＋」，见 aiMicBind）
-
       if (aiForm) {
         aiForm.addEventListener('submit', function (e) {
           e.preventDefault();

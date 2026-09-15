@@ -40,5 +40,14 @@ export async function onRequestGet({ env }) {
       report.backupLastDate = null;
     }
   }
+  // 邮件服务是否启用（2026-09-15 公开状态页用）：只回布尔，不回任何配置细节
+  report.mail = false;
+  try {
+    const row = await env.DB.prepare("SELECT value FROM site_settings WHERE key = 'email_config'").first();
+    const cfg = JSON.parse((row && row.value) || '{}');
+    report.mail = !!(cfg && cfg.enabled);
+  } catch (e) {
+    report.mail = false;
+  }
   return json(report, 200, { 'Cache-Control': 'no-store' });
 }

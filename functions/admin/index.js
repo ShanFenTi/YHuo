@@ -1206,6 +1206,16 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
           </div>
           <div id="aiUsageBody"><div class="sk-row"><span class="sk sk-dot"></span><span class="sk-lines"><span class="sk sk-l1"></span><span class="sk sk-l2"></span></span></div><div class="sk-row"><span class="sk sk-dot"></span><span class="sk-lines"><span class="sk sk-l1"></span><span class="sk sk-l2"></span></span></div></div>
         </div>
+        <div class="card" id="todayMsgCard">
+          <div class="visit-head">
+            <strong>今日留言</strong>
+            <span class="meta2" id="todayMsgSumm"></span>
+            <span class="spacer"></span>
+            <button type="button" class="ghost" id="aiMsgSummaryBtn" title="拉取今天全部留言，让默认模型总结一段氛围与待办">AI 总结今日</button>
+          </div>
+          <div id="todayMsgBody" class="meta2" style="line-height:1.7">加载中…</div>
+          <div id="aiMsgSummaryOut" hidden style="margin-top:10px;border-top:1px dashed var(--border);padding-top:10px;white-space:pre-wrap;line-height:1.7;font-size:13px;"></div>
+        </div>
         <div class="card" id="mailUsageCard">
           <div class="visit-head">
             <strong>邮件统计</strong>
@@ -1228,6 +1238,9 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
     <p class="file-pick-info" id="filePickInfo"></p>
     <div class="upload-actions">
       <input type="text" id="titleInput" placeholder="显示名称（可选，仅单个文件时生效）">
+      <label class="meta2" style="display:flex;align-items:center;gap:6px;cursor:pointer;flex:none" title="图片页生效：超 500KB 的图片上传前本地压到长边 1920（WebP），省 KV 配额；压缩失败自动回落原图">
+        <input type="checkbox" id="imgCompressToggle" style="margin:0"> 大图自动压缩
+      </label>
       <button id="uploadBtn">上传</button>
     </div>
     <div class="video-mode-bar" id="videoModeBar" hidden>
@@ -1284,7 +1297,19 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
       <div class="bgset-row" style="margin-top:10px">
         <button id="noteSaveBtn" type="button">保存</button>
         <button id="noteCancelEditBtn" class="ghost" type="button" hidden>取消编辑</button>
+        <button id="notePolishBtn" class="ghost" type="button" title="让默认模型把正文润色一遍，先预览再决定是否应用">AI 润色</button>
         <span class="meta2" id="noteFormMsg"></span>
+      </div>
+      <!-- 润色预览：结果先落这里，正文原样不动（防丢稿），「应用」才写回 textarea -->
+      <div id="notePolishBox" hidden style="margin-top:10px;border:1px dashed var(--border);border-radius:10px;padding:10px 12px;">
+        <div class="bgset-row" style="margin:0 0 8px">
+          <strong style="font-size:13px">润色预览</strong>
+          <span class="meta2" id="notePolishMeta"></span>
+          <span class="spacer"></span>
+          <button id="notePolishApply" type="button">应用到正文</button>
+          <button id="notePolishDiscard" class="ghost" type="button">放弃</button>
+        </div>
+        <textarea id="notePolishText" rows="4" readonly style="width:100%"></textarea>
       </div>
     </div>
     <div class="card">
@@ -2077,6 +2102,7 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
     loadUsers();
     loadVisits();
     loadAiUsage();
+    loadTodayMessages(); // 概览「今日留言」卡
     loadMailUsage();
     loadMe(); // 顶栏胶囊左上角头像
     // 顶栏悬停预览卡的 iframe 在启动期（登录门/加载态）发来的切面板请求在这里补应用
@@ -2168,6 +2194,79 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
   setInterval(renderUptime, 1000);
 
   // ---------- AI token 用量（概览卡片） ----------
+  // 今日留言（2026-09-15）：公开 /api/messages 翻页取今天（北京时间 created_at 前缀）的条目做计数，
+  // 「AI 总结今日」把留言拼进 prompt 送 /api/admin/ai/complete。最多翻 4 页（120 条）兜底。
+  var todayMsgCache = [];
+  function bjTodayStr() {
+    var d = new Date(Date.now() + 8 * 3600 * 1000);
+    return d.getUTCFullYear() + '-' + ('0' + (d.getUTCMonth() + 1)).slice(-2) + '-' + ('0' + d.getUTCDate()).slice(-2);
+  }
+  // messages.created_at 是 D1 CURRENT_TIMESTAMP 的 UTC 时间（前端渲染时才转北京时区）——
+  // "今天的留言" = UTC 时间落在 [北京当天 00:00, +1 天) 窗口内，不能直接按日期前缀比
+  function bjTodayWindow() {
+    var start = Date.parse(bjTodayStr() + 'T00:00:00+08:00');
+    return [start, start + 86400000];
+  }
+  function loadTodayMessages() {
+    todayMsgCache = [];
+    $('todayMsgSumm').textContent = '';
+    $('aiMsgSummaryOut').hidden = true;
+    $('aiMsgSummaryOut').textContent = '';
+    var out = $('todayMsgBody');
+    out.textContent = '加载中…';
+    var all = [], offset = 0;
+    var win = bjTodayWindow();
+    (function pull() {
+      fetch('/api/messages?offset=' + offset, { credentials: 'same-origin' })
+        .then(function (r) { return r.ok ? r.json() : Promise.reject(new Error('http ' + r.status)); })
+        .then(function (d) {
+          var list = (d && d.ok && Array.isArray(d.list)) ? d.list : [];
+          var more = true;
+          for (var k = 0; k < list.length; k++) {
+            var t = Date.parse(String(list[k].created_at || '').replace(' ', 'T') + 'Z');
+            if (!isNaN(t) && t < win[0]) { more = false; break; } // 已翻到昨天，停止
+            if (!isNaN(t) && t < win[1]) all.push(list[k]);
+          }
+          if (more && (d.hasMore || list.length >= 30) && offset < 90) { offset += 30; pull(); return; }
+          todayMsgCache = all;
+          if (!all.length) { out.textContent = '今天还没有留言。'; return; }
+          var guests = all.filter(function (m) { return m.isGuest; }).length;
+          var latest = new Date(Date.parse(String(all[0].created_at || '').replace(' ', 'T') + 'Z') + 8 * 3600 * 1000);
+          var hhmm = ('0' + latest.getUTCHours()).slice(-2) + ':' + ('0' + latest.getUTCMinutes()).slice(-2);
+          out.textContent = '今天已有 ' + all.length + ' 条留言' + (guests ? '（其中路人 ' + guests + ' 条）' : '') +
+            '，最新一条 ' + hhmm + '。点「AI 总结今日」让默认模型概括今天的留言氛围。';
+        })
+        .catch(function () { out.textContent = '留言加载失败（接口异常）。'; });
+    })();
+  }
+  $('aiMsgSummaryBtn').addEventListener('click', function () {
+    var btn = this;
+    if (!todayMsgCache.length) { toast('今天还没有留言可总结', 'err'); return; }
+    btn.disabled = true;
+    var out = $('aiMsgSummaryOut');
+    out.hidden = false;
+    out.textContent = 'AI 总结中…';
+    var lines = todayMsgCache.map(function (m, i) {
+      var who = m.isAdmin ? '[站长] ' : (m.isGuest ? '[路人] ' : '');
+      return (i + 1) + '. ' + who + (m.username || '匿名') + '：' + String(m.content || '').slice(0, 80);
+    }).join('\\n');
+    api('/api/admin/ai/complete', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        prompt: '以下是一个个人站点留言板今天（' + bjTodayStr() + '）的全部留言，按时间从新到旧。请用 3~5 句话总结今天的留言氛围和大家主要在聊什么；如果有需要站长回复、答疑或处理的内容，请在最后单独用一小段点出来。不要逐条复述，不要输出任何前后缀解释。留言：\\n' + lines
+      })
+    }).then(function (r) {
+      btn.disabled = false;
+      if (!r.ok) { out.textContent = r.error || '总结失败'; return; }
+      out.textContent = String(r.reply || '').trim() || '（模型返回为空）';
+      $('todayMsgSumm').textContent = '已总结 ' + todayMsgCache.length + ' 条';
+    }).catch(function () {
+      btn.disabled = false;
+      out.textContent = '总结失败（网络异常）';
+    });
+  });
+
   function loadAiUsage() {
     api('/api/admin/ai/usage').then(function (d) {
       if (!d.ok) return;
@@ -4663,6 +4762,7 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
     $('noteMood').value = '';
     $('noteText').value = '';
     $('noteCancelEditBtn').hidden = true;
+    notePolishReset();
   }
 
   function loadNotes() {
@@ -4789,6 +4889,50 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
     });
   });
   $('noteCancelEditBtn').addEventListener('click', function () { noteResetForm(); noteFormMsg(''); });
+
+  // AI 润色（2026-09-15）：正文送 /api/admin/ai/complete（非流式、默认模型），结果落预览区，
+  // 「应用」才写回 textarea——预览期正文原样不动，防丢稿。失败只报错不影响正文。
+  var notePolishText = '';
+  function notePolishReset() {
+    notePolishText = '';
+    $('notePolishBox').hidden = true;
+    $('notePolishText').value = '';
+    $('notePolishMeta').textContent = '';
+  }
+  $('notePolishBtn').addEventListener('click', function () {
+    var btn = this;
+    var text = $('noteText').value.trim();
+    if (!text) { noteFormMsg('正文是空的，没东西可润色', true); return; }
+    btn.disabled = true;
+    noteFormMsg('AI 润色中…（走后台默认模型，通常几秒）');
+    notePolishReset();
+    api('/api/admin/ai/complete', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        prompt: '请把下面这段随笔正文润色一遍：保持原意与第一人称口吻，修正错别字与不通顺的句子，理顺标点；不要添加新观点、不要翻译成英文、不要输出任何解释或前后缀，只输出润色后的正文本身。原文：\\n' + text
+      })
+    }).then(function (r) {
+      btn.disabled = false;
+      if (!r.ok) { noteFormMsg(r.error || '润色失败', true); return; }
+      notePolishText = String(r.reply || '').trim();
+      if (!notePolishText) { noteFormMsg('模型返回了空内容', true); return; }
+      noteFormMsg('');
+      $('notePolishText').value = notePolishText;
+      $('notePolishMeta').textContent = (r.name || '') + ' · ' + ((r.ms || 0) / 1000).toFixed(1) + 's';
+      $('notePolishBox').hidden = false;
+    }).catch(function () {
+      btn.disabled = false;
+      noteFormMsg('润色失败（网络异常）', true);
+    });
+  });
+  $('notePolishApply').addEventListener('click', function () {
+    if (!notePolishText) return;
+    $('noteText').value = notePolishText;
+    notePolishReset();
+    noteFormMsg('已把润色稿写回正文，满意就点「保存」。');
+  });
+  $('notePolishDiscard').addEventListener('click', function () { notePolishReset(); });
 
   // 从静态清单导入：读部署在前台的 notes/notes.json 存量数据，批量搬进 D1（date+text 全同的跳过）
   $('notesImportBtn').addEventListener('click', function () {
@@ -5259,6 +5403,7 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
     document.body.classList.remove('nav-open'); // 窄屏选完即收起菜单
     if (isOverview) {
       loadAiUsage(); // 每次切回概览刷新 AI 用量
+      loadTodayMessages(); // 今日留言卡同刷
       loadMailUsage(); // 邮件统计同刷
     }
     if (isAppear) {
@@ -5747,6 +5892,51 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
     return ok;
   }
 
+  // 大图上传前本地压缩（2026-09-15）：仅图片页、仅 >500KB 且 ≤20MB（再大解码内存不划算），
+  // 长边压到 1920、WebP q0.85（<img> 解码自带 EXIF 方向，canvas 出图方向正确）。
+  // 任何失败/压不小/浏览器不支持 → 一律回落原文件，压缩绝不能挡上传；开关存 localStorage 默认开。
+  function imgCompressOn() {
+    try { return localStorage.getItem('adminImgCompress') !== '0'; } catch (e) { return true; }
+  }
+  function compressUploadFile(f, cb) {
+    try {
+      // 注意：这里不能写 /image\// 正则——原始源码要写单反斜杠、模板求值后要双反斜杠，二者不可兼得
+      //（步骤[1]查原始、步骤[5]查求值后），字符串 indexOf 两边都成立
+      if (currentType !== 'image' || !imgCompressOn() || String(f.type || '').indexOf('image/') !== 0) { cb(f); return; }
+      if (f.size <= 512 * 1024 || f.size > 20 * 1024 * 1024) { cb(f); return; }
+      var url = URL.createObjectURL(f);
+      var img = new Image();
+      img.onload = function () {
+        try {
+          URL.revokeObjectURL(url);
+          var w = img.naturalWidth, h = img.naturalHeight;
+          if (!w || !h) { cb(f); return; }
+          var scale = Math.min(1, 1920 / Math.max(w, h));
+          if (scale >= 1 && f.size <= 2 * 1024 * 1024) { cb(f); return; } // 不需要缩且不算大，不强行重编码
+          var cv = document.createElement('canvas');
+          cv.width = Math.max(1, Math.round(w * scale));
+          cv.height = Math.max(1, Math.round(h * scale));
+          cv.getContext('2d').drawImage(img, 0, 0, cv.width, cv.height);
+          if (!cv.toBlob) { cb(f); return; }
+          cv.toBlob(function (blob) {
+            if (!blob || blob.size >= f.size) { cb(f); return; } // 压不小就不硬压
+            var ext = blob.type === 'image/webp' ? '.webp' : (blob.type === 'image/png' ? '.png' : '.jpg');
+            var out;
+            try { out = new File([blob], String(f.name || 'image').replace(/\\.[^.]+$/, '') + ext, { type: blob.type }); }
+            catch (e) { cb(f); return; }
+            cb(out, '已压缩 ' + fmtSize(f.size) + ' → ' + fmtSize(out.size));
+          }, 'image/webp', 0.85);
+        } catch (e) { cb(f); }
+      };
+      img.onerror = function () { try { URL.revokeObjectURL(url); } catch (e) {} cb(f); };
+      img.src = url;
+    } catch (e) { cb(f); }
+  }
+  $('imgCompressToggle').checked = imgCompressOn();
+  $('imgCompressToggle').addEventListener('change', function () {
+    try { localStorage.setItem('adminImgCompress', this.checked ? '1' : '0'); } catch (e) {}
+  });
+
   function uploadFiles(files) {
     var all = Array.prototype.slice.call(files || []);
     if (!all.length) return;
@@ -5823,41 +6013,47 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
         return;
       }
       var f = queue[i++];
-      $('queueInfo').textContent = '正在上传 ' + i + '/' + queue.length + '：' + f.name + '（' + fmtSize(f.size) + '）';
-      var form = new FormData();
-      form.append('type', currentType);
-      if (queue.length === 1 && $('titleInput').value.trim()) form.append('title', $('titleInput').value.trim());
-      // 图片页选中了具体相册时，新上传直接归入该相册
-      if (currentType === 'image' && albumFilter && albumFilter !== '__none__') form.append('album', albumFilter);
-      form.append('file', f);
-      if (f._lrc) form.append('lrc', f._lrc); // 同名配对的歌词附件
+      var head = '正在上传 ' + i + '/' + queue.length + '：' + f.name + '（' + fmtSize(f.size) + '）';
+      $('queueInfo').textContent = head;
+      // send：真正上传一个文件（可能已被压缩替换过）；note = 压缩说明，拼在队列行里展示
+      var send = function (file, note) {
+        if (note) $('queueInfo').textContent = head + ' · ' + note;
+        var form = new FormData();
+        form.append('type', currentType);
+        if (queue.length === 1 && $('titleInput').value.trim()) form.append('title', $('titleInput').value.trim());
+        // 图片页选中了具体相册时，新上传直接归入该相册
+        if (currentType === 'image' && albumFilter && albumFilter !== '__none__') form.append('album', albumFilter);
+        form.append('file', file);
+        if (file._lrc) form.append('lrc', file._lrc); // 同名配对的歌词附件
 
-      var xhr = new XMLHttpRequest();
-      xhr.open('POST', '/api/admin/upload');
-      xhr.withCredentials = true;
-      xhr.upload.onprogress = function (e) {
-        if (e.lengthComputable) {
-          var filePct = e.loaded / e.total;
-          var totalPct = ((i - 1) + filePct) / queue.length * 100;
-          $('progressBar').style.width = totalPct.toFixed(1) + '%';
-        }
+        var xhr = new XMLHttpRequest();
+        xhr.open('POST', '/api/admin/upload');
+        xhr.withCredentials = true;
+        xhr.upload.onprogress = function (e) {
+          if (e.lengthComputable) {
+            var filePct = e.loaded / e.total;
+            var totalPct = ((i - 1) + filePct) / queue.length * 100;
+            $('progressBar').style.width = totalPct.toFixed(1) + '%';
+          }
+        };
+        xhr.onload = function () {
+          if (xhr.status === 200) {
+            try {
+              var data = JSON.parse(xhr.responseText);
+              if (data.ok) okCount++; else failCount++;
+            } catch (e) { failCount++; }
+          } else if (xhr.status === 401) {
+            show('login');
+            return; // 会话失效，终止队列
+          } else {
+            failCount++;
+          }
+          next();
+        };
+        xhr.onerror = function () { failCount++; next(); };
+        xhr.send(form);
       };
-      xhr.onload = function () {
-        if (xhr.status === 200) {
-          try {
-            var data = JSON.parse(xhr.responseText);
-            if (data.ok) okCount++; else failCount++;
-          } catch (e) { failCount++; }
-        } else if (xhr.status === 401) {
-          show('login');
-          return; // 会话失效，终止队列
-        } else {
-          failCount++;
-        }
-        next();
-      };
-      xhr.onerror = function () { failCount++; next(); };
-      xhr.send(form);
+      compressUploadFile(f, send);
     }
     next();
   }

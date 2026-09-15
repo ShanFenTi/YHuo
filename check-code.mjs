@@ -125,12 +125,14 @@ console.log('[4] 八页外壳一致性');
   // 差异白名单：页间合法差异（ai-entry 类不在白名单里，各页本就一致，剥掉反而会放过漏改）。
   // 2026-09-09 PWA/SEO 批次起，每页专属的 meta description / og:* 行也按内容剔除后比对
   //（og:title 与各页 <title> 一致，属合法差异；其余 head 行仍要求逐行一致）。
+  // 2026-09-15 分享卡批次起，<link rel="canonical"> 按页路径不同，同 og:* 一并剔除后比对
+  //（og:url 在 property="og:" 前缀内已覆盖；og:image/twitter:card 各页相同仍走逐行比对）。
   // 前面已统一 \r\n → \n（坑 8），行尾再兜一层 \s* 兼容残余 \r。
   const norm = (s) => s.replace(/\r\n/g, '\n')
     .replace(/data-page="[^"]*"/g, 'data-page="*"')
     .replace(/<title>[^<]*<\/title>/g, '<title>*</title>')
     .split('\n')
-    .filter((line) => !/^\s*<meta (?:name="description"|property="og:)[^>]*>\s*$/.test(line))
+    .filter((line) => !/^\s*(?:<meta (?:name="description"|property="og:)[^>]*>|<link rel="canonical" [^>]*>)\s*$/.test(line))
     .map((line) => line.includes('nav-link')
       ? line.replace(/\s+aria-current="page"/g, '').replace(/\s+active(?=["\s])/g, '')
       : line)
@@ -152,12 +154,52 @@ console.log('[4] 八页外壳一致性');
       const snippet = (b[ln] || '(该页外壳提前结束)').trim().slice(0, 60);
       fail(`${PAGES[i]} 外壳与首页不一致（归一化后第 ${ln + 1} 行）：${snippet}`);
     }
-    if (!bad) ok(`八个子页外壳与首页一致（比对 ${base.split('\n').length} 行；白名单：data-page/标题/描述与 og:*/导航高亮）`);
+    if (!bad) ok(`八个子页外壳与首页一致（比对 ${base.split('\n').length} 行；白名单：data-page/标题/描述与 og:*/canonical/导航高亮）`);
   }
 }
 
 function randomName() {
   return Math.random().toString(36).slice(2, 10);
+}
+
+// ---------- 5. admin 后台页：按模板字符串真实语义求值后再校验内联 <script>（坑 18 补强，2026-09-15） ----------
+// admin/index.js 的页面包在 const PAGE = `...` 模板里——模板求值会把源码里的 `\n` 变真换行、`\\.` 变 `\.`。
+// 步骤 [1] 查的是"求值前"的原始文件：源码语法合法但求值产物可能直接炸（例：单写 '\n' 在字符串里 →
+// 求值后变成真实换行 → 浏览器 SyntaxError，整个后台脚本挂掉且 check-code 全绿）。这里把 PAGE 模板
+// 按 JS 模板字面量语义原样求值（转义行为与 Cloudflare 上线后浏览器拿到的页面完全一致），再对求值产物
+// 的内联 <script> 跑 new Function——新增后台内联代码后本步骤是模板转义类错误的唯一机器兜底。
+console.log('[5] admin 求值后内联脚本语法（坑 18 兜底）');
+{
+  const adminSrc = readFileSync(join(ROOT, 'functions', 'admin', 'index.js'), 'utf8');
+  const start = adminSrc.indexOf('const PAGE = `');
+  const btAt = start < 0 ? -1 : adminSrc.indexOf('`', start);
+  const endAt = btAt < 0 ? -1 : adminSrc.indexOf('`;', btAt);
+  if (start < 0 || btAt < 0 || endAt < 0) {
+    fail('functions/admin/index.js：找不到 const PAGE 模板边界（模板写法变了？同步更新本步骤）');
+  } else {
+    const rawTemplate = adminSrc.slice(btAt, endAt + 1); // 含首尾反引号，按表达式求值
+    let page = '';
+    try {
+      page = (0, eval)(rawTemplate);
+    } catch (e) {
+      fail('functions/admin/index.js：PAGE 模板求值抛错——' + e.message);
+    }
+    if (page) {
+      const re = /<script>([\s\S]*?)<\/script>/g;
+      let m, i = 0, bad = 0;
+      while ((m = re.exec(page))) {
+        i++;
+        try {
+          new Function(m[1]);
+        } catch (e) {
+          bad++;
+          fail(`admin 求值后页面 内联脚本块 ${i} 语法错误（源码反斜杠没双写？）：${e.message}`);
+        }
+      }
+      if (i === 0) fail('admin 求值后页面没有内联 <script>（提取正则失效？）');
+      else if (!bad) ok(`admin 求值后页面 内联脚本 ${i} 块全部通过（求值后页面 ${page.length} 字符）`);
+    }
+  }
 }
 
 console.log('');

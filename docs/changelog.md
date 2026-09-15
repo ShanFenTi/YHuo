@@ -1,5 +1,35 @@
 # 更新日志
 
+## 2026-09-15（性能体检 + 分享卡 + 高价值小功能 + 站长效率 四包一批）
+
+* **前台：摘除 Tailwind 浏览器运行时编译器（2026-09-15，全站性能体检最大单项）**——八页 head 原本同步引入 `@tailwindcss/browser@4`（jsdelivr CDN、无 defer 无 fallback，运行时 JIT 编译占主线程且国内访问不稳）；审计核实**全站零 Tailwind 工具类**（八页 markup + common.js + blog-player.js 中 `flex/grid` 等命中全为自定义类名或内联 style）、`@theme` 变量无任何外部消费者、后台不用 Tailwind——其唯一作用是"编译"一段本就手写的 reset。改法：CDN script 行删除；`<style type="text/tailwindcss">` 转普通 `<style>`（浏览器本不应用未知 type 的样式块，原先全靠 CDN 编译），块内 `@theme inline {…}` 转 `:root {…}`（变量原样保留零行为差异），`@layer base` preflight 是合法原生 CSS 原样保留。八页 head 同步（坑 23），check-code 步骤[4]过
+
+* **前台：八页补分享卡元信息 + canonical**——原先只有 og:title/og:description/og:type，缺 og:url/og:image/twitter:card/canonical（社交分享无卡片图、无规范地址）。新增 `images/og-banner.jpg`（1200×630 暖白纸底 + 陶土光晕 + 站名 + 域名，PowerShell System.Drawing 绘制）；og:url/og:image/canonical 统一用主域名 190963.xyz（与 sitemap/RSS 同口径）。**check-code 步骤[4]归一化白名单同步补 `<link rel="canonical">` 行豁免**（og:url 在既有 og:* 前缀豁免内），否则按页路径不同的 canonical 必报不一致
+
+* **前台：背景选择器缩略图化（省 7.6MB）**——原 openBgPicker 把清单里的图**原图**直接当缩略图加载，`images/1.jpg`（8185×5787，7.6MB）开一次选择器就整张拉取。现新增 `images/thumbs/`（>300KB 的静态图本地一次性生成小图：长边 480、JPEG q80，Pillow 处理——GDI+ 对这张 47MP 大图解码出白图）；前端 `/images/<名>.<ext>` 映射 `/images/thumbs/<名>.jpg` 展示，onerror 回落原图，点击仍套用原图（背景要全分辨率，只改展示层）；缩略图加 `loading="lazy" decoding="async"`。顺带修 manifest 兜底清单裸相对路径（坑 20）：openBgPicker 内统一归一根相对
+
+* **前台：favicon 瘦身**——favicon.png 128px/34KB → 64px 重采样 9.6KB（System.Drawing；apple-touch-icon 180px 重编码反而更大，保留原文件）。两者已被 `?v=` 部署指纹覆盖，换文件即全局换新
+
+* **后端：`.json` 静态清单补缓存头**——notes/notes.json 与 docs/docs.json 走 `[[path]].js` "头不动"透传 = 完全无 Cache-Control（浏览器启发式缓存，一份错的能赖很久）。现 .json 透传统一补 `Cache-Control: public, max-age=300`；其余非 HTML（sw.js/robots/sitemap/icons）维持逐字节透传不受扰动
+
+* **前台：Ctrl+K 命令面板补全（创意库 E5 收尾）**——①数据源加随笔（/api/notes 失败回落静态 notes.json，与随笔页同链路，60 秒缓存同款）；②新增「随笔」组：剥 md 摘要做标题、日期/天气做副文本、**全文参与匹配**（push 白名单加 opts.full 通道），点击 `pjaxGo('/notes/#'+日期)`（随笔页 onHash locateNote 定位高亮现成）；③新增前缀作用域模式：`/xx` 只搜随笔、`#xx` 只搜音乐（与 `=` 算数同思路），空查询列全组、高亮长度按剥前缀后的查询算（appendHighlighted 改收 qlen 参数，否则 mark 截多一位）；④placeholder 与空态提示同步三前缀用法（顺带清掉已随 /misc/ 移除的"图片"死文案），八页同步
+
+* **后端+前台：公开寄语 API + SVG 徽章（创意库 D6）**——`GET /api/quotes/random` 公开无鉴权：site_settings.quotes 随机一条（旧单条 quote 并入口径同后台外观页），没配寄语 ok:false(404)；`?format=svg` 返回自绘 SVG 徽章（暖白纸底 + 陶土圆点 + 站名 + 手动断行/省略号的寄语文本，XML 转义），外站 `<img>` 可直接引用。边缘/浏览器缓存 10 分钟（随机性在缓存窗口内生效）
+
+* **后端+前台：公开状态页 /status/（创意库 D7）**——独立自足页（offline.html 同思路，**不进八页外壳、不进导航**避开坑 23），四盏健康灯读 /api/health：数据库（绑定+可查+建表）、对象存储（绑定+可列）、邮件服务（**health 新增 mail 布尔**，读 email_config.enabled 只回布尔不泄细节；关 = 灰色「未启用」不算故障）、每日备份（backupLastDate：≤1 天正常 / 2~3 天黄 / 更久红 / 无灰），60 秒自刷 + 手动刷新 + 北京时间口径。sitemap 补 /status/（9 条，lastmod 全量更新）；入口 = 关于页「站点数据」卡底部链接
+
+* **后端+前台：后台 AI 润色与留言总结（创意库 A3/A4）**——新端点 `POST /api/admin/ai/complete`（管理员会话由 _middleware 守卫）：{prompt ≤6000 字} 非流式补全，getAiProviders/pickModel/buildUpstreamRequest 同 test.js 链路但**不截断回复**（test 只回前 100 字没法用），OpenAI 兼容与 Anthropic 双协议解析同款；后台①随笔编辑区加「AI 润色」：结果落预览区（模型名+耗时），「应用到正文」才写回 textarea（预览期正文原样不动防丢稿），表单重置/取消编辑联动清预览；②概览页新增「今日留言」卡（AI 用量卡与邮件统计卡之间）：公开 /api/messages 翻页取今日（created_at 北京时间前缀，最多 4 页 120 条）显示条数/路人数/最新时间，「AI 总结今日」拼留言（身份标记 + 80 字截断）让默认模型出 3~5 句氛围总结、需站长处理的内容单独点出。两处全部守坑 18（无反引号、无 ${、正则双写）
+
+* **后台：上传图片自动压缩（创意库 I4）**——图片页 >500KB 且 ≤20MB 的图片上传前本地压缩：`<img>`+canvas 长边压到 1920、`toBlob('image/webp', 0.85)`（浏览器不支持/压不小一律回落原文件——**压缩绝不挡上传**；需要缩放且 ≤2MB 的小图不强行重编码）；文件名扩展名随实际 blob 类型改（webp/png/jpg，TYPE_EXT 白名单内）；压缩说明拼进队列行（「已压缩 3.2MB → 410KB」）。上传动作行加「大图自动压缩」开关（localStorage adminImgCompress，默认开）。改 uploadFiles 把 xhr 段包进 `send(file, note)`，压缩完成再入队
+
+* **工具：check-code 新增步骤[5]「admin 求值后内联脚本语法」（坑 18 补强）**——原步骤[1]对 admin/index.js 的原始文件跑校验，查的是模板转义**前**的代码：源码合法但求值产物可能直接炸（本轮实测即踩中——后台润色/总结 prompt 里的单写 `'\n'` 经模板变成真实换行 → 浏览器 SyntaxError → 整个后台脚本挂死，而 check-code 全绿）。现把 `const PAGE` 模板按 JS 模板字面量语义 `(0,eval)` 原样求值（与线上浏览器拿到的页面逐字一致），再对求值产物内联 `<script>` 跑 new Function。**注意**：正则里匹配字面 `/` 时原始源码（要 `\//`）与求值后（要 `\\//`）不可兼得，这类判断改用 `indexOf('image/')` 字符串方法绕开
+
+* **前台：背景选择器缩略图映射补强（实测补）**——本地/线上的静态图片经「静态媒体自动同步」进了 KV，/api/playlist 给的是 `/media/<uuid>` 地址且 **images 字段名是 `name` 不是 `title`**（title 为 null）——按 url 匹配 `/images/` 的初版映射在主路径上落空。现按「title || name 剥扩展名」或「/images/ url 文件名」双来源推导缩略图名（静态同步条目的标题=原文件名），缩略图缺失 onerror 回落原图。本地实测：1.jpg/8.jpeg 两张大图命中 thumbs（21KB/20KB），其余小图走原图，全部加载成功
+
+* **后台：今日留言卡改 UTC 时间窗过滤（实测补，见 §9 坑 37）**——messages.created_at 是 D1 CURRENT_TIMESTAMP 的 **UTC** 时间（初版按北京时间日期前缀过滤，北京 0~8 点的留言会被漏掉）；现按「[北京当天 00:00, +1 天) 换算回 UTC 窗口」过滤，「最新一条 HH:MM」同步转北京时区显示。本地实测：昨日/今日混合数据下计数正确、mock 上游总结链路通
+
+* **文档：roadmap.md 状态校准**——CI 校验补勾（.github/workflows/check.yml 已在库多时）、游戏页条目移除（曾做完又整体移除，不再挂"计划中"）、语音输入/角色预设改口径（已移除/已改思考强度）、本轮完成项（命令面板升级/公开小接口/状态页/AI 随笔润色/图片压缩上传）勾掉
+
 ## 2026-09-12
 
 * **前台：思考强度菜单去掉 emoji 图标（2026-09-12，用户要求）**——AI_EFFORTS 清单 icon 字段清空（默认/低/中/高纯文字，✓ 选中标记保留），菜单项与入口标签渲染逻辑不变（icon 为空自然不拼）。实测：check-code 全过；线上新指纹（57de6085）下精确确认清单 icon 全空

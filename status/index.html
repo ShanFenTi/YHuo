@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="YHuo 站点公开状态页：数据库、对象存储、邮件服务、每日备份四项健康灯，60 秒自动刷新，不含任何用户数据。">
+  <meta property="og:title" content="YHuo — 站点状态">
+  <meta property="og:description" content="数据库 / 对象存储 / 邮件服务 / 每日备份四项健康灯。">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://190963.xyz/status/">
+  <meta property="og:image" content="https://190963.xyz/images/og-banner.jpg">
+  <meta name="twitter:card" content="summary_large_image">
+  <link rel="canonical" href="https://190963.xyz/status/">
+  <link rel="icon" type="image/png" href="/assets/icons/favicon.png">
+  <title>YHuo — 站点状态</title>
+  <!-- 独立自足页（同 offline.html 思路）：不进八页外壳体系、不进导航（避开坑 23 同步成本），
+       入口 = 关于页「站点数据」卡底部链接 + sitemap。数据只来自公开的 /api/health（布尔 + 备份日期）。 -->
+  <style>
+    :root { color-scheme: light dark; }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; min-height: 100vh; display: flex; align-items: center; justify-content: center;
+      padding: 24px;
+      background: radial-gradient(ellipse 900px 480px at 50% -160px, rgba(204, 116, 66, 0.16), transparent 70%), #f8f7f4;
+      color: #1b1c1e;
+      font-family: "DM Sans", "PingFang SC", "Microsoft YaHei", ui-sans-serif, system-ui, sans-serif;
+      -webkit-font-smoothing: antialiased;
+    }
+    @media (prefers-color-scheme: dark) {
+      body { background: radial-gradient(ellipse 900px 480px at 50% -160px, rgba(231, 163, 124, 0.12), transparent 70%), #000; color: #f2f0ec; }
+      .card { border-color: #2a2a2c !important; }
+      .sub { color: #9a9ca1 !important; }
+      .row { border-color: #262628 !important; }
+    }
+    .card {
+      width: 100%; max-width: 460px;
+      background: rgba(255, 255, 255, 0.86); border: 1px solid #e6e3da; border-radius: 18px;
+      padding: 26px 26px 20px;
+      box-shadow: 0 16px 40px -18px rgba(0, 0, 0, 0.10);
+    }
+    h1 { font-size: 20px; margin: 0 0 4px; }
+    .sub { font-size: 13px; color: #5f6166; margin: 0 0 18px; }
+    .row {
+      display: flex; align-items: center; gap: 12px;
+      padding: 13px 2px; border-top: 1px solid #eeebe3;
+    }
+    .row:first-of-type { border-top: 0; }
+    .dot { width: 10px; height: 10px; border-radius: 50%; flex: 0 0 auto; background: #b9b6ad; }
+    .dot.ok { background: #2f9e5f; box-shadow: 0 0 0 3px rgba(47, 158, 95, 0.15); }
+    .dot.warn { background: #d9930d; box-shadow: 0 0 0 3px rgba(217, 147, 13, 0.15); }
+    .dot.bad { background: #d64545; box-shadow: 0 0 0 3px rgba(214, 69, 69, 0.15); }
+    .name { font-size: 14px; font-weight: 600; }
+    .desc { font-size: 12px; color: #8a8c91; margin-top: 2px; }
+    .state { margin-left: auto; font-size: 13px; color: #8a8c91; text-align: right; }
+    .state.ok { color: #27814e; }
+    .state.warn { color: #a86f08; }
+    .state.bad { color: #b93a3a; }
+    .foot { display: flex; align-items: center; justify-content: space-between; margin-top: 16px; font-size: 12px; color: #8a8c91; }
+    .foot a { color: #b0532b; text-decoration: none; }
+    .foot a:hover { text-decoration: underline; }
+    button.refresh {
+      font: inherit; font-size: 12px; padding: 4px 12px; border-radius: 999px;
+      border: 1px solid #e6e3da; background: transparent; color: inherit; cursor: pointer;
+      transition: background 0.2s;
+    }
+    button.refresh:hover { background: rgba(176, 83, 43, 0.08); }
+    @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+  </style>
+</head>
+<body>
+  <main class="card">
+    <h1>站点状态</h1>
+    <p class="sub">YHuo（<a href="/" style="color:inherit;">190963.xyz</a>）核心服务健康灯 · 60 秒自动刷新</p>
+    <div class="row"><span class="dot" id="d1"></span><div><p class="name">数据库</p><p class="desc">D1 · 存随笔 / 留言 / 签到 / 课表</p></div><span class="state" id="d1t">检查中…</span></div>
+    <div class="row"><span class="dot" id="kv"></span><div><p class="name">对象存储</p><p class="desc">KV · 存媒体文件 / 头像 / 备份</p></div><span class="state" id="kvt">检查中…</span></div>
+    <div class="row"><span class="dot" id="mail"></span><div><p class="name">邮件服务</p><p class="desc">验证码 / 课表提醒的发信通道</p></div><span class="state" id="mailt">检查中…</span></div>
+    <div class="row"><span class="dot" id="bak"></span><div><p class="name">每日备份</p><p class="desc">四张业务表全量 JSON · 保留 7 份</p></div><span class="state" id="bakt">检查中…</span></div>
+    <div class="foot">
+      <a href="/">← 返回首页</a>
+      <span style="display:flex;align-items:center;gap:10px;"><span id="checkedAt"></span><button class="refresh" id="btnRefresh" type="button">立即刷新</button></span>
+    </div>
+  </main>
+  <script>
+    (function () {
+      // 北京时间当天（YYYY-MM-DD）：备份日期口径与 tick/签到一致
+      function bjToday() {
+        var d = new Date(Date.now() + 8 * 3600 * 1000);
+        return d.getUTCFullYear() + '-' + String(d.getUTCMonth() + 1).padStart(2, '0') + '-' + String(d.getUTCDate()).padStart(2, '0');
+      }
+      function daysAgo(dateStr) {
+        var a = new Date(bjToday() + 'T00:00:00Z') - new Date(dateStr + 'T00:00:00Z');
+        return Math.round(a / 86400000);
+      }
+      function set(id, cls, text) {
+        var dot = document.getElementById(id);
+        dot.className = 'dot ' + (cls || '');
+        var t = document.getElementById(id + 't');
+        t.className = 'state ' + (cls || '');
+        t.textContent = text;
+      }
+      function check() {
+        ['d1', 'kv', 'mail', 'bak'].forEach(function (id) { set(id, '', '检查中…'); });
+        fetch('/api/health', { credentials: 'same-origin', cache: 'no-store' })
+          .then(function (r) { return r.json(); })
+          .then(function (d) {
+            // 数据库：绑定且可查询且建表齐 = 正常；绑定了但读不了 = 异常；没绑定 = 异常（部署问题）
+            if (d.db && d.dbReadable && d.tablesReady) set('d1', 'ok', '正常');
+            else if (d.db) set('d1', 'bad', '异常');
+            else set('d1', 'bad', '未绑定');
+            // KV：绑定且可列 = 正常；绑定了但读不了 = 异常；没绑定 = 异常
+            if (d.media && d.mediaOk) set('kv', 'ok', '正常');
+            else if (d.media) set('kv', 'bad', '异常');
+            else set('kv', 'bad', '未绑定');
+            // 邮件：开 = 正常；关 = 站长自选的未启用（灰，不算故障）
+            if (d.mail) set('mail', 'ok', '已启用');
+            else set('mail', '', '未启用');
+            // 备份：今天或昨天有 = 正常；再往后 = 偏旧（黄）；没有 = 未生成（灰）
+            if (d.backupLastDate) {
+              var n = daysAgo(d.backupLastDate);
+              if (n <= 1) set('bak', 'ok', d.backupLastDate);
+              else if (n <= 3) set('bak', 'warn', d.backupLastDate + '（' + n + ' 天前）');
+              else set('bak', 'bad', d.backupLastDate + '（' + n + ' 天前）');
+            } else set('bak', '', '未生成');
+            document.getElementById('checkedAt').textContent = '检查于 ' + new Date().toLocaleTimeString('zh-CN', { hour12: false });
+          })
+          .catch(function () {
+            ['d1', 'kv', 'mail', 'bak'].forEach(function (id) { set(id, 'bad', '检测失败'); });
+            document.getElementById('checkedAt').textContent = '网络异常，稍后自动重试';
+          });
+      }
+      document.getElementById('btnRefresh').addEventListener('click', check);
+      check();
+      setInterval(check, 60000);
+    })();
+  </script>
+</body>
+</html>

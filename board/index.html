@@ -7,13 +7,16 @@
   <meta property="og:title" content="留言板 - YHuo">
   <meta property="og:description" content="YHuo 的留言板：给站长或访客留句话。">
   <meta property="og:type" content="website">
+  <meta property="og:url" content="https://190963.xyz/board/">
+  <meta property="og:image" content="https://190963.xyz/images/og-banner.jpg">
+  <meta name="twitter:card" content="summary_large_image">
+  <link rel="canonical" href="https://190963.xyz/board/">
   <meta name="theme-color" media="(prefers-color-scheme: light)" content="#f8f7f4">
   <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#000000">
   <link rel="alternate" type="application/rss+xml" title="YHuo 随笔与更新" href="/feed.xml">
   <link rel="icon" type="image/png" href="/assets/icons/favicon.png">
   <link rel="apple-touch-icon" href="/assets/icons/apple-touch-icon.png">
   <title>留言板 - YHuo</title>
-  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
   <!-- 悬停预取（Speculation Rules API，2026-09-10 性能批次）：moderate=悬停/指针按下才预取，保守不费流量；
        document 规则默认只匹配同源文档链接，HTML 是 GET 静态无副作用预取安全，/admin/* 会触发会话故排除，
        /api 是 XHR 不会被命中；不支持的浏览器静默忽略。八页外壳同步块（坑 23），改请八处同步 -->
@@ -25,8 +28,11 @@
        保持一致（:root --background=#f8f7f4 / .dark --background-900=#000000，底色与光晕都画在 html
        画布层、body 透明），改动记得同步；刻意不做完整 critical CSS——抽取越多与 site.css 漂移风险越大 -->
   <style id="boot-css">html{background:#f8f7f4}html.dark{background:#000000}</style>
-  <style type="text/tailwindcss">
-    @theme inline {
+  <!-- 原为 <style type="text/tailwindcss"> + @theme inline，2026-09-15 摘除 Tailwind 浏览器
+       运行时编译器（jsdelivr CDN 同步阻塞，且全站经审计零工具类、@theme 变量无外部消费者）：
+       变量块改 :root 原样保留，@layer base preflight 是合法原生 CSS；改这段仍要八页同步（坑 23）-->
+<style>
+    :root {
       --color-background: var(--apple-background);
       --color-foreground: var(--apple-foreground);
       --color-card: var(--apple-card);
@@ -511,7 +517,7 @@
     <div class="cmdk-panel">
       <div class="cmdk-input-row">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
-        <input id="cmdkInput" type="text" placeholder="搜索界面、工具、文档、音乐、图片、视频…" autocomplete="off" spellcheck="false" aria-label="搜索关键词">
+        <input id="cmdkInput" type="text" placeholder="搜索界面、工具、文档、音乐…；前缀：/ 随笔  # 音乐  = 算数" autocomplete="off" spellcheck="false" aria-label="搜索关键词">
         <span class="cmdk-esc" aria-hidden="true">Esc</span>
       </div>
       <div class="cmdk-results" id="cmdkResults"></div>

@@ -2032,9 +2032,23 @@
         imgs.forEach(function (m) {
           var src = m.url || m.src || '';
           if (!src) return;
+          if (src.charAt(0) !== '/') src = '/' + src; // manifest 兜底清单是裸相对（坑 20），统一成根相对
           var thumb = document.createElement('img');
-          thumb.src = src;
-          thumb.alt = '设为背景：' + (m.title || m.alt || '站内图片');
+          // 缩略图（2026-09-15）：优先用 images/thumbs/<同名>.jpg（>300KB 大图的本地小图，1.jpg 原图
+          // 7.6MB 曾被整张当缩略图拉取）。命中来源有二：①清单 url 是 /images/<名>.<ext>（静态兜底清单）；
+          // ②静态同步进 KV 的条目（/media/... url）标题=原文件名。缩略图缺失 onerror 回落原图，
+          // 点击仍套用原图（背景要全分辨率，这里只改展示层）
+          // 静态同步进 KV 的条目标题=原文件名（playlist 响应字段是 name 不是 title）
+          var base = String(m.title || m.name || '').replace(/\.[^.]+$/, '');
+          var mm = src.match(/\/images\/([^/?#]+)\.(?:jpe?g|png|webp)(?:$|\?)/i);
+          if (mm) base = mm[1];
+          var showSrc = src;
+          if (base && /^[\w\u4e00-\u9fa5-]+$/.test(base)) showSrc = '/images/thumbs/' + base + '.jpg';
+          thumb.src = showSrc;
+          thumb.loading = 'lazy';
+          thumb.decoding = 'async';
+          thumb.onerror = function () { if (showSrc !== src) thumb.src = src; };
+          thumb.alt = '设为背景：' + (m.title || m.name || m.alt || '站内图片');
           if (savedSrc && src.indexOf(savedSrc) !== -1) thumb.classList.add('picked');
           thumb.addEventListener('click', function () {
             applyBgFromSrc(src);
@@ -7312,7 +7326,7 @@
       var hideTimer = null;
       var items = [];   // 当前渲染的扁平结果
       var active = 0;
-      var data = { at: 0, docs: [], music: [], videos: [] };
+      var data = { at: 0, docs: [], music: [], videos: [], notes: [] };
 
       function loadData() {
         if (Date.now() - data.at < 60000) return;
@@ -7321,6 +7335,19 @@
           .then(function (r) { return r.ok ? r.json() : []; })
           .then(function (l) { data.docs = Array.isArray(l) ? l : []; })
           .catch(function () { data.docs = []; });
+        // 随笔（2026-09-15 命令面板补全）：/api/notes 失败**或空库**回落静态 notes.json——与随笔页数据链同口径
+        fetch('/api/notes', { credentials: 'same-origin' })
+          .then(function (r) { return r.ok ? r.json() : Promise.reject(new Error('http ' + r.status)); })
+          .then(function (d) {
+            var list = (d && d.ok && Array.isArray(d.list)) ? d.list : [];
+            if (!list.length) return Promise.reject(new Error('empty'));
+            data.notes = list;
+          })
+          .catch(function () {
+            fetch('/notes/notes.json').then(function (r) { return r.ok ? r.json() : []; }).then(function (l) {
+              data.notes = Array.isArray(l) ? l : [];
+            }).catch(function () { data.notes = []; });
+          });
         var useStatic = function () {
           data.music = []; data.videos = [];
           fetch('/music/playlist.json').then(function (r) { return r.ok ? r.json() : []; }).then(function (a) {
@@ -7352,14 +7379,26 @@
         return String(name || '').replace(/\.[^.]+$/, '');
       }
 
-      function buildItems(q) {
+      // 随笔正文剥 md 出纯文本摘要（搜索展示用，渲染层仍走随笔页自己的 mdToHtml）
+      function stripMd(s) {
+        return String(s || '')
+          .replace(/`{1,3}/g, '')
+          .replace(/!\[[^\]]*\]\([^)]*\)/g, '')
+          .replace(/\[([^\]]*)\]\([^)]*\)/g, '$1')
+          .replace(/[#>*~_]+/g, ' ')
+          .replace(/\s+/g, ' ')
+          .trim();
+      }
+
+      function buildItems(q, scope) {
         var ql = (q || '').trim().toLowerCase();
         var out = [];
         function push(group, tag, label, run, opts) {
           opts = opts || {};
           var hl = ql ? String(label || '').toLowerCase().indexOf(ql) : 0;
-          // 副文本（如文档日期）也可匹配
+          // 副文本（如文档日期）与全文（如随笔正文）也可匹配
           if (hl < 0 && opts.sub && String(opts.sub).toLowerCase().indexOf(ql) >= 0) hl = 0;
+          if (hl < 0 && opts.full && String(opts.full).toLowerCase().indexOf(ql) >= 0) hl = 0;
           if (ql && hl < 0) return;
           out.push({ group: group, tag: tag, label: label, sub: opts.sub, run: run, disabled: !!opts.disabled, hl: hl });
         }
@@ -7402,6 +7441,12 @@
           for (var i = 0; i < tracks.length; i++) { if (tracks[i].name === m.name) { idx = i; break; } }
           push('音乐', '音乐', musicDisplayName(m.name), function () { playIndex(idx); }, { disabled: idx < 0 });
         });
+        // 随笔（2026-09-15 命令面板补全）：正文摘要做标题、日期/天气做副文本、全文参与匹配，
+        // 点击 pjax 直达 /notes/#日期（随笔页 onHash 的 locateNote 负责定位高亮）
+        data.notes.forEach(function (n) {
+          var text = stripMd(n.text);
+          push('随笔', '随笔', text.slice(0, 42) || String(n.date || ''), function () { pjaxGo('/notes/#' + n.date); }, { sub: String(n.date || '') + (n.mood ? ' · ' + n.mood : ''), full: String(n.text || '') });
+        });
         // 视频
         if (!FLAGS_OFF.video) {
           data.videos.forEach(function (v) {
@@ -7413,7 +7458,8 @@
         var byGroup = {};
         out.forEach(function (it) {
           if (ql && it.hl < 0) return;
-          if (!ql && it.group !== '界面' && it.group !== '工具') return;
+          if (scope && it.group !== scope) return; // 前缀作用域（/ 随笔、# 音乐）：只留目标组
+          if (!ql && !scope && it.group !== '界面' && it.group !== '工具') return;
           if (!byGroup[it.group]) { byGroup[it.group] = []; groupOrder.push(it.group); }
           byGroup[it.group].push(it);
         });
@@ -7431,15 +7477,22 @@
         return flat.slice(0, 40);
       }
 
-      function appendHighlighted(el, text, hl) {
+      function appendHighlighted(el, text, hl, qlen) {
         text = String(text || '');
-        var qlen = input.value.trim().length;
         if (hl == null || hl < 0 || !qlen) { el.textContent = text; return; }
         el.appendChild(document.createTextNode(text.slice(0, hl)));
         var mark = document.createElement('mark');
         mark.textContent = text.slice(hl, hl + qlen);
         el.appendChild(mark);
         el.appendChild(document.createTextNode(text.slice(hl + qlen)));
+      }
+
+      // 前缀作用域（2026-09-15）：/ 开头只搜随笔、# 开头只搜音乐（= 算数在 render 里更早接管）
+      function scopeOf(v) {
+        var c = v.charAt(0);
+        if (c === '#') return '音乐';
+        if (c === '/') return '随笔';
+        return null;
       }
 
       function setActive(i) {
@@ -7527,13 +7580,15 @@
       function render() {
         // 算数模式：结果区只放一条特殊结果行（进入即不再走常规搜索渲染）
         if (mathExprOf(input.value) !== null) { renderMath(); return; }
-        items = buildItems(input.value);
+        var scope = scopeOf(input.value);
+        var rawQ = scope ? input.value.slice(1) : input.value;
+        items = buildItems(rawQ, scope);
         active = 0;
         listEl.textContent = '';
         if (!items.length) {
           var empty = document.createElement('p');
           empty.className = 'cmdk-empty';
-          empty.textContent = input.value.trim() ? '没有匹配的结果' : '这里什么都没有——搜个歌名、文档或工具试试';
+          empty.textContent = rawQ.trim() ? '没有匹配的结果' : '搜歌名 / 文档 / 工具，或用前缀：/ 随笔 · # 音乐 · = 算数';
           listEl.appendChild(empty);
           return;
         }
@@ -7556,7 +7611,7 @@
           b.appendChild(tag);
           var title = document.createElement('span');
           title.className = 'cmdk-title';
-          appendHighlighted(title, it.label, it.hl);
+          appendHighlighted(title, it.label, it.hl, rawQ.trim().length);
           b.appendChild(title);
           if (it.sub) {
             var s = document.createElement('span');

@@ -31,7 +31,18 @@ export async function onRequestGet({ request, env }) {
   try {
     const assetResp = await env.ASSETS.fetch(request); // 用原始 request，保留 URL 与查询参数
     const contentType = assetResp.headers.get('content-type') || '';
-    if (!contentType.includes('text/html')) return assetResp; // 非 HTML：body 流式原样透传，头不动
+    if (!contentType.includes('text/html')) {
+      // .json 清单（notes/notes.json、docs/docs.json）原先"头不动"透传 = 完全没有 Cache-Control，
+      // 浏览器对无头响应用启发式缓存，一份错的能赖很久；统一补 5 分钟短缓存（前端内存里本来
+      // 还有 60 秒缓存层，这里只是给 HTTP 层兜底）。其余非 HTML（sw.js/robots/sitemap/icons）
+      // 维持"头不动"逐字节透传，不受扰动。
+      if (/\.json$/.test(new URL(request.url).pathname)) {
+        const headers = new Headers(assetResp.headers);
+        headers.set('Cache-Control', 'public, max-age=300');
+        return new Response(assetResp.body, { status: assetResp.status, headers });
+      }
+      return assetResp;
+    }
 
     // 版本号取部署 commit 前 8 位（生产 Pages 与本地 wrangler 都注入 CF_PAGES_COMMIT_SHA），缺失/异常回落 'dev'
     const v = String(env.CF_PAGES_COMMIT_SHA || '').trim().replace(/[^A-Za-z0-9_-]/g, '').slice(0, 8) || 'dev';

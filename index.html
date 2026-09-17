@@ -235,6 +235,9 @@
           </div>
         </div>
         <p class="clock-date" id="clockDate">--</p>
+        <!-- 今日印记（2026-09-17，创意集 1.2/1.3）：节气红章 + 流星雨极大预告，common.js 按当日历法填充；
+             平日整块保持 hidden（hidden 属性控制显隐）；元素只在首页 main 里，不进外壳（坑 23 免同步） -->
+        <div class="hero-marks" id="heroMarks" hidden></div>
         <!-- 天气胶囊：Open-Meteo 免费接口，点击换城市；加载失败静默隐藏 -->
         <button class="weather-chip" id="weatherChip" type="button" title="点击更换城市">
           <span class="weather-icon" id="weatherIcon" aria-hidden="true">☀️</span>

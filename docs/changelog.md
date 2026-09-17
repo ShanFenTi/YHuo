@@ -1,5 +1,13 @@
 # 更新日志
 
+## 2026-09-17（信箱留言板 + 首页今日印记：节气红章/流星雨预告，创意集 v2 前两件）
+
+* **前台：留言板「信箱」化（创意集 v2 2.1）**——每条留言从「分隔线列表行」改成「一封信」：信纸卡（12px 圆角卡面 + 105° 单道折痕背景）+ 圆形邮戳（虚线外圈 + 实线内圈、rotate(-9deg) 微倾，戳面三行 YHUO/今天|N月N日/HH:MM，原 .board-time 文案升级为戳面）+ 角上小邮票（34×42 齿孔白框 + 渐变票面 + 白日/雪线图案，按留言 id %4 轮换陶土/金/绿/紫四款色）；入场改展信动画（letterIn 420ms rotateX -12° 展开板 + fill backwards，boardLoad 逐封内联 animation-delay 45ms 错峰、封顶 12 封，发布/翻页重建列表时重播）；≤560px 邮票收起、邮戳缩到 46px；**数据与 /api/messages 接口零改动**，删除钮/等级徽标/站长金标/路人灰标原位保留；新增三个语义变量 --letter-crease/--postmark-ink/--seal-ink（site.css 末段定义、.dark 各自重定义），reduced-motion 只去展信动画。顺带 fmtBoardTime → fmtBoardParts（拆日期/时间两行喂邮戳，UTC 补 Z 口径不变，坑 37 同源）
+
+* **前台：首页「今日印记」——节气红章 + 流星雨极大预告（创意集 v2 1.2/1.3）**——common.js 文件头新增 `window.__siteCalendar` 历法纯函数：二十四节气用「寿星公式」现算（21 世纪 C 系数，1~2 月节气的闰年修正取 (y-1)/4，不带年份表；极少数例外年份 ±1 天装饰性可接受），流星雨极大日硬编码八场年度表（象限仪/天琴/宝瓶η/英仙/天龙/猎户/狮子/双子）；index.html hero 日期行下加 #heroMarks 容器（只在首页 main，坑 23 免同步；hidden 属性口径坑 14），applyHeroMarks 由 updateClock 在**日期变化时**调用（跨零点/pjax 回首页都会重算，5 次/秒的 tick 零多余判断）：节气当天出 44px 朱砂红章（竖排双字、-4° 微倾、内嵌细框），流星雨极大日出「✦ 今夜 · N座流星雨极大」胶囊（✦ 走主题色）；**流星密度加倍**：文件尾流星 IIFE 在极大日 18:00~次日 6:00 把 30/18 颗档翻倍（本次加载判定，跨零点不重排；reduced-motion 0 颗不受影响）。节气寄语选句（1.3 后半）留给创意集 §4.1「寄语看天说话」一起做
+
+* **实测**：check-code 全过；本地 wrangler + 浏览器——信箱 1280/390 两档与展信动画落定、历法 10 项断言全过（冬至/白露/立春/跨年小寒/夏至/平日为空 + 双子/英仙/象限仪/平日为空）、Date 劫持模拟印记端到端（平日 hidden → 冬至出章 → 双子出胶囊 → 切回当日消失，深浅主题各截一帧）、pjax 回归（首页 marks hidden / 留言页 2 信 2 戳 2 票）、今日流星基线 51 颗未被误加倍（加倍分支受无 init-script 注入限制未整页 E2E，纯函数与接线已验证）
+
 ## 2026-09-15（性能体检 + 分享卡 + 高价值小功能 + 站长效率 四包一批）
 
 * **前台：摘除 Tailwind 浏览器运行时编译器（2026-09-15，全站性能体检最大单项）**——八页 head 原本同步引入 `@tailwindcss/browser@4`（jsdelivr CDN、无 defer 无 fallback，运行时 JIT 编译占主线程且国内访问不稳）；审计核实**全站零 Tailwind 工具类**（八页 markup + common.js + blog-player.js 中 `flex/grid` 等命中全为自定义类名或内联 style）、`@theme` 变量无任何外部消费者、后台不用 Tailwind——其唯一作用是"编译"一段本就手写的 reset。改法：CDN script 行删除；`<style type="text/tailwindcss">` 转普通 `<style>`（浏览器本不应用未知 type 的样式块，原先全靠 CDN 编译），块内 `@theme inline {…}` 转 `:root {…}`（变量原样保留零行为差异），`@layer base` preflight 是合法原生 CSS 原样保留。八页 head 同步（坑 23），check-code 步骤[4]过

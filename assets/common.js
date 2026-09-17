@@ -3,6 +3,54 @@
 // 所有页面共用； meteor 流星特效已并入文件尾部。
 // =============================================
 // =============================================
+// 节气与流星雨历法（2026-09-17，创意集 1.2/1.3）：纯函数挂 window.__siteCalendar，
+// 供首页「今日印记」（节气红章/流星雨极大预告，startHomeClock 段 applyHeroMarks）
+// 与文件尾流星 IIFE 的极大夜密度加倍共用。放最前：首页模块启动时就要用。
+// 节气日期用「寿星公式」现算（21 世纪系数；1~2 月节气的闰年修正 L 取 (y-1)/4），
+// 不带年份表；极少数已知例外年份会差一天，装饰性显示可接受。
+// =============================================
+window.__siteCalendar = (function () {
+  // [月, 节气名, 21 世纪 C 系数]
+  var TERMS = [
+    [1, '小寒', 5.4055], [1, '大寒', 20.12],
+    [2, '立春', 3.87], [2, '雨水', 18.73],
+    [3, '惊蛰', 5.63], [3, '春分', 20.646],
+    [4, '清明', 4.81], [4, '谷雨', 20.1],
+    [5, '立夏', 5.52], [5, '小满', 21.04],
+    [6, '芒种', 5.678], [6, '夏至', 21.37],
+    [7, '小暑', 7.108], [7, '大暑', 22.83],
+    [8, '立秋', 7.5], [8, '处暑', 23.13],
+    [9, '白露', 7.646], [9, '秋分', 23.042],
+    [10, '寒露', 8.318], [10, '霜降', 23.438],
+    [11, '立冬', 7.438], [11, '小雪', 22.36],
+    [12, '大雪', 7.18], [12, '冬至', 21.94]
+  ];
+  function solarTerm(d) {
+    var y = d.getFullYear() % 100, m = d.getMonth() + 1, day = d.getDate();
+    for (var i = 0; i < TERMS.length; i++) {
+      var t = TERMS[i];
+      if (t[0] !== m) continue;
+      var l = m <= 2 ? Math.floor((y - 1) / 4) : Math.floor(y / 4);
+      if (Math.floor(y * 0.2422 + t[2]) - l === day) return t[1];
+    }
+    return null;
+  }
+  // 主要年度流星雨极大日（每年日期稳定，不追单年精确预报）
+  var SHOWERS = [
+    [1, 4, '象限仪座'], [4, 22, '天琴座'], [5, 6, '宝瓶座η'],
+    [8, 13, '英仙座'], [10, 8, '天龙座'], [10, 21, '猎户座'],
+    [11, 17, '狮子座'], [12, 14, '双子座']
+  ];
+  function meteorShower(d) {
+    var m = d.getMonth() + 1, day = d.getDate();
+    for (var i = 0; i < SHOWERS.length; i++) {
+      if (SHOWERS[i][0] === m && SHOWERS[i][1] === day) return SHOWERS[i][2];
+    }
+    return null;
+  }
+  return { solarTerm: solarTerm, meteorShower: meteorShower };
+})();
+// =============================================
 // 前端错误自动上报（RUM，2026-09-10）：全站最早的独立采集段，放在主 IIFE 之前——
 // 哪怕主脚本自己加载/启动失败，这里的钩子也已就位。三路采集：
 //   window.onerror（同步 JS 错误）+ unhandledrejection（未处理的 Promise 拒绝）+ 捕获阶段
@@ -385,6 +433,9 @@
     }
     function updateClock() {
       var d = new Date();
+      // 日期翻转（跨零点 / pjax 回首页后的首次 tick）才重算今日印记——5 次/秒的 tick 不做多余判断
+      var dateKey = d.getFullYear() + '-' + d.getMonth() + '-' + d.getDate();
+      if (dateKey !== lastDateKey) { lastDateKey = dateKey; applyHeroMarks(); }
       var s = pad2(d.getSeconds());
       if (clockHEl) clockHEl.textContent = pad2(d.getHours());
       if (clockMEl) clockMEl.textContent = pad2(d.getMinutes());
@@ -407,6 +458,7 @@
     }
     var heroGreeting = null;
     var lastSecond = null;
+    var lastDateKey = null; // 今日印记只在日期变化时重算（updateClock）
     var homeClockTimers = [];
     var clockMsText = null; // 毫秒位常驻文本节点：滚数只改 nodeValue，不替换节点
     function stopHomeClock() {
@@ -442,6 +494,38 @@
           clockMsText.nodeValue = '.' + ('00' + new Date().getMilliseconds()).slice(-3);
         }, 50));
       }
+    }
+
+    // 今日印记（2026-09-17，创意集 1.2/1.3）：按当日历法把节气红章 / 流星雨极大预告填进 #heroMarks。
+    // 由 updateClock 在日期变化时调用（首页 pjax 回来也会重新走到）；历法是文件头的 window.__siteCalendar。
+    // 平日两个都为 null → 整块保持 hidden；元素只在 index.html 的 main 里，其他页直接返回
+    function applyHeroMarks() {
+      var wrap = document.getElementById('heroMarks');
+      if (!wrap || !window.__siteCalendar) return;
+      var now = new Date();
+      var term = window.__siteCalendar.solarTerm(now);
+      var shower = window.__siteCalendar.meteorShower(now);
+      if (!term && !shower) { wrap.hidden = true; wrap.textContent = ''; return; }
+      wrap.textContent = '';
+      if (term) {
+        var seal = document.createElement('span');
+        seal.className = 'term-seal';
+        seal.textContent = term;
+        seal.title = '今日' + term;
+        wrap.appendChild(seal);
+      }
+      if (shower) {
+        var chip = document.createElement('span');
+        chip.className = 'shower-chip';
+        var star = document.createElement('i');
+        star.className = 'sc-star';
+        star.setAttribute('aria-hidden', 'true');
+        star.textContent = '✦';
+        chip.appendChild(star);
+        chip.appendChild(document.createTextNode(' 今夜 · ' + shower + '流星雨极大'));
+        wrap.appendChild(chip);
+      }
+      wrap.hidden = false;
     }
 
     // =========================
@@ -7195,10 +7279,27 @@
         lv.textContent = 'Lv.' + it.level.lv + ' ' + it.level.name;
         head.appendChild(lv);
       }
-      var tm = document.createElement('span');
-      tm.className = 'board-time';
-      tm.textContent = fmtBoardTime(it.created_at);
-      head.appendChild(tm);
+      // 邮戳 + 邮票（信箱化，样式在 site.css 末段「留言板信箱」段）：
+      // 日期/时间盖戳在头部行尾（管理员删除钮在其后），邮票按留言 id 轮换四款色
+      var pm = document.createElement('span');
+      pm.className = 'board-postmark';
+      var pmb = document.createElement('i');
+      pmb.className = 'pm-brand';
+      pmb.setAttribute('aria-hidden', 'true');
+      pmb.textContent = 'YHUO';
+      var pmd = document.createElement('span');
+      pmd.className = 'pm-date';
+      var pmt = document.createElement('span');
+      pmt.className = 'pm-time';
+      var parts = fmtBoardParts(it.created_at);
+      pmd.textContent = parts[0];
+      pmt.textContent = parts[1];
+      pm.appendChild(pmb); pm.appendChild(pmd); pm.appendChild(pmt);
+      head.appendChild(pm);
+      var stamp = document.createElement('i');
+      stamp.className = 'board-stamp v' + ((it.id || 0) % 4 + 1);
+      stamp.setAttribute('aria-hidden', 'true');
+      head.appendChild(stamp);
       if (boardMe.admin) {
         var del = document.createElement('button');
         del.type = 'button';
@@ -7238,15 +7339,14 @@
       }, 2500);
       return false;
     }
-    function fmtBoardTime(s) {
+    function fmtBoardParts(s) {
+      // created_at 是 UTC（D1 CURRENT_TIMESTAMP，坑 37 同口径）：补 Z 按本地时区拆「日期行/时间行」喂邮戳
       var d = new Date(String(s || '').replace(' ', 'T') + 'Z');
-      if (isNaN(d.getTime())) return String(s || '');
+      if (isNaN(d.getTime())) return [String(s || ''), ''];
       var p = function (n) { return (n < 10 ? '0' : '') + n; };
       var now = new Date();
       var sameDay = d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth() && d.getDate() === now.getDate();
-      var hm = p(d.getHours()) + ':' + p(d.getMinutes());
-      if (sameDay) return '今天 ' + hm;
-      return (d.getMonth() + 1) + '月' + d.getDate() + '日 ' + hm;
+      return [sameDay ? '今天' : (d.getMonth() + 1) + '月' + d.getDate() + '日', p(d.getHours()) + ':' + p(d.getMinutes())];
     }
     function boardLoad() {
       fetch('/api/messages?offset=' + boardOffset, { credentials: 'same-origin' })
@@ -7254,7 +7354,12 @@
         .then(function (d) {
           if (!d.ok) { boardHint.textContent = d.error || '留言加载失败'; return; }
           boardList.textContent = '';
-          (d.list || []).forEach(function (it) { boardList.appendChild(boardItem(it)); });
+          // 展信错峰：每封延迟 45ms 入场（样式 letterIn，reduced-motion 由 CSS 关掉），封顶 12 封
+          (d.list || []).forEach(function (it, i) {
+            var el = boardItem(it);
+            el.style.animationDelay = (Math.min(i, 11) * 45) + 'ms';
+            boardList.appendChild(el);
+          });
           boardEmpty.hidden = (d.list || []).length > 0;
           boardMore.hidden = !d.hasMore;
           boardOffset += (d.list || []).length;
@@ -7968,6 +8073,13 @@
       var lowPower = window.matchMedia('(max-width: 859px)').matches
         && window.matchMedia('(pointer: coarse)').matches;
       var count = reduceMotion ? 0 : (lowPower ? 18 : 30);
+      // 流星雨极大夜（window.__siteCalendar，文件头历法段）：极大日 18:00~次日 6:00 密度加倍。
+      // 只在本次加载判定，跨零点不重排（装饰性效果可接受）；减弱动态档本来就 0 颗不受影响
+      if (count) {
+        var showerNow = window.__siteCalendar && window.__siteCalendar.meteorShower(new Date());
+        var hrNow = new Date().getHours();
+        if (showerNow && (hrNow >= 18 || hrNow < 6)) count = Math.round(count * 2);
+      }
       // 出生横坐标按"屏幕目标点"反推（2026-09-07 二次修正）：上一版在 [最左出生, +100%] 的整条
       // 出生带上均匀取点，但窄屏这条带约 3/4 在屏幕左侧外——路径穿过左下角的流星不仅占比小、
       // 在屏时间也短，左下角观感仍系统性偏少（用户再报"左下角太少了"）。改为每颗流星先在屏幕上

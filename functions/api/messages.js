@@ -15,6 +15,7 @@ const MAX_CHARS = 500;
 const POST_INTERVAL_MS = 60000;
 const GUEST_COOKIE = 'yhuo_guest';        // 路人身份 Cookie：随机 hex 16 位，长效（180 天）匿名标识
 const GUEST_GLOBAL_LIMIT = 10;            // 路人全局兜底：每分钟 10 条
+const GUEST_IP_MIN_LIMIT = 3;             // 路人单 IP 兜底：每分钟 3 条（D1 计数，跨 isolate 生效）
 
 // 路人限速表（照 ai/chat.js 的内存滑动窗口写法；Worker 隔离实例间为近似值，防刷够用）：
 // guestRate = guestId → 最近发布时间戳数组；guestGlobalTimes = 全部路人发布时间戳（全局兜底）
@@ -123,6 +124,25 @@ export async function onRequestPost({ request, env }) {
     const cookieHeader = {
       'Set-Cookie': GUEST_COOKIE + '=' + guestId + '; Max-Age=15552000; Path=/; SameSite=Lax; Secure',
     };
+    // IP 维度限速（D1 计数，跨 isolate/冷启动都生效）：guestId Cookie 是客户端可控的，不带 Cookie
+    // 的脚本每请求都是新身份，内存桶拦不住——所以配额身份用 CF-Connecting-IP，按分钟桶记数
+    //（复用 login_throttle，UPSERT+RETURNING 原子取「含本次」的累计值）。内存桶降级为快速路径
+    const ip = request.headers.get('CF-Connecting-IP') || 'unknown';
+    const ipMinKey = 'guestip:' + ip + ':' + Math.floor(now / 60000);
+    const used = await env.DB.prepare(
+      'INSERT INTO login_throttle (key, fails, last_fail) VALUES (?, 1, ?) ON CONFLICT(key) DO UPDATE SET fails = fails + 1, last_fail = excluded.last_fail RETURNING fails'
+    ).bind(ipMinKey, new Date(now).toISOString()).first();
+    if (used && Number(used.fails) > GUEST_IP_MIN_LIMIT) {
+      return json({ ok: false, error: '留言太频繁啦，稍等片刻再来吧' }, 429, cookieHeader);
+    }
+    // 时间桶键（guestip:/emailcode:）不会像登录键那样被成功登录清掉：5% 概率顺手清 2 小时前的旧行，防无界增长
+    if (Math.random() < 0.05) {
+      try {
+        await env.DB.prepare(
+          "DELETE FROM login_throttle WHERE last_fail < ? AND (key LIKE 'guestip:%' OR key LIKE 'emailcode:%')"
+        ).bind(new Date(now - 2 * 3600 * 1000).toISOString()).run();
+      } catch (e) {}
+    }
     pruneGuestRate(now);
     // 单个路人 60 秒一条（滑动窗口）
     const arr = (guestRate.get(guestId) || []).filter((t) => now - t < POST_INTERVAL_MS);

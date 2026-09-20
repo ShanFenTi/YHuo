@@ -24,11 +24,15 @@ export async function onRequestPost({ request, env }) {
   if (!purpose) return json({ ok: false, error: '无效的验证码用途' }, 400);
   if (!isEmailAddr(email)) return json({ ok: false, error: '邮箱格式不正确' }, 400);
 
-  // 单 IP 每小时签发上限：防匿名批量请求烧穿邮件日配额（配额耗尽会连带 2FA 登录发码失败锁死管理员）
+  // 单 IP 每小时签发上限：先原子占额、后发信——此前"先发信后计数"，签发失败不计数等于免费重试，
+  // 且读/写分离可被并发一起穿过旧值，反复触发失败就能烧穿邮件日配额（连带 2FA 发码失败锁死管理员）。
+  // 用 UPSERT+RETURNING 一次拿到「含本次」的累计值；占额不因后续步骤失败退还（防失败重试白嫖）
   const ip = request.headers.get('CF-Connecting-IP') || 'unknown';
   const ipHourKey = 'emailcode:' + ip + ':' + new Date().toISOString().slice(0, 13);
-  const ipCapRow = await env.DB.prepare('SELECT fails FROM login_throttle WHERE key = ?').bind(ipHourKey).first();
-  if (ipCapRow && ipCapRow.fails >= 8) return json({ ok: false, error: '验证码请求过于频繁，请一小时后再试' }, 429);
+  const used = await env.DB.prepare(
+    'INSERT INTO login_throttle (key, fails, last_fail) VALUES (?, 1, ?) ON CONFLICT(key) DO UPDATE SET fails = fails + 1, last_fail = excluded.last_fail RETURNING fails'
+  ).bind(ipHourKey, new Date().toISOString()).first();
+  if (used && Number(used.fails) > 8) return json({ ok: false, error: '验证码请求过于频繁，请一小时后再试' }, 429);
 
   // 管理员重置：只发绑定的管理员邮箱（存 site_settings 'admin_email'）
   if (purpose === 'admin-reset') {
@@ -54,10 +58,13 @@ export async function onRequestPost({ request, env }) {
   try {
     await issueCode(env, email, purpose);
   } catch (e) {
-    return json({ ok: false, error: (e && e.message) || '发送失败' }, 429);
+    const msg = String((e && e.message) || '');
+    console.error('验证码签发失败[' + purpose + ']: ' + msg);
+    // 「发送太频繁/未启用」是本站自有文案可直出；其余（可能带上游响应片段）回固定文案，细节留日志
+    if (msg.indexOf('发送太频繁') === 0 || msg === '邮件服务未启用') {
+      return json({ ok: false, error: msg }, 429);
+    }
+    return json({ ok: false, error: '验证码发送失败，请稍后再试' }, 429);
   }
-  await env.DB.prepare(
-    'INSERT INTO login_throttle (key, fails, last_fail) VALUES (?, 1, ?) ON CONFLICT(key) DO UPDATE SET fails = fails + 1, last_fail = excluded.last_fail'
-  ).bind(ipHourKey, new Date().toISOString()).run();
   return json({ ok: true });
 }

@@ -1,6 +1,7 @@
 // GET /api/health → 报告绑定状态，用于排查"绑定没生效"的部署问题
+// 注意：这是公开端点且被 /status/ 每 60 秒自刷——只做只读探测，绝不跑 ensureSchema
+//（迁移含 DDL 与探测语句，此前健康检查自己就在定期写库）
 import { json } from '../lib/util.js';
-import { ensureSchema } from '../lib/migrate.js';
 
 export async function onRequestGet({ env }) {
   const report = {
@@ -13,10 +14,10 @@ export async function onRequestGet({ env }) {
   if (report.db) {
     report.dbType = typeof env.DB.prepare === 'function' ? 'd1' : 'wrong-binding-type';
     try {
-      await ensureSchema(env); // 顺手自动建表
       await env.DB.prepare('SELECT 1').first();
       report.dbReadable = true;
-      const n = await env.DB.prepare('SELECT COUNT(*) AS n FROM admin_users').first();
+      // 表存在性用一次轻量探测代替迁移：site_settings 不存在会抛错 → tablesReady=false（建表由各业务接口的 ensureSchema 负责）
+      await env.DB.prepare('SELECT 1 FROM site_settings LIMIT 1').first();
       report.tablesReady = true;
     } catch (e) {
       report.tablesReady = false;

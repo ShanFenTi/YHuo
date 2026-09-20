@@ -45,7 +45,7 @@ export async function onRequestGet({ request, env }) {
     url: origin + '/api/schedule/tick?key=' + key,
     last: last && typeof last === 'object' ? last : null,
     lastBad: lastBad && typeof lastBad === 'object' ? lastBad : null,
-  });
+  }, 200, { 'Cache-Control': 'no-store' }); // 密钥响应不进任何缓存
 }
 
 export async function onRequestPost({ request, env }) {
@@ -56,7 +56,7 @@ export async function onRequestPost({ request, env }) {
   if (body.action !== 'regenerate') return json({ ok: false, error: '不支持的操作' }, 400);
   const key = await writeKey(env, randomHex(20));
   const origin = new URL(request.url).origin;
-  return json({ ok: true, key, url: origin + '/api/schedule/tick?key=' + key });
+  return json({ ok: true, key, url: origin + '/api/schedule/tick?key=' + key }, 200, { 'Cache-Control': 'no-store' });
 }
 
 // 测试发送：模拟 tick 的计算过程，把早报/课前提醒样例立即发出去

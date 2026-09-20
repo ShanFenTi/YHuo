@@ -135,7 +135,9 @@ export async function onRequestPost({ request, env }) {
     const friendly = /invalid|incorrect/i.test(detail) && /api key/i.test(detail)
       ? 'AI 服务商拒绝了 API Key，请到后台检查'
       : 'AI 服务商返回错误（HTTP ' + upstream.status + '）';
-    return json({ ok: false, error: friendly, detail }, 502);
+    // 上游原始报错只留服务端日志——detail 可能带请求细节，不回给前台用户（友好文案已按 Key 类错误分诊）
+    console.error('AI 上游错误（HTTP ' + upstream.status + '）：' + detail);
+    return json({ ok: false, error: friendly }, 502);
   }
 
   return new Response(upstream.body.pipeThrough(sseNormalizer(pick.protocol)), {

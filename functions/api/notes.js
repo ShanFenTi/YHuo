@@ -7,7 +7,8 @@ import { ensureSchema } from '../lib/migrate.js';
 export async function onRequestGet({ env }) {
   await ensureSchema(env);
   const res = await env.DB.prepare(
-    'SELECT id, date, mood, text FROM notes ORDER BY date DESC, id DESC'
+    'SELECT id, date, mood, text FROM notes ORDER BY date DESC, id DESC LIMIT 1000'
   ).all();
+  // 上限 1000：前台时间线按设计展示全部，个人站量级远够；防接口被当全量导出口子线性放大
   return json({ ok: true, list: res.results || [] });
 }

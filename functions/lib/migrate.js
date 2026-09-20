@@ -33,6 +33,8 @@ const DDL = [
     banned        INTEGER NOT NULL DEFAULT 0,
     created_at    TEXT NOT NULL DEFAULT (datetime('now'))
   )`,
+  // 注意：users(email) 的索引不在这里建——email 列来自下方补列 ALTER，新库跑到 DDL 时列还不存在；
+  // 索引统一挪到 ensureSchema 末尾补列之后建
   `CREATE TABLE IF NOT EXISTS user_sessions (
     token      TEXT PRIMARY KEY,
     user_id    INTEGER NOT NULL,
@@ -114,6 +116,7 @@ const DDL = [
     created_at TEXT NOT NULL DEFAULT (datetime('now'))
   )`,
   `CREATE INDEX IF NOT EXISTS idx_ai_chat_owner ON ai_chat_history (owner, id)`,
+  // conv_id 维度的索引同理在 ensureSchema 末尾建（老库 conv_id 列来自补列 ALTER）
   // 课表（每用户一份 JSON）：termStart=学期第一周周一，courses=归一化课程数组，
   // nodeTimes=各节次开始时间，daily/remindAhead=提醒设置。结构见 lib/schedule.js
   `CREATE TABLE IF NOT EXISTS schedules (
@@ -292,6 +295,14 @@ export async function ensureSchema(env) {
         ).bind(convId, r.owner).run();
       }
     }
+  } catch {}
+  // 补索引（在所有补列 ALTER 之后）：users(email) 邮箱列查询（注册查重/换绑/找回密码/发码前置校验）
+  // 与 ai_chat_history(conv_id) 存每条 AI 消息后的「删超额历史」+ 按对话拉历史，此前都是全表扫
+  try {
+    await env.DB.prepare("CREATE INDEX IF NOT EXISTS idx_users_email ON users (email)").run();
+  } catch {}
+  try {
+    await env.DB.prepare("CREATE INDEX IF NOT EXISTS idx_ai_chat_conv ON ai_chat_history (conv_id)").run();
   } catch {}
   migrated = true;
 }

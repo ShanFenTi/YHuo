@@ -5,8 +5,9 @@ import { json } from '../lib/util.js';
 export async function onRequestGet({ env }) {
   try {
     const { results } = await env.DB
-      .prepare('SELECT type, title, r2_key, album, lrc, cover FROM media ORDER BY type, sort_order, id')
+      .prepare('SELECT type, title, r2_key, album, lrc, cover FROM media ORDER BY type, sort_order, id LIMIT 1000')
       .all();
+    // 上限 1000 防清单无限膨胀（当前量级远够）；已知优化方向：lrc 整份随清单下发偏重，将来改按需拉取
     const pick = (t) =>
       results.filter((r) => r.type === t).map((r) => ({ name: r.title, url: '/media/' + r.r2_key }));
     // 音乐额外带歌词与专辑封面（后台曲库存的 .lrc 文本 / cover KV 键；为空不带字段，静态 music/ 曲库仍走同名 .lrc 文件）

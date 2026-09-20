@@ -143,7 +143,8 @@ window.__siteCalendar = (function () {
       var SEL = '.page-main :is(.album-bar, .apple-card, .tool-card, .tool-more, .doc-card, .note, .notes-year, .notes-lead)';
       // 文档阅读层（docViewer 是外壳浮层，不在 .page-main 内，单独一档）：mdToHtml 的顶层块 +
       // 更新日志时间轴按天（.cl-day）逐块揭示；只在阅读层开着时采集（关着 display:none 量到 0 会全部被误判已入视口）
-      var SEL_DOC = '#docArticle > :is(h1,h2,h3,h4,h5,h6,p,ul,ol,pre,blockquote,table,img,div:not(.cl-timeline)), #docArticle .cl-day';
+      // hr 必须与 site.css 揭示清单同款——CSS 把 hr 压成 opacity:0 待揭示，这里不采集它就永远隐身（mdToHtml 会产 <hr>）
+      var SEL_DOC = '#docArticle > :is(h1,h2,h3,h4,h5,h6,p,ul,ol,pre,blockquote,table,img,hr,div:not(.cl-timeline)), #docArticle .cl-day';
       var targets = [];
       var docTargets = [];
       var ticking = false;
@@ -2247,6 +2248,9 @@ window.__siteCalendar = (function () {
     // 页脚：网站运行时长（起点为网站启用时间；如调整上线时间，改 SITE_BIRTH 即可）
     var SITE_BIRTH = new Date('2026-08-29T12:42:07+08:00');
     var uptimeEl = document.getElementById('siteUptime');
+    // 页脚 © 年份（八页同款 #footYear span）：跨年自动跟上，不再硬编码
+    var footYearEl = document.getElementById('footYear');
+    if (footYearEl) footYearEl.textContent = String(new Date().getFullYear());
     function renderUptime() {
       if (!uptimeEl) return;
       var s = Math.max(0, Math.floor((Date.now() - SITE_BIRTH.getTime()) / 1000));
@@ -4947,6 +4951,11 @@ window.__siteCalendar = (function () {
 
     var pomoStopHook = null;
     // ---- 番茄钟（原倒计时升级：25/5/15 循环 + 今日完成数，响铃沿用） ----
+    // 运行态（mode/total/left）放模块级：pjax 离开工具页会销毁 DOM，但 common.js 常驻，
+    // 回页 initPomo 重跑时从这里回填剩余时间——此前全是闭包局部变量，回页即无声重置成 25:00。
+    // 离页仍停表（pomoStopHook 语义不变，不跨页续走计时），只是回来不再清零
+    var POMO_DUR = { work: 1500, break: 300, long: 900 };
+    var pomoMem = null; // { mode, total, left } | null
     function initPomo() {
       var display = document.getElementById('pomoDisplay');
       var startBtn = document.getElementById('pomoStart');
@@ -4954,10 +4963,16 @@ window.__siteCalendar = (function () {
       var tabs = document.getElementById('pomoTabs');
       var note = document.getElementById('pomoNote');
       if (!display || !startBtn || !resetBtn) return;
-      var DUR = { work: 1500, break: 300, long: 900 };
+      var DUR = POMO_DUR;
       var mode = 'work';
       var total = DUR.work;
       var left = total;
+      // 回页回填：上一次会话的剩余时间还在（且时长口径没变）就接着用
+      if (pomoMem && DUR[pomoMem.mode] === pomoMem.total) {
+        mode = pomoMem.mode;
+        total = pomoMem.total;
+        left = pomoMem.left;
+      }
       var timer = null;
       function fmt(s) {
         var m = Math.floor(s / 60);
@@ -5063,7 +5078,10 @@ window.__siteCalendar = (function () {
         }
         sum.textContent = '累计 ' + total + ' 个番茄 · 连续 ' + streak + ' 天';
       }
-      function render() { display.textContent = fmt(left); }
+      function render() {
+        display.textContent = fmt(left);
+        pomoMem = { mode: mode, total: total, left: left }; // 每次渲染同步运行态：所有改动后都会走 render，离页再回页从这里接续
+      }
       function setMode(m) {
         mode = DUR[m] ? m : 'work';
         total = DUR[mode];
@@ -5131,6 +5149,13 @@ window.__siteCalendar = (function () {
       });
       renderNote();
       renderHeat();
+      // 回填的运行态同步到控件：阶段高亮 + 按钮文案与 stop() 的「开始/继续」口径一致
+      if (tabs) {
+        tabs.querySelectorAll('button').forEach(function (b) {
+          b.classList.toggle('on', b.getAttribute('data-m') === mode);
+        });
+      }
+      startBtn.textContent = left === total ? '开始' : '继续';
       render();
       pomoStopHook = stop; // 交给页面模块：pjax 离开工具页时停表
     }
@@ -7973,6 +7998,25 @@ window.__siteCalendar = (function () {
       var bar = document.getElementById('progressBar');
       if (bar) bar.classList.remove('pjax-busy');
     }
+    // pjax 换页同步 head 的分享卡与规范链接（与 title 同理）：此前只换 title，
+    // 站内跳页后 canonical/og:url/og:title/og:description/description 仍停在进站那页，
+    // 分享出去的卡片和搜索引擎规范链接会系统性指错。og:type/og:image/twitter:card 全站恒定不用动
+    function syncHeadMeta(doc, u) {
+      function setSel(sel, attr, value) {
+        var el = document.head.querySelector(sel);
+        if (el && value != null) el.setAttribute(attr, value);
+      }
+      function fromDoc(sel) {
+        var el = doc.head && doc.head.querySelector(sel);
+        return el ? el.getAttribute('content') : null;
+      }
+      var url = u.origin + u.pathname; // canonical/og:url 不带锚点
+      setSel('meta[name="description"]', 'content', fromDoc('meta[name="description"]'));
+      setSel('meta[property="og:title"]', 'content', fromDoc('meta[property="og:title"]'));
+      setSel('meta[property="og:description"]', 'content', fromDoc('meta[property="og:description"]'));
+      setSel('meta[property="og:url"]', 'content', url);
+      setSel('link[rel="canonical"]', 'href', url);
+    }
     function pjaxSwap(u, push, restoreY) {
       if (pjaxBusy) return;
       pjaxBusy = true;
@@ -8001,6 +8045,7 @@ window.__siteCalendar = (function () {
           curMain.classList.add('pjax-enter');
           document.documentElement.setAttribute('data-page', key);
           document.title = doc.title || PAGE_TITLES[key] || document.title;
+          syncHeadMeta(doc, u);
           applyNavActive(key);
           currentPage = key;
           closeAllTransientOverlays();

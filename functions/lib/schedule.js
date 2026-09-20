@@ -327,7 +327,7 @@ export async function runTick(env) {
   const { results: rows } = await env.DB
     .prepare('SELECT s.user_id, s.data FROM schedules s JOIN users u ON u.id = s.user_id WHERE u.banned = 0 AND u.email IS NOT NULL AND u.email_verified = 1')
     .all();
-  let sent = 0;
+  const tally = { sent: 0 }; // 计数走对象：runAdminTick 里发出的也要计回总数（此前按值传，管理员侧计数丢失）
   const errors = [];
   const users = [];
   for (const row of rows || []) {
@@ -347,13 +347,18 @@ export async function runTick(env) {
         const [hh, mm] = data.daily.time.split(':').map(Number);
         if (nowHM >= hh * 60 + mm) {
           info.dailyDue = true;
-          if (!(await hasSent(env, row.user_id, day, 'daily', '0'))) {
-            await sendMail(env, email, '今日课程（' + day + '）', dailyHtml(day, list), 'sched-daily');
-            await markSent(env, row.user_id, day, 'daily', '0');
-            sent++;
+          // 抢锁式防重发：先占 schedule_sent 再发信（窗口期并发的另一个 tick 抢不到锁）
+          if (await claimSend(env, row.user_id, day, 'daily', '0')) {
+            try {
+              await sendMail(env, email, '今日课程（' + day + '）', dailyHtml(day, list), 'sched-daily');
+            } catch (e) {
+              await releaseSend(env, row.user_id, day, 'daily', '0'); // 发送失败放回锁，保留下轮 tick 重试的旧语义
+              throw e;
+            }
+            tally.sent++;
             info.dailySent = true;
           } else {
-            info.dailyAlready = true; // 今天早些时候已发过
+            info.dailyAlready = true; // 已发过（或并发 tick 正在发）
           }
         } else {
           info.dailyDue = false; // 还没到设定的早报时间
@@ -368,10 +373,14 @@ export async function runTick(env) {
         const remindAt = startMin - data.remindAhead;
         if (nowHM >= remindAt && nowHM < startMin) {
           const ref = String(c.idx);
-          if (!(await hasSent(env, row.user_id, day, 'class', ref))) {
-            await sendMail(env, email, '即将上课：' + c.name, classHtml(c, data.remindAhead), 'sched-class');
-            await markSent(env, row.user_id, day, 'class', ref);
-            sent++;
+          if (await claimSend(env, row.user_id, day, 'class', ref)) {
+            try {
+              await sendMail(env, email, '即将上课：' + c.name, classHtml(c, data.remindAhead), 'sched-class');
+            } catch (e) {
+              await releaseSend(env, row.user_id, day, 'class', ref);
+              throw e;
+            }
+            tally.sent++;
             info.inWindow++;
           }
         }
@@ -384,11 +393,11 @@ export async function runTick(env) {
   }
   // 管理员课表（存 site_settings 'admin_schedule'）：提醒发到管理员绑定邮箱（admin_email），
   // 未绑定则发站长邮箱（owner_email）；防重发键用 -1（与真实 user_id 不冲突）
-  await runAdminTick(env, cfg, now, day, nowHM, sent, errors, users);
-  return { ok: true, sent, errors, users };
+  await runAdminTick(env, cfg, now, day, nowHM, tally, errors, users);
+  return { ok: true, sent: tally.sent, errors, users };
 }
 
-async function runAdminTick(env, cfg, now, day, nowHM, sent, errors, users) {
+async function runAdminTick(env, cfg, now, day, nowHM, tally, errors, users) {
   const row = await env.DB.prepare("SELECT value FROM site_settings WHERE key = 'admin_schedule'").first();
   if (!row) return;
   let data;
@@ -410,10 +419,14 @@ async function runAdminTick(env, cfg, now, day, nowHM, sent, errors, users) {
       const [hh, mm] = data.daily.time.split(':').map(Number);
       if (nowHM >= hh * 60 + mm) {
         info.dailyDue = true;
-        if (!(await hasSent(env, SENT_KEY, day, 'daily', '0'))) {
-          await sendMail(env, email, '今日课程（' + day + '）', dailyHtml(day, list), 'sched-daily');
-          await markSent(env, SENT_KEY, day, 'daily', '0');
-          sent++;
+        if (await claimSend(env, SENT_KEY, day, 'daily', '0')) {
+          try {
+            await sendMail(env, email, '今日课程（' + day + '）', dailyHtml(day, list), 'sched-daily');
+          } catch (e) {
+            await releaseSend(env, SENT_KEY, day, 'daily', '0');
+            throw e;
+          }
+          tally.sent++;
           info.dailySent = true;
         } else info.dailyAlready = true;
       } else info.dailyDue = false;
@@ -425,10 +438,14 @@ async function runAdminTick(env, cfg, now, day, nowHM, sent, errors, users) {
       const startMin = Number(c.startHH) * 60 + Number(c.startMM);
       if (nowHM >= startMin - data.remindAhead && nowHM < startMin) {
         const ref = String(c.idx);
-        if (!(await hasSent(env, SENT_KEY, day, 'class', ref))) {
-          await sendMail(env, email, '即将上课：' + c.name, classHtml(c, data.remindAhead), 'sched-class');
-          await markSent(env, SENT_KEY, day, 'class', ref);
-          sent++;
+        if (await claimSend(env, SENT_KEY, day, 'class', ref)) {
+          try {
+            await sendMail(env, email, '即将上课：' + c.name, classHtml(c, data.remindAhead), 'sched-class');
+          } catch (e) {
+            await releaseSend(env, SENT_KEY, day, 'class', ref);
+            throw e;
+          }
+          tally.sent++;
           info.inWindow++;
         }
       }
@@ -454,15 +471,21 @@ async function getUserEmail(env, userId) {
   return u ? String(u.email).trim().toLowerCase() : null;
 }
 
-async function hasSent(env, userId, day, kind, ref) {
+// 抢锁式防重发：把「发完再记」改成「先占 schedule_sent 再发」——sendMail 的秒级耗时窗口里，
+// 并发的另一个 tick/重试此前能同时通过 hasSent 检查，同一封发两遍；现在 INSERT OR IGNORE
+// 只有一个能抢到锁。发送失败必须 releaseSend 放回，保留「失败下轮重试」的旧语义
+async function claimSend(env, userId, day, kind, ref) {
   const r = await env.DB
-    .prepare('SELECT 1 FROM schedule_sent WHERE user_id = ? AND day = ? AND kind = ? AND ref = ?')
-    .bind(userId, day, kind, ref).first();
-  return !!r;
-}
-
-async function markSent(env, userId, day, kind, ref) {
-  await env.DB
     .prepare('INSERT OR IGNORE INTO schedule_sent (user_id, day, kind, ref) VALUES (?, ?, ?, ?)')
     .bind(userId, day, kind, ref).run();
+  return !!(r && r.meta && r.meta.changes > 0);
+}
+
+// 放锁：发送失败时调用，让下轮 tick 能重试。放回失败时宁少发不重发（错误已随调用方上抛记账）
+async function releaseSend(env, userId, day, kind, ref) {
+  try {
+    await env.DB
+      .prepare('DELETE FROM schedule_sent WHERE user_id = ? AND day = ? AND kind = ? AND ref = ?')
+      .bind(userId, day, kind, ref).run();
+  } catch (e) {}
 }

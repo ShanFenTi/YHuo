@@ -74,10 +74,15 @@ export async function onRequestPost({ request, env }) {
 
   await clearLoginFails(env, throttleKey);
 
-  // 管理员 2FA：开启且已绑邮箱 → 密码通过只算一半，发码要求二次验证
+  // 管理员 2FA：以开关为准判断（fail-closed）——开了 2FA 但拿不到邮箱记录时拒绝登录，
+  // 绝不 fall through 直发会话（否则第二道验证静默失效，站长还以为 2FA 开着）
   const twoFa = await getSetting(env, 'admin_2fa');
-  const adminEmail = twoFa === '1' ? await getSetting(env, 'admin_email') : null;
-  if (adminEmail) {
+  if (twoFa === '1') {
+    const adminEmail = await getSetting(env, 'admin_email');
+    if (!adminEmail) {
+      await logAdminLogin(env, request, 0, '已开启 2FA 但未绑定邮箱，拒绝登录');
+      return json({ ok: false, error: '已开启两步验证但未绑定邮箱，登录已被拦截：请在 D1 的 site_settings 删除 admin_2fa 键后重新绑定邮箱' }, 500);
+    }
     const pending = await createLoginPending(env, -row.id);
     try {
       await issueCode(env, adminEmail, 'admin2fa');

@@ -88,8 +88,12 @@ export async function onRequestPost({ request, env }) {
     if (row.banned) return json({ ok: false, error: '该账号已被禁用，请联系管理员' }, 403);
     if (await verifyPassword(password, row.salt, row.password_hash)) {
       await clearLoginFails(env, userThrottleKey);
-      // 开了二次验证：发验证码 + 发票据，前端进入验证码步骤
-      if (row.twofa_enabled && row.email_verified && row.email) {
+      // 开了二次验证（fail-closed）：以 twofa_enabled 为准判断，邮箱缺失/未验证时拒绝登录，
+      // 绝不 fall through 直发会话——否则第二道验证静默失效，用户还以为 2FA 开着
+      if (row.twofa_enabled) {
+        if (!row.email_verified || !row.email) {
+          return json({ ok: false, error: '已开启两步验证但邮箱不可用，登录已被拦截，请联系管理员修复邮箱绑定' }, 500);
+        }
         let t;
         try {
           await issueCode(env, row.email, 'login');
@@ -125,13 +129,18 @@ export async function onRequestPost({ request, env }) {
     }
     if (await verifyPassword(password, admin.salt, admin.password_hash)) {
       await clearLoginFails(env, throttleKey);
-      // 管理员 2FA（与后台登录页同口径）：开启且已绑邮箱 → 发码要求二次验证
+      // 管理员 2FA（与后台登录页同口径，fail-closed）：以开关为准判断，
+      // 开了 2FA 但拿不到邮箱记录时拒绝登录，绝不 fall through 直发会话
       const t2 = await env.DB.prepare("SELECT value FROM site_settings WHERE key = 'admin_2fa'").first();
-      const ae2 = t2 && t2.value === '1' ? await env.DB.prepare("SELECT value FROM site_settings WHERE key = 'admin_email'").first() : null;
-      if (ae2 && ae2.value) {
+      if (t2 && t2.value === '1') {
+        const aeRow = await env.DB.prepare("SELECT value FROM site_settings WHERE key = 'admin_email'").first();
+        if (!aeRow || !aeRow.value) {
+          await logAdminLogin(env, request, 0, '已开启 2FA 但未绑定邮箱，拒绝登录（前台入口）');
+          return json({ ok: false, error: '管理员已开启两步验证但未绑定邮箱，登录已被拦截，请后台修复邮箱绑定' }, 500);
+        }
         const pending = await createLoginPending(env, -admin.id);
         try {
-          await issueCode(env, ae2.value, 'admin2fa');
+          await issueCode(env, aeRow.value, 'admin2fa');
         } catch (e) {
           const msg = String(e && e.message) || '';
           if (msg.indexOf('发送太频繁') >= 0) {

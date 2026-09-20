@@ -8,6 +8,12 @@ export async function onRequest({ request, env, params }) {
   const key = raw.replace(/\/+$/, '');
   if (!key) return new Response('Not Found', { status: 404 });
 
+  // 键名前缀白名单：全站写入 MEDIA 的媒体键只有这六种前缀
+  //（upload/import 的 music|video|image、外观背景 bg/、头像 avatars/、专辑封面 covers/）。
+  // 备份 backup: 等非媒体键与媒体同库，但含用户哈希等全量敏感数据，绝不允许经公开路由读出
+  const ALLOWED = ['music/', 'video/', 'image/', 'bg/', 'avatars/', 'covers/'];
+  if (!ALLOWED.some((p) => key.startsWith(p))) return new Response('Not Found', { status: 404 });
+
   // getWithMetadata 返回 { value, metadata }；KV 有边缘缓存，同地区第二次读取走缓存
   const obj = await env.MEDIA.getWithMetadata(key, { type: 'arrayBuffer', cacheTtl: 300 });
   if (!obj || !obj.value) return new Response('Not Found', { status: 404 });

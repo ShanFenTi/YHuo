@@ -162,8 +162,8 @@ async function handleEmailAction(request, env) {
   if (action === 'email-remove') {
     // 2FA 依赖已绑邮箱：解绑时必须同步关闭 2FA——否则登录端点会因查不到邮箱直接跳过验证码（fail-open 形同虚设）
     await env.DB.batch([
-      env.DB.prepare("DELETE FROM site_settings WHERE key = 'admin_email'").run(),
-      env.DB.prepare("DELETE FROM site_settings WHERE key = 'admin_2fa'").run(),
+      env.DB.prepare("DELETE FROM site_settings WHERE key = 'admin_email'"),
+      env.DB.prepare("DELETE FROM site_settings WHERE key = 'admin_2fa'"),
     ]);
     return json({ ok: true, twofaDisabled: true });
   }

@@ -4,6 +4,19 @@
 *.bat
 node_modules/
 .wrangler/
+.wrangler-state-test/
 package.json
 package-lock.json
 动效.html
+
+# 本地安全体检清单（全库哈希修完前绝不入库/外传）
+bug.md
+
+# 本地垃圾与不入库目录（见部署说明 §3）
+0
+访问量
+相册功能备份/
+优选IP工具/
+博客动画源码/
+WakeUp课表导入.csv
+WakeUp课表导入.json

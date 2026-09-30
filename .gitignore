@@ -3,24 +3,12 @@
 .design/
 *.bat
 node_modules/
+# wrangler 本地状态目录（跑 pages dev 会再生，2026-09-30 死文件清理时删过一次）
 .wrangler/
-.wrangler-state-test/
-# 本地实验性 wrangler 状态目录（非锚定 .wrangler/ 只碰巧盖住下面两个子目录里的 .wrangler，根下文件会漏）
 .wrangler-home/
 .wrangler-xdg/
-.wrangler-state-b1test/
 package.json
 package-lock.json
-动效.html
 
 # 旧本地安全体检清单：2026-09-30 站长确认有意删除；规则保留防未来误重建后被 git add . 收入
 bug.md
-
-# 本地垃圾与不入库目录（见部署说明 §3）
-0
-访问量
-相册功能备份/
-优选IP工具/
-博客动画源码/
-WakeUp课表导入.csv
-WakeUp课表导入.json

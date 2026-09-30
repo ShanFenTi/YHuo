@@ -1137,7 +1137,7 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
       <button data-type="admins" data-super-nav title="管理员"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 12 2 2 4-4"/></svg><span>管理员</span></button>
       <button data-type="appearance" data-super-nav title="外观"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 2a10 10 0 0 0 0 20z" fill="currentColor" stroke="none"/></svg><span>外观</span></button>
       <button data-type="ai" data-super-nav title="AI 设置"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="8" width="16" height="12" rx="2"/><path d="M12 8V4"/><path d="M9 4h6"/><circle cx="9" cy="13" r="1" fill="currentColor" stroke="none"/><circle cx="15" cy="13" r="1" fill="currentColor" stroke="none"/><path d="M9 17h6"/></svg><span>AI</span></button>
-      <button data-type="email" title="邮件"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg><span>邮件</span></button>
+      <button data-type="email" data-super-nav title="邮件"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg><span>邮件</span></button>
       <button data-type="me" title="我的"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg><span>我的</span></button>
       <button data-type="status" title="状态"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20a8 8 0 1 1 8-8"/><path d="M12 12l3.5-3.5"/><circle cx="12" cy="12" r="1.4" fill="currentColor" stroke="none"/><path d="M20 12a8 8 0 0 0-8-8"/></svg><span>状态</span></button>
     </nav>
@@ -1161,7 +1161,7 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
           <button data-type="admins" data-super-nav>管理员</button>
           <button data-type="appearance" data-super-nav>外观</button>
           <button data-type="ai" data-super-nav>AI</button>
-          <button data-type="email">邮件</button>
+          <button data-type="email" data-super-nav>邮件</button>
           <button data-type="me">我的</button>
           <button data-type="status">状态</button>
         </nav>
@@ -5357,12 +5357,9 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
   var myRole = 'super';
   var myId = 0;
   function applyRoleUI() {
-    var isSuper = myRole === 'super';
-    document.body.classList.toggle('role-limited', !isSuper);
-    // 正停在超管专属页时（如被降级的瞬间）弹回概览
-    if (!isSuper && (currentType === 'users' || currentType === 'appearance' || currentType === 'ai' || currentType === 'links' || currentType === 'admins')) {
-      switchPage('overview');
-    }
+    document.body.classList.toggle('role-limited', myRole !== 'super');
+    // 正停在超管专属页时（如被降级的瞬间）重放当前页——switchPage 的角色闸会弹回概览
+    switchPage(currentType);
   }
 
   function fmtShortTime(s) {
@@ -5541,6 +5538,9 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
 
   // 侧栏滑动指示器：把胶囊对齐到当前 active 项（参考站「导航胶囊指示器」竖排移植）
   function switchPage(type) {
+    // 角色闸（2026-09-30）：普通管理员只进内容运营页——邮件页整体超管专属（尾部调整：
+    // 含课表测试发送），用户/管理员/外观/AI/短链本就超管专属；误入（预览消息/降级瞬间）弹回概览
+    if (myRole !== 'super' && (type === 'users' || type === 'appearance' || type === 'ai' || type === 'links' || type === 'admins' || type === 'email')) type = 'overview';
     currentType = type;
     navBtns.forEach(function (b) { b.classList.toggle('active', b.getAttribute('data-type') === type); });
     var isOverview = type === 'overview';

@@ -30,6 +30,8 @@ const SUPER_PREFIX = [
   '/api/admin/appearance',  // 外观全局设置
   '/api/admin/links',      // 短链管理
   '/api/admin/admins',      // 管理员账号管理（本功能自身）
+  '/api/admin/schedule',    // 课表定时任务（tick 密钥/重新生成/测试发送——2026-09-30 尾部调整：
+                            //   邮件页对普通管理员整体隐藏后，此接口随邮件页整口收归超管）
 ];
 
 export async function onRequest(context) {

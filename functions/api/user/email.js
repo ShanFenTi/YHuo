@@ -6,7 +6,7 @@
 import { json, getCookie } from '../../lib/util.js';
 import { getUserSession, USER_COOKIE } from '../../lib/auth.js';
 import { ensureSchema } from '../../lib/migrate.js';
-import { getEmailConfig, isEmailAddr, issueCode, verifyCode } from '../../lib/email.js';
+import { getEmailConfig, isEmailAddr, issueCode, verifyCode, consumeMailQuota, isSafeEmailError } from '../../lib/email.js';
 
 export async function onRequestGet({ request, env }) {
   if (!env.DB) return json({ ok: false, error: '站点未配置数据库' }, 503);
@@ -58,10 +58,15 @@ export async function onRequestPost({ request, env }) {
       .prepare('SELECT id FROM users WHERE email = ? AND id != ?')
       .bind(email, sess.userId).first();
     if (taken) return json({ ok: false, error: '该邮箱已被其他账号绑定' }, 400);
+    // 与公开发码口同套 IP 小时桶占额：本口子此前完全裸奔，换收件人即可无限发信烧穿日配额
     try {
+      await consumeMailQuota(env, request);
       await issueCode(env, email, 'bind');
     } catch (e) {
-      return json({ ok: false, error: (e && e.message) || '发送失败' }, 429);
+      const msg = String((e && e.message) || '');
+      console.error('换绑验证码发送失败: ' + msg);
+      if (isSafeEmailError(msg)) return json({ ok: false, error: msg }, 429);
+      return json({ ok: false, error: '验证码发送失败，请稍后再试' }, 429);
     }
     return json({ ok: true });
   }

@@ -1867,7 +1867,14 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
     return (n / 1024 / 1024).toFixed(1) + ' MB';
   }
   function fmtDate(s) {
-    return s ? String(s).replace('T', ' ').slice(0, 16) : '';
+    // 消费点全是 D1 datetime('now')（UTC 串）：补 Z 转本地再显示（与 fmtRel 同口径），
+    // 此前直出 UTC 串，北京时区看到的注册/上传/创建时间都差 8 小时
+    if (!s) return '';
+    var str = String(s);
+    var d = new Date(/Z$|[+-]\d\d:?\d\d$/.test(str) ? str : str.replace(' ', 'T') + 'Z');
+    if (isNaN(d.getTime())) return str.slice(0, 16);
+    function p(x) { return x < 10 ? '0' + x : x; }
+    return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate()) + ' ' + p(d.getHours()) + ':' + p(d.getMinutes());
   }
   function showMsg(el, text, cls) {
     el.textContent = text || '';
@@ -2410,7 +2417,9 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
   // 「最近访问」IP 明细卡与归属地查询已整体移除（2026-09-06）：/api/visit 不再记录 IP/UA，
   // /api/admin/visit-logs 与 /api/admin/geoip 接口一并下线；fmtLogTime 保留（邮件发送明细在用）
   function fmtLogTime(iso) {
-    var d = new Date(iso);
+    // D1 的 datetime('now') 是 UTC 的 "YYYY-MM-DD HH:MM:SS"：补 Z 再交给 Date——
+    // 否则按本地时区解析又原样格式化回去，等于零转换直出 UTC（北京时区差 8 小时）
+    var d = new Date(String(iso || '').replace(' ', 'T') + 'Z');
     if (isNaN(d.getTime())) return '';
     function p(x) { return x < 10 ? '0' + x : x; }
     return (d.getMonth() + 1) + '-' + p(d.getDate()) + ' ' + p(d.getHours()) + ':' + p(d.getMinutes());

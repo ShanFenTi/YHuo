@@ -13,7 +13,7 @@
 import { json, getCookie, SESSION_COOKIE } from '../../lib/util.js';
 import { randomHex, verifyPassword, hashPassword, loginKey, loginLockedFor, recordLoginFail, clearLoginFails } from '../../lib/auth.js';
 import { ensureSchema } from '../../lib/migrate.js';
-import { getEmailConfig, isEmailAddr, issueCode, verifyCode } from '../../lib/email.js';
+import { getEmailConfig, isEmailAddr, issueCode, verifyCode, consumeMailQuota, isSafeEmailError } from '../../lib/email.js';
 
 const MAX_SIZE = 2 * 1024 * 1024;
 const EXT_MIME = {
@@ -137,10 +137,15 @@ async function handleEmailAction(request, env) {
   if (action === 'email-send') {
     const email = String(body.email || '').trim().toLowerCase();
     if (!isEmailAddr(email)) return json({ ok: false, error: '邮箱格式不正确' }, 400);
+    // 与公开发码口同套 IP 小时桶占额（lib/email.js）；报错只回自有节流文案，上游细节进日志
     try {
+      await consumeMailQuota(env, request);
       await issueCode(env, email, 'admin-bind');
     } catch (e) {
-      return json({ ok: false, error: (e && e.message) || '发送失败' }, 429);
+      const msg = String((e && e.message) || '');
+      console.error('管理员绑定验证码发送失败: ' + msg);
+      if (isSafeEmailError(msg)) return json({ ok: false, error: msg }, 429);
+      return json({ ok: false, error: '验证码发送失败，请稍后再试' }, 429);
     }
     return json({ ok: true });
   }

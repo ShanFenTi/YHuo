@@ -26,7 +26,14 @@ export async function onRequestPost({ request, env }) {
   const row = await env.DB.prepare("SELECT value FROM site_settings WHERE key = 'admin_email'").first();
   const adminEmail = row ? String(row.value).toLowerCase() : '';
   if (!adminEmail || email !== adminEmail) {
-    return json({ ok: false, error: '该邮箱未绑定管理员账号' }, 404);
+    // 错配不回 404——那等于确认「哪个地址是管理员收件箱」，给定向重置爆破指路；
+    // 与「码错」走同一出口（该邮箱从未签发过 admin-reset 码，verifyCode 必然抛错），响应不可区分
+    try {
+      await verifyCode(env, email, 'admin-reset', code);
+    } catch (e) {
+      return json({ ok: false, error: (e && e.message) || '验证码错误或已失效' }, 400);
+    }
+    return json({ ok: false, error: '验证码错误或已失效' }, 400);
   }
 
   try {

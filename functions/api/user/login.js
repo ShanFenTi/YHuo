@@ -11,7 +11,7 @@ import {
   logAdminLogin,
 } from '../../lib/auth.js';
 import { ensureSchema } from '../../lib/migrate.js';
-import { verifyCode, issueCode, createLoginPending, consumeLoginPending } from '../../lib/email.js';
+import { verifyCode, issueCode, createLoginPending, consumeLoginPending, consumeMailQuota, isSafeEmailError } from '../../lib/email.js';
 
 export async function onRequestPost({ request, env }) {
   await ensureSchema(env);
@@ -96,10 +96,15 @@ export async function onRequestPost({ request, env }) {
         }
         let t;
         try {
+          await consumeMailQuota(env, request);
           await issueCode(env, row.email, 'login');
           t = await createLoginPending(env, row.id);
         } catch (e) {
-          return json({ ok: false, error: (e && e.message) || '验证码发送失败，请联系管理员' }, 500);
+          const msg = String((e && e.message) || '');
+          // 节流文案直出；发送失败类消息可能带上游响应片段，换固定文案、细节进日志
+          if (isSafeEmailError(msg)) return json({ ok: false, error: msg }, 429);
+          console.error('2FA 验证码发送失败: ' + msg);
+          return json({ ok: false, error: '验证码发送失败，请联系管理员' }, 500);
         }
         return json({ ok: false, needCode: true, ticket: t, error: '验证码已发送到你的邮箱' });
       }
@@ -140,13 +145,17 @@ export async function onRequestPost({ request, env }) {
         }
         const pending = await createLoginPending(env, -admin.id);
         try {
+          await consumeMailQuota(env, request);
           await issueCode(env, aeRow.value, 'admin2fa');
         } catch (e) {
           const msg = String(e && e.message) || '';
+          // 60 秒重发节流：上一封邮件里的验证码仍然有效，提示直接用旧码（票已发，还能试码）
           if (msg.indexOf('发送太频繁') >= 0) {
             return json({ ok: false, needCode: true, ticket: pending, error: '验证码已发送过，请查收邮箱后输入（约 1 分钟后才能重发）' });
           }
-          return json({ ok: false, error: msg || '验证码发送失败' }, 500);
+          if (isSafeEmailError(msg)) return json({ ok: false, error: msg }, 429);
+          console.error('管理员 2FA 验证码发送失败（前台入口）: ' + msg);
+          return json({ ok: false, error: '验证码发送失败' }, 500);
         }
         return json({ ok: false, needCode: true, ticket: pending, error: '验证码已发送到管理员邮箱' });
       }

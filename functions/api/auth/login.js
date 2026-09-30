@@ -5,7 +5,7 @@
 import { json } from '../../lib/util.js';
 import { verifyPassword, hashPassword, randomHex, createSession, sessionCookie, loginKey, loginLockedFor, recordLoginFail, clearLoginFails, logAdminLogin } from '../../lib/auth.js';
 import { ensureSchema } from '../../lib/migrate.js';
-import { issueCode, verifyCode, createLoginPending, consumeLoginPending } from '../../lib/email.js';
+import { issueCode, verifyCode, createLoginPending, consumeLoginPending, consumeMailQuota, isSafeEmailError } from '../../lib/email.js';
 
 async function getSetting(env, key) {
   const row = await env.DB.prepare('SELECT value FROM site_settings WHERE key = ?').bind(key).first();
@@ -85,6 +85,7 @@ export async function onRequestPost({ request, env }) {
     }
     const pending = await createLoginPending(env, -row.id);
     try {
+      await consumeMailQuota(env, request);
       await issueCode(env, adminEmail, 'admin2fa');
     } catch (e) {
       const msg = String(e && e.message) || '';
@@ -93,7 +94,9 @@ export async function onRequestPost({ request, env }) {
       if (msg.indexOf('发送太频繁') >= 0) {
         return json({ ok: false, needCode: true, ticket: pending, error: '验证码已发送过，请查收邮箱后输入（约 1 分钟后才能重发）' });
       }
-      return json({ ok: false, error: msg || '验证码发送失败' }, 500);
+      if (isSafeEmailError(msg)) return json({ ok: false, error: msg }, 429);
+      console.error('管理员 2FA 验证码发送失败: ' + msg);
+      return json({ ok: false, error: '验证码发送失败' }, 500);
     }
     await logAdminLogin(env, request, 0, '密码通过，等待二次验证');
     return json({ ok: false, needCode: true, ticket: pending, error: '验证码已发送到管理员邮箱' });

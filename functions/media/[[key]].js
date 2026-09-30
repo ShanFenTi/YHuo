@@ -22,9 +22,13 @@ export async function onRequest({ request, env, params }) {
   const size = buf.byteLength;
 
   const headers = new Headers();
-  headers.set('Content-Type', (obj.metadata && obj.metadata.mime) || 'application/octet-stream');
+  const mime = (obj.metadata && obj.metadata.mime) || 'application/octet-stream';
+  headers.set('Content-Type', mime);
   headers.set('Accept-Ranges', 'bytes');
   headers.set('Cache-Control', 'public, max-age=31536000'); // 键名含唯一 UUID，内容永不变化
+  // svg 经同源 /media/ 直开可执行内嵌脚本（后台页与 /api/admin/* 同源，自 XSS 面）：
+  // CSP 掐掉脚本/网络能力，作为 <img> 引用不受影响
+  if (mime.indexOf('svg') > -1) headers.set('Content-Security-Policy', "default-src 'none'");
 
   const range = request.headers.get('Range');
   const m = range && range.match(/^bytes=(\d*)-(\d*)$/);

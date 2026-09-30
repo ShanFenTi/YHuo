@@ -135,11 +135,12 @@ export async function onRequestPost({ request, env }) {
     if (used && Number(used.fails) > GUEST_IP_MIN_LIMIT) {
       return json({ ok: false, error: '留言太频繁啦，稍等片刻再来吧' }, 429, cookieHeader);
     }
-    // 时间桶键（guestip:/emailcode:）不会像登录键那样被成功登录清掉：5% 概率顺手清 2 小时前的旧行，防无界增长
+    // 时间桶键（guestip:/emailcode:/aiusage:/visitip:）不会像登录键那样被成功登录清掉：
+    // 5% 概率顺手清 2 小时前的旧行，防无界增长（aiusage 每活跃用户每天 +24 行、visitip 每分钟一键）
     if (Math.random() < 0.05) {
       try {
         await env.DB.prepare(
-          "DELETE FROM login_throttle WHERE last_fail < ? AND (key LIKE 'guestip:%' OR key LIKE 'emailcode:%')"
+          "DELETE FROM login_throttle WHERE last_fail < ? AND (key LIKE 'guestip:%' OR key LIKE 'emailcode:%' OR key LIKE 'aiusage:%' OR key LIKE 'visitip:%')"
         ).bind(new Date(now - 2 * 3600 * 1000).toISOString()).run();
       } catch (e) {}
     }

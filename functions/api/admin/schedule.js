@@ -81,7 +81,8 @@ async function runTest(env, body) {
     const adminRow = await env.DB
       .prepare("SELECT value FROM site_settings WHERE key = 'admin_schedule'").first();
     if (adminRow && adminRow.value) {
-      return await runTestFor(env, email, JSON.parse(adminRow.value));
+      // 原样传给 runTestFor（它自带 JSON.parse 容错）——此处先 parse 遇坏值会裸抛 500
+      return await runTestFor(env, email, adminRow.value);
     }
     return json({ ok: false, error: '该邮箱没有可测试的课表：需要在前台个人主页启用课表，且账号已绑定此邮箱并完成验证' }, 404);
   }

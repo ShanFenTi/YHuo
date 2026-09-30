@@ -2,7 +2,7 @@
 // bind（换绑）走 /api/user/email 需要登录；login（2FA）由登录接口内部触发。
 import { json } from '../../lib/util.js';
 import { ensureSchema } from '../../lib/migrate.js';
-import { getEmailConfig, isEmailAddr, issueCode } from '../../lib/email.js';
+import { getEmailConfig, isEmailAddr, issueCode, consumeMailQuota, isSafeEmailError } from '../../lib/email.js';
 
 export async function onRequestPost({ request, env }) {
   if (!env.DB) return json({ ok: false, error: '站点未配置数据库' }, 503);
@@ -24,22 +24,22 @@ export async function onRequestPost({ request, env }) {
   if (!purpose) return json({ ok: false, error: '无效的验证码用途' }, 400);
   if (!isEmailAddr(email)) return json({ ok: false, error: '邮箱格式不正确' }, 400);
 
-  // 单 IP 每小时签发上限：先原子占额、后发信——此前"先发信后计数"，签发失败不计数等于免费重试，
-  // 且读/写分离可被并发一起穿过旧值，反复触发失败就能烧穿邮件日配额（连带 2FA 发码失败锁死管理员）。
-  // 用 UPSERT+RETURNING 一次拿到「含本次」的累计值；占额不因后续步骤失败退还（防失败重试白嫖）
-  const ip = request.headers.get('CF-Connecting-IP') || 'unknown';
-  const ipHourKey = 'emailcode:' + ip + ':' + new Date().toISOString().slice(0, 13);
-  const used = await env.DB.prepare(
-    'INSERT INTO login_throttle (key, fails, last_fail) VALUES (?, 1, ?) ON CONFLICT(key) DO UPDATE SET fails = fails + 1, last_fail = excluded.last_fail RETURNING fails'
-  ).bind(ipHourKey, new Date().toISOString()).first();
-  if (used && Number(used.fails) > 8) return json({ ok: false, error: '验证码请求过于频繁，请一小时后再试' }, 429);
+  // 单 IP 每小时签发上限：先原子占额、后发信——占额逻辑抽到 lib/email.js consumeMailQuota，
+  // 与所有 issueCode 调用方共用（此前只有本接口有这层，换绑/管理员绑定等口子可绕开烧配额）
+  try {
+    await consumeMailQuota(env, request);
+  } catch (e) {
+    return json({ ok: false, error: (e && e.message) || '请求过于频繁' }, 429);
+  }
 
-  // 管理员重置：只发绑定的管理员邮箱（存 site_settings 'admin_email'）
+  // 管理员重置：只发绑定的管理员邮箱（存 site_settings 'admin_email'）。
+  // 错配不回 404——那等于告知「哪个地址是管理员 2FA 收件箱」（给定向重置爆破指路），
+  // 与成功响应保持同形（不发信、直接 ok），真假不可区分
   if (purpose === 'admin-reset') {
     const row = await env.DB.prepare("SELECT value FROM site_settings WHERE key = 'admin_email'").first();
     const adminEmail = row ? String(row.value).toLowerCase() : '';
     if (!adminEmail || email !== adminEmail) {
-      return json({ ok: false, error: '该邮箱未绑定管理员账号' }, 404);
+      return json({ ok: true });
     }
   } else if (cfg.adminOnly && email !== cfg.ownerEmail) {
     // 仅站长模式：只有站长邮箱能收验证码（无域名邮件服务只能发注册邮箱的场景）
@@ -60,10 +60,8 @@ export async function onRequestPost({ request, env }) {
   } catch (e) {
     const msg = String((e && e.message) || '');
     console.error('验证码签发失败[' + purpose + ']: ' + msg);
-    // 「发送太频繁/未启用」是本站自有文案可直出；其余（可能带上游响应片段）回固定文案，细节留日志
-    if (msg.indexOf('发送太频繁') === 0 || msg === '邮件服务未启用') {
-      return json({ ok: false, error: msg }, 429);
-    }
+    // 本站自有节流文案可直出；其余（可能带上游响应片段）回固定文案，细节留日志
+    if (isSafeEmailError(msg)) return json({ ok: false, error: msg }, 429);
     return json({ ok: false, error: '验证码发送失败，请稍后再试' }, 429);
   }
   return json({ ok: true });

@@ -3,7 +3,7 @@
 //   resend → POST https://api.resend.com/emails（免费 100 封/天）
 //   brevo  → POST https://api.brevo.com/v3/smtp/email（免费 300 封/天）
 // 验证码：email_codes 表（PK=email+purpose），6 位数字、哈希存储、10 分钟有效、
-// 限 5 次尝试、60 秒重发间隔；过期行在签发时懒清理。
+// 限 5 次尝试（原子占额）、60 秒重发间隔（原子判定）；过期行在签发时懒清理。
 import { randomHex } from './auth.js';
 
 const CONFIG_KEY = 'email_config';
@@ -34,6 +34,31 @@ export async function getEmailConfig(env) {
 
 export function isEmailAddr(s) {
   return /^[^\s@]{1,64}@[^\s@]{1,255}\.[^\s@]{1,32}$/.test(String(s || '').trim());
+}
+
+// 单 IP 每小时发信占额（防配额烧穿）：UPSERT+RETURNING 一次拿到「含本次」的累计值，
+// 占额不因后续步骤失败退还（防失败重试白嫖）。所有 issueCode 调用方（公开发码/换绑/
+// 管理员绑定/两处 2FA 登录）统一先占额——此前只有 /api/email/code 有这层，其余口子
+// 换收件人即可绕开烧穿日配额，连带 2FA 发码失败把管理员锁在门外。键前缀 emailcode:
+// 与 messages.js / visit.js 的旧行清理同清单。
+const MAIL_IP_HOUR_LIMIT = 8;
+export async function consumeMailQuota(env, request) {
+  if (!env.DB) return;
+  const ip = (request && request.headers && request.headers.get('CF-Connecting-IP')) || 'unknown';
+  const ipHourKey = 'emailcode:' + ip + ':' + new Date().toISOString().slice(0, 13);
+  const used = await env.DB.prepare(
+    'INSERT INTO login_throttle (key, fails, last_fail) VALUES (?, 1, ?) ON CONFLICT(key) DO UPDATE SET fails = fails + 1, last_fail = excluded.last_fail RETURNING fails'
+  ).bind(ipHourKey, new Date().toISOString()).first();
+  if (used && Number(used.fails) > MAIL_IP_HOUR_LIMIT) {
+    throw new Error('验证码请求过于频繁，请一小时后再试');
+  }
+}
+
+// issueCode / consumeMailQuota 抛出的本站自有节流文案（不含上游细节）可直出给前端；
+// 其余错误（如带 resend 响应片段的发送失败）调用方必须换成固定文案，细节进日志
+export function isSafeEmailError(msg) {
+  const s = String(msg || '');
+  return s.indexOf('发送太频繁') === 0 || s.indexOf('验证码请求过于频繁') === 0 || s === '邮件服务未启用';
 }
 
 async function sendViaResend(cfg, to, subject, html) {
@@ -114,28 +139,28 @@ async function hashCode(email, code) {
 function utcNowIso() { return new Date().toISOString(); }
 function dbNow(offsetSec) { return new Date(Date.now() + (offsetSec || 0) * 1000).toISOString().slice(0, 19).replace('T', ' '); }
 
-// 签发验证码并发送邮件。成功返回 {ok:true}；失败抛 Error（中文消息可直接给前端）。
+// 签发验证码并发送邮件。成功返回 {ok:true}；失败抛 Error（本站自有文案可直接给前端，
+// 发送失败类消息可能带上游片段，调用方用 isSafeEmailError 过滤后再回）。
+// 60 秒重发冷却原子化：UPSERT 的 DO UPDATE 带 WHERE（距上次签发 ≥60 秒才覆盖），
+// 条件不满足时该语句 changes=0——此前「先 SELECT created_at 再覆盖」两步走，并发请求
+// 同读旧值可以一起穿过，连单邮箱 60 秒都拦不住并发刷
 export async function issueCode(env, email, purpose) {
   email = String(email || '').trim().toLowerCase();
-  // 60 秒内已发过：拦截（读 created_at，PK 覆盖前先查）
-  const prev = await env.DB
-    .prepare('SELECT created_at, expires_at FROM email_codes WHERE email = ? AND purpose = ?')
-    .bind(email, purpose).first();
-  if (prev) {
-    const last = Date.parse(String(prev.created_at).replace(' ', 'T') + 'Z');
-    if (!isNaN(last) && Date.now() - last < CODE_RESEND_SEC * 1000) {
-      throw new Error('发送太频繁，请 ' + Math.ceil((CODE_RESEND_SEC * 1000 - (Date.now() - last)) / 1000) + ' 秒后再试');
-    }
-  }
-  const code = String(Math.floor(100000 + Math.random() * 900000));
+  // 验证码是安全凭据：CSPRNG 取数（Math.random 可预测；无盐 SHA-256 下离线爆破空间更小越好）
+  const rnd = new Uint32Array(1);
+  crypto.getRandomValues(rnd);
+  const code = String(100000 + (rnd[0] % 900000));
   const hash = await hashCode(email, code);
-  await env.DB.batch([
+  const res = await env.DB.batch([
     env.DB.prepare('DELETE FROM email_codes WHERE expires_at < ?').bind(dbNow(0)),
     env.DB
       .prepare(`INSERT INTO email_codes (email, purpose, code_hash, attempts, expires_at) VALUES (?, ?, ?, 0, ?)
-        ON CONFLICT(email, purpose) DO UPDATE SET code_hash = excluded.code_hash, attempts = 0, expires_at = excluded.expires_at, created_at = datetime('now')`)
+        ON CONFLICT(email, purpose) DO UPDATE SET code_hash = excluded.code_hash, attempts = 0, expires_at = excluded.expires_at, created_at = datetime('now')
+        WHERE (strftime('%s', 'now') - strftime('%s', email_codes.created_at)) >= ${CODE_RESEND_SEC}`)
       .bind(email, purpose, hash, dbNow(CODE_TTL_MIN * 60)),
   ]);
+  const changes = res && res[1] && res[1].meta ? Number(res[1].meta.changes || 0) : 0;
+  if (changes === 0) throw new Error('发送太频繁，请 1 分钟后再试');
   try {
     await sendMail(env, email, 'YHuo 验证码：' + code, codeHtml(code, CODE_TTL_MIN), 'code');
   } catch (e) {
@@ -146,27 +171,30 @@ export async function issueCode(env, email, purpose) {
   return { ok: true };
 }
 
-// 校验验证码：对 = 删记录返回 true；错 = 记一次尝试返回 false；超限/过期抛 Error。
+// 校验验证码：对 = 删记录返回 true；错 = 记一次尝试；超限/过期抛 Error。
+// 尝试计数原子化：先 UPDATE…RETURNING 占名额再比较——此前「读 row.attempts → 比较 →
+// 单独 UPDATE +1」的写法里，并发波次会共享同一个旧值、每发请求都拿到一次哈希比较
+// 机会，「5 次/码」上限被击穿（reset 码可从公开接口按 8 个/小时/IP 持续获取）
 export async function verifyCode(env, email, purpose, code) {
   email = String(email || '').trim().toLowerCase();
   const row = await env.DB
-    .prepare('SELECT code_hash, attempts, expires_at FROM email_codes WHERE email = ? AND purpose = ?')
+    .prepare('SELECT code_hash, expires_at FROM email_codes WHERE email = ? AND purpose = ?')
     .bind(email, purpose).first();
   if (!row) throw new Error('验证码不存在或已失效，请重新获取');
   if (Date.parse(String(row.expires_at).replace(' ', 'T') + 'Z') < Date.now()) {
     await env.DB.prepare('DELETE FROM email_codes WHERE email = ? AND purpose = ?').bind(email, purpose).run();
     throw new Error('验证码已过期，请重新获取');
   }
-  if (row.attempts >= CODE_MAX_ATTEMPTS) {
+  const used = await env.DB.prepare(
+    'UPDATE email_codes SET attempts = attempts + 1 WHERE email = ? AND purpose = ? AND attempts < ? RETURNING attempts'
+  ).bind(email, purpose, CODE_MAX_ATTEMPTS).first();
+  if (!used) {
     await env.DB.prepare('DELETE FROM email_codes WHERE email = ? AND purpose = ?').bind(email, purpose).run();
     throw new Error('尝试次数过多，请重新获取验证码');
   }
   const hash = await hashCode(email, String(code || '').trim());
   if (hash !== row.code_hash) {
-    await env.DB
-      .prepare('UPDATE email_codes SET attempts = attempts + 1 WHERE email = ? AND purpose = ?')
-      .bind(email, purpose).run();
-    const left = CODE_MAX_ATTEMPTS - row.attempts - 1;
+    const left = CODE_MAX_ATTEMPTS - Number(used.attempts);
     throw new Error(left > 0 ? '验证码不正确（还剩 ' + left + ' 次机会）' : '尝试次数过多，请重新获取验证码');
   }
   await env.DB.prepare('DELETE FROM email_codes WHERE email = ? AND purpose = ?').bind(email, purpose).run();

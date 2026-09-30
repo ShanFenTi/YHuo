@@ -103,7 +103,7 @@ console.log('[3] 前台页面本地引用');
 
 // ---------- 4. 八页外壳一致性（坑 23） ----------
 // 外壳 = <main>…</main> 之外的全部内容（head + 头部胶囊 + 浮层 + 页脚 + 播放器 + script 引用）。
-// 八页本就只差 data-page / <title> / 每页专属描述与 og:*（2026-09-09 SEO 起）/ 导航高亮四处，
+// 八页本就只差 data-page / <title> / 每页专属描述与 og:title/og:url/og:description（2026-09-09 SEO 起）/ 导航高亮，
 // 归一化掉之后应当逐行相等；
 // 不等 = 改外壳时漏同步了某个页面，当场报出错页与首个差异行。
 console.log('[4] 八页外壳一致性');
@@ -123,16 +123,18 @@ console.log('[4] 八页外壳一致性');
     return src.slice(0, openAt) + src.slice(closeAt + '</main>'.length);
   });
   // 差异白名单：页间合法差异（ai-entry 类不在白名单里，各页本就一致，剥掉反而会放过漏改）。
-  // 2026-09-09 PWA/SEO 批次起，每页专属的 meta description / og:* 行也按内容剔除后比对
-  //（og:title 与各页 <title> 一致，属合法差异；其余 head 行仍要求逐行一致）。
-  // 2026-09-15 分享卡批次起，<link rel="canonical"> 按页路径不同，同 og:* 一并剔除后比对
-  //（og:url 在 property="og:" 前缀内已覆盖；og:image/twitter:card 各页相同仍走逐行比对）。
+  // 2026-09-09 PWA/SEO 批次起，每页专属的 meta description / og:title / og:description / og:url
+  // 行按内容剔除后比对（og:title 与各页 <title> 一致，属合法差异；其余 head 行仍要求逐行一致）。
+  // 2026-09-15 分享卡批次起，<link rel="canonical"> 按页路径不同，同 og 按页项一并剔除后比对。
+  // 2026-09-30 白名单收窄：此前 property="og: 前缀把 og:image/og:type 也整行剔除了
+  //（与注释宣称的「各页相同仍走逐行比对」不符——单页分享卡图漂移不会被抓），
+  // 现在只剔除确按页变化的 og:title/og:url/og:description 三项，og:image/og:type/twitter:card 回到逐行比对。
   // 前面已统一 \r\n → \n（坑 8），行尾再兜一层 \s* 兼容残余 \r。
   const norm = (s) => s.replace(/\r\n/g, '\n')
     .replace(/data-page="[^"]*"/g, 'data-page="*"')
     .replace(/<title>[^<]*<\/title>/g, '<title>*</title>')
     .split('\n')
-    .filter((line) => !/^\s*(?:<meta (?:name="description"|property="og:)[^>]*>|<link rel="canonical" [^>]*>)\s*$/.test(line))
+    .filter((line) => !/^\s*(?:<meta (?:name="description"|property="og:(?:title|url|description)")[^>]*>|<link rel="canonical" [^>]*>)\s*$/.test(line))
     .map((line) => line.includes('nav-link')
       ? line.replace(/\s+aria-current="page"/g, '').replace(/\s+active(?=["\s])/g, '')
       : line)
@@ -154,7 +156,7 @@ console.log('[4] 八页外壳一致性');
       const snippet = (b[ln] || '(该页外壳提前结束)').trim().slice(0, 60);
       fail(`${PAGES[i]} 外壳与首页不一致（归一化后第 ${ln + 1} 行）：${snippet}`);
     }
-    if (!bad) ok(`八个子页外壳与首页一致（比对 ${base.split('\n').length} 行；白名单：data-page/标题/描述与 og:*/canonical/导航高亮）`);
+    if (!bad) ok(`八个子页外壳与首页一致（比对 ${base.split('\n').length} 行；白名单：data-page/标题/description/og:title/og:url/og:description/canonical/导航高亮；og:image/og:type/twitter:card 恒定行参与比对）`);
   }
 }
 

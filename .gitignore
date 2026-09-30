@@ -5,6 +5,10 @@
 node_modules/
 .wrangler/
 .wrangler-state-test/
+# 本地实验性 wrangler 状态目录（非锚定 .wrangler/ 只碰巧盖住下面两个子目录里的 .wrangler，根下文件会漏）
+.wrangler-home/
+.wrangler-xdg/
+.wrangler-state-b1test/
 package.json
 package-lock.json
 动效.html

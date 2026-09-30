@@ -1,0 +1,55 @@
+# 本地开发/工具文件，不需要发布到 GitHub Pages
+.zcode/
+.design/
+*.bat
+node_modules/
+.wrangler/
+.wrangler-state-test/
+.wrangler-home/
+.wrangler-xdg/
+.wrangler-state-b1test/
+package.json
+package-lock.json
+动效.html
+
+# 本地安全体检清单（全库哈希修完前绝不入库/外传）
+bug.md
+
+# 本地垃圾与不入库目录（见部署说明 §3）
+0
+访问量
+相册功能备份/
+优选IP工具/
+博客动画源码/
+WakeUp课表导入.csv
+WakeUp课表导入.json
+
+# ===== ↑ 以上同步自 .gitignore（「从 .gitignore 同步」只重写以上部分）=====
+.git/
+.hg/
+.svn/
+bower_components/
+jspm_packages/
+__pycache__/
+site-packages/
+venv/
+coverage/
+htmlcov/
+lcov-report/
+cmakefiles/
+cmake-build-*/
+bazel-*/
+pods/
+deriveddata/
+storybook-static/
+playwright-report/
+test-results/
+allure-results/
+allure-report/
+cdk.out/
+*.egg-info/
+*.dist-info/
+eggs/
+pip-wheel-metadata/
+wheels/
+# ----- ↑ 以上为 ZCode 默认排除规则（自定义规则请写在本行下方，不会被同步/恢复改动）-----

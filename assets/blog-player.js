@@ -170,8 +170,10 @@
         Math.min(Math.max(value, minimum), Math.max(minimum, maximum));
 
       const setPanelPosition = (left, top, rect = panel.getBoundingClientRect()) => {
-        const maxLeft = window.innerWidth - rect.width - viewportMargin;
-        const maxTop = window.innerHeight - rect.height - viewportMargin;
+        // 固定定位统一用 documentElement.client*（布局视口、不含滚动条，坑 30 口径）：
+        // getBoundingClientRect 同为布局视口坐标，混用 window.inner* 会偏一个滚动条宽
+        const maxLeft = document.documentElement.clientWidth - rect.width - viewportMargin;
+        const maxTop = document.documentElement.clientHeight - rect.height - viewportMargin;
         panel.style.position = 'fixed';
         panel.style.right = 'auto';
         panel.style.bottom = 'auto';
@@ -205,9 +207,9 @@
         const panelRect = panel.getBoundingClientRect();
         const toggleRect = toggle.getBoundingClientRect();
         const roomAbove = toggleRect.top - panelGap - viewportMargin;
-        const roomBelow = window.innerHeight - toggleRect.bottom - panelGap - viewportMargin;
+        const roomBelow = document.documentElement.clientHeight - toggleRect.bottom - panelGap - viewportMargin;
         const placeAbove = roomAbove >= panelRect.height || roomAbove >= roomBelow;
-        const alignLeft = toggleRect.left + toggleRect.width / 2 <= window.innerWidth / 2;
+        const alignLeft = toggleRect.left + toggleRect.width / 2 <= document.documentElement.clientWidth / 2;
         const left = alignLeft ? toggleRect.left : toggleRect.right - panelRect.width;
         const top = placeAbove
           ? toggleRect.top - panelGap - panelRect.height
@@ -232,12 +234,12 @@
         root.style.left = `${clamp(
           rect.left,
           viewportMargin,
-          window.innerWidth - rect.width - viewportMargin,
+          document.documentElement.clientWidth - rect.width - viewportMargin,
         )}px`;
         root.style.top = `${clamp(
           rect.top,
           viewportMargin,
-          window.innerHeight - rect.height - viewportMargin,
+          document.documentElement.clientHeight - rect.height - viewportMargin,
         )}px`;
         root.style.right = 'auto';
         root.style.bottom = 'auto';
@@ -882,11 +884,11 @@
         }
         const left = Math.min(
           Math.max(toggleDrag.originLeft + dx, 8),
-          window.innerWidth - 52,
+          document.documentElement.clientWidth - 52,
         );
         const top = Math.min(
           Math.max(toggleDrag.originTop + dy, 8),
-          window.innerHeight - 52,
+          document.documentElement.clientHeight - 52,
         );
         root.style.left = `${left}px`;
         root.style.top = `${top}px`;

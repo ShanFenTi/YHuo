@@ -466,6 +466,9 @@ window.__siteCalendar = (function () {
       homeClockTimers.forEach(clearInterval);
       homeClockTimers = [];
       clockMsText = null;
+      // 复位日期键：#heroMarks 随 <main> 被 pjax 重建为初始 hidden，回首页靠 updateClock
+      // 的「日期变化」分支重算——不复位的话同一天内回首页永不重算，印记永久消失
+      lastDateKey = null;
     }
     function startHomeClock() {
       stopHomeClock();
@@ -1309,13 +1312,17 @@ window.__siteCalendar = (function () {
       updateMiniCover(); // 迷你播放器封面跟随恢复的曲目
       musicLyricsLoad(tracks[idx].name, tracks[idx].src, tracks[idx].lrc); // 歌词横条跟随切歌
       audio.src = tracks[idx].src;
+      // blog 款式下迷你条被 CSS 隐藏：恢复数据里的 playing 是迷你条上次的状态，
+      // 不替隐藏元素自动开播（防 autoplay 放行环境下「看不见的歌」与悬浮款双声），
+      // 悬浮款由 blog-player.js 自行恢复自己的进度
+      var wantPlay = !!meta.playing && !document.documentElement.classList.contains('using-blog-player');
       audio.addEventListener('loadedmetadata', function () {
         audio.currentTime = meta.time || 0;
-        if (meta.playing) {
+        if (wantPlay) {
           audio.play().catch(function () { updatePlayIcon(false); });
         }
       }, { once: true });
-      if (meta.playing) updatePlayIcon(true);
+      if (wantPlay) updatePlayIcon(true);
       return true;
     }
 
@@ -2890,11 +2897,14 @@ window.__siteCalendar = (function () {
       var avatarRemoveBtn = document.getElementById('avatarRemoveBtn');
       var profileLogoutBtn = document.getElementById('profileLogoutBtn');
 
-      // 打开时把面板右缘/顶缘对齐到头像按钮（下方留 8px 间距），窄屏至少留 12px 边距
+      // 打开时把面板右缘/顶缘对齐到头像按钮（下方留 8px 间距），窄屏至少留 12px 边距。
+      // 固定定位坐标统一用 documentElement.clientWidth（不含滚动条，坑 30 口径）——
+      // getBoundingClientRect 也是布局视口坐标，混用 window.innerWidth（含滚动条）
+      // 会系统性偏大约一个滚动条宽
       function positionProfileDock() {
         if (!profileDock || !loginToggle) return;
         var r = loginToggle.getBoundingClientRect();
-        profileDock.style.right = Math.max(12, window.innerWidth - r.right) + 'px';
+        profileDock.style.right = Math.max(12, document.documentElement.clientWidth - r.right) + 'px';
         profileDock.style.top = Math.max(60, r.bottom + 8) + 'px';
       }
 
@@ -5099,9 +5109,11 @@ window.__siteCalendar = (function () {
         if (timer) { clearInterval(timer); timer = null; }
         startBtn.textContent = left === total ? '开始' : '继续';
       }
+      var pomoBeepCtx = null; // 单例复用：每响新建 AudioContext 从不 close 会顶到浏览器并发上限，若干轮后响铃静默失效
       function beep() {
         try {
-          var ctx = new (window.AudioContext || window.webkitAudioContext)();
+          if (!pomoBeepCtx) pomoBeepCtx = new (window.AudioContext || window.webkitAudioContext)();
+          var ctx = pomoBeepCtx;
           [0, 0.35, 0.7].forEach(function (delay) {
             var osc = ctx.createOscillator();
             var gain = ctx.createGain();
@@ -5575,6 +5587,13 @@ window.__siteCalendar = (function () {
     var docViewerTitle = document.getElementById('docViewerTitle');
     var docArticle = document.getElementById('docArticle');
 
+    // 链接/图片 URL 方案白名单：mdToHtml/clTimelineHtml 的先转义只挡标签注入不挡 scheme，
+    // [x](javascript:throw/onerror=…/+1) 可产出可点击的可执行 href（AI 回复经 mdToHtml 渲染即达，
+    // 点击同源执行可带登录 Cookie 打 /api/*）；只放行 http(s) 与站内相对/锚点，其余按纯文本
+    function safeUrl(u) {
+      return /^(https?:|\/|#|\.\/|\.\.\/)/i.test(String(u || ''));
+    }
+
     // 迷你 Markdown 渲染：先整体转义 HTML 再按行解析，支持
     // #/##/### 标题、- 与 1. 列表、> 引用、``` 代码块、--- 分隔线、
     // **粗** *斜* `行内码` [链接](url) ![图](url)；不支持的语法原样显示
@@ -5584,8 +5603,12 @@ window.__siteCalendar = (function () {
       };
       var inline = function (s) {
         return s
-          .replace(/!\[([^\]]*)\]\(([^\s)"']+)\)/g, '<img src="$2" alt="$1">')
-          .replace(/\[([^\]]+)\]\(([^\s)"']+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>')
+          .replace(/!\[([^\]]*)\]\(([^\s)"']+)\)/g, function (m0, alt, url) {
+            return safeUrl(url) ? '<img src="' + url + '" alt="' + alt + '">' : m0;
+          })
+          .replace(/\[([^\]]+)\]\(([^\s)"']+)\)/g, function (m0, text, url) {
+            return safeUrl(url) ? '<a href="' + url + '" target="_blank" rel="noopener">' + text + '</a>' : m0;
+          })
           .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
           .replace(/(^|[^*])\*([^*]+)\*/g, '$1<em>$2</em>')
           .replace(/`([^`]+)`/g, '<code>$1</code>');
@@ -5664,7 +5687,9 @@ window.__siteCalendar = (function () {
           .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
           .replace(/`([^`]+)`/g, '<code>$1</code>')
           .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
-          .replace(/\[([^\]]+)\]\(([^)\s]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>');
+          .replace(/\[([^\]]+)\]\(([^)\s]+)\)/g, function (m0, text, url) {
+            return safeUrl(url) ? '<a href="' + url + '" target="_blank" rel="noopener">' + text + '</a>' : m0;
+          });
       }
       lines.forEach(function (line) {
         var m;
@@ -7254,10 +7279,18 @@ window.__siteCalendar = (function () {
       fetch('/api/user/me', { credentials: 'same-origin' })
         .then(function (r) { return r.json().catch(function () { return {}; }); })
         .then(function (d) {
+          var wasAdmin = boardMe.admin;
           boardMe = { loggedIn: !!(d && d.username), admin: !!(d && (d.admin || d.alsoAdmin)) };
           boardHint.textContent = boardMe.loggedIn
             ? (boardMe.admin ? (d.admin ? '以站长身份发布' : '已登录：' + d.username + '（管理员）') : '已登录：' + d.username)
             : '未登录 · 将以 🎭 路人身份留言（限每分钟一条）';
+          // 身份与列表并行拉取存在竞速：/api/messages 先回时管理员首屏渲染没有删除钮，
+          // 身份确认后补一次重拉（列表已渲染且本次才亮明管理员身份才需要；发布后的
+          // 定时身份刷新 admin 已是 true，不会多余重拉）
+          if (boardMe.admin && !wasAdmin && boardList && boardList.childElementCount) {
+            boardOffset = 0;
+            boardLoad();
+          }
         })
         .catch(function () { boardMe = { loggedIn: false, admin: false }; });
     }
@@ -7665,7 +7698,7 @@ window.__siteCalendar = (function () {
         if (!expr.trim()) {
           // 只敲了一个 =：给个用法提示，Enter 无结果可复制（copyMathResult 直接跳过）
           line.textContent = '以 = 开头直接算数';
-          sub.textContent = '例如 =1+2*3 → 3 · Enter 复制结果';
+          sub.textContent = '例如 =1+2*3 → 7 · Enter 复制结果';
         } else {
           var val = evalMath(expr);
           if (val === null) {
@@ -7956,6 +7989,7 @@ window.__siteCalendar = (function () {
     function closeAllTransientOverlays() {
       // 换页时收起外壳上的临时浮层（不随 <main> 换页重置）
       try { setNavDrawer(false); } catch (e) {}
+      try { togglePlaylist(false); } catch (e) {} // 迷你条曲库列表面板（外壳元素，换页同样不重置）
       try { if (window.__blogPlayerClosePanel) window.__blogPlayerClosePanel(); } catch (e) {}
       try { if (window.__visClosePanel) window.__visClosePanel(); } catch (e) {} // 频谱面板（common.js 尾部 IIFE 注册；pjax 换页随手收起）
       try { closeProfileView(); } catch (e) {}

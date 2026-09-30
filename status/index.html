@@ -103,8 +103,9 @@
         fetch('/api/health', { credentials: 'same-origin', cache: 'no-store' })
           .then(function (r) { return r.json(); })
           .then(function (d) {
-            // 数据库：绑定且可查询且建表齐 = 正常；绑定了但读不了 = 异常；没绑定 = 异常（部署问题）
-            if (d.db && d.dbReadable && d.tablesReady) set('d1', 'ok', '正常');
+            // 数据库：绑定且可查询 = 正常（空库 tablesReady:false 属正常——09-20 起 health 只读化，
+            // 不再顺手建表，建表由各业务接口首次访问负责，全新部署不该被误报红灯）
+            if (d.db && d.dbReadable) set('d1', 'ok', d.tablesReady ? '正常' : '正常（待初始化）');
             else if (d.db) set('d1', 'bad', '异常');
             else set('d1', 'bad', '未绑定');
             // KV：绑定且可列 = 正常；绑定了但读不了 = 异常；没绑定 = 异常

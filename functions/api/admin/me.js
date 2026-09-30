@@ -1,17 +1,17 @@
-// GET    /api/admin/me → 管理员资料 { ok, username, created_at, avatar, email, emailEnabled, twoFa, sessions:[{current,ip,ua,created_at}], logins:[{ok,ip,ua,note,created_at}] }（avatar 为 KV 键或 null）
+// GET    /api/admin/me → 当前管理员资料 { ok, username, role, created_at, avatar, email, emailEnabled, twoFa, sessions:[{current,ip,ua,created_at}], logins:[{ok,ip,ua,note,created_at}] }（avatar 为 KV 键或 null；2026-09-30 多管理员起 sessions/logins 只含本人、email/2FA 仅超管返回）
 // POST   /api/admin/me → 两种用法：
-//          multipart（file 字段）→ 上传管理员头像（JPG/PNG/GIF/WebP；≤2MB；KV 键 avatars/admin-{hex}.{ext}，键名存 site_settings 'admin_avatar'，换图删旧）
-//          JSON {action:'email-send', email} → 给管理员邮箱发绑定验证码
-//          JSON {action:'email-verify', email, code} → 验证并保存管理员邮箱（存 site_settings 'admin_email'）
-//          JSON {action:'email-remove'} → 解绑邮箱
-//          JSON {action:'password', oldPassword, newPassword} → 修改管理员密码（限速 scope=pwd；成功后踢掉其他设备）
-//          JSON {action:'sessions-revoke-others'} → 吊销除当前外的全部管理员会话
-//          JSON {action:'2fa', enabled} → 登录二次验证开关（存 site_settings 'admin_2fa'；开启前提是已绑邮箱）
+//          multipart（file 字段）→ 上传管理员头像（超管专属：这是全站展示的站长形象；JPG/PNG/GIF/WebP；≤2MB；KV 键 avatars/admin-{hex}.{ext}，键名存 site_settings 'admin_avatar'，换图删旧）
+//          JSON {action:'email-send', email} → 给管理员邮箱发绑定验证码（超管专属）
+//          JSON {action:'email-verify', email, code} → 验证并保存管理员邮箱（存 site_settings 'admin_email'；超管专属）
+//          JSON {action:'email-remove'} → 解绑邮箱（超管专属）
+//          JSON {action:'password', oldPassword, newPassword} → 修改本人密码（限速 scope=pwd；成功后踢掉本人其他设备）
+//          JSON {action:'sessions-revoke-others'} → 吊销除当前外的本人会话
+//          JSON {action:'2fa', enabled} → 登录二次验证开关（存 site_settings 'admin_2fa'；仅超管，开启前提是已绑邮箱）
 // PUT    /api/admin/me → JSON {action} 同上（formData 与 json 两种 POST 都兼容，PUT 保留给 JSON）
-// DELETE /api/admin/me → 移除头像（删 KV 文件 + 清设置）
+// DELETE /api/admin/me → 移除头像（超管专属；删 KV 文件 + 清设置）
 // 头像读取走既有路由 GET /media/{key}（键名含随机 hex，换图不串缓存）；本接口全部经 /api/admin/* 会话门卫
 import { json, getCookie, SESSION_COOKIE } from '../../lib/util.js';
-import { randomHex, verifyPassword, hashPassword, loginKey, loginLockedFor, recordLoginFail, clearLoginFails } from '../../lib/auth.js';
+import { randomHex, verifyPassword, hashPassword, loginKey, loginLockedFor, recordLoginFail, clearLoginFails, getAdminAuth } from '../../lib/auth.js';
 import { ensureSchema } from '../../lib/migrate.js';
 import { getEmailConfig, isEmailAddr, issueCode, verifyCode, consumeMailQuota, isSafeEmailError } from '../../lib/email.js';
 
@@ -36,39 +36,47 @@ async function getAdminEmail(env) {
 
 export async function onRequestGet({ request, env }) {
   await ensureSchema(env);
-  const u = await env.DB.prepare('SELECT username, created_at FROM admin_users ORDER BY id LIMIT 1').first();
+  const me = await getAdminAuth(env, getCookie(request, SESSION_COOKIE));
+  if (!me) return json({ ok: false, error: '未登录' }, 401);
+  const u = await env.DB.prepare('SELECT username, created_at FROM admin_users WHERE id = ?').bind(me.id).first();
   const cfg = await getEmailConfig(env);
+  const isSuper = me.role === 'super';
   const current = getCookie(request, SESSION_COOKIE);
-  // 有效会话（登录设备）列表：标记哪个是当前设备，不回传原始 token
+  // 有效会话（登录设备）列表：只列本人会话，标记哪个是当前设备，不回传原始 token
   const sessRes = await env.DB
-    .prepare('SELECT token, ip, ua, created_at, expires_at FROM sessions WHERE expires_at >= ? ORDER BY created_at DESC')
-    .bind(new Date().toISOString())
+    .prepare('SELECT token, ip, ua, created_at, expires_at FROM sessions WHERE admin_id = ? AND expires_at >= ? ORDER BY created_at DESC')
+    .bind(me.id, new Date().toISOString())
     .all();
   const sessions = (sessRes.results || []).map(function (s) {
     return { current: s.token === current, ip: s.ip || '', ua: s.ua || '', created_at: s.created_at };
   });
-  // 最近登录记录（成功+失败，最新在前）
+  // 最近登录记录（成功+失败，最新在前）：超管看全部（含旧库无 username 的历史行），普通管理员只看自己的
   const logRes = await env.DB
-    .prepare('SELECT ok, ip, ua, note, created_at FROM admin_login_logs ORDER BY id DESC LIMIT 10')
+    .prepare(isSuper
+      ? 'SELECT ok, ip, ua, note, username, created_at FROM admin_login_logs ORDER BY id DESC LIMIT 10'
+      : 'SELECT ok, ip, ua, note, username, created_at FROM admin_login_logs WHERE username = ? ORDER BY id DESC LIMIT 10')
+    .bind(...(isSuper ? [] : [me.username]))
     .all();
   const t2 = await env.DB.prepare("SELECT value FROM site_settings WHERE key = 'admin_2fa'").first();
   return json({
     ok: true,
-    username: u ? u.username : '',
+    id: me.id,
+    username: u ? u.username : me.username,
+    role: me.role,
     created_at: u ? u.created_at : null,
     avatar: await getAvatarKey(env),
-    email: await getAdminEmail(env),
+    email: isSuper ? await getAdminEmail(env) : null,
     emailEnabled: cfg.enabled,
-    twoFa: !!(t2 && t2.value === '1'),
+    twoFa: isSuper && !!(t2 && t2.value === '1'),
     sessions,
     logins: logRes.results || [],
   });
 }
 
 // JSON 分支；供 POST(非 multipart) 与 PUT 共用
-// 邮箱类 action（email-send/email-verify/email-remove）要求邮件服务已启用；
-// 安全类 action（password/sessions-revoke-others/2fa）不依赖邮件服务（2fa 开启前提是已绑邮箱）
-async function handleEmailAction(request, env) {
+// 邮箱类 action（email-send/email-verify/email-remove）要求邮件服务已启用且为超管；
+// 安全类 action（password/sessions-revoke-others）任何管理员可用（只作用于本人）
+async function handleEmailAction(request, env, me) {
   let body;
   try {
     body = await request.json();
@@ -76,14 +84,20 @@ async function handleEmailAction(request, env) {
     return json({ ok: false, error: '请求格式错误' }, 400);
   }
   const action = String(body.action || '');
+  const isSuper = me.role === 'super';
 
-  // ---- 修改管理员密码：验证旧密码（限速复用登录限速 scope=pwd），成功后踢掉其他设备 ----
+  // 邮箱/2FA/自定义发信是站长（超管）的全局设置：普通管理员一律 403
+  if ((action === 'email-send' || action === 'email-verify' || action === 'email-remove' || action === '2fa') && !isSuper) {
+    return json({ ok: false, error: '该操作需要超级管理员权限' }, 403);
+  }
+
+  // ---- 修改本人密码：验证旧密码（限速复用登录限速 scope=pwd），成功后踢掉本人其他设备 ----
   if (action === 'password') {
     const oldP = String(body.oldPassword || '');
     const newP = String(body.newPassword || '');
     if (!oldP) return json({ ok: false, error: '请输入当前密码' }, 400);
     if (newP.length < 6 || newP.length > 100) return json({ ok: false, error: '新密码需 6-100 位' }, 400);
-    const u = await env.DB.prepare('SELECT id, username, password_hash, salt FROM admin_users ORDER BY id LIMIT 1').first();
+    const u = await env.DB.prepare('SELECT id, username, password_hash, salt FROM admin_users WHERE id = ?').bind(me.id).first();
     if (!u) return json({ ok: false, error: '管理员账号不存在' }, 404);
     const key = loginKey(request, 'pwd', u.username);
     const lockedMin = await loginLockedFor(env, key);
@@ -99,17 +113,17 @@ async function handleEmailAction(request, env) {
     await env.DB.batch([
       env.DB.prepare('UPDATE admin_users SET password_hash = ?, salt = ? WHERE id = ?').bind(hash, salt, u.id),
       current
-        ? env.DB.prepare('DELETE FROM sessions WHERE token <> ?').bind(current)
-        : env.DB.prepare('DELETE FROM sessions'),
+        ? env.DB.prepare('DELETE FROM sessions WHERE admin_id = ? AND token <> ?').bind(u.id, current)
+        : env.DB.prepare('DELETE FROM sessions WHERE admin_id = ?').bind(u.id),
     ]);
     return json({ ok: true });
   }
 
-  // ---- 退出其他设备：吊销除当前会话外的全部管理员会话 ----
+  // ---- 退出其他设备：吊销除当前会话外的本人会话（别人的会话碰不到） ----
   if (action === 'sessions-revoke-others') {
     const current = getCookie(request, SESSION_COOKIE);
     if (!current) return json({ ok: false, error: '未识别到当前会话' }, 401);
-    const r = await env.DB.prepare('DELETE FROM sessions WHERE token <> ?').bind(current).run();
+    const r = await env.DB.prepare('DELETE FROM sessions WHERE admin_id = ? AND token <> ?').bind(me.id, current).run();
     return json({ ok: true, revoked: (r.meta && r.meta.changes) || 0 });
   }
 
@@ -177,14 +191,19 @@ async function handleEmailAction(request, env) {
 
 export async function onRequestPut({ request, env }) {
   await ensureSchema(env);
-  return handleEmailAction(request, env);
+  const me = await getAdminAuth(env, getCookie(request, SESSION_COOKIE));
+  if (!me) return json({ ok: false, error: '未登录' }, 401);
+  return handleEmailAction(request, env, me);
 }
 
 export async function onRequestPost({ request, env }) {
   await ensureSchema(env);
-  // JSON 请求 = 邮箱操作；multipart = 头像上传
+  const me = await getAdminAuth(env, getCookie(request, SESSION_COOKIE));
+  if (!me) return json({ ok: false, error: '未登录' }, 401);
+  // JSON 请求 = 邮箱/安全操作；multipart = 头像上传（超管专属——那是全站展示的站长形象）
   const ct = String(request.headers.get('content-type') || '');
-  if (ct.indexOf('application/json') > -1) return handleEmailAction(request, env);
+  if (ct.indexOf('application/json') > -1) return handleEmailAction(request, env, me);
+  if (me.role !== 'super') return json({ ok: false, error: '该操作需要超级管理员权限' }, 403);
   let form;
   try {
     form = await request.formData();
@@ -212,8 +231,11 @@ export async function onRequestPost({ request, env }) {
   return json({ ok: true, avatar: key });
 }
 
-export async function onRequestDelete({ env }) {
+export async function onRequestDelete({ request, env }) {
   await ensureSchema(env);
+  const me = await getAdminAuth(env, getCookie(request, SESSION_COOKIE));
+  if (!me) return json({ ok: false, error: '未登录' }, 401);
+  if (me.role !== 'super') return json({ ok: false, error: '该操作需要超级管理员权限' }, 403);
   const old = await getAvatarKey(env);
   if (old) await env.MEDIA.delete(old);
   await env.DB.prepare("DELETE FROM site_settings WHERE key = 'admin_avatar'").run();

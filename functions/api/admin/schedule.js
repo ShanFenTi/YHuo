@@ -1,11 +1,11 @@
-// GET  /api/admin/schedule → 定时任务配置（tick URL + 密钥；密钥不存在时自动生成）
-// POST /api/admin/schedule { action:'regenerate' } → 重新生成密钥（旧 URL 立即失效）
-// POST /api/admin/schedule { action:'test', email? } → 按真实课表算"今天该发什么"并立即发测试邮件
+// GET  /api/admin/schedule → 定时任务配置（tick URL + 密钥；密钥不存在时自动生成）——超管专属（密钥即提醒链路的命门）
+// POST /api/admin/schedule { action:'regenerate' } → 重新生成密钥（旧 URL 立即失效）——超管专属
+// POST /api/admin/schedule { action:'test', email? } → 按真实课表算"今天该发什么"并立即发测试邮件——普通管理员也可用
 //   （不写 schedule_sent 防重发记录，真实提醒不受影响；收件人默认站长邮箱，
 //    仅站长模式下强制只发站长邮箱。用于主动验证 解析→计算→拼邮件→发送 全链路）
-import { json } from '../../lib/util.js';
+import { json, getCookie, SESSION_COOKIE } from '../../lib/util.js';
 import { ensureSchema } from '../../lib/migrate.js';
-import { randomHex } from '../../lib/auth.js';
+import { randomHex, getAdminAuth } from '../../lib/auth.js';
 import { getEmailConfig, isEmailAddr, sendMail } from '../../lib/email.js';
 import { normSchedule, coursesToday, bjNow, bjDayStr, dailyHtml, classHtml } from '../../lib/schedule.js';
 
@@ -33,6 +33,9 @@ async function readSetting(env, name) {
 
 export async function onRequestGet({ request, env }) {
   await ensureSchema(env);
+  // tick 密钥只在超管手里（响应里是完整密钥，泄露即可刷真实提醒/配合配额耗发信）
+  const me = await getAdminAuth(env, getCookie(request, SESSION_COOKIE));
+  if (!me || me.role !== 'super') return json({ ok: false, error: '该操作需要超级管理员权限' }, 403);
   let key = await readKey(env);
   if (!key) key = await writeKey(env, randomHex(20)); // 首次查看自动生成
   const origin = new URL(request.url).origin;
@@ -54,6 +57,9 @@ export async function onRequestPost({ request, env }) {
   try { body = await request.json(); } catch {}
   if (body.action === 'test') return await runTest(env, body);
   if (body.action !== 'regenerate') return json({ ok: false, error: '不支持的操作' }, 400);
+  // 重新生成密钥（旧 URL 立即失效）：超管专属，理由同 GET
+  const me = await getAdminAuth(env, getCookie(request, SESSION_COOKIE));
+  if (!me || me.role !== 'super') return json({ ok: false, error: '该操作需要超级管理员权限' }, 403);
   const key = await writeKey(env, randomHex(20));
   const origin = new URL(request.url).origin;
   return json({ ok: true, key, url: origin + '/api/schedule/tick?key=' + key }, 200, { 'Cache-Control': 'no-store' });

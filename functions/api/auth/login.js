@@ -35,12 +35,12 @@ export async function onRequestPost({ request, env }) {
     try {
       await verifyCode(env, adminEmail || '', 'admin2fa', code);
     } catch (e) {
-      await logAdminLogin(env, request, 0, '2FA 验证码错误');
+      await logAdminLogin(env, request, 0, '2FA 验证码错误', admin.username);
       return json({ ok: false, error: (e && e.message) || '验证码校验失败，请重新登录' }, 400);
     }
     await env.DB.prepare('DELETE FROM sessions WHERE expires_at < ?').bind(new Date().toISOString()).run();
-    const token = await createSession(env, request);
-    await logAdminLogin(env, request, 1, '密码 + 邮箱验证码');
+    const token = await createSession(env, request, admin.id);
+    await logAdminLogin(env, request, 1, '密码 + 邮箱验证码', admin.username);
     return json({ ok: true, username: admin.username }, 200, { 'Set-Cookie': sessionCookie(token) });
   }
 
@@ -54,7 +54,7 @@ export async function onRequestPost({ request, env }) {
   }
 
   const row = await env.DB
-    .prepare('SELECT id, username, password_hash, salt FROM admin_users WHERE username = ?')
+    .prepare('SELECT id, username, password_hash, salt, role, banned FROM admin_users WHERE username = ?')
     .bind(username)
     .first();
 
@@ -62,25 +62,32 @@ export async function onRequestPost({ request, env }) {
   if (!row) {
     await hashPassword(password, randomHex(32));
     await recordLoginFail(env, throttleKey);
-    await logAdminLogin(env, request, 0, '用户名不存在');
+    await logAdminLogin(env, request, 0, '用户名不存在', username);
     return json({ ok: false, error: '用户名或密码错误' }, 401);
   }
 
   if (!(await verifyPassword(password, row.salt, row.password_hash))) {
     await recordLoginFail(env, throttleKey);
-    await logAdminLogin(env, request, 0, '密码错误');
+    await logAdminLogin(env, request, 0, '密码错误', row.username);
     return json({ ok: false, error: '用户名或密码错误' }, 401);
   }
 
   await clearLoginFails(env, throttleKey);
 
-  // 管理员 2FA：以开关为准判断（fail-closed）——开了 2FA 但拿不到邮箱记录时拒绝登录，
-  // 绝不 fall through 直发会话（否则第二道验证静默失效，站长还以为 2FA 开着）
+  // 被禁用的管理员：密码对也不放行（其存量会话已被 getAdminAuth 判无效）
+  if (row.banned) {
+    await logAdminLogin(env, request, 0, '已禁用的管理员尝试登录', row.username);
+    return json({ ok: false, error: '该管理员账号已被禁用' }, 403);
+  }
+
+  // 管理员 2FA（仅超级管理员）：admin_email/admin_2fa 是站长（超管）的全局设置，
+  // 普通管理员 v1 不配 2FA（忘记密码由超管在「管理员」页重置）。以开关为准判断
+  // （fail-closed）——开了 2FA 但拿不到邮箱记录时拒绝登录，绝不 fall through 直发会话
   const twoFa = await getSetting(env, 'admin_2fa');
-  if (twoFa === '1') {
+  if (twoFa === '1' && row.role === 'super') {
     const adminEmail = await getSetting(env, 'admin_email');
     if (!adminEmail) {
-      await logAdminLogin(env, request, 0, '已开启 2FA 但未绑定邮箱，拒绝登录');
+      await logAdminLogin(env, request, 0, '已开启 2FA 但未绑定邮箱，拒绝登录', row.username);
       return json({ ok: false, error: '已开启两步验证但未绑定邮箱，登录已被拦截：请在 D1 的 site_settings 删除 admin_2fa 键后重新绑定邮箱' }, 500);
     }
     const pending = await createLoginPending(env, -row.id);
@@ -89,7 +96,7 @@ export async function onRequestPost({ request, env }) {
       await issueCode(env, adminEmail, 'admin2fa');
     } catch (e) {
       const msg = String(e && e.message) || '';
-      await logAdminLogin(env, request, 0, '2FA 邮件发送失败');
+      await logAdminLogin(env, request, 0, '2FA 邮件发送失败', row.username);
       // 60 秒重发节流：上一封邮件里的验证码仍然有效，提示直接用旧码
       if (msg.indexOf('发送太频繁') >= 0) {
         return json({ ok: false, needCode: true, ticket: pending, error: '验证码已发送过，请查收邮箱后输入（约 1 分钟后才能重发）' });
@@ -98,14 +105,15 @@ export async function onRequestPost({ request, env }) {
       console.error('管理员 2FA 验证码发送失败: ' + msg);
       return json({ ok: false, error: '验证码发送失败' }, 500);
     }
-    await logAdminLogin(env, request, 0, '密码通过，等待二次验证');
+    await logAdminLogin(env, request, 0, '密码通过，等待二次验证', row.username);
     return json({ ok: false, needCode: true, ticket: pending, error: '验证码已发送到管理员邮箱' });
   }
 
   // 顺手清理过期会话
   await env.DB.prepare('DELETE FROM sessions WHERE expires_at < ?').bind(new Date().toISOString()).run();
 
-  const token = await createSession(env, request);
-  await logAdminLogin(env, request, 1, '密码登录');
+  const token = await createSession(env, request, row.id);
+  await logAdminLogin(env, request, 1, row.role === 'super' ? '密码登录（超级管理员）' : '密码登录（管理员）', row.username);
   return json({ ok: true, username: row.username }, 200, { 'Set-Cookie': sessionCookie(token) });
 }
+

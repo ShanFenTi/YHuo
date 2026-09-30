@@ -41,12 +41,12 @@ export async function onRequestPost({ request, env }) {
       try {
         await verifyCode(env, (aeRow && aeRow.value) || '', 'admin2fa', code);
       } catch (e) {
-        await logAdminLogin(env, request, 0, '2FA 验证码错误（前台入口）');
+        await logAdminLogin(env, request, 0, '2FA 验证码错误（前台入口）', admin.username);
         return json({ ok: false, error: (e && e.message) || '验证码校验失败，请重新登录' }, 400);
       }
       await env.DB.prepare('DELETE FROM sessions WHERE expires_at < ?').bind(new Date().toISOString()).run();
-      const token = await createSession(env, request);
-      await logAdminLogin(env, request, 1, '前台入口密码 + 验证码');
+      const token = await createSession(env, request, admin.id);
+      await logAdminLogin(env, request, 1, '前台入口密码 + 验证码', admin.username);
       const avAdm = await env.DB.prepare("SELECT value FROM site_settings WHERE key = 'admin_avatar'").first();
       return json({ ok: true, admin: true, username: admin.username, avatar: (avAdm && avAdm.value) || null }, 200, { 'Set-Cookie': sessionCookie(token) });
     }
@@ -122,7 +122,7 @@ export async function onRequestPost({ request, env }) {
 
   // 前台用户表没有：尝试管理员账号（主页用管理员账密登录可直接进后台）
   const admin = await env.DB
-    .prepare('SELECT id, username, password_hash, salt FROM admin_users WHERE username = ?')
+    .prepare('SELECT id, username, password_hash, salt, role, banned FROM admin_users WHERE username = ?')
     .bind(username)
     .first();
   if (admin) {
@@ -134,13 +134,17 @@ export async function onRequestPost({ request, env }) {
     }
     if (await verifyPassword(password, admin.salt, admin.password_hash)) {
       await clearLoginFails(env, throttleKey);
-      // 管理员 2FA（与后台登录页同口径，fail-closed）：以开关为准判断，
-      // 开了 2FA 但拿不到邮箱记录时拒绝登录，绝不 fall through 直发会话
+      // 被禁用的管理员：密码对也不放行
+      if (admin.banned) {
+        await logAdminLogin(env, request, 0, '已禁用的管理员尝试登录（前台入口）', admin.username);
+        return json({ ok: false, error: '该管理员账号已被禁用' }, 403);
+      }
+      // 管理员 2FA 仅超级管理员（admin_email/admin_2fa 是站长的全局设置；与后台登录页同口径 fail-closed）
       const t2 = await env.DB.prepare("SELECT value FROM site_settings WHERE key = 'admin_2fa'").first();
-      if (t2 && t2.value === '1') {
+      if (t2 && t2.value === '1' && admin.role === 'super') {
         const aeRow = await env.DB.prepare("SELECT value FROM site_settings WHERE key = 'admin_email'").first();
         if (!aeRow || !aeRow.value) {
-          await logAdminLogin(env, request, 0, '已开启 2FA 但未绑定邮箱，拒绝登录（前台入口）');
+          await logAdminLogin(env, request, 0, '已开启 2FA 但未绑定邮箱，拒绝登录（前台入口）', admin.username);
           return json({ ok: false, error: '管理员已开启两步验证但未绑定邮箱，登录已被拦截，请后台修复邮箱绑定' }, 500);
         }
         const pending = await createLoginPending(env, -admin.id);
@@ -160,14 +164,14 @@ export async function onRequestPost({ request, env }) {
         return json({ ok: false, needCode: true, ticket: pending, error: '验证码已发送到管理员邮箱' });
       }
       await env.DB.prepare('DELETE FROM sessions WHERE expires_at < ?').bind(new Date().toISOString()).run();
-      const token = await createSession(env, request);
-      await logAdminLogin(env, request, 1, '前台入口密码登录');
+      const token = await createSession(env, request, admin.id);
+      await logAdminLogin(env, request, 1, '前台入口密码登录（' + (admin.role === 'super' ? '超级管理员' : '管理员') + '）', admin.username);
       // 管理员用前台入口登录：带上后台设置的管理头像（site_settings.admin_avatar 存 KV 键）
       const avRow = await env.DB.prepare("SELECT value FROM site_settings WHERE key = 'admin_avatar'").first();
-      return json({ ok: true, admin: true, username: admin.username, avatar: (avRow && avRow.value) || null }, 200, { 'Set-Cookie': sessionCookie(token) });
+      return json({ ok: true, admin: true, adminRole: admin.role === 'super' ? 'super' : 'admin', username: admin.username, avatar: (avRow && avRow.value) || null }, 200, { 'Set-Cookie': sessionCookie(token) });
     }
     await recordLoginFail(env, throttleKey);
-    await logAdminLogin(env, request, 0, '密码错误（前台入口）');
+    await logAdminLogin(env, request, 0, '密码错误（前台入口）', admin.username);
     return json({ ok: false, error: '用户名或密码错误' }, 401);
   }
 

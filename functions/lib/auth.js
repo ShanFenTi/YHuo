@@ -48,47 +48,58 @@ export async function verifyPassword(password, saltHex, hashHex) {
   return timingSafeEqual(h, hashHex);
 }
 
-export async function createSession(env, request) {
+export async function createSession(env, request, adminId) {
   const token = randomHex(32);
   const expires = new Date(Date.now() + SESSION_DAYS * 86400000).toISOString();
-  // 记录登录来源（「我的」页登录设备列表展示用）；request 缺省（如 setup 初始化）时留空
+  // 记录登录来源（「我的」页登录设备列表展示用）；request 缺省（如 setup 初始化）时留空；
+  // adminId：会话绑定管理员——多管理员分级后身份是一切角色判断/审计的前提（2026-09-30）
   let ip = '';
   let ua = '';
   if (request) {
     ip = request.headers.get('CF-Connecting-IP') || '';
     ua = String(request.headers.get('User-Agent') || '').slice(0, 180);
   }
-  await env.DB.prepare('INSERT INTO sessions (token, expires_at, ip, ua) VALUES (?, ?, ?, ?)').bind(token, expires, ip, ua).run();
+  await env.DB.prepare('INSERT INTO sessions (token, expires_at, ip, ua, admin_id) VALUES (?, ?, ?, ?, ?)').bind(token, expires, ip, ua, adminId || null).run();
   return token;
 }
 
-// 管理员登录记录（成功/失败都记）。「我的」页安全卡展示；只留最近 100 条
-export async function logAdminLogin(env, request, ok, note) {
+// 管理员会话身份（2026-09-30 多管理员分级）：从会话反查绑定的管理员与角色。
+// 过期/被禁用一律无效并顺手清会话（禁用即时下线，不需要等会话自然过期）
+export async function getAdminAuth(env, token) {
+  if (!token) return null;
+  const row = await env.DB
+    .prepare('SELECT s.token, s.expires_at, a.id, a.username, a.role, a.banned FROM sessions s JOIN admin_users a ON a.id = s.admin_id WHERE s.token = ?')
+    .bind(token)
+    .first();
+  if (!row) return null;
+  if (row.banned || row.expires_at < new Date().toISOString()) {
+    await env.DB.prepare('DELETE FROM sessions WHERE token = ?').bind(token).run();
+    return null;
+  }
+  return { id: row.id, username: row.username, role: row.role === 'super' ? 'super' : 'admin', token: row.token };
+}
+
+export async function isValidSession(env, token) {
+  return !!(await getAdminAuth(env, token));
+}
+
+export async function deleteSession(env, token) {
+  if (token) await env.DB.prepare('DELETE FROM sessions WHERE token = ?').bind(token).run();
+}
+
+// 管理员登录记录（成功/失败都记）。「我的」页安全卡展示；只留最近 100 条。
+// username = 行为人（2026-09-30 多管理员起记录是哪个账号；传空则落历史口径）
+export async function logAdminLogin(env, request, ok, note, username) {
   try {
     const ip = request && request.headers ? (request.headers.get('CF-Connecting-IP') || '') : '';
     const ua = request && request.headers ? String(request.headers.get('User-Agent') || '').slice(0, 180) : '';
     await env.DB.batch([
-      env.DB.prepare('INSERT INTO admin_login_logs (ok, ip, ua, note) VALUES (?, ?, ?, ?)').bind(ok ? 1 : 0, ip, ua, String(note || '').slice(0, 80)),
+      env.DB.prepare('INSERT INTO admin_login_logs (ok, ip, ua, note, username) VALUES (?, ?, ?, ?, ?)').bind(ok ? 1 : 0, ip, ua, String(note || '').slice(0, 80), String(username || '').slice(0, 50)),
       env.DB.prepare("DELETE FROM admin_login_logs WHERE id < (SELECT COALESCE(MIN(id), 0) FROM (SELECT id FROM admin_login_logs ORDER BY id DESC LIMIT 100))"),
     ]);
   } catch (e) {
     // 日志失败不影响登录主流程
   }
-}
-
-export async function isValidSession(env, token) {
-  if (!token) return false;
-  const row = await env.DB.prepare('SELECT expires_at FROM sessions WHERE token = ?').bind(token).first();
-  if (!row) return false;
-  if (row.expires_at < new Date().toISOString()) {
-    await env.DB.prepare('DELETE FROM sessions WHERE token = ?').bind(token).run();
-    return false;
-  }
-  return true;
-}
-
-export async function deleteSession(env, token) {
-  if (token) await env.DB.prepare('DELETE FROM sessions WHERE token = ?').bind(token).run();
 }
 
 // HttpOnly + Secure + SameSite=Strict：脚本读不到，跨站请求带不上

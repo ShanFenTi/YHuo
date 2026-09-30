@@ -1069,6 +1069,9 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
   @media (hover: hover) {
     .data-table tbody tr:hover { background: color-mix(in srgb, var(--hover) 55%, transparent); }
   }
+  /* 多管理员分级（2026-09-30）：普通管理员隐藏超管专属入口与区块——
+     前端隐藏只是体验层，真正的边界在 /api/admin/* 中间件按角色 403 */
+  body.role-limited [data-superonly], body.role-limited [data-super-nav] { display: none !important; }
 </style>
 </head>
 <body>
@@ -1129,10 +1132,11 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
       <button data-type="video" title="视频"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M2 8h20M2 16h20M8 4v16M16 4v16"/></svg><span>视频</span></button>
       <button data-type="image" title="图片"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m21 15-5-5L5 21"/></svg><span>图片</span></button>
       <button data-type="notes" title="随笔"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/><path d="M9 7h7M9 11h5"/></svg><span>随笔</span></button>
-      <button data-type="links" title="短链"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg><span>短链</span></button>
-      <button data-type="users" title="用户"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg><span>用户</span></button>
-      <button data-type="appearance" title="外观"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 2a10 10 0 0 0 0 20z" fill="currentColor" stroke="none"/></svg><span>外观</span></button>
-      <button data-type="ai" title="AI 设置"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="8" width="16" height="12" rx="2"/><path d="M12 8V4"/><path d="M9 4h6"/><circle cx="9" cy="13" r="1" fill="currentColor" stroke="none"/><circle cx="15" cy="13" r="1" fill="currentColor" stroke="none"/><path d="M9 17h6"/></svg><span>AI</span></button>
+      <button data-type="links" data-super-nav title="短链"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg><span>短链</span></button>
+      <button data-type="users" data-super-nav title="用户"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg><span>用户</span></button>
+      <button data-type="admins" data-super-nav title="管理员"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 12 2 2 4-4"/></svg><span>管理员</span></button>
+      <button data-type="appearance" data-super-nav title="外观"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 2a10 10 0 0 0 0 20z" fill="currentColor" stroke="none"/></svg><span>外观</span></button>
+      <button data-type="ai" data-super-nav title="AI 设置"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="8" width="16" height="12" rx="2"/><path d="M12 8V4"/><path d="M9 4h6"/><circle cx="9" cy="13" r="1" fill="currentColor" stroke="none"/><circle cx="15" cy="13" r="1" fill="currentColor" stroke="none"/><path d="M9 17h6"/></svg><span>AI</span></button>
       <button data-type="email" title="邮件"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg><span>邮件</span></button>
       <button data-type="me" title="我的"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg><span>我的</span></button>
       <button data-type="status" title="状态"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20a8 8 0 1 1 8-8"/><path d="M12 12l3.5-3.5"/><circle cx="12" cy="12" r="1.4" fill="currentColor" stroke="none"/><path d="M20 12a8 8 0 0 0-8-8"/></svg><span>状态</span></button>
@@ -1152,10 +1156,11 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
           <button data-type="video">视频</button>
           <button data-type="image">图片</button>
           <button data-type="notes">随笔</button>
-          <button data-type="links">短链</button>
-          <button data-type="users">用户</button>
-          <button data-type="appearance">外观</button>
-          <button data-type="ai">AI</button>
+          <button data-type="links" data-super-nav>短链</button>
+          <button data-type="users" data-super-nav>用户</button>
+          <button data-type="admins" data-super-nav>管理员</button>
+          <button data-type="appearance" data-super-nav>外观</button>
+          <button data-type="ai" data-super-nav>AI</button>
           <button data-type="email">邮件</button>
           <button data-type="me">我的</button>
           <button data-type="status">状态</button>
@@ -1490,13 +1495,13 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
   <div id="emailPanel" hidden>
     <div class="page-head">
       <div><h2>邮件服务</h2><p class="ph-desc">注册邮箱验证 / 找回密码 / 登录二次验证与课表提醒邮件都在这里配置。</p></div>
-      <div class="ph-actions">
+      <div class="ph-actions" data-superonly>
         <span class="meta2" id="emailStateText">状态读取中…</span>
         <button id="emailToggleBtn" class="ghost" type="button">停用</button>
         <button id="emailSaveBtn" type="button">保存配置</button>
       </div>
     </div>
-    <div class="section-card">
+    <div class="section-card" data-superonly>
       <p class="section-title">服务配置</p>
       <p class="section-sub">服务商都走 HTTP API（Cloudflare Workers 原生支持）；API Key 保存后不再回显，编辑留空即保留原值。</p>
       <div class="form-grid">
@@ -1519,7 +1524,7 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
         <span class="meta2" id="emailAdminOnlyText">关闭：所有用户可用邮箱功能</span>
       </div>
     </div>
-    <div class="section-card">
+    <div class="section-card" data-superonly>
       <p class="section-title">测试发送</p>
       <div class="form-grid" style="margin-top:12px">
         <div class="field"><label for="emailTestTo">收件邮箱</label><input type="text" id="emailTestTo" placeholder="you@example.com"></div>
@@ -1528,7 +1533,7 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
         <button id="emailTestBtn" class="ghost" type="button">发送测试邮件</button>
       </div>
     </div>
-    <div class="section-card">
+    <div class="section-card" data-superonly>
       <p class="section-title">自定义邮件</p>
       <p class="section-sub">给任意邮箱发任意内容（纯文本，支持换行，≤5000 字）。</p>
       <div class="form-grid">
@@ -1544,15 +1549,15 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
     <div class="section-card">
       <p class="section-title">课表提醒定时任务</p>
       <p class="section-sub">用户课表的每日早报 / 重点课课前提醒。Pages Functions 不支持定时触发，需要外部 cron 每 5 分钟访问下面的 URL——推荐 cron-job.org（免费）：注册后新建任务，地址填下面的 URL，执行间隔选「每 5 分钟」。</p>
-      <div class="field">
+      <div class="field" data-superonly>
         <label for="schedTickUrl">Tick 地址（首次查看自动生成密钥）</label>
         <div class="bgset-row">
           <input type="text" id="schedTickUrl" readonly style="flex:1;min-width:220px;max-width:520px">
           <button id="schedTickCopyBtn" class="ghost" type="button">复制</button>
         </div>
       </div>
-      <p class="meta2" id="schedTickLast" style="margin-top:8px"></p>
-      <div class="bgset-row" style="margin-top:8px">
+      <p class="meta2" id="schedTickLast" style="margin-top:8px" data-superonly></p>
+      <div class="bgset-row" style="margin-top:8px" data-superonly>
         <button id="schedTickRegenBtn" class="ghost" type="button">重新生成密钥</button>
         <button id="schedTickRunBtn" class="ghost" type="button">立即执行一次</button>
         <span class="meta2" id="schedTickMsg"></span>
@@ -1574,7 +1579,7 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
     <div class="card me-card">
       <div class="me-left">
         <div class="me-avatar" id="meAvatar"><span id="meAvatarMono">YH</span><img id="meAvatarImg" hidden alt="管理员头像"></div>
-        <div class="me-avatar-btns">
+        <div class="me-avatar-btns" data-superonly>
           <button id="meAvatarUploadBtn" class="ghost">更换头像</button>
           <button id="meAvatarRemoveBtn" class="danger" hidden>移除头像</button>
         </div>
@@ -1586,7 +1591,7 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
       </div>
       <input type="file" id="meAvatarInput" accept=".jpg,.jpeg,.png,.gif,.webp" hidden>
     </div>
-    <div class="card" id="meEmailCard" style="margin-top:16px" hidden>
+    <div class="card" id="meEmailCard" style="margin-top:16px" data-superonly hidden>
       <p class="appear-label2" style="margin-top:0">管理员邮箱</p>
       <p class="meta2" style="margin-bottom:12px">绑定后可用邮箱验证码重置后台密码。</p>
       <div class="bgset-row" id="meEmailBoundRow" hidden>
@@ -1624,12 +1629,12 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
       </div>
       <p class="meta2" id="mePwdMsg" style="margin:8px 0 0">改密后其他设备会被退出登录，当前设备保持不变。</p>
 
-      <p class="appear-label2">登录二次验证（邮箱验证码）</p>
-      <div class="switch-row">
+      <p class="appear-label2" data-superonly>登录二次验证（邮箱验证码）</p>
+      <div class="switch-row" data-superonly>
         <span class="switch"><input type="checkbox" id="me2faOn"><span class="sw-track"></span><span class="sw-thumb"></span></span>
         <span class="meta2">登录时向绑定的管理员邮箱发送验证码</span>
       </div>
-      <p class="meta2" id="me2faMsg" style="margin:8px 0 0"></p>
+      <p class="meta2" id="me2faMsg" style="margin:8px 0 0" data-superonly></p>
 
       <p class="appear-label2">登录设备</p>
       <div id="meSessions"></div>
@@ -1639,6 +1644,31 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
 
       <p class="appear-label2">最近登录（成功与失败，最多 10 条）</p>
       <div id="meLogins"></div>
+    </div>
+  </div>
+  <div id="adminsPanel" hidden>
+    <div class="page-head"><div><h2>管理员</h2><p class="ph-desc">新建管理员账号、重置密码、调整角色与禁用。普通管理员只能处理内容与留言（音乐/视频/图片/随笔/课表测试发送），账号与站点级配置只对超级管理员开放。</p></div></div>
+    <div class="section-card">
+      <p class="section-title">新建管理员</p>
+      <p class="section-sub">初始密码请线下交给本人，登录后可在「我的」页自行修改；忘记密码由你在这里重置。</p>
+      <div class="form-grid" style="max-width:760px">
+        <div class="field"><label for="admNewName">用户名</label><input type="text" id="admNewName" placeholder="1-50 字，不含空格"></div>
+        <div class="field"><label for="admNewPass">初始密码</label><input type="text" id="admNewPass" placeholder="至少 6 位" autocomplete="off"></div>
+        <div class="field"><label for="admNewRole">角色</label>
+          <select id="admNewRole">
+            <option value="admin" selected>管理员（内容与留言）</option>
+            <option value="super">超级管理员（全部权限）</option>
+          </select>
+        </div>
+      </div>
+      <div class="bgset-row" style="margin-top:12px">
+        <button id="admCreateBtn" type="button">新建</button>
+        <span class="meta2" id="admCreateMsg"></span>
+      </div>
+    </div>
+    <div class="section-card">
+      <p class="section-title">账号列表</p>
+      <div id="admListWrap"><div class="sk-row"><span class="sk sk-dot"></span><span class="sk-lines"><span class="sk sk-l1"></span><span class="sk sk-l2"></span></span></div></div>
     </div>
   </div>
   <div id="statusPanel" hidden>
@@ -1651,7 +1681,7 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
       <div class="visit-head"><strong>邮件发送额度</strong><span class="meta2" id="stMailSumm"></span></div>
       <div id="stMailBody"><div class="sk-row"><span class="sk sk-dot"></span><span class="sk-lines"><span class="sk sk-l1"></span><span class="sk sk-l2"></span></span></div></div>
     </div>
-    <div class="card" id="stBackupCard">
+    <div class="card" id="stBackupCard" data-superonly>
       <div class="visit-head"><strong>数据备份</strong><span class="meta2" id="stBackupSumm"></span></div>
       <div id="stBackupBody"><div class="sk-row"><span class="sk sk-dot"></span><span class="sk-lines"><span class="sk sk-l1"></span><span class="sk sk-l2"></span></span></div><div class="sk-row"><span class="sk sk-dot"></span><span class="sk-lines"><span class="sk sk-l1"></span><span class="sk sk-l2"></span></span></div></div>
       <div class="bgset-row" style="margin-top:12px">
@@ -2106,12 +2136,12 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
     show('main');
     switchPage('overview'); // 默认落在概览页
     loadList().then(function () { syncStaticMedia(); });
-    loadUsers();
     loadVisits();
     loadAiUsage();
     loadTodayMessages(); // 概览「今日留言」卡
     loadMailUsage();
-    loadMe(); // 顶栏胶囊左上角头像
+    // 先拿身份（角色）再按角色补超管专属数据；普通管理员不拉用户列表（接口会 403）
+    loadMe().then(function () { if (myRole === 'super') loadUsers(); }).catch(function () {});
     // 顶栏悬停预览卡的 iframe 在启动期（登录门/加载态）发来的切面板请求在这里补应用
     if (previewPendingPanel && previewPendingPanel !== currentType) {
       var pp = previewPendingPanel;
@@ -3268,6 +3298,118 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
       }).catch(function () {});
     }).catch(function () {});
   }
+
+  // ---------- 管理员页（2026-09-30 多管理员分级；仅超管可见，接口侧另有角色闸） ----------
+  var adminsCache = [];
+  function loadAdmins() {
+    var wrap = $('admListWrap');
+    wrap.innerHTML = '<div class="sk-row"><span class="sk sk-dot"></span><span class="sk-lines"><span class="sk sk-l1"></span><span class="sk sk-l2"></span></span></div>';
+    api('/api/admin/admins').then(function (d) {
+      if (!d.ok) { wrap.textContent = '加载失败：' + (d.error || '未知错误'); return; }
+      adminsCache = d.items || [];
+      renderAdmins();
+    }).catch(function () { wrap.textContent = '网络错误，稍后再试'; });
+  }
+  function renderAdmins() {
+    var wrap = $('admListWrap');
+    if (!adminsCache.length) { wrap.textContent = '还没有管理员账号。'; return; }
+    var html = '<table class="data-table"><thead><tr><th>ID</th><th>用户名</th><th>角色</th><th>状态</th><th>创建时间</th><th class="num">活跃会话</th><th style="text-align:right">操作</th></tr></thead><tbody>';
+    adminsCache.forEach(function (a) {
+      var self = a.id === myId;
+      html += '<tr>'
+        + '<td class="num">' + a.id + '</td>'
+        + '<td>' + escapeHtml(a.username) + (self ? ' <span class="chip-tag ok">当前账号</span>' : '') + '</td>'
+        + '<td>' + (a.role === 'super' ? '超级管理员' : '管理员') + '</td>'
+        + '<td>' + (a.banned ? '<span class="chip-tag banned">已禁用</span>' : '<span class="chip-tag ok">正常</span>') + '</td>'
+        + '<td>' + fmtDate(a.created_at) + '</td>'
+        + '<td class="num">' + (a.active_sessions || 0) + '</td>'
+        + '<td style="text-align:right;white-space:nowrap">';
+      if (self) {
+        html += '<span class="meta2">改密码请在「我的」页</span>';
+      } else {
+        html += '<button class="ghost adm-act" data-id="' + a.id + '" data-do="reset">重置密码</button> '
+          + '<button class="ghost adm-act" data-id="' + a.id + '" data-do="role">' + (a.role === 'super' ? '降为管理员' : '升为超级管理员') + '</button> '
+          + '<button class="ghost adm-act" data-id="' + a.id + '" data-do="ban">' + (a.banned ? '启用' : '禁用') + '</button> '
+          + '<button class="danger adm-act" data-id="' + a.id + '" data-do="del">删除</button>';
+      }
+      html += '</td></tr>';
+    });
+    html += '</tbody></table><p class="meta2" style="margin-top:10px">守护规则：不能操作当前账号；任何会让「可用的超级管理员」归零的操作（降级 / 禁用 / 删除超管）都会被拒绝——站点永远留得住一个能进后台的人。管理动作记入「我的」页最近记录（[管理] 前缀）。</p>';
+    wrap.innerHTML = html;
+  }
+  function admPost(body, done) {
+    api('/api/admin/admins', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    }).then(function (d) {
+      if (d.ok) { if (done) done(d); else loadAdmins(); }
+      else toast(d.error || '操作失败', 'bad');
+    }).catch(function () { toast('网络错误', 'bad'); });
+  }
+  $('admCreateBtn').addEventListener('click', function () {
+    var name = $('admNewName').value.trim();
+    var pass = $('admNewPass').value;
+    var role = $('admNewRole').value;
+    var msg = $('admCreateMsg');
+    if (!name || name.length > 50 || /\s/.test(name)) { msg.textContent = '用户名 1-50 字且不含空格'; return; }
+    if (pass.length < 6 || pass.length > 100) { msg.textContent = '初始密码需 6-100 位'; return; }
+    admPost({ action: 'create', username: name, password: pass, role: role }, function () {
+      msg.textContent = '已创建 ' + name + '（初始密码请线下交给本人）';
+      $('admNewName').value = '';
+      $('admNewPass').value = '';
+      $('admNewRole').value = 'admin';
+      loadAdmins();
+    });
+  });
+  document.getElementById('admListWrap').addEventListener('click', function (e) {
+    var btn = e.target.closest('button.adm-act');
+    if (!btn) return;
+    var id = Number(btn.getAttribute('data-id'));
+    var a = adminsCache.filter(function (x) { return x.id === id; })[0];
+    if (!a) return;
+    var doWhat = btn.getAttribute('data-do');
+    if (doWhat === 'reset') {
+      ask({
+        title: '重置 ' + a.username + ' 的密码',
+        msg: '其全部登录会话会被踢出，需用新密码重新登录。',
+        input: true,
+        placeholder: '新密码（至少 6 位）',
+        okText: '重置',
+        cb: function (ok, val) {
+          if (!ok) return;
+          if (!val || val.length < 6 || val.length > 100) { toast('密码需 6-100 位', 'bad'); return; }
+          admPost({ action: 'reset-password', id: id, password: val });
+        },
+      });
+    } else if (doWhat === 'role') {
+      var toSuper = a.role !== 'super';
+      ask({
+        title: (toSuper ? '将 ' : '将 ') + a.username + (toSuper ? ' 升为超级管理员？' : ' 降为管理员？'),
+        msg: toSuper ? '将获得全部权限（账号/密钥/备份/用户管理）。' : '降级后只剩内容与留言权限；其现有会话的下一次请求即按新角色判定。',
+        danger: true,
+        okText: toSuper ? '升级' : '降级',
+        cb: function (ok) { if (ok) admPost({ action: 'set-role', id: id, role: toSuper ? 'super' : 'admin' }); },
+      });
+    } else if (doWhat === 'ban') {
+      var toBan = !a.banned;
+      ask({
+        title: (toBan ? '禁用' : '启用') + '管理员 ' + a.username + '？',
+        msg: toBan ? '禁用后立即踢出其全部会话，无法再登录。' : '恢复登录与操作权限。',
+        danger: toBan,
+        okText: toBan ? '禁用' : '启用',
+        cb: function (ok) { if (ok) admPost({ action: 'set-banned', id: id, banned: toBan }); },
+      });
+    } else if (doWhat === 'del') {
+      ask({
+        title: '删除管理员 ' + a.username + '？',
+        msg: '账号与其全部会话一并删除，不可恢复（登录记录保留）。',
+        danger: true,
+        okText: '删除',
+        cb: function (ok) { if (ok) admPost({ action: 'delete', id: id }); },
+      });
+    }
+  });
 
   // ---------- 状态页 · 数据备份卡（D1 每日自动备份，KV 保留最近 7 份） ----------
   function loadBackupCard() {
@@ -5193,9 +5335,13 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
   });
 
   function loadMe() {
-    api('/api/admin/me').then(function (d) {
+    return api('/api/admin/me').then(function (d) {
       if (!d.ok) return;
-      $('meName').textContent = d.username || '管理员';
+      // 多管理员分级：身份与角色落在 UI（导航隐藏/区块隐藏只是体验层，接口侧另有角色闸）
+      myRole = d.role === 'super' ? 'super' : 'admin';
+      myId = d.id || 0;
+      applyRoleUI();
+      $('meName').textContent = (d.username || '管理员') + (myRole === 'super' ? '（超级管理员）' : '（管理员）');
       $('meMeta').textContent = d.created_at ? '管理员账号 · ' + fmtDate(d.created_at) + ' 创建' : '管理员账号';
       applyAdminAvatar(d.avatar);
       // 邮箱卡：邮件服务启用才显示
@@ -5207,6 +5353,18 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
   }
 
   // ---- 安全卡：登录设备 / 最近登录 / 改密 / 2FA 开关 ----
+  // 多管理员分级：当前登录管理员的角色与 id（loadMe 拉取；默认 super 保证异常时 UI 不误降级）
+  var myRole = 'super';
+  var myId = 0;
+  function applyRoleUI() {
+    var isSuper = myRole === 'super';
+    document.body.classList.toggle('role-limited', !isSuper);
+    // 正停在超管专属页时（如被降级的瞬间）弹回概览
+    if (!isSuper && (currentType === 'users' || currentType === 'appearance' || currentType === 'ai' || currentType === 'links' || currentType === 'admins')) {
+      switchPage('overview');
+    }
+  }
+
   function fmtShortTime(s) {
     // created_at 是 UTC 'YYYY-MM-DD HH:MM:SS'，转本地展示（只取到分钟）
     var d = new Date(String(s || '').replace(' ', 'T') + 'Z');
@@ -5387,6 +5545,7 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
     navBtns.forEach(function (b) { b.classList.toggle('active', b.getAttribute('data-type') === type); });
     var isOverview = type === 'overview';
     var isUsers = type === 'users';
+    var isAdmins = type === 'admins';
     var isAppear = type === 'appearance';
     var isAi = type === 'ai';
     var isEmail = type === 'email';
@@ -5395,10 +5554,11 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
     var isNotes = type === 'notes';
     var isLinks = type === 'links';
     $('overviewPanel').hidden = !isOverview;
-    $('mediaPanel').hidden = isOverview || isUsers || isAppear || isAi || isEmail || isMe || isStatus || isNotes || isLinks;
+    $('mediaPanel').hidden = isOverview || isUsers || isAdmins || isAppear || isAi || isEmail || isMe || isStatus || isNotes || isLinks;
     $('notesPanel').hidden = !isNotes;
     $('linksPanel').hidden = !isLinks;
     $('userPanel').hidden = !isUsers;
+    $('adminsPanel').hidden = !isAdmins;
     $('appearancePanel').hidden = !isAppear;
     $('aiPanel').hidden = !isAi;
     $('emailPanel').hidden = !isEmail;
@@ -5422,15 +5582,21 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
       loadAiSettings();
     }
     if (isEmail) {
-      loadEmailSettings();
-      loadSchedTick();
+      // 服务配置与 tick 密钥是超管专属接口；普通管理员进邮件页只见课表测试发送区
+      if (myRole === 'super') {
+        loadEmailSettings();
+        loadSchedTick();
+      }
+    }
+    if (isAdmins) {
+      loadAdmins();
     }
     if (isMe) {
       loadMe();
     }
     if (isStatus) {
       renderStatus();
-      loadBackupCard(); // 数据备份卡每次进页同刷
+      if (myRole === 'super') loadBackupCard(); // 数据备份卡超管专属（接口按角色 403）
       loadRumCard(); // 前端错误卡同刷：新上报随时进来看最新
     }
     if (isNotes) {
@@ -5446,7 +5612,7 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
       if (usb) usb.classList.remove('has-value');
       loadUsers();
     }
-    if (!isOverview && !isUsers && !isAppear && !isAi && !isEmail && !isMe && !isStatus && !isNotes && !isLinks) {
+    if (!isOverview && !isUsers && !isAdmins && !isAppear && !isAi && !isEmail && !isMe && !isStatus && !isNotes && !isLinks) {
       $('fileInput').accept = TYPE_EXT[type];
       $('titleInput').value = '';
       selected = {}; // 换标签页清空勾选和搜索
@@ -5473,6 +5639,7 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
     // 功能界面切换动效：给新显示的面板挂一次进入动画（与上一次不是同一面板时才播）
     var targetPanel = isOverview ? $('overviewPanel') :
       isUsers ? $('userPanel') :
+      isAdmins ? $('adminsPanel') :
       isAppear ? $('appearancePanel') :
       isAi ? $('aiPanel') :
       isEmail ? $('emailPanel') :
@@ -5522,6 +5689,7 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
       video: { name: '视频', desc: '视频管理 · 首页播放模式 · 行上悬停可预览' },
       image: { name: '图片', desc: '图片管理 · 相册分组 / 拖拽归类' },
       users: { name: '用户', desc: '注册用户 · 禁用 / 解封 / 删除' },
+      admins: { name: '管理员', desc: '账号管理 · 新建 / 重置密码 / 角色与禁用' },
       appearance: { name: '外观', desc: '主题色 / 寄语 / 功能开关 / 播放器款式' },
       ai: { name: 'AI', desc: 'AI 供应商 / 模型 / 全局开关' },
       email: { name: '邮件', desc: '邮件服务 / 验证码 / 课表提醒定时任务' },

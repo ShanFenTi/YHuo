@@ -1,6 +1,6 @@
 // GET /api/user/me → 当前登录身份（前台用户或管理员）：没登录返回 authenticated:false，不报错
 import { json, getCookie, SESSION_COOKIE } from '../../lib/util.js';
-import { getUserSession, isValidSession, USER_COOKIE } from '../../lib/auth.js';
+import { getUserSession, isValidSession, getAdminAuth, USER_COOKIE } from '../../lib/auth.js';
 import { ensureSchema } from '../../lib/migrate.js';
 
 export async function onRequestGet({ request, env }) {
@@ -22,10 +22,10 @@ export async function onRequestGet({ request, env }) {
       return json({ ok: true, authenticated: true, username: user.username, nickname: (row && row.nickname) || '', avatar: (row && row.avatar_key) || null, admin: false, alsoAdmin });
     }
     // 前台用户会话没有：识别管理员会话（后台登录后在前台刷新时静默恢复管理员身份与头像）
-    if (await isValidSession(env, getCookie(request, SESSION_COOKIE))) {
+    const admin = await getAdminAuth(env, getCookie(request, SESSION_COOKIE));
+    if (admin) {
       const avRow = await env.DB.prepare("SELECT value FROM site_settings WHERE key = 'admin_avatar'").first();
-      const adm = await env.DB.prepare('SELECT username FROM admin_users ORDER BY id LIMIT 1').first();
-      return json({ ok: true, authenticated: true, admin: true, username: (adm && adm.username) || '管理员', avatar: (avRow && avRow.value) || null });
+      return json({ ok: true, authenticated: true, admin: true, adminRole: admin.role, username: admin.username, avatar: (avRow && avRow.value) || null });
     }
     return json({ ok: true, authenticated: false });
   } catch {

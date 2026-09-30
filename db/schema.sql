@@ -4,22 +4,27 @@
 -- 后加列）已折叠进对应建表语句，与跑完 ensureSchema 的库形态等价。
 -- 改表结构：先改 migrate.js，再同步本文件；两侧漂移只误导读者，不影响运行中的站点。
 
--- 管理员（只有一个超级管理员，首次打开 /admin 时也可以在页面上创建）
+-- 管理员（首建账号（/api/auth/setup）即超级管理员；2026-09-30 多管理员分级：
+-- role='super'|'admin'、banned=1 即时下线；普通管理员由超管在「管理员」页建号）
 CREATE TABLE IF NOT EXISTS admin_users (
   id            INTEGER PRIMARY KEY AUTOINCREMENT,
   username      TEXT NOT NULL UNIQUE,
   password_hash TEXT NOT NULL,             -- PBKDF2-SHA256，十六进制
   salt          TEXT NOT NULL,             -- 随机盐，十六进制
+  role          TEXT NOT NULL DEFAULT 'admin',
+  banned        INTEGER NOT NULL DEFAULT 0,
   created_at    TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
--- 管理员登录会话（HttpOnly Cookie 里只存 token；ip/ua 供「我的」页登录设备列表）
+-- 管理员登录会话（HttpOnly Cookie 里只存 token；ip/ua 供「我的」页登录设备列表；
+-- admin_id 绑定具体管理员——角色判断/按人会话/审计的前提，2026-09-30 起）
 CREATE TABLE IF NOT EXISTS sessions (
   token      TEXT PRIMARY KEY,
   expires_at TEXT NOT NULL,
   created_at TEXT NOT NULL DEFAULT (datetime('now')),
   ip         TEXT NOT NULL DEFAULT '',
-  ua         TEXT NOT NULL DEFAULT ''
+  ua         TEXT NOT NULL DEFAULT '',
+  admin_id   INTEGER
 );
 
 -- 媒体清单：音乐/视频/图片元数据，文件本体存 KV（单值上限 24MB）
@@ -193,13 +198,15 @@ CREATE TABLE IF NOT EXISTS checkins (
   PRIMARY KEY (user_id, day)
 );
 
--- 管理员登录记录（成功/失败都记；「我的」页安全卡展示，只留最近 100 条）
+-- 管理员登录记录（成功/失败都记；「我的」页安全卡展示，只留最近 100 条；
+-- username=行为人/登录尝试的账号名，note 带 [管理] 前缀的是账号管理动作，2026-09-30 起）
 CREATE TABLE IF NOT EXISTS admin_login_logs (
   id         INTEGER PRIMARY KEY AUTOINCREMENT,
   ok         INTEGER NOT NULL DEFAULT 1,
   ip         TEXT NOT NULL DEFAULT '',
   ua         TEXT NOT NULL DEFAULT '',
   note       TEXT NOT NULL DEFAULT '',
+  username   TEXT NOT NULL DEFAULT '',
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 

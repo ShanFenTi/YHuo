@@ -25,7 +25,7 @@ export async function onRequestPost({ request, env }) {
   const hash = await hashPassword(password, salt);
   const res = await env.DB
     .prepare(
-      'INSERT INTO admin_users (username, password_hash, salt) SELECT ?, ?, ? WHERE NOT EXISTS (SELECT 1 FROM admin_users)'
+      "INSERT INTO admin_users (username, password_hash, salt, role) SELECT ?, ?, ?, 'super' WHERE NOT EXISTS (SELECT 1 FROM admin_users)"
     )
     .bind(username, hash, salt)
     .run();
@@ -33,7 +33,7 @@ export async function onRequestPost({ request, env }) {
     return json({ ok: false, error: '管理员已存在，不能重复初始化' }, 403);
   }
 
-  // 创建完直接登录
-  const token = await createSession(env, request);
+  // 创建完直接登录（首个管理员即超级管理员）
+  const token = await createSession(env, request, res.meta.last_row_id || null);
   return json({ ok: true }, 200, { 'Set-Cookie': sessionCookie(token) });
 }

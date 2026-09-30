@@ -274,6 +274,32 @@ export async function ensureSchema(env) {
   try {
     await env.DB.prepare("ALTER TABLE sessions ADD COLUMN ua TEXT NOT NULL DEFAULT ''").run();
   } catch {}
+  // ===== 多管理员分级（2026-09-30）：角色/禁用列、会话绑人、登录日志带行为人 =====
+  try {
+    await env.DB.prepare("ALTER TABLE admin_users ADD COLUMN role TEXT NOT NULL DEFAULT 'admin'").run();
+  } catch {}
+  try {
+    await env.DB.prepare("ALTER TABLE admin_users ADD COLUMN banned INTEGER NOT NULL DEFAULT 0").run();
+  } catch {}
+  try {
+    await env.DB.prepare("ALTER TABLE sessions ADD COLUMN admin_id INTEGER").run();
+  } catch {}
+  try {
+    await env.DB.prepare("ALTER TABLE admin_login_logs ADD COLUMN username TEXT NOT NULL DEFAULT ''").run();
+  } catch {}
+  // 回填：还没有任何超管时把最早的管理员（升级前的唯一超管）升为 super —— 幂等；
+  // 之后降级/删除受「至少保留一个超管」守护，这条回填不会把已被主动降级的人擅自升回去
+  try {
+    await env.DB.prepare(
+      "UPDATE admin_users SET role = 'super' WHERE NOT EXISTS (SELECT 1 FROM admin_users WHERE role = 'super') AND id IN (SELECT id FROM admin_users ORDER BY id LIMIT 1)"
+    ).run();
+  } catch {}
+  // 回填：存量会话归到超管名下（升级前唯一的管理员就是超管本人）；新会话由登录时写入 admin_id
+  try {
+    await env.DB.prepare(
+      "UPDATE sessions SET admin_id = (SELECT id FROM admin_users WHERE role = 'super' ORDER BY id LIMIT 1) WHERE admin_id IS NULL"
+    ).run();
+  } catch {}
   // 存量相册回填：把 media.album 里已有的相册名补进 albums 表
   // （INSERT OR IGNORE 幂等，ensureSchema 每个隔离实例各跑一遍也无副作用）
   try {

@@ -1,6 +1,6 @@
 // GET /api/user/profile → 当前登录用户的个人主页资料（前端用户或管理员）
 import { json, getCookie, SESSION_COOKIE } from '../../lib/util.js';
-import { getUserSession, isValidSession, USER_COOKIE } from '../../lib/auth.js';
+import { getUserSession, getAdminAuth, USER_COOKIE } from '../../lib/auth.js';
 import { ensureSchema } from '../../lib/migrate.js';
 
 export async function onRequestGet({ request, env }) {
@@ -23,15 +23,18 @@ export async function onRequestGet({ request, env }) {
     });
   }
   // 管理员会话：给前台个人主页返回管理员资料（收藏/课表/邮箱/改密等前台功能对管理员不可用，前端据此隐藏）
-  if (await isValidSession(env, getCookie(request, SESSION_COOKIE))) {
+  const admin = await getAdminAuth(env, getCookie(request, SESSION_COOKIE));
+  if (admin) {
     const avRow = await env.DB.prepare("SELECT value FROM site_settings WHERE key = 'admin_avatar'").first();
     const adm = await env.DB
-      .prepare('SELECT username, created_at FROM admin_users ORDER BY id LIMIT 1')
+      .prepare('SELECT username, created_at FROM admin_users WHERE id = ?')
+      .bind(admin.id)
       .first();
     if (!adm) return json({ ok: false, error: '未登录' }, 401);
     return json({
       ok: true,
       admin: true,
+      adminRole: admin.role,
       username: adm.username,
       avatar: (avRow && avRow.value) || null,
       created_at: adm.created_at || null,

@@ -42,7 +42,9 @@ export async function onRequestPost({ request, env }) {
     return json({ ok: false, error: (e && e.message) || '验证码校验失败' }, 400);
   }
 
-  const u = await env.DB.prepare('SELECT id FROM admin_users ORDER BY id LIMIT 1').first();
+  // 邮箱验证码只发超管（admin_email 是站长的邮箱）——重置目标也只认超管，
+  // 多管理员下普通管理员忘记密码由超管在后台「管理员」页重置
+  const u = await env.DB.prepare("SELECT id FROM admin_users WHERE role = 'super' ORDER BY id LIMIT 1").first();
   if (!u) return json({ ok: false, error: '管理员账号不存在' }, 404);
 
   const salt = randomHex(32);

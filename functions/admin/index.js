@@ -79,7 +79,6 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
       <button data-type="video" title="视频"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M2 8h20M2 16h20M8 4v16M16 4v16"/></svg><span>视频</span></button>
       <button data-type="image" title="图片"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m21 15-5-5L5 21"/></svg><span>图片</span></button>
       <button data-type="notes" title="随笔"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/><path d="M9 7h7M9 11h5"/></svg><span>随笔</span></button>
-      <button data-type="links" data-super-nav title="短链"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg><span>短链</span></button>
       <button data-type="users" data-super-nav title="用户"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg><span>用户</span></button>
       <button data-type="admins" data-super-nav title="管理员"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 12 2 2 4-4"/></svg><span>管理员</span></button>
       <button data-type="appearance" data-super-nav title="外观"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 2a10 10 0 0 0 0 20z" fill="currentColor" stroke="none"/></svg><span>外观</span></button>
@@ -103,7 +102,6 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
           <button data-type="video">视频</button>
           <button data-type="image">图片</button>
           <button data-type="notes">随笔</button>
-          <button data-type="links" data-super-nav>短链</button>
           <button data-type="users" data-super-nav>用户</button>
           <button data-type="admins" data-super-nav>管理员</button>
           <button data-type="appearance" data-super-nav>外观</button>
@@ -271,24 +269,6 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
         <span class="meta2">把 notes/notes.json 里的存量随笔导入数据库（日期与正文完全相同的自动跳过）；导入后前台以数据库为准。</span>
       </div>
       <div id="notesList" style="margin-top:10px"></div>
-    </div>
-  </div>
-
-  <div id="linksPanel" hidden>
-    <div class="page-head"><div><h2>短链管理</h2><p class="ph-desc">创建 /s/码 302 跳转外链并计次；访客直接访问 /s/码 即生效。</p></div></div>
-    <div class="card" style="margin-bottom:16px">
-      <div class="form-grid">
-        <div class="field"><label for="linkCode">自定义短码（可空）</label><input type="text" id="linkCode" placeholder="2~32 位字母数字_-" maxlength="32"></div>
-        <div class="field"><label for="linkUrl">目标链接</label><input type="text" id="linkUrl" placeholder="http(s):// 开头"></div>
-      </div>
-      <div class="bgset-row" style="margin-top:12px">
-        <button id="linkCreateBtn" type="button">创建短链</button>
-        <span class="meta2">短码留空则自动生成 6 位；与站内路由撞名的保留路径（admin / api / assets / 图片音乐等）不接受。</span>
-      </div>
-    </div>
-    <div class="card">
-      <div class="visit-head"><strong>全部短链</strong><span class="meta2" id="linksSumm"></span></div>
-      <div id="linksList" style="margin-top:10px"></div>
     </div>
   </div>
 

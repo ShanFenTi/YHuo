@@ -73,7 +73,7 @@
     el.addEventListener('input', sync);
     sync();
   }
-  // 单行输入按 Enter 直接触发对应按钮（登录/初始化/短链创建；不改任何提交逻辑，只是少点一次）
+  // 单行输入按 Enter 直接触发对应按钮（登录/初始化；不改任何提交逻辑，只是少点一次）
   function enterToClick(inputIds, btnId) {
     inputIds.forEach(function (id) {
       var el = $(id);
@@ -89,7 +89,6 @@
   attachCounter($('aiPrompt'), 2000);
   enterToClick(['loginUser', 'loginPass', 'loginCode'], 'loginBtn');
   enterToClick(['setupUser', 'setupPass', 'setupPass2'], 'setupBtn');
-  enterToClick(['linkCode', 'linkUrl'], 'linkCreateBtn');
   // 搜索框：has-value 态切换清空钮显隐；清空后派发 input 事件复用各页既有过滤逻辑
   document.querySelectorAll('.search-box').forEach(function (box) {
     var input = box.querySelector('input');
@@ -3405,121 +3404,6 @@
       .catch(function () { btn.disabled = false; toast('读取 notes/notes.json 失败', 'err'); });
   });
 
-  // ---------- 短链（后台建 /s/{code}，302 跳转 + 计次；码/url 均来自用户输入，渲染一律 textContent/DOM API 防注入） ----------
-  var linksCache = [];
-
-  function loadLinks() {
-    var listEl = $('linksList');
-    listEl.innerHTML = skListHtml(4);
-    api('/api/admin/links').then(function (d) {
-      if (!d.ok) { listEl.innerHTML = emptyStateHtml(ICO.x, '加载失败', d.error || '请稍后重试。'); return; }
-      linksCache = d.list || [];
-      renderLinksList();
-    }).catch(function () {
-      listEl.innerHTML = emptyStateHtml(ICO.x, '加载失败', '网络异常，请稍后重试。');
-    });
-  }
-
-  // 点行首短码复制完整短链（协议+域名现场拼，本地预览/线上都拿到可用地址）
-  function copyShortLink(code) {
-    var full = location.origin + '/s/' + code;
-    if (navigator.clipboard && navigator.clipboard.writeText) {
-      navigator.clipboard.writeText(full).then(function () { toast('已复制', 'ok'); });
-    } else {
-      var tmp = document.createElement('input');
-      tmp.value = full;
-      document.body.appendChild(tmp);
-      tmp.select();
-      document.execCommand('copy');
-      document.body.removeChild(tmp);
-      toast('已复制', 'ok');
-    }
-  }
-
-  function renderLinksList() {
-    var listEl = $('linksList');
-    listEl.textContent = '';
-    $('linksSumm').textContent = linksCache.length ? ('共 ' + linksCache.length + ' 条 · 按创建时间倒序 · 点短码复制') : '';
-    if (!linksCache.length) {
-      listEl.innerHTML = emptyStateHtml(ICO.box, '还没有短链', '在上方填目标链接创建，短码留空则自动生成 6 位。');
-      return;
-    }
-    var frag = document.createDocumentFragment();
-    linksCache.forEach(function (it) {
-      var row = document.createElement('div');
-      row.className = 'list-row';
-      var codeEl = document.createElement('button');
-      codeEl.className = 'chip-tag mono';
-      codeEl.title = '点击复制完整短链（创建于 ' + fmtDate(it.created_at) + '）';
-      codeEl.textContent = '/s/' + it.code;
-      codeEl.addEventListener('click', function () { copyShortLink(it.code); });
-      row.appendChild(codeEl);
-      var mid = document.createElement('span');
-      mid.className = 'lr-grow';
-      mid.style.textAlign = 'left';
-      mid.style.fontSize = '13px';
-      mid.style.color = 'var(--fg)';
-      mid.textContent = it.url || '';
-      mid.title = it.url || '';
-      row.appendChild(mid);
-      var cEl = document.createElement('span');
-      cEl.className = 'lr-side' + (it.clicks > 0 ? ' good' : '');
-      cEl.textContent = (it.clicks || 0) + ' 次';
-      row.appendChild(cEl);
-      var actions = document.createElement('span');
-      actions.className = 'row-actions';
-      var delBtn = document.createElement('button');
-      delBtn.className = 'icon-mini danger-hover';
-      delBtn.title = '删除';
-      delBtn.innerHTML = ICO.trash;
-      delBtn.addEventListener('click', function () {
-        ask({
-          title: '删除这个短链？',
-          msg: '/s/' + it.code + ' → ' + String(it.url || '').slice(0, 60),
-          okText: '删除',
-          danger: true,
-          cb: function (okVal) {
-            if (!okVal) return;
-            api('/api/admin/links', {
-              method: 'DELETE',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ code: it.code })
-            }).then(function (r) {
-              if (!r.ok) { toast(r.error || '删除失败', 'err'); return; }
-              toast('已删除');
-              loadLinks();
-            });
-          }
-        });
-      });
-      actions.appendChild(delBtn);
-      row.appendChild(actions);
-      frag.appendChild(row);
-    });
-    listEl.appendChild(frag);
-  }
-
-  $('linkCreateBtn').addEventListener('click', function () {
-    var code = $('linkCode').value.trim();
-    var url = $('linkUrl').value.trim();
-    if (!url) { toast('请填写目标链接（http(s):// 开头）', 'err'); return; }
-    if (code && !/^[A-Za-z0-9_-]{2,32}$/.test(code)) { toast('短码限 2~32 位字母、数字、下划线或连字符', 'err'); return; }
-    var btn = this;
-    btn.disabled = true;
-    api('/api/admin/links', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ code: code, url: url })
-    }).then(function (r) {
-      btn.disabled = false;
-      if (!r.ok) { toast(r.error || '创建失败', 'err'); return; }
-      $('linkCode').value = '';
-      $('linkUrl').value = '';
-      toast('已创建 /s/' + (r.code || code), 'ok');
-      loadLinks();
-    }).catch(function () { btn.disabled = false; toast('创建失败（网络异常）', 'err'); });
-  });
-
   // ---------- 顶部胶囊 + 抽屉导航（两套按钮同走 switchPage，active 同步打在两份上） ----------
   var navBtns = document.querySelectorAll('#sideNav button, #drawerNav button');
   // ---------- 我的（管理员资料 + 头像；头像 KV 键存 site_settings 'admin_avatar'） ----------
@@ -3830,8 +3714,8 @@
   // 侧栏滑动指示器：把胶囊对齐到当前 active 项（参考站「导航胶囊指示器」竖排移植）
   function switchPage(type) {
     // 角色闸（2026-09-30）：普通管理员只进内容运营页——邮件页整体超管专属（尾部调整：
-    // 含课表测试发送），用户/管理员/外观/AI/短链本就超管专属；误入（预览消息/降级瞬间）弹回概览
-    if (myRole !== 'super' && (type === 'users' || type === 'appearance' || type === 'ai' || type === 'links' || type === 'admins' || type === 'email')) type = 'overview';
+    // 含课表测试发送），用户/管理员/外观/AI 本就超管专属；误入（预览消息/降级瞬间）弹回概览
+    if (myRole !== 'super' && (type === 'users' || type === 'appearance' || type === 'ai' || type === 'admins' || type === 'email')) type = 'overview';
     currentType = type;
     navBtns.forEach(function (b) { b.classList.toggle('active', b.getAttribute('data-type') === type); });
     var isOverview = type === 'overview';
@@ -3843,11 +3727,9 @@
     var isMe = type === 'me';
     var isStatus = type === 'status';
     var isNotes = type === 'notes';
-    var isLinks = type === 'links';
     $('overviewPanel').hidden = !isOverview;
-    $('mediaPanel').hidden = isOverview || isUsers || isAdmins || isAppear || isAi || isEmail || isMe || isStatus || isNotes || isLinks;
+    $('mediaPanel').hidden = isOverview || isUsers || isAdmins || isAppear || isAi || isEmail || isMe || isStatus || isNotes;
     $('notesPanel').hidden = !isNotes;
-    $('linksPanel').hidden = !isLinks;
     $('userPanel').hidden = !isUsers;
     $('adminsPanel').hidden = !isAdmins;
     $('appearancePanel').hidden = !isAppear;
@@ -3894,16 +3776,13 @@
       noteResetForm(); // 每次进页表单归零（日期预填今天），防上次的编辑草稿串场
       loadNotes();
     }
-    if (isLinks) {
-      loadLinks(); // 每次进页都拉最新：点击计数在 /s/ 侧实时累加，缓存旧列表会显示过期次数
-    }
     if (isUsers) {
       $('userSearch').value = ''; // 换进来重置搜索
       var usb = $('userSearch').closest('.search-box');
       if (usb) usb.classList.remove('has-value');
       loadUsers();
     }
-    if (!isOverview && !isUsers && !isAdmins && !isAppear && !isAi && !isEmail && !isMe && !isStatus && !isNotes && !isLinks) {
+    if (!isOverview && !isUsers && !isAdmins && !isAppear && !isAi && !isEmail && !isMe && !isStatus && !isNotes) {
       $('fileInput').accept = TYPE_EXT[type];
       $('titleInput').value = '';
       selected = {}; // 换标签页清空勾选和搜索
@@ -3936,8 +3815,7 @@
       isEmail ? $('emailPanel') :
       isMe ? $('mePanel') :
       isStatus ? $('statusPanel') :
-      isNotes ? $('notesPanel') :
-      isLinks ? $('linksPanel') : $('mediaPanel');
+      isNotes ? $('notesPanel') : $('mediaPanel');
     if (targetPanel && targetPanel !== lastEnterPanel) {
       lastEnterPanel = targetPanel;
       targetPanel.classList.remove('panel-enter');
@@ -3985,7 +3863,6 @@
       ai: { name: 'AI', desc: 'AI 供应商 / 模型 / 全局开关' },
       email: { name: '邮件', desc: '邮件服务 / 验证码 / 课表提醒定时任务' },
       notes: { name: '随笔', desc: '随笔管理 · 新增 / 编辑 / 删除 / 静态清单导入' },
-      links: { name: '短链', desc: '外链缩短 · /s/码 302 跳转并计次 · 自定义短码' },
       me: { name: '我的', desc: '管理员资料 / 头像 / 安全中心' },
       status: { name: '状态', desc: '健康状态 / 数据库与 KV' }
     };

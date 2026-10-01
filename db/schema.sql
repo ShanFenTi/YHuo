@@ -239,14 +239,6 @@ CREATE TABLE IF NOT EXISTS notes (
 );
 CREATE INDEX IF NOT EXISTS idx_notes_date ON notes (date, id);
 
--- 短链（/s/{code} 302 跳转并计次）
-CREATE TABLE IF NOT EXISTS short_links (
-  code       TEXT PRIMARY KEY,
-  url        TEXT NOT NULL,
-  clicks     INTEGER NOT NULL DEFAULT 0,
-  created_at TEXT NOT NULL DEFAULT (datetime('now'))
-);
-
 -- 前端错误上报（RUM）：只留最近 200 条（api/rum.js 每次写入顺手删旧）
 CREATE TABLE IF NOT EXISTS error_reports (
   id         INTEGER PRIMARY KEY AUTOINCREMENT,

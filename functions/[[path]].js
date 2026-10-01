@@ -5,7 +5,7 @@
 // 为什么不用构建脚本：本项目守零构建红线——页面是手写静态 HTML，构建步骤会引入"改完忘了跑构建
 // 就推了旧引用"的人为坑；放在边缘响应时注入，部署指纹天然就是当前 commit，没有可忘记的步骤。
 // 路由由根目录 _routes.json 手工声明（include /*，exclude /assets /music /video /images 四类静态
-// 二进制直连静态服务不进函数）；/api /admin /media /s /feed.xml 等既有函数目录更具体，按 Pages
+// 二进制直连静态服务不进函数）；/api /admin /media /feed.xml 等既有函数目录更具体，按 Pages
 // "具体性优先"继续命中各自文件，本文件只兜真正没有专属函数的路径（含静态 HTML）。
 
 // 需要指纹化的资产引用（与页面 <link>/<script> 书写形式逐字对应；HTML 是纯文本，直接改写）。

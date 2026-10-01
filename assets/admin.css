@@ -829,7 +829,7 @@
   .data-table td.ellip { max-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .data-table tbody tr { transition: background .15s ease; }
   .data-table tbody tr:hover { background: color-mix(in srgb, var(--hover) 60%, transparent); }
-  /* 统一列表行（随笔/短链/设备/登录记录/备份清单等；媒体与用户列表仍走 ul.list） */
+  /* 统一列表行（随笔/设备/登录记录/备份清单等；媒体与用户列表仍走 ul.list） */
   .list-row {
     display: flex; align-items: center; gap: 12px;
     padding: 11px 10px; border-bottom: 1px solid var(--row-line); font-size: 14px; border-radius: 10px;

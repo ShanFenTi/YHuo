@@ -7,3 +7,8 @@
 /games / 301
 /games/ / 301
 /manifest.webmanifest / 301
+
+# 2026-10-01 短链服务 /s/ 移除（同 /misc 先例；functions/s/ 与 short_links 表一并退役，
+# 外面若还散着旧短链，301 回首页而不是吃到 SPA 回退的 200 首页假象）
+/s / 301
+/s/* / 301

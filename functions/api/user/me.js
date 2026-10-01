@@ -24,8 +24,9 @@ export async function onRequestGet({ request, env }) {
     // 前台用户会话没有：识别管理员会话（后台登录后在前台刷新时静默恢复管理员身份与头像）
     const admin = await getAdminAuth(env, getCookie(request, SESSION_COOKIE));
     if (admin) {
-      const avRow = await env.DB.prepare("SELECT value FROM site_settings WHERE key = 'admin_avatar'").first();
-      return json({ ok: true, authenticated: true, admin: true, adminRole: admin.role, username: admin.username, avatar: (avRow && avRow.value) || null });
+      // 头像按人（2026-09-30）：返回本管理员的头像，不再读全局站长形象
+      const avRow = await env.DB.prepare('SELECT avatar_key FROM admin_users WHERE id = ?').bind(admin.id).first();
+      return json({ ok: true, authenticated: true, admin: true, adminRole: admin.role, username: admin.username, avatar: (avRow && avRow.avatar_key) || null });
     }
     return json({ ok: true, authenticated: false });
   } catch {

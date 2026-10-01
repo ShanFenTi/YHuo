@@ -1,6 +1,8 @@
 // GET    /api/admin/me → 当前管理员资料 { ok, username, role, created_at, avatar, email, emailEnabled, twoFa, sessions:[{current,ip,ua,created_at}], logins:[{ok,ip,ua,note,created_at}] }（avatar 为 KV 键或 null；2026-09-30 多管理员起 sessions/logins 只含本人、email/2FA 仅超管返回）
 // POST   /api/admin/me → 两种用法：
-//          multipart（file 字段）→ 上传管理员头像（超管专属：这是全站展示的站长形象；JPG/PNG/GIF/WebP；≤2MB；KV 键 avatars/admin-{hex}.{ext}，键名存 site_settings 'admin_avatar'，换图删旧）
+//          multipart（file 字段）→ 上传本人头像（JPG/PNG/GIF/WebP；≤2MB；KV 键 avatars/admin-{hex}.{ext}，
+//                              存 admin_users.avatar_key 按人一份；超管换头像时同步 site_settings 'admin_avatar'
+//                              ——那是留言板「站长留言」的官方形象；换图删旧）
 //          JSON {action:'email-send', email} → 给管理员邮箱发绑定验证码（超管专属）
 //          JSON {action:'email-verify', email, code} → 验证并保存管理员邮箱（存 site_settings 'admin_email'；超管专属）
 //          JSON {action:'email-remove'} → 解绑邮箱（超管专属）
@@ -8,7 +10,7 @@
 //          JSON {action:'sessions-revoke-others'} → 吊销除当前外的本人会话
 //          JSON {action:'2fa', enabled} → 登录二次验证开关（存 site_settings 'admin_2fa'；仅超管，开启前提是已绑邮箱）
 // PUT    /api/admin/me → JSON {action} 同上（formData 与 json 两种 POST 都兼容，PUT 保留给 JSON）
-// DELETE /api/admin/me → 移除头像（超管专属；删 KV 文件 + 清设置）
+// DELETE /api/admin/me → 移除本人头像（删 KV 文件 + 清本人 avatar_key；超管同时清全局 admin_avatar）
 // 头像读取走既有路由 GET /media/{key}（键名含随机 hex，换图不串缓存）；本接口全部经 /api/admin/* 会话门卫
 import { json, getCookie, SESSION_COOKIE } from '../../lib/util.js';
 import { randomHex, verifyPassword, hashPassword, loginKey, loginLockedFor, recordLoginFail, clearLoginFails, getAdminAuth } from '../../lib/auth.js';
@@ -23,11 +25,6 @@ const EXT_MIME = {
   gif: 'image/gif',
   webp: 'image/webp',
 };
-
-async function getAvatarKey(env) {
-  const row = await env.DB.prepare("SELECT value FROM site_settings WHERE key = 'admin_avatar'").first();
-  return row ? row.value : null;
-}
 
 async function getAdminEmail(env) {
   const row = await env.DB.prepare("SELECT value FROM site_settings WHERE key = 'admin_email'").first();
@@ -58,13 +55,14 @@ export async function onRequestGet({ request, env }) {
     .bind(...(isSuper ? [] : [me.username]))
     .all();
   const t2 = await env.DB.prepare("SELECT value FROM site_settings WHERE key = 'admin_2fa'").first();
+  const avRow = await env.DB.prepare('SELECT avatar_key FROM admin_users WHERE id = ?').bind(me.id).first();
   return json({
     ok: true,
     id: me.id,
     username: u ? u.username : me.username,
     role: me.role,
     created_at: u ? u.created_at : null,
-    avatar: await getAvatarKey(env),
+    avatar: (avRow && avRow.avatar_key) || null,
     email: isSuper ? await getAdminEmail(env) : null,
     emailEnabled: cfg.enabled,
     twoFa: isSuper && !!(t2 && t2.value === '1'),
@@ -200,10 +198,9 @@ export async function onRequestPost({ request, env }) {
   await ensureSchema(env);
   const me = await getAdminAuth(env, getCookie(request, SESSION_COOKIE));
   if (!me) return json({ ok: false, error: '未登录' }, 401);
-  // JSON 请求 = 邮箱/安全操作；multipart = 头像上传（超管专属——那是全站展示的站长形象）
+  // JSON 请求 = 邮箱/安全操作；multipart = 头像上传（2026-09-30 起按人：每个管理员传自己的）
   const ct = String(request.headers.get('content-type') || '');
   if (ct.indexOf('application/json') > -1) return handleEmailAction(request, env, me);
-  if (me.role !== 'super') return json({ ok: false, error: '该操作需要超级管理员权限' }, 403);
   let form;
   try {
     form = await request.formData();
@@ -222,12 +219,17 @@ export async function onRequestPost({ request, env }) {
   const key = 'avatars/admin-' + randomHex(8) + '.' + ext;
   await env.MEDIA.put(key, await file.arrayBuffer(), { metadata: { mime: EXT_MIME[ext] } });
 
-  const old = await getAvatarKey(env);
-  if (old) await env.MEDIA.delete(old); // 换图自动删旧文件，省 KV 空间
-  await env.DB
-    .prepare("INSERT INTO site_settings (key, value) VALUES ('admin_avatar', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value")
-    .bind(key)
-    .run();
+  // 删旧文件 + 写本人 avatar_key；超管额外同步全局 admin_avatar（留言板站长留言的形象）
+  const oldRow = await env.DB.prepare('SELECT avatar_key FROM admin_users WHERE id = ?').bind(me.id).first();
+  const old = oldRow ? oldRow.avatar_key : null;
+  if (old) await env.MEDIA.delete(old);
+  const isSuper = me.role === 'super';
+  await env.DB.batch([
+    env.DB.prepare('UPDATE admin_users SET avatar_key = ? WHERE id = ?').bind(key, me.id),
+    ...(isSuper
+      ? [env.DB.prepare("INSERT INTO site_settings (key, value) VALUES ('admin_avatar', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value").bind(key)]
+      : []),
+  ]);
   return json({ ok: true, avatar: key });
 }
 
@@ -235,9 +237,12 @@ export async function onRequestDelete({ request, env }) {
   await ensureSchema(env);
   const me = await getAdminAuth(env, getCookie(request, SESSION_COOKIE));
   if (!me) return json({ ok: false, error: '未登录' }, 401);
-  if (me.role !== 'super') return json({ ok: false, error: '该操作需要超级管理员权限' }, 403);
-  const old = await getAvatarKey(env);
+  const oldRow = await env.DB.prepare('SELECT avatar_key FROM admin_users WHERE id = ?').bind(me.id).first();
+  const old = oldRow ? oldRow.avatar_key : null;
   if (old) await env.MEDIA.delete(old);
-  await env.DB.prepare("DELETE FROM site_settings WHERE key = 'admin_avatar'").run();
+  await env.DB.batch([
+    env.DB.prepare('UPDATE admin_users SET avatar_key = NULL WHERE id = ?').bind(me.id),
+    ...(me.role === 'super' ? [env.DB.prepare("DELETE FROM site_settings WHERE key = 'admin_avatar'")] : []),
+  ]);
   return json({ ok: true });
 }

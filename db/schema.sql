@@ -13,6 +13,7 @@ CREATE TABLE IF NOT EXISTS admin_users (
   salt          TEXT NOT NULL,             -- 随机盐，十六进制
   role          TEXT NOT NULL DEFAULT 'admin',
   banned        INTEGER NOT NULL DEFAULT 0,
+  avatar_key    TEXT,                      -- 本人头像 KV 键（按人一份；超管的同步作留言板站长形象）
   created_at    TEXT NOT NULL DEFAULT (datetime('now'))
 );
 

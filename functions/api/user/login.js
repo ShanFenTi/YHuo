@@ -34,7 +34,7 @@ export async function onRequestPost({ request, env }) {
     // user_id 为负数 = 管理员票（管理员 id 取负，与 schedule_sent 的 -1 约定同源）
     if (userId < 0) {
       const admin = await env.DB
-        .prepare('SELECT id, username FROM admin_users WHERE id = ?')
+        .prepare('SELECT id, username, role FROM admin_users WHERE id = ?')
         .bind(-userId).first();
       if (!admin) return json({ ok: false, error: '验证已过期，请重新登录' }, 401);
       const aeRow = await env.DB.prepare("SELECT value FROM site_settings WHERE key = 'admin_email'").first();
@@ -47,8 +47,9 @@ export async function onRequestPost({ request, env }) {
       await env.DB.prepare('DELETE FROM sessions WHERE expires_at < ?').bind(new Date().toISOString()).run();
       const token = await createSession(env, request, admin.id);
       await logAdminLogin(env, request, 1, '前台入口密码 + 验证码', admin.username);
-      const avAdm = await env.DB.prepare("SELECT value FROM site_settings WHERE key = 'admin_avatar'").first();
-      return json({ ok: true, admin: true, username: admin.username, avatar: (avAdm && avAdm.value) || null }, 200, { 'Set-Cookie': sessionCookie(token) });
+      // 头像按人（2026-09-30）：本管理员自己的头像
+      const avAdm = await env.DB.prepare('SELECT avatar_key FROM admin_users WHERE id = ?').bind(admin.id).first();
+      return json({ ok: true, admin: true, adminRole: admin.role, username: admin.username, avatar: (avAdm && avAdm.avatar_key) || null }, 200, { 'Set-Cookie': sessionCookie(token) });
     }
     const u = await env.DB
       .prepare('SELECT id, username, banned, email, nickname FROM users WHERE id = ?')
@@ -122,7 +123,7 @@ export async function onRequestPost({ request, env }) {
 
   // 前台用户表没有：尝试管理员账号（主页用管理员账密登录可直接进后台）
   const admin = await env.DB
-    .prepare('SELECT id, username, password_hash, salt, role, banned FROM admin_users WHERE username = ?')
+    .prepare('SELECT id, username, password_hash, salt, role, banned, avatar_key FROM admin_users WHERE username = ?')
     .bind(username)
     .first();
   if (admin) {
@@ -166,9 +167,8 @@ export async function onRequestPost({ request, env }) {
       await env.DB.prepare('DELETE FROM sessions WHERE expires_at < ?').bind(new Date().toISOString()).run();
       const token = await createSession(env, request, admin.id);
       await logAdminLogin(env, request, 1, '前台入口密码登录（' + (admin.role === 'super' ? '超级管理员' : '管理员') + '）', admin.username);
-      // 管理员用前台入口登录：带上后台设置的管理头像（site_settings.admin_avatar 存 KV 键）
-      const avRow = await env.DB.prepare("SELECT value FROM site_settings WHERE key = 'admin_avatar'").first();
-      return json({ ok: true, admin: true, adminRole: admin.role === 'super' ? 'super' : 'admin', username: admin.username, avatar: (avRow && avRow.value) || null }, 200, { 'Set-Cookie': sessionCookie(token) });
+      // 头像按人（2026-09-30）：本管理员自己的头像（存 admin_users.avatar_key）
+      return json({ ok: true, admin: true, adminRole: admin.role === 'super' ? 'super' : 'admin', username: admin.username, avatar: admin.avatar_key || null }, 200, { 'Set-Cookie': sessionCookie(token) });
     }
     await recordLoginFail(env, throttleKey);
     await logAdminLogin(env, request, 0, '密码错误（前台入口）', admin.username);

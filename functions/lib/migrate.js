@@ -300,6 +300,17 @@ export async function ensureSchema(env) {
       "UPDATE sessions SET admin_id = (SELECT id FROM admin_users WHERE role = 'super' ORDER BY id LIMIT 1) WHERE admin_id IS NULL"
     ).run();
   } catch {}
+  // 头像按人（2026-09-30）：每个管理员自己的头像（此前全局唯一 admin_avatar 被所有管理员
+  // 「继承」显示）；回填=超管继承既有全局站长头像，普通管理员从空白开始各自上传。
+  // 全局 admin_avatar 保留：留言板「站长留言」的官方形象，超管换头像时由 me.js 同步
+  try {
+    await env.DB.prepare("ALTER TABLE admin_users ADD COLUMN avatar_key TEXT").run();
+  } catch {}
+  try {
+    await env.DB.prepare(
+      "UPDATE admin_users SET avatar_key = (SELECT value FROM site_settings WHERE key = 'admin_avatar') WHERE role = 'super' AND avatar_key IS NULL"
+    ).run();
+  } catch {}
   // 存量相册回填：把 media.album 里已有的相册名补进 albums 表
   // （INSERT OR IGNORE 幂等，ensureSchema 每个隔离实例各跑一遍也无副作用）
   try {

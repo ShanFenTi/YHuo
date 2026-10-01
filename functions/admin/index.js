@@ -1579,7 +1579,7 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
     <div class="card me-card">
       <div class="me-left">
         <div class="me-avatar" id="meAvatar"><span id="meAvatarMono">YH</span><img id="meAvatarImg" hidden alt="管理员头像"></div>
-        <div class="me-avatar-btns" data-superonly>
+        <div class="me-avatar-btns">
           <button id="meAvatarUploadBtn" class="ghost">更换头像</button>
           <button id="meAvatarRemoveBtn" class="danger" hidden>移除头像</button>
         </div>
@@ -1587,7 +1587,7 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
       <div class="me-info">
         <p class="me-name" id="meName">—</p>
         <p class="meta2" id="meMeta"></p>
-        <p class="meta2">头像显示在侧边栏左上角；JPG/PNG/GIF/WebP，≤2MB，保存在站点 KV。</p>
+        <p class="meta2">每个管理员各自上传头像（2026-09-30 起按人一份，不再共用站长形象）；JPG/PNG/GIF/WebP，≤2MB，保存在站点 KV。站长换头像会同步留言板「站长留言」的官方形象。</p>
       </div>
       <input type="file" id="meAvatarInput" accept=".jpg,.jpeg,.png,.gif,.webp" hidden>
     </div>

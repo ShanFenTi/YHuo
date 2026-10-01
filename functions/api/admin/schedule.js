@@ -7,7 +7,7 @@
 import { json } from '../../lib/util.js';
 import { ensureSchema } from '../../lib/migrate.js';
 import { randomHex } from '../../lib/auth.js';
-import { getEmailConfig, isEmailAddr, sendMail } from '../../lib/email.js';
+import { getEmailConfig, isEmailAddr, sendMail, isSafeEmailError } from '../../lib/email.js';
 import { normSchedule, coursesToday, bjNow, bjDayStr, dailyHtml, classHtml, parseHolidayConfig, getHoliday } from '../../lib/schedule.js';
 
 const KEY_NAME = 'schedule_tick_key';
@@ -130,7 +130,14 @@ async function runTestFor(env, email, rawData) {
 
   const sent = [];
   const errors = [];
-  const pushErr = (tag, e) => errors.push(tag + '：' + String((e && e.message) || e).slice(0, 80));
+  // sendMail 的原始 message 可能带上游 error body，不透传给前端：能过 isSafeEmailError 的
+  // （节流类固定文案）保留原文，其余换固定文案，细节进服务端日志
+  const pushErr = (tag, e) => {
+    const msg = String((e && e.message) || e);
+    if (isSafeEmailError(msg)) { errors.push(tag + '：' + msg); return; }
+    console.error('课表测试邮件发送失败（' + tag + '）: ' + msg);
+    errors.push(tag + '：发送失败（详情见服务端日志）');
+  };
 
   // 1) 早报样式：无论是否到点都发，主题加【测试】前缀；模板与真实发送同一份
   try {

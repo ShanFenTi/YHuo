@@ -89,7 +89,9 @@ export async function onRequestPost({ request, env }) {
       await sendMail(env, to, 'YHuo 测试邮件', '<div style="font-family:system-ui,sans-serif;padding:24px;"><h2 style="margin:0 0 12px;">测试成功 🎉</h2><p style="color:#555;margin:0;">这封邮件说明 YHuo 的邮件服务配置正确。</p></div>', 'test');
     }
   } catch (e) {
-    return json({ ok: false, error: (e && e.message) || '发送失败' }, 500);
+    // sendMail 抛的 message 可能带上游 error body（resend/brevo 原文），不回传前端，细节进服务端日志
+    console.error('后台邮件发送失败: ' + String((e && e.message) || e));
+    return json({ ok: false, error: '发送失败，请稍后再试或检查邮件配置' }, 500);
   }
   return json({ ok: true });
 }

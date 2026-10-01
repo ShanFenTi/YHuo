@@ -15,7 +15,9 @@ export async function onRequestGet({ env }) {
     const cnt = await env.DB.prepare('SELECT COUNT(*) AS n FROM error_reports').first();
     return json({ ok: true, list: res.results || [], total: (cnt && cnt.n) || 0 });
   } catch (e) {
-    return json({ ok: false, error: String((e && e.message) || e || '读取失败').slice(0, 200) }, 500);
+    // D1 原始 message 不回传前端，细节进服务端日志
+    console.error('前端错误列表读取失败: ' + String((e && e.message) || e));
+    return json({ ok: false, error: '操作失败，请稍后再试' }, 500);
   }
 }
 
@@ -25,6 +27,8 @@ export async function onRequestDelete({ env }) {
     await env.DB.prepare('DELETE FROM error_reports').run();
     return json({ ok: true });
   } catch (e) {
-    return json({ ok: false, error: String((e && e.message) || e || '清空失败').slice(0, 200) }, 500);
+    // D1 原始 message 不回传前端，细节进服务端日志
+    console.error('前端错误记录清空失败: ' + String((e && e.message) || e));
+    return json({ ok: false, error: '操作失败，请稍后再试' }, 500);
   }
 }

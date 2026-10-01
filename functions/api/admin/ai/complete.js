@@ -30,15 +30,19 @@ export async function onRequestPost({ request, env }) {
     return json({ ok: false, error: '连不上 ' + url + '（检查地址/网络）' });
   }
   if (!res.ok) {
+    // 上游错误体不直出前端（此口对普通管理员开放，更要收敛），细节进服务端日志
     let detail = '';
     try { detail = (await res.text()).slice(0, 200); } catch {}
-    return json({ ok: false, error: 'HTTP ' + res.status + (detail ? '：' + detail : '') });
+    console.error('AI 补全上游请求失败 HTTP ' + res.status + (detail ? '：' + detail : ''));
+    return json({ ok: false, error: 'AI 上游请求失败（详情见服务端日志）' });
   }
   try {
     const j = await res.json();
     if (j.error) {
+      // 上游错误对象原文可能带账号/配额等细节：细节进服务端日志，前端固定文案（与 !res.ok 分支同口径）
       const msg = typeof j.error === 'string' ? j.error : j.error.message || '上游返回错误';
-      return json({ ok: false, error: msg });
+      console.error('AI 补全上游返回错误: ' + msg);
+      return json({ ok: false, error: 'AI 上游返回错误（详情见服务端日志）' });
     }
     let reply = '';
     if (s.protocol === 'anthropic') {

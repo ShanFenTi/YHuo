@@ -62,7 +62,9 @@ export async function onRequestGet({ env, request }) {
     try { lastdate = (await env.MEDIA.get(PREFIX + 'lastdate')) || null; } catch (e) {}
     return json({ ok: true, list, lastdate });
   } catch (e) {
-    return json({ ok: false, error: String((e && e.message) || e || '读取失败').slice(0, 200) }, 500);
+    // D1/KV 原始 message 不回传前端，细节进服务端日志
+    console.error('备份清单读取失败: ' + String((e && e.message) || e));
+    return json({ ok: false, error: '操作失败，请稍后再试' }, 500);
   }
 }
 
@@ -71,6 +73,8 @@ export async function onRequestPost({ env }) {
     const r = await runBackupNow(env); // 无视 lastdate 强制跑（含轮换删旧）
     return json({ ok: true, date: r.date, bytes: r.bytes });
   } catch (e) {
-    return json({ ok: false, error: String((e && e.message) || e || '备份失败').slice(0, 200) }, 500);
+    // 备份内部错误 message 不回传前端，细节进服务端日志
+    console.error('立即备份失败: ' + String((e && e.message) || e));
+    return json({ ok: false, error: '操作失败，请稍后再试' }, 500);
   }
 }

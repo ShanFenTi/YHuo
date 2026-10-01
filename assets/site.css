@@ -227,7 +227,7 @@
     body.pjax-loading .site-footer { opacity: 0.55; }
 
     /* 换页入场（2026-09-07 用户反馈"加载好了切换太生硬、像突然出现"）：新内容就位后 main 整体淡入，
-       统一覆盖八页（原 pageFade 只盖 tools/docs/board/ai 四页且被变暗恢复叠得生硬）。
+       统一覆盖八页。
        ⚠️ 只动 opacity 不动 transform：transform 配 fill 会把 main 里 fixed 后代（AI 历史抽屉等）
        的包含块改到 main 上（坑 22/28 同源）；fill:both 残留的是 opacity:1 无副作用 */
     main.page-main.pjax-enter { animation: pjaxEnter 300ms var(--ease-out) both; }
@@ -1193,286 +1193,6 @@
 
     .weather-picker-foot .appear-btn { flex: 1; }
 
-    /* ===== 工具合集 ===== */
-    .tools-grid {
-      display: grid;
-      grid-template-columns: repeat(2, 1fr);
-      gap: 14px;
-      margin-top: 4px;
-    }
-
-    @media (max-width: 700px) {
-      .tools-grid { grid-template-columns: 1fr; }
-    }
-
-    .tool-card {
-      border: 1px solid var(--apple-border);
-      border-radius: 14px;
-      padding: 14px;
-      background: color-mix(in srgb, var(--apple-background) 55%, transparent);
-    }
-
-    .tool-card-title {
-      font-size: 13px;
-      font-weight: 700;
-      margin-bottom: 12px;
-    }
-
-    /* 计算器 */
-    .calc-screen {
-      font-variant-numeric: tabular-nums;
-      font-size: 20px;
-      font-weight: 600;
-      text-align: right;
-      background: color-mix(in srgb, var(--apple-background) 80%, transparent);
-      border: 1px solid var(--apple-border);
-      border-radius: 10px;
-      padding: 10px 12px;
-      margin-bottom: 10px;
-      overflow-x: auto;
-      white-space: nowrap;
-      min-height: 44px;
-      display: flex;
-      align-items: center;
-      justify-content: flex-end;
-    }
-
-    .calc-pad {
-      display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      gap: 6px;
-    }
-
-    .calc-pad button {
-      padding: 9px 0;
-      border: 1px solid var(--apple-border);
-      border-radius: 9px;
-      background: var(--apple-card);
-      color: var(--apple-foreground);
-      font-size: 14px;
-      cursor: pointer;
-      transition: background-color 130ms var(--ease-out), transform 130ms var(--ease-out);
-    }
-
-    .calc-pad button:hover { background: var(--apple-chip, var(--apple-secondary)); }
-    .calc-pad button:active { transform: scale(0.94); }
-    .calc-pad .calc-eq { background: var(--apple-primary); color: #fff; border-color: var(--apple-primary); }
-
-    /* 番茄钟 */
-    .timer-display {
-      font-variant-numeric: tabular-nums;
-      font-size: 40px;
-      font-weight: 700;
-      text-align: center;
-      letter-spacing: 0.04em;
-      margin: 4px 0 12px;
-    }
-
-    .timer-display.ringing { animation: timerBlink 1s steps(2) infinite; }
-
-    @keyframes timerBlink {
-      50% { opacity: 0.25; }
-    }
-
-    .timer-controls {
-      display: flex;
-      gap: 6px;
-      margin-top: 8px;
-    }
-
-    .timer-controls .tool-btn { flex: 1; padding-left: 0; padding-right: 0; text-align: center; }
-
-    /* 工具通用：分段切换 / 按钮 / 表单 / 列表 */
-    .tool-tabs {
-      display: flex;
-      gap: 4px;
-      padding: 3px;
-      border: 1px solid var(--apple-border);
-      border-radius: 9px;
-      background: color-mix(in srgb, var(--apple-background) 80%, transparent);
-      margin-bottom: 10px;
-    }
-
-    .tool-tabs button {
-      flex: 1;
-      border: none;
-      background: none;
-      font-family: inherit;
-      font-size: 12px;
-      color: var(--apple-muted-foreground);
-      padding: 6px 0;
-      border-radius: 7px;
-      cursor: pointer;
-      transition: background-color 130ms var(--ease-out), color 130ms var(--ease-out);
-      white-space: nowrap;
-    }
-
-    .tool-tabs button.on {
-      background: var(--apple-card);
-      color: var(--apple-foreground);
-      font-weight: 600;
-    }
-
-    .tool-tabs-sub { margin-bottom: 8px; }
-
-    .tool-btn {
-      padding: 8px 14px;
-      border: 1px solid var(--apple-border);
-      border-radius: 9px;
-      background: var(--apple-card);
-      color: var(--apple-foreground);
-      font-size: 13px;
-      font-family: inherit;
-      cursor: pointer;
-      transition: background-color 130ms var(--ease-out), transform 130ms var(--ease-out);
-    }
-
-    .tool-btn:hover { background: var(--apple-chip, var(--apple-secondary)); }
-    .tool-btn:active { transform: scale(0.96); }
-    .tool-btn.primary { background: var(--apple-primary); color: #fff; border-color: var(--apple-primary); }
-    .tool-btn.primary:hover { background: var(--apple-primary); opacity: 0.88; }
-    .tool-btn:disabled { opacity: 0.5; cursor: default; }
-
-    .tool-form { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; }
-    .tool-form .profilev-input { margin-bottom: 0; }
-
-    .tool-row { display: flex; gap: 6px; }
-    .tool-row .profilev-input { margin-bottom: 0; flex: 1; min-width: 0; }
-    .tool-row select.profilev-input { flex: 0 0 96px; }
-
-    .tool-area {
-      width: 100%;
-      box-sizing: border-box;
-      resize: vertical;
-      min-height: 64px;
-      max-height: 180px;
-      padding: 9px 10px;
-      border: 1px solid var(--apple-border);
-      border-radius: 10px;
-      background: var(--apple-background);
-      color: var(--apple-foreground);
-      font-size: 13px;
-      font-family: inherit;
-      line-height: 1.5;
-      margin-bottom: 8px;
-    }
-
-    .tool-area:focus { outline: none; border-color: var(--apple-primary); }
-
-    .tool-list {
-      display: flex;
-      flex-direction: column;
-      gap: 6px;
-      max-height: 172px;
-      overflow-y: auto;
-      margin-top: 8px;
-    }
-
-    .tool-list-item {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      font-size: 13px;
-      padding: 7px 10px;
-      border: 1px solid var(--apple-border);
-      border-radius: 9px;
-      background: color-mix(in srgb, var(--apple-background) 80%, transparent);
-      min-width: 0;
-    }
-
-    .tool-list-item .grow { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; cursor: pointer; }
-    .tool-item-main { flex: 1; min-width: 0; }
-    .tool-item-main .nm { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .tool-list-item code { font-family: ui-monospace, monospace; font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .tool-list-item .sub { font-size: 11px; color: var(--apple-muted-foreground); }
-    .tool-badge { font-size: 12px; font-weight: 700; color: var(--apple-primary); flex: none; white-space: nowrap; }
-    .tool-empty { font-size: 12px; color: var(--apple-muted-foreground); margin: 8px 0 0; }
-    .tool-note { font-size: 12px; color: var(--apple-muted-foreground); margin: 8px 0 0; word-break: break-all; }
-    .tool-title-note { font-size: 11px; font-weight: 400; color: var(--apple-muted-foreground); margin-left: 6px; }
-
-    .tool-x {
-      border: none;
-      background: none;
-      color: var(--apple-muted-foreground);
-      cursor: pointer;
-      font-size: 14px;
-      line-height: 1;
-      padding: 2px 4px;
-      flex: none;
-    }
-
-    .tool-x:hover { color: #e5484d; }
-
-    /* 换算器 */
-    .conv-arrow { text-align: center; color: var(--apple-muted-foreground); font-size: 12px; margin: 6px 0; }
-    .base-hint { font-size: 11px; color: var(--apple-muted-foreground); margin: 8px 0 0; }
-
-    /* 文本工具 */
-    .text-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
-
-    .text-stat {
-      border: 1px solid var(--apple-border);
-      border-radius: 9px;
-      padding: 7px 10px;
-      background: color-mix(in srgb, var(--apple-background) 80%, transparent);
-    }
-
-    .text-stat b { display: block; font-size: 15px; font-variant-numeric: tabular-nums; }
-    .text-stat span { font-size: 11px; color: var(--apple-muted-foreground); }
-    .text-btns { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
-    .text-btns .tool-btn { padding-left: 0; padding-right: 0; text-align: center; }
-
-    /* 随机决策 */
-    .dice-result {
-      font-size: 17px;
-      font-weight: 700;
-      text-align: center;
-      margin: 10px 0 0;
-      min-height: 24px;
-      color: var(--apple-primary);
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-    }
-
-    .dice-result.rolling { color: var(--apple-muted-foreground); font-weight: 400; }
-
-    /* 计算器历史 */
-    .calc-hist-head {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      font-size: 11px;
-      color: var(--apple-muted-foreground);
-      margin-top: 10px;
-    }
-
-    .calc-hist-head .tool-x { font-size: 12px; }
-
-    /* 更多工具折叠 */
-    .tool-more { margin-top: 14px; }
-    .tool-more summary { cursor: pointer; font-size: 13px; color: var(--apple-muted-foreground); user-select: none; width: fit-content; }
-    .tool-more summary:hover { color: var(--apple-foreground); }
-    .tool-more[open] summary { margin-bottom: 10px; }
-
-    /* 密码生成（更多工具折叠区） */
-    .pwd-out-row { display: flex; gap: 6px; margin-bottom: 10px; }
-    .pwd-out-row .profilev-input { margin-bottom: 0; font-family: ui-monospace, monospace; font-size: 12px; }
-    .pwd-out-row .appear-btn { flex: none; }
-
-    .tool-check {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      font-size: 12px;
-      color: var(--apple-muted-foreground);
-      margin: 8px 0;
-      cursor: pointer;
-    }
-
-    .tool-check input[type="range"] { flex: 1; accent-color: var(--apple-primary); }
-    .tool-check input[type="checkbox"] { accent-color: var(--apple-primary); }
-
     /* ===== 文档区 ===== */
     .docs-grid {
       display: grid;
@@ -1577,7 +1297,7 @@
 
     /* ===== AI 界面（聊天骨架，对话功能待接入）===== */
     /* 工具合集/文档界面复用同一套全屏层样式 */
-    .ai-view, .tools-view, .docs-view {
+    .ai-view, .docs-view {
       position: fixed;
       top: 52px;
       left: 0;
@@ -1594,7 +1314,7 @@
       transition: opacity 250ms var(--ease-out), visibility 250ms var(--ease-out);
     }
 
-    .ai-view.show, .tools-view.show, .docs-view.show { opacity: 1; visibility: visible; }
+    .ai-view.show, .docs-view.show { opacity: 1; visibility: visible; }
     /* 切换界面时被新层覆盖的旧层：保持不透明垫底 + 禁点击，等新层完全不透明后再真正关闭（主页不闪） */
     .fs-covered { pointer-events: none; }
     .ai-view.show .album-bar, .tools-view.show .album-bar, .docs-view.show .album-bar { transform: none; opacity: 1; }
@@ -4448,11 +4168,11 @@
     }
   /* 功能开关首屏预隐藏：类由 head 内联脚本按 localStorage 缓存在渲染前打上（无闪现），
      applyFeatureFlags / fetchAiConfig 拉到最新配置后会增删同样的类做校正 */
-  .ff-tools-off #toolsBtn, .ff-docs-off #docsBtn, .ff-album-off #albumBtn,
+  .ff-docs-off #docsBtn, .ff-album-off #albumBtn,
   .ff-ai-off #aiBtn { display: none !important; }
   .ff-video-off .video-box { display: none !important; }
   /* 首访无缓存：可选功能先藏（默认先藏、配置到了再放行；接口失败或超时兜底放行） */
-  .ff-boot-hide #toolsBtn, .ff-boot-hide #docsBtn, .ff-boot-hide #albumBtn,
+  .ff-boot-hide #docsBtn, .ff-boot-hide #albumBtn,
   .ff-boot-hide .video-box { display: none !important; }
   .ff-ai-boot-hide #aiBtn { display: none !important; }
     /* ===== 悬浮音乐播放器（参考博客站款，后台「外观」可选替换迷你播放条） =====
@@ -5042,7 +4762,6 @@
       padding-bottom: 24px;
     }
 
-    html[data-page="tools"] #toolsView,
     html[data-page="docs"] #docsView,
     html[data-page="board"] #boardView,
     html[data-page="ai"] #aiView {
@@ -5080,7 +4799,6 @@
       from { opacity: 0; }
       to { opacity: 1; }
     }
-    html[data-page="tools"] #toolsView,
     html[data-page="docs"] #docsView,
     html[data-page="board"] #boardView,
     html[data-page="ai"] #aiView {
@@ -5465,16 +5183,16 @@
        目标限定 .page-main 内：外壳浮层（外观抽屉/个人主页/登录卡都是 .apple-card）绝不参与揭示。
        用动画不用过渡：过渡规则会常驻压过卡片自身的 hover 过渡；动画 fill 只用 backwards
        （both 会把 transform 残留在已揭示元素上，改掉 fixed 后代的包含块——坑 22 同源）。
-       与 JS 的选择器清单保持同步：album-bar/apple-card/tool-card/tool-more/doc-card/note/notes-year/notes-lead
+       与 JS 的选择器清单保持同步：album-bar/apple-card/doc-card/note/notes-year/notes-lead
        ========================= */
     @media (prefers-reduced-motion: no-preference) {
-      html.fx-reveal .page-main :is(.album-bar, .apple-card, .tool-card, .tool-more, .doc-card, .note, .notes-year, .notes-lead):not(.is-revealed) {
+      html.fx-reveal .page-main :is(.album-bar, .apple-card, .doc-card, .note, .notes-year, .notes-lead):not(.is-revealed) {
         opacity: 0;
         transform: translateY(1.25rem);
         filter: blur(10px);
       }
 
-      html.fx-reveal .page-main :is(.album-bar, .apple-card, .tool-card, .tool-more, .doc-card, .note, .notes-year, .notes-lead).is-revealed {
+      html.fx-reveal .page-main :is(.album-bar, .apple-card, .doc-card, .note, .notes-year, .notes-lead).is-revealed {
         animation: fx-reveal-in 0.6s var(--ease-out) var(--reveal-delay, 0s) backwards;
       }
     }
@@ -5740,11 +5458,9 @@
       outline-offset: 2px;
     }
 
-    /* 功能开关：抽屉项与胶囊导航项（#toolsBtn 等按 id）同口径隐藏 */
-    .ff-tools-off .nav-drawer-link[data-target="tools"],
+    /* 功能开关：抽屉项与胶囊导航项（#docsBtn 等按 id）同口径隐藏 */
     .ff-docs-off .nav-drawer-link[data-target="docs"],
     .ff-ai-off .nav-drawer-link[data-target="ai"],
-    .ff-boot-hide .nav-drawer-link[data-target="tools"],
     .ff-boot-hide .nav-drawer-link[data-target="docs"],
     .ff-ai-boot-hide .nav-drawer-link[data-target="ai"] { display: none !important; }
 
@@ -6267,7 +5983,6 @@
        只存在于首页 main（不碰外壳，坑 23 免同步）；.apple-card 自动进滚动模糊揭示清单（site.css「滚动模糊揭示」段）。
        功能开关同口径：ff-* 关掉的页面，对应入口磁贴一并隐藏（对齐窄屏抽屉的 [data-target] 规则）。
        ========================= */
-    html.ff-tools-off .home-entry[data-target="tools"],
     html.ff-ai-off .home-entry[data-target="ai"],
     html.ff-boot-hide .home-entry[data-target="tools"],
     html.ff-ai-boot-hide .home-entry[data-target="ai"] { display: none !important; }

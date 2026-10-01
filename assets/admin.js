@@ -2219,7 +2219,6 @@
 
   // ---------- 功能开关（前台界面/首页模块显隐；/api/settings 下发，缺省全开） ----------
   var FLAG_DEFS = [
-    { key: 'tools', label: '工具界面' },
     { key: 'docs', label: '文档界面' },
     { key: 'album', label: '相册界面' },
     { key: 'weather', label: '天气胶囊' },

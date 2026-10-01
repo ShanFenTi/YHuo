@@ -17,7 +17,7 @@ const ok = (msg) => console.log('  ✓ ' + msg);
 
 // 多页面改造（2026-09-05）后的前台页面（2026-09-06 增课表页 /schedule/ 与预览页 /blog/、同日移除杂项页 /misc/；
 // 2026-09-07 增随笔页 /notes/，2026-09-09 深夜增游戏页、同日应用户要求移除，2026-10-01 增相册页 /album/（2026-09-05 曾移除、恢复为第九页）；改外壳（头部/导航/浮层）要多处同步，这里全部把关
-const PAGES = ['index.html', 'tools/index.html', 'docs/index.html', 'ai/index.html', 'board/index.html', 'schedule/index.html', 'blog/index.html', 'notes/index.html', 'album/index.html'];
+const PAGES = ['index.html', 'docs/index.html', 'ai/index.html', 'board/index.html', 'schedule/index.html', 'blog/index.html', 'notes/index.html', 'album/index.html'];
 
 // ---------- 1. 内联 <script> 语法 ----------
 function checkInlineScripts(file, label) {
@@ -112,7 +112,7 @@ console.log('[3] 前台页面本地引用');
     if (adminN === 0) { fail('functions/admin/index.js 没有外链 /assets/ 引用（拆分写法变了？同步更新本检查）'); }
     else if (!adminBad) ok(`admin 模板外链资产 ${adminN} 个全部存在`);
   }
-  if (!bad) ok(`九个页面本地静态引用 ${checked} 个全部存在`);
+  if (!bad) ok(`八个页面本地静态引用 ${checked} 个全部存在`);
 }
 
 // ---------- 4. 八页外壳一致性（坑 23） ----------
@@ -170,7 +170,7 @@ console.log('[4] 八页外壳一致性');
       const snippet = (b[ln] || '(该页外壳提前结束)').trim().slice(0, 60);
       fail(`${PAGES[i]} 外壳与首页不一致（归一化后第 ${ln + 1} 行）：${snippet}`);
     }
-    if (!bad) ok(`九个子页外壳与首页一致（比对 ${base.split('\n').length} 行；白名单：data-page/标题/description/og:title/og:url/og:description/canonical/导航高亮；og:image/og:type/twitter:card 恒定行参与比对）`);
+    if (!bad) ok(`八个子页外壳与首页一致（比对 ${base.split('\n').length} 行；白名单：data-page/标题/description/og:title/og:url/og:description/canonical/导航高亮；og:image/og:type/twitter:card 恒定行参与比对）`);
   }
 }
 

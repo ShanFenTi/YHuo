@@ -124,7 +124,6 @@
       var _hasFlags = false;
       if (_ff && typeof _ff === 'object') {
         _hasFlags = true;
-        if (_ff.tools === false) _fc.add('ff-tools-off');
         if (_ff.docs === false) _fc.add('ff-docs-off');
         if (_ff.album === false) _fc.add('ff-album-off');
         if (_ff.video === false) _fc.add('ff-video-off');
@@ -166,7 +165,6 @@
     <nav class="site-nav" aria-label="主导航">
       <a href="/" class="nav-link" data-target="home">首页</a>
       <a href="/notes/" class="nav-link" id="notesBtn">随笔</a>
-      <a href="/tools/" class="nav-link" id="toolsBtn">工具</a>
       <a href="/ai/" class="nav-link ai-entry" id="aiBtn">AI</a>
       <a href="/album/" class="nav-link" id="albumBtn">相册</a>
       <a href="/board/" class="nav-link" id="boardBtn">留言</a>
@@ -207,7 +205,6 @@
     <nav class="nav-drawer-links" aria-label="站内页面">
       <a href="/" class="nav-drawer-link" data-target="home"><svg class="nav-drawer-ico" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h5v-6h4v6h5V9.5"/></svg><span>首页</span><svg class="nav-drawer-chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg></a>
       <a href="/notes/" class="nav-drawer-link" data-target="notes"><svg class="nav-drawer-ico" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg><span>随笔</span><svg class="nav-drawer-chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg></a>
-      <a href="/tools/" class="nav-drawer-link" data-target="tools"><svg class="nav-drawer-ico" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg><span>工具</span><svg class="nav-drawer-chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg></a>
       <a href="/ai/" class="nav-drawer-link" data-target="ai"><svg class="nav-drawer-ico" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9Z"/><path d="M19 15l.7 1.8L21.5 17.5l-1.8.7L19 20l-.7-1.8L16.5 17.5l1.8-.7Z"/></svg><span>AI</span><svg class="nav-drawer-chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg></a>
       <a href="/album/" class="nav-drawer-link" data-target="album"><svg class="nav-drawer-ico" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m21 15-5-5L5 21"/></svg><span>相册</span><svg class="nav-drawer-chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg></a>
       <a href="/board/" class="nav-drawer-link" data-target="board"><svg class="nav-drawer-ico" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg><span>留言</span><svg class="nav-drawer-chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg></a>
@@ -560,7 +557,7 @@
     <div class="cmdk-panel">
       <div class="cmdk-input-row">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
-        <input id="cmdkInput" type="text" placeholder="搜索界面、工具、文档、音乐…；前缀：/ 随笔  # 音乐  = 算数" autocomplete="off" spellcheck="false" aria-label="搜索关键词">
+        <input id="cmdkInput" type="text" placeholder="搜索界面、文档、音乐…；前缀：/ 随笔  # 音乐  = 算数" autocomplete="off" spellcheck="false" aria-label="搜索关键词">
         <span class="cmdk-esc" aria-hidden="true">Esc</span>
       </div>
       <div class="cmdk-results" id="cmdkResults"></div>

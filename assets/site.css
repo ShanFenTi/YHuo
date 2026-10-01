@@ -6439,14 +6439,23 @@
     .album-photos { display: none; overflow: hidden; }
     .album-entry.expanded .album-photos { display: block; }
 
-    /* 收回退场（2026-10-01 站长二报「收回太突兀」）：照片墙先整体淡出下沉（纯合成、
-       不碰布局），200ms 后容器瞬切收起 + 其他相册浮回（albumToggleEntry 编排时序）。
+    /* 收回退场（2026-10-01 站长三报「要像卡片收回去、慢一点」）：照片墙容器高度
+       平滑收拢（高度过渡 + 剪裁可见），照片同步淡出+更深下沉——观感是整叠照片被
+       慢慢收回牌堆，而非旧版「淡出后容器瞬切消失」。高度动画只在收回瞬间由 JS
+       锁定内联 px（albumCollapseStart），动画结束回落 display:none（不常驻布局）。
        特异性与 .in:hover 同级、源顺序在后，退场期间悬停不抢；transition-delay 显式
        归零防大相册入场 stagger 未重置完的残留延迟拖慢退场 */
+    .album-photos.collapsing {
+      display: block;
+      height: var(--collapse-h, 0px);
+      transition: height .42s var(--ease-in-out), opacity .42s ease;
+      opacity: 1;
+    }
+    .album-photos.collapsing.wall-fade { opacity: 0; }
     .wall-item.in.out {
       opacity: 0;
-      transform: translateY(18px) rotate(calc(var(--tilt, 0deg) * 1.3)) scale(.94);
-      transition: transform .22s var(--ease-in), opacity .22s ease;
+      transform: translateY(46px) rotate(calc(var(--tilt, 0deg) * 1.5)) scale(.9);
+      transition: transform .42s var(--ease-in), opacity .32s ease;
       transition-delay: 0s;
     }
     /* 其他相册浮回：从 display:none 恢复可见的瞬间从头播（animation 不依赖旧渲染态，
@@ -6454,9 +6463,10 @@
     @keyframes album-entry-back {
       from { opacity: 0; transform: translateY(14px) scale(.96); }
     }
-    .album-entry.back { animation: album-entry-back .26s var(--ease-out); }
+    .album-entry.back { animation: album-entry-back .34s var(--ease-out); }
     @media (prefers-reduced-motion: reduce) {
       .wall-item.in.out { transition: none; }
+      .album-photos.collapsing { transition: none; }
       .album-entry.back { animation: none; }
     }
     .album-photos-inner { padding: 4px 22px 24px; }

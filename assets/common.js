@@ -7517,6 +7517,8 @@ window.__siteCalendar = (function () {
     function albumCollapseFinish(list, wall, entry) {
       clearTimeout(albumCollapseTimer);
       albumCollapseTimer = null;
+      var photos = wall.closest('.album-photos'); // 摘高度收拢态（容器回落 display:none，下次展开从零开始）
+      if (photos) { photos.classList.remove('collapsing', 'wall-fade'); photos.style.removeProperty('--collapse-h'); }
       var hidden = list.querySelectorAll('.album-entry.gone'); // 先记集合：它们此刻 display:none
       list.querySelectorAll('.album-entry.expanded').forEach(function (el) { el.classList.remove('expanded'); });
       list.classList.remove('has-expanded');
@@ -7557,13 +7559,22 @@ window.__siteCalendar = (function () {
         }, 360);
         albumScrollToEntry(entry);
       } else {
-        // 收回：照片墙先整体淡出下沉（纯合成不碰布局），200ms 后一次性收起。
-        // 减少动态效果时跳过淡出直接收（与 albumEnterWall 的降级一致）
+        // 收回（站长三报「像卡片收回去、慢一点」）：照片墙容器高度锁定后平滑收拢到 0，
+        // 照片同步淡出+深下沉——整叠照片被慢慢收回牌堆的观感；420ms 后完成收尾
+        // （其他相册浮回 + 摘 expanded）。减少动态效果时跳过过渡直接收。
         var items = wall.querySelectorAll('.wall-item');
         var reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
         if (!reduceMotion && items.length) {
+          var photos = wall.closest('.album-photos');
+          if (photos) {
+            photos.style.setProperty('--collapse-h', photos.offsetHeight + 'px');
+            photos.classList.add('collapsing');
+            void photos.offsetWidth; // 锁定高度先生效，再归零才播过渡
+            photos.style.setProperty('--collapse-h', '0px');
+            photos.classList.add('wall-fade');
+          }
           items.forEach(function (el) { el.classList.add('out'); });
-          albumCollapseTimer = setTimeout(function () { albumCollapseFinish(list, wall, entry); }, 200);
+          albumCollapseTimer = setTimeout(function () { albumCollapseFinish(list, wall, entry); }, 440);
         } else {
           albumCollapseFinish(list, wall, entry);
         }

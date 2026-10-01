@@ -1592,13 +1592,12 @@
         html += '<span class="meta2">改密码请在「我的」页</span>';
       } else {
         html += '<button class="ghost adm-act" data-id="' + a.id + '" data-do="reset">重置密码</button> '
-          + '<button class="ghost adm-act" data-id="' + a.id + '" data-do="role">' + (a.role === 'super' ? '降为管理员' : '升为超级管理员') + '</button> '
           + '<button class="ghost adm-act" data-id="' + a.id + '" data-do="ban">' + (a.banned ? '启用' : '禁用') + '</button> '
           + '<button class="danger adm-act" data-id="' + a.id + '" data-do="del">删除</button>';
       }
       html += '</td></tr>';
     });
-    html += '</tbody></table><p class="meta2" style="margin-top:10px">守护规则：不能操作当前账号；任何会让「可用的超级管理员」归零的操作（降级 / 禁用 / 删除超管）都会被拒绝——站点永远留得住一个能进后台的人。管理动作记入「我的」页最近记录（[管理] 前缀）。</p>';
+    html += '</tbody></table><p class="meta2" style="margin-top:10px">超级管理员只有首建的那一个，其余管理员均由用户列表「授权」产生。守护规则：不能操作当前账号；任何会让「可用的超级管理员」归零的操作（禁用 / 删除超管）都会被拒绝——站点永远留得住一个能进后台的人。管理动作记入「我的」页最近记录（[管理] 前缀）。</p>';
     wrap.innerHTML = html;
   }
   function admPost(body, done) {
@@ -1611,21 +1610,6 @@
       else toast(d.error || '操作失败', 'bad');
     }).catch(function () { toast('网络错误', 'bad'); });
   }
-  $('admCreateBtn').addEventListener('click', function () {
-    var name = $('admNewName').value.trim();
-    var pass = $('admNewPass').value;
-    var role = $('admNewRole').value;
-    var msg = $('admCreateMsg');
-    if (!name || name.length > 50 || /\s/.test(name)) { msg.textContent = '用户名 1-50 字且不含空格'; return; }
-    if (pass.length < 6 || pass.length > 100) { msg.textContent = '初始密码需 6-100 位'; return; }
-    admPost({ action: 'create', username: name, password: pass, role: role }, function () {
-      msg.textContent = '已创建 ' + name + '（初始密码请线下交给本人）';
-      $('admNewName').value = '';
-      $('admNewPass').value = '';
-      $('admNewRole').value = 'admin';
-      loadAdmins();
-    });
-  });
   document.getElementById('admListWrap').addEventListener('click', function (e) {
     var btn = e.target.closest('button.adm-act');
     if (!btn) return;
@@ -1646,15 +1630,6 @@
           admPost({ action: 'reset-password', id: id, password: val });
         },
       });
-    } else if (doWhat === 'role') {
-      var toSuper = a.role !== 'super';
-      ask({
-        title: (toSuper ? '将 ' : '将 ') + a.username + (toSuper ? ' 升为超级管理员？' : ' 降为管理员？'),
-        msg: toSuper ? '将获得全部权限（账号/密钥/备份/用户管理）。' : '降级后只剩内容与留言权限；其现有会话的下一次请求即按新角色判定。',
-        danger: true,
-        okText: toSuper ? '升级' : '降级',
-        cb: function (ok) { if (ok) admPost({ action: 'set-role', id: id, role: toSuper ? 'super' : 'admin' }); },
-      });
     } else if (doWhat === 'ban') {
       var toBan = !a.banned;
       ask({
@@ -1673,41 +1648,6 @@
         cb: function (ok) { if (ok) admPost({ action: 'delete', id: id }); },
       });
     }
-  });
-
-  // ---------- 授权弹窗（前台用户 → 管理员，2026-10-01 账号页合并）----------
-  // 密码沿用其前台账号（服务端直接复制哈希+盐），角色二选一默认普通管理员
-  var promoteTarget = null;
-  var promoteRole = 'admin';
-  function setPromoteRole(role) {
-    promoteRole = role;
-    $('promoteRoleAdmin').classList.toggle('on', role === 'admin');
-    $('promoteRoleSuper').classList.toggle('on', role === 'super');
-  }
-  function openPromote(u) {
-    promoteTarget = u;
-    setPromoteRole('admin');
-    $('promoteTitle').textContent = '授权 ' + u.username + ' 为管理员';
-    $('promoteModal').hidden = false;
-  }
-  function closePromote() {
-    $('promoteModal').hidden = true;
-    promoteTarget = null;
-  }
-  $('promoteRoleAdmin').addEventListener('click', function () { setPromoteRole('admin'); });
-  $('promoteRoleSuper').addEventListener('click', function () { setPromoteRole('super'); });
-  $('promoteCancel').addEventListener('click', closePromote);
-  $('promoteBackdrop').addEventListener('click', closePromote);
-  $('promoteOk').addEventListener('click', function () {
-    if (!promoteTarget) return;
-    var t = promoteTarget, role = promoteRole;
-    closePromote();
-    admPost({ action: 'promote', userId: t.id, role: role }, function () {
-      toast('已授权 ' + t.username + '（密码沿用前台账号，立即可登后台）', 'ok');
-      // 两个列表都刷：用户行要换成管理员徽标、管理员列表要出现新行
-      loadUsers();
-      loadAdmins();
-    });
   });
 
   // ---------- 状态页 · 数据备份卡（D1 每日自动备份，KV 保留最近 7 份） ----------
@@ -1983,7 +1923,6 @@
   document.addEventListener('keydown', function (e) {
     if (e.key !== 'Escape') return;
     if (!$('previewModal').hidden) closePreview();
-    else if (!$('promoteModal').hidden) closePromote();
     else if (!$('askModal').hidden) askClose(false);
   });
 
@@ -2073,7 +2012,22 @@
         promote.className = 'ghost';
         promote.textContent = '授权';
         promote.title = '授权为管理员（密码沿用其前台密码）';
-        promote.addEventListener('click', function () { openPromote(u); });
+        promote.addEventListener('click', function () {
+          ask({
+            title: '授权 ' + u.username + ' 为管理员？',
+            msg: '管理员密码沿用其前台密码，对方立即可用现有密码登录后台；之后两边改密互不影响。被禁用的账号需先解封才能授权。',
+            okText: '确认授权',
+            cb: function (ok) {
+              if (!ok) return;
+              admPost({ action: 'promote', userId: u.id }, function () {
+                toast('已授权 ' + u.username + '（密码沿用前台账号，立即可登后台）', 'ok');
+                // 两个列表都刷：用户行要换成管理员徽标、管理员列表要出现新行
+                loadUsers();
+                loadAdmins();
+              });
+            },
+          });
+        });
         actions.appendChild(promote);
       }
       var ban = document.createElement('button');

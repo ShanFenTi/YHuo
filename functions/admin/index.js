@@ -271,7 +271,7 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
   </div>
 
   <div id="accountsPanel" hidden>
-    <div class="page-head"><div><h2>用户与管理员</h2><p class="ph-desc">上方管理前台注册用户（封禁 / 删除 / 授权为管理员），下方管理后台管理员账号。授权沿用该用户的前台密码，本人立即可登后台；移除管理员不影响其前台账号。</p></div></div>
+    <div class="page-head"><div><h2>用户与管理员</h2><p class="ph-desc">上方管理前台注册用户（封禁 / 删除 / 授权为管理员），下方是管理员账号列表（重置密码 / 禁用 / 移除）。管理员只从「授权」产生：密码沿用其前台密码，本人立即可登后台；移除管理员不影响其前台账号。超级管理员唯一（首建账号），没有升为超管的操作。</p></div></div>
     <div class="section-card">
       <p class="section-title">前台用户</p>
       <div class="list-tools" style="margin-top:12px">
@@ -290,25 +290,8 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
       </div>
     </div>
     <div class="section-card">
-      <p class="section-title">新建管理员</p>
-      <p class="section-sub">独立建一个全新的管理员账号（初始密码线下交给本人）；想把已有前台用户设为管理员，用上方用户行的「授权」按钮更快。</p>
-      <div class="form-grid" style="max-width:760px">
-        <div class="field"><label for="admNewName">用户名</label><input type="text" id="admNewName" placeholder="1-50 字，不含空格"></div>
-        <div class="field"><label for="admNewPass">初始密码</label><input type="text" id="admNewPass" placeholder="至少 6 位" autocomplete="off"></div>
-        <div class="field"><label for="admNewRole">角色</label>
-          <select id="admNewRole">
-            <option value="admin" selected>管理员（内容与留言）</option>
-            <option value="super">超级管理员（全部权限）</option>
-          </select>
-        </div>
-      </div>
-      <div class="bgset-row" style="margin-top:12px">
-        <button id="admCreateBtn" type="button">新建</button>
-        <span class="meta2" id="admCreateMsg"></span>
-      </div>
-    </div>
-    <div class="section-card">
       <p class="section-title">管理员账号列表</p>
+      <p class="section-sub">超级管理员只有首建的那一个（站长本人）；其余管理员均由上方用户列表「授权」产生，此处可重置密码、禁用或移除。</p>
       <div id="admListWrap"><div class="sk-row"><span class="sk sk-dot"></span><span class="sk-lines"><span class="sk sk-l1"></span><span class="sk sk-l2"></span></span></div></div>
     </div>
   </div>
@@ -649,22 +632,6 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
     <div class="ask-btns">
       <button id="askCancel" class="ghost">取消</button>
       <button id="askOk">确定</button>
-    </div>
-  </div>
-</div>
-
-<div class="modal" id="promoteModal" hidden>
-  <div class="modal-backdrop" id="promoteBackdrop"></div>
-  <div class="modal-body">
-    <div class="modal-head"><strong id="promoteTitle"></strong></div>
-    <div class="promote-roles" style="display:flex;gap:8px;margin:14px 0 4px">
-      <button type="button" class="seg-btn on" id="promoteRoleAdmin">管理员（内容与留言）</button>
-      <button type="button" class="seg-btn" id="promoteRoleSuper">超级管理员（全部权限）</button>
-    </div>
-    <p class="meta2" style="margin:10px 0 0">管理员密码沿用其前台密码，本人立即可用现有密码登录后台；之后两边改密互不影响。被禁用的用户需先解封才能授权。</p>
-    <div class="ask-btns">
-      <button id="promoteCancel" class="ghost">取消</button>
-      <button id="promoteOk">确认授权</button>
     </div>
   </div>
 </div>

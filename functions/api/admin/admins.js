@@ -1,16 +1,16 @@
 // 管理员账号管理（2026-09-30 多管理员分级；超管专属——/api/admin/* 中间件已按前缀挡 403）
 // GET  /api/admin/admins → 管理员列表（不含密码哈希；含角色/禁用/创建时间/活跃会话数）
 // POST /api/admin/admins {action} →
-//   create         {username, password, role:'admin'|'super'}  新建管理员
-//   promote        {userId, role:'admin'|'super'}              把前台用户授权为管理员（2026-10-01 账号页合并）：
-//                                                              密码沿用其前台密码（password_hash+salt 直接复制，
-//                                                              之后两边改密互不影响）；用户被禁用或已有同名管理员账号时拒绝
-//   reset-password {id, password}                              重置某管理员密码（踢其全部会话；不用于自己——自己改密走「我的」页验旧密码）
-//   set-role       {id, role}                                  调整角色（升/降级）
-//   set-banned     {id, banned}                                禁用/启用（禁用即时踢下线）
-//   delete         {id}                                        删除账号（连带其会话）
-// 守护：除 create 外不能操作自己；任何会减少「可用超管」的操作（降级/禁用/删除超管）
+//   promote        {userId}                 把前台用户授权为管理员（2026-10-01 起唯一的建管路径：
+//                                             密码沿用其前台密码——password_hash+salt 整对复制，之后两边改密
+//                                             互不影响；用户被禁用或已有同名管理员账号时拒绝；一律普通管理员）
+//   reset-password {id, password}           重置某管理员密码（踢其全部会话；不用于自己——自己改密走「我的」页验旧密码）
+//   set-banned     {id, banned}             禁用/启用（禁用即时踢下线）
+//   delete         {id}                     删除账号（连带其会话；同名前台账号不受影响）
+// 守护：除 promote 外不能操作自己；任何会减少「可用超管」的操作（禁用/删除超管）
 //       要求操作后仍剩至少一个未禁用的超管——站点永远留得住一个能进后台的人
+// 超管唯一（2026-10-01 站长定版）：超级管理员只有 /api/auth/setup 首建的那一个，原 create 与
+// set-role（升降角色）动作已删除——不存在「升为超管」的路径，promote 服务端强制 role='admin'
 import { json, getCookie, SESSION_COOKIE } from '../../lib/util.js';
 import { randomHex, hashPassword, getAdminAuth, logAdminLogin } from '../../lib/auth.js';
 import { ensureSchema } from '../../lib/migrate.js';
@@ -51,34 +51,13 @@ export async function onRequestPost({ request, env }) {
   const action = String(body.action || '');
   const id = Number(body.id || 0);
 
-  if (action === 'create') {
-    const username = String(body.username || '').trim();
-    const password = String(body.password || '');
-    const role = body.role === 'super' ? 'super' : 'admin';
-    if (!username || username.length > 50 || /\s/.test(username)) {
-      return json({ ok: false, error: '用户名 1-50 字且不含空格' }, 400);
-    }
-    if (password.length < 6 || password.length > 100) return json({ ok: false, error: '密码需 6-100 位' }, 400);
-    const salt = randomHex(32);
-    const hash = await hashPassword(password, salt);
-    try {
-      await env.DB
-        .prepare('INSERT INTO admin_users (username, password_hash, salt, role) VALUES (?, ?, ?, ?)')
-        .bind(username, hash, salt, role)
-        .run();
-    } catch (e) {
-      return json({ ok: false, error: '用户名已存在' }, 400);
-    }
-    await logAction(env, request, me.username, '新建管理员 ' + username + '（' + (role === 'super' ? '超级管理员' : '管理员') + '）');
-    return json({ ok: true });
-  }
-
-  // 授权：把前台用户提升为管理员（账号页用户行的「授权」入口）。密码沿用前台密码——
+  // 授权：把前台用户提升为管理员（账号页用户行的「授权」入口，唯一的建管路径）。密码沿用前台密码——
   // users 与 admin_users 的哈希方案相同（PBKDF2+盐），整对复制即「本人现有密码可直接登后台」，
-  // 密码不经理站长的手转告；授权后两边改密互不影响（两套账号表各改各的）
+  // 密码不经理站长的手转告；授权后两边改密互不影响（两套账号表各改各的）。
+  // role 服务端写死 'admin'——超管唯一（setup 首建），不存在授权/升迁为超管的路径
   if (action === 'promote') {
     const userId = Number(body.userId || 0);
-    const role = body.role === 'super' ? 'super' : 'admin';
+    const role = 'admin';
     if (!Number.isInteger(userId) || userId <= 0) return json({ ok: false, error: '参数错误' }, 400);
     const u = await env.DB
       .prepare('SELECT id, username, password_hash, salt, banned FROM users WHERE id = ?')
@@ -97,7 +76,7 @@ export async function onRequestPost({ request, env }) {
       }
       throw e;
     }
-    await logAction(env, request, me.username, '将前台用户 ' + u.username + ' 授权为' + (role === 'super' ? '超级管理员' : '管理员') + '（密码沿用前台账号）');
+    await logAction(env, request, me.username, '将前台用户 ' + u.username + ' 授权为管理员（密码沿用前台账号）');
     return json({ ok: true, username: u.username });
   }
 
@@ -118,17 +97,6 @@ export async function onRequestPost({ request, env }) {
       env.DB.prepare('DELETE FROM sessions WHERE admin_id = ?').bind(target.id),
     ]);
     await logAction(env, request, me.username, '重置管理员 ' + target.username + ' 的密码');
-    return json({ ok: true });
-  }
-
-  if (action === 'set-role') {
-    const role = body.role === 'super' ? 'super' : 'admin';
-    if (role === target.role) return json({ ok: true });
-    if (target.role === 'super' && (await liveSuperCount(env, target.id)) < 1) {
-      return json({ ok: false, error: '至少保留一个可用的超级管理员' }, 400);
-    }
-    await env.DB.prepare('UPDATE admin_users SET role = ? WHERE id = ?').bind(role, target.id).run();
-    await logAction(env, request, me.username, (role === 'super' ? '将 ' : '将 ') + target.username + (role === 'super' ? ' 升为超级管理员' : ' 降为管理员'));
     return json({ ok: true });
   }
 

@@ -7504,6 +7504,14 @@ window.__siteCalendar = (function () {
       });
     }
 
+    // 展开后的滚动锚定：瞬时滚（站长要求「显示在最上面」——不要平滑滚下去的漂移感，
+    // behavior:'instant' 压过全局 scroll-behavior:smooth）+ 头部胶囊高度补偿
+    // （scrollIntoView 对齐视口 0 会被 fixed 头遮住，回退 96px 与子页 main padding-top 同源）
+    function albumScrollToEntry(entry) {
+      entry.scrollIntoView({ block: 'start', behavior: 'instant' });
+      window.scrollBy({ top: -96, behavior: 'instant' });
+    }
+
     // 收回最后一步（照片淡出 200ms 后调用；快速连点/离页也会立即执行它兜底）：
     // 一次性收起布局（高度仍不参与动画）+ 之前退场的相册浮回 + 焦点锚回被收回的相册
     function albumCollapseFinish(list, wall, entry) {
@@ -7520,7 +7528,7 @@ window.__siteCalendar = (function () {
       hidden.forEach(function (el) { el.classList.add('back'); });
       // 照片退场类清掉（容器已 display:none，无感），下次展开由 albumEnterWall 重播入场
       wall.querySelectorAll('.wall-item.out').forEach(function (el) { el.classList.remove('out'); });
-      entry.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      albumScrollToEntry(entry);
     }
 
     function albumToggleEntry(entry, wall) {
@@ -7547,7 +7555,7 @@ window.__siteCalendar = (function () {
             el.classList.add('gone');
           });
         }, 360);
-        entry.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        albumScrollToEntry(entry);
       } else {
         // 收回：照片墙先整体淡出下沉（纯合成不碰布局），200ms 后一次性收起。
         // 减少动态效果时跳过淡出直接收（与 albumEnterWall 的降级一致）

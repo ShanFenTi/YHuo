@@ -6377,7 +6377,9 @@
       cursor: pointer;
       transition: opacity .35s var(--ease-out), transform .35s var(--ease-out);
     }
-    .album-entry.expanded { grid-column: 1 / -1; cursor: default; }
+    /* order:-1 = 展开项即刻排到列表最前（站长要求「展开后显示在最上面」，2026-10-01）：
+       与 JS 的瞬时锚定一次到位；其他相册 360ms 后 display:none 时展开项位置不变，无二次跳变 */
+    .album-entry.expanded { grid-column: 1 / -1; cursor: default; order: -1; }
     /* 展开某个相册时，其它相册缩小退场 */
     .album-list.has-expanded .album-entry:not(.expanded) { opacity: 0; transform: scale(.92); pointer-events: none; }
     .album-list.has-expanded .album-entry:not(.expanded).gone { display: none; }

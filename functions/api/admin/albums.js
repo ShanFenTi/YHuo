@@ -18,9 +18,10 @@ export async function onRequestPost({ request, env }) {
   if (action === 'create') {
     const name = String(body.name || '').trim().slice(0, 50);
     if (!name) return json({ ok: false, error: '相册名不能为空（50 字以内）' }, 400);
-    const exists = await env.DB.prepare('SELECT 1 FROM albums WHERE name = ?').bind(name).first();
-    if (exists) return json({ ok: false, error: '相册已存在' }, 400);
-    await env.DB.prepare('INSERT INTO albums (name) VALUES (?)').bind(name).run();
+    // INSERT OR IGNORE 单语句原子查重（albums.name 是 PRIMARY KEY）：原先 SELECT 预查与裸 INSERT
+    // 之间有并发窗口，两个同名请求一起穿过后撞键直接 500；IGNORE 后判 changes=0 即重名，预查成多余删掉
+    const res = await env.DB.prepare('INSERT OR IGNORE INTO albums (name) VALUES (?)').bind(name).run();
+    if (!res.meta.changes) return json({ ok: false, error: '相册已存在' }, 400);
     return json({ ok: true, album: name });
   }
 
@@ -33,11 +34,17 @@ export async function onRequestPost({ request, env }) {
     if (toExists) return json({ ok: false, error: '相册「' + to + '」已存在' }, 400);
     // 顺序关键：先改 albums 行名，再 INSERT OR IGNORE 兜底"from 只存在于 media 不在 albums"的情况
     // （顺序反了且两行都在时会撞 PRIMARY KEY）
-    await env.DB.batch([
-      env.DB.prepare('UPDATE albums SET name = ? WHERE name = ?').bind(to, from),
-      env.DB.prepare('INSERT OR IGNORE INTO albums (name) VALUES (?)').bind(to),
-      env.DB.prepare('UPDATE media SET album = ? WHERE album = ?').bind(to, from),
-    ]);
+    try {
+      await env.DB.batch([
+        env.DB.prepare('UPDATE albums SET name = ? WHERE name = ?').bind(to, from),
+        env.DB.prepare('INSERT OR IGNORE INTO albums (name) VALUES (?)').bind(to),
+        env.DB.prepare('UPDATE media SET album = ? WHERE album = ?').bind(to, from),
+      ]);
+    } catch {
+      // 预查与 batch 之间的并发窗口内另一请求已占用目标名：第一条 UPDATE 撞 albums 主键抛错；
+      // batch 是事务、已整体回滚（media.album 原样）无副作用，按「目标名已存在」回 400 而非 500
+      return json({ ok: false, error: '相册「' + to + '」已存在' }, 400);
+    }
     return json({ ok: true, album: to });
   }
 

@@ -24,6 +24,24 @@ export async function onRequestPost({ request, env }) {
     return json({ ok: false, error: '密码需 6-100 位' }, 400);
   }
 
+  // 注册 IP 限速（2026-10-01 审计补）：纯用户名路径此前完全裸奔（发码路径有 8 次/小时/IP 占额），
+  // 脚本可批量刷号。小时桶 10 个/IP，复用 login_throttle 的 UPSERT+RETURNING 原子计数
+  //（与留言板 guestip / 访问 visitip 同套写法，键随 messages.js 的 5% 顺手清理滚出）
+  const regKey = 'regip:' + (request.headers.get('CF-Connecting-IP') || 'unknown') + ':' + Math.floor(Date.now() / 3600000);
+  const regUsed = await env.DB.prepare(
+    'INSERT INTO login_throttle (key, fails, last_fail) VALUES (?, 1, ?) ON CONFLICT(key) DO UPDATE SET fails = fails + 1, last_fail = excluded.last_fail RETURNING fails'
+  ).bind(regKey, new Date().toISOString()).first();
+  if (regUsed && Number(regUsed.fails) > 10) {
+    return json({ ok: false, error: '注册太频繁，请稍后再试' }, 429);
+  }
+
+  // 管理员用户名也不允许被前台注册占用，避免冒充。
+  // 前置到验证码消费之前（2026-10-01 审计顺手修）：原顺序下用户名被占时验证码已作废，
+  // 用户改完名还得重新取码、再吃一次 60 秒冷却
+  const taken = await env.DB.prepare('SELECT id FROM admin_users WHERE username = ?').bind(username).first()
+    || await env.DB.prepare('SELECT id FROM users WHERE username = ?').bind(username).first();
+  if (taken) return json({ ok: false, error: '用户名已被占用' }, 400);
+
   const cfg = await getEmailConfig(env);
   let email = null;
   if (cfg.enabled && !cfg.adminOnly) {
@@ -41,11 +59,6 @@ export async function onRequestPost({ request, env }) {
       }
     }
   }
-
-  // 管理员用户名也不允许被前台注册占用，避免冒充
-  const taken = await env.DB.prepare('SELECT id FROM admin_users WHERE username = ?').bind(username).first()
-    || await env.DB.prepare('SELECT id FROM users WHERE username = ?').bind(username).first();
-  if (taken) return json({ ok: false, error: '用户名已被占用' }, 400);
 
   const salt = randomHex(32);
   const hash = await hashPassword(password, salt);

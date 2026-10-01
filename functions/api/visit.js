@@ -20,11 +20,14 @@ export async function onRequestPost({ request, env }) {
       return json({ ok: true }, 200, { 'Cache-Control': 'no-store' });
     }
     if (Math.random() < 0.05) {
-      // 与 messages.js 同款顺手清理（visitip 也是时间桶键，不会像登录键那样被清掉）
+      // 与 messages.js 同款顺手清理（visitip/regip 也是时间桶键，不会像登录键那样被清掉）
       try {
         await env.DB.prepare(
-          "DELETE FROM login_throttle WHERE last_fail < ? AND (key LIKE 'guestip:%' OR key LIKE 'emailcode:%' OR key LIKE 'aiusage:%' OR key LIKE 'visitip:%')"
+          "DELETE FROM login_throttle WHERE last_fail < ? AND (key LIKE 'guestip:%' OR key LIKE 'emailcode:%' OR key LIKE 'aiusage:%' OR key LIKE 'visitip:%' OR key LIKE 'regip:%')"
         ).bind(new Date(now - 2 * 3600 * 1000).toISOString()).run();
+        // 登录类键（admin:/userlogin:/pwd:）在永不成功登录的场景下会永久残留（2026-10-01 审计补）：
+        // 顺手清 24h 前的一切旧行——锁定窗口远短于 24h，不影响正常防爆破
+        await env.DB.prepare('DELETE FROM login_throttle WHERE last_fail < ?').bind(new Date(now - 24 * 3600 * 1000).toISOString()).run();
       } catch (e) {}
     }
     const day = new Date(Date.now() + 8 * 3600 * 1000).toISOString().slice(0, 10); // 北京时间日期

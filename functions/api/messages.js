@@ -118,17 +118,19 @@ export async function onRequestPost({ request, env }) {
   if (!content) return json({ ok: false, error: '说点什么再发布吧' }, 400);
   if (content.length > MAX_CHARS) return json({ ok: false, error: '留言最多 ' + MAX_CHARS + ' 字' }, 400);
   if (who && who.kind === 'user') {
-    // 同一用户 60 秒一条（查最近一条的时间即可，够用）
-    const last = await env.DB
-      .prepare('SELECT created_at FROM messages WHERE user_id = ? ORDER BY id DESC LIMIT 1')
-      .bind(who.userId).first();
-    if (last) {
-      const t = Date.parse(String(last.created_at).replace(' ', 'T') + 'Z');
-      if (!isNaN(t) && Date.now() - t < POST_INTERVAL_MS) {
-        return json({ ok: false, error: '发得太快啦，稍等片刻再留言' }, 429);
-      }
+    // 同一用户 60 秒一条：INSERT…WHERE NOT EXISTS 单语句原子判定（2026-10-01 审计改；
+    // 原「先 SELECT 再比较再 INSERT」并发双发可同读旧值双双穿过，1 条/分钟被放大成并发 N 条。
+    // changes=0 即最近 60 秒已有发布，命中限速）
+    const res = await env.DB
+      .prepare(
+        'INSERT INTO messages (user_id, content) SELECT ?, ? WHERE NOT EXISTS (' +
+        'SELECT 1 FROM messages WHERE user_id = ? AND created_at > datetime(\'now\', \'-' + (POST_INTERVAL_MS / 1000) + ' seconds\'))'
+      )
+      .bind(who.userId, content, who.userId)
+      .run();
+    if (!res.meta.changes) {
+      return json({ ok: false, error: '发得太快啦，稍等片刻再留言' }, 429);
     }
-    await env.DB.prepare('INSERT INTO messages (user_id, content) VALUES (?, ?)').bind(who.userId, content).run();
   } else if (who) {
     // 管理员留言：超管=1（站长徽标+官方形象）、普通管理员=3（管理员徽标+本人头像），admin_id 记发帖人
     await env.DB
@@ -153,12 +155,12 @@ export async function onRequestPost({ request, env }) {
     if (used && Number(used.fails) > GUEST_IP_MIN_LIMIT) {
       return json({ ok: false, error: '留言太频繁啦，稍等片刻再来吧' }, 429, cookieHeader);
     }
-    // 时间桶键（guestip:/emailcode:/aiusage:/visitip:）不会像登录键那样被成功登录清掉：
+    // 时间桶键（guestip:/emailcode:/aiusage:/visitip:/regip:）不会像登录键那样被成功登录清掉：
     // 5% 概率顺手清 2 小时前的旧行，防无界增长（aiusage 每活跃用户每天 +24 行、visitip 每分钟一键）
     if (Math.random() < 0.05) {
       try {
         await env.DB.prepare(
-          "DELETE FROM login_throttle WHERE last_fail < ? AND (key LIKE 'guestip:%' OR key LIKE 'emailcode:%' OR key LIKE 'aiusage:%' OR key LIKE 'visitip:%')"
+          "DELETE FROM login_throttle WHERE last_fail < ? AND (key LIKE 'guestip:%' OR key LIKE 'emailcode:%' OR key LIKE 'aiusage:%' OR key LIKE 'visitip:%' OR key LIKE 'regip:%')"
         ).bind(new Date(now - 2 * 3600 * 1000).toISOString()).run();
       } catch (e) {}
     }
@@ -185,7 +187,12 @@ export async function onRequestPost({ request, env }) {
 
 export async function onRequestDelete({ request, env }) {
   await ensureSchema(env);
-  if (!(await isValidSession(env, getCookie(request, SESSION_COOKIE)))) {
+  // 修复（2026-10-01 审计）：此处原引用 isValidSession，但身份逻辑重写时该符号没进顶部 import——
+  // ESM 未定义引用直接 ReferenceError，删除留言必 500、功能整体坏死（语法检查查不出未定义引用，
+  // 本地实测复现）。getAdminAuth 是 isValidSession 的现行替代（返回 null 即无有效管理员会话），
+  // 语义不变：凭管理员 Cookie 判定，与前台用户会话无关。
+  const admin = await getAdminAuth(env, getCookie(request, SESSION_COOKIE));
+  if (!admin) {
     return json({ ok: false, error: '仅管理员可删除留言' }, 403);
   }
   const url = new URL(request.url);

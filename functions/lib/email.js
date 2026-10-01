@@ -119,6 +119,10 @@ async function logEmail(env, kind, to, subject, ok, err) {
       ok ? 1 : 0,
       String(err || '').slice(0, 500),
     ).run();
+    // 明细表保留上限（2026-10-01 审计补）：此前每次发信一行、成功失败都记，无 prune 会线性增长
+    //（admin_login_logs 100 条 / error_reports 200 条都有上限，唯独这里漏了）。统计走
+    // email_usage_daily 不受影响，明细列表读取本就 LIMIT 封顶，只留最近 1000 条
+    await env.DB.prepare('DELETE FROM email_logs WHERE id NOT IN (SELECT id FROM email_logs ORDER BY id DESC LIMIT 1000)').run();
   } catch {}
 }
 

@@ -87,9 +87,13 @@ export async function onRequestPost({ request, env }) {
     } catch (e) {
       return json({ ok: false, error: (e && e.message) || '验证失败' }, 400);
     }
-    await env.DB
-      .prepare('UPDATE users SET email = ?, email_verified = 1 WHERE id = ?')
-      .bind(email, sess.userId).run();
+    // 单语句原子闸：users.email 无 UNIQUE，上方 taken 预查与 UPDATE 之间有并发窗口，两个账号换绑
+    // 可落同一邮箱（此后找回密码 .first() 只命中其一）。NOT EXISTS 与 UPDATE 同语句：并发时后提交者
+    // 判 false、changes=0 拒绝；NULL email 不参与等值匹配天然不撞（上方预查保留作快速失败路径）
+    const res = await env.DB
+      .prepare('UPDATE users SET email = ?, email_verified = 1 WHERE id = ? AND NOT EXISTS (SELECT 1 FROM users WHERE email = ? AND id != ?)')
+      .bind(email, sess.userId, email, sess.userId).run();
+    if (!res.meta.changes) return json({ ok: false, error: '该邮箱已被其他账号绑定' }, 400);
     return json({ ok: true, email });
   }
 

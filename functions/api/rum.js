@@ -60,7 +60,7 @@ export async function onRequestPost({ request, env }) {
     globalTimes.push(now);
     await ensureSchema(env);
     await env.DB.prepare(
-      "INSERT INTO error_reports (created_at, msg, stack, path, version, ua) VALUES (datetime('now','+8 hours'), ?, ?, ?, ?, ?)" // 北京时间，与全站口径一致
+      "INSERT INTO error_reports (created_at, msg, stack, path, version, ua) VALUES (datetime('now'), ?, ?, ?, ?, ?)" // UTC 落库（坑 37 口径），消费端 admin.js fmtDate 补 Z 转本地；曾写 +8 hours 与读端口径相撞显示偏晚 8 小时
     ).bind(
       msg,
       clip(body && body.stack, MAX_STACK) || null,

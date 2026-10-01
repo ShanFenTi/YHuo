@@ -86,9 +86,11 @@ export async function onRequestPost({ request, env }) {
 
   if (row) {
     // 不存在的用户名也跑一次哈希在这里做不了，放到下面统一兜底；这里只处理存在的情况
-    if (row.banned) return json({ ok: false, error: '该账号已被禁用，请联系管理员' }, 403);
     if (await verifyPassword(password, row.salt, row.password_hash)) {
       await clearLoginFails(env, userThrottleKey);
+      // banned 判定须在密码验证之后：原先放在 verifyPassword 之前且不计失败次数，攻击者可无限速
+      // 探测「某用户名是否被禁」（免费 oracle）；密码错的被禁账号统一走下方 401，不泄露禁用状态
+      if (row.banned) return json({ ok: false, error: '该账号已被禁用，请联系管理员' }, 403);
       // 开了二次验证（fail-closed）：以 twofa_enabled 为准判断，邮箱缺失/未验证时拒绝登录，
       // 绝不 fall through 直发会话——否则第二道验证静默失效，用户还以为 2FA 开着
       if (row.twofa_enabled) {

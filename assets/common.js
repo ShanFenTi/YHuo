@@ -7558,6 +7558,13 @@ window.__siteCalendar = (function () {
           void cover.offsetWidth; // 反向位移先生效，再过渡到空 = 播放归位
           cover.style.transition = 'transform .34s cubic-bezier(.3, .8, .3, 1)';
           cover.style.transform = '';
+          // 双路清理：transitionend 一到就清（正常路径零延迟），380ms 定时器兜底
+          // （冻结窗格里事件与定时器都可能不触发——残留的空 transition 无视觉影响，下次展开顺手清）
+          cover.addEventListener('transitionend', function onFlipEnd(e) {
+            if (e.propertyName !== 'transform') return;
+            cover.removeEventListener('transitionend', onFlipEnd);
+            albumFlipCleanup(cover);
+          });
           albumFlipTimer = setTimeout(function () { albumFlipCleanup(cover); }, 380);
         }
       }

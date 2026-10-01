@@ -5105,16 +5105,21 @@ window.__siteCalendar = (function () {
       if (e.key === 'Escape' && docViewer && !docViewer.hidden) closeDocViewer();
     });
 
+    // 文档页竞态守卫（2026-10-01）：docsGrid 是模块级变量，pjax 离页再回页后 initDocsPage 重跑、
+    // 它被重新指向新 DOM；旧页在途的 fetch 落定时照常 append 进新容器（不清空），慢网下快速往返
+    // 文档卡翻倍。按进页时锁定的容器引用判 isConnected，脱离文档即放弃（随笔页 notesFeed 同病同修）。
     function initDocsPage() {
       docsGrid = document.getElementById('docsGrid');
       docsEmpty = document.getElementById('docsEmpty');
       if (!docsGrid) return;
+      var grid = docsGrid, emptyEl = docsEmpty; // 锁定本轮页面实例，防模块级变量被 pjax 重指
       initSiteDataCard(); // 站点数据卡（2026-09-10）：与文档清单互不影响，pjax 进页天然重入
       fetch('/docs/docs.json', { credentials: 'same-origin' })
         .then(function (r) { return r.ok ? r.json() : Promise.reject(new Error('http ' + r.status)); })
         .then(function (list) {
+          if (!grid.isConnected) return; // fetch 期间 pjax 切走了：放弃，防双渲染
           if (!Array.isArray(list) || !list.length) {
-            if (docsEmpty) docsEmpty.hidden = false;
+            if (emptyEl) emptyEl.hidden = false;
             return;
           }
           list.forEach(function (d) {
@@ -5138,13 +5143,14 @@ window.__siteCalendar = (function () {
               card.appendChild(meta);
             }
             card.addEventListener('click', function () { openDoc(d.title || d.file, d.file); });
-            docsGrid.appendChild(card);
+            grid.appendChild(card);
           });
         })
         .catch(function () {
-          if (docsEmpty) {
-            docsEmpty.textContent = '文档清单加载失败（docs/docs.json）。';
-            docsEmpty.hidden = false;
+          if (!grid.isConnected) return; // 同上竞态守卫：错误文案别写进新页实例
+          if (emptyEl) {
+            emptyEl.textContent = '文档清单加载失败（docs/docs.json）。';
+            emptyEl.hidden = false;
           }
         });
     }
@@ -5321,31 +5327,40 @@ window.__siteCalendar = (function () {
     var notesFeed = null;   // 随笔页模块：initNotesPage 按当前 DOM 重查
     var notesEmpty = null;
 
+    // 随笔页竞态守卫（2026-10-01）：notesFeed 是模块级变量，pjax 离页再回页后 initNotesPage 重跑、
+    // 它被重新指向新 DOM；旧页在途的 fetch 落定时照常 append 进新容器（不清空），慢网下快速往返
+    // 随笔翻倍、article id 全重复（文档页 docsGrid 同病同修，见 initDocsPage）。
+    // 按进页时锁定的容器引用判 isConnected，脱离文档即放弃；守卫通过时它与模块级 notesFeed 必然相等，
+    // notesShow/renderNotes 照旧用模块级引用不动。
     function initNotesPage() {
       notesFeed = document.getElementById('notesFeed');
       notesEmpty = document.getElementById('notesEmpty');
       if (!notesFeed) return;
+      var feed = notesFeed; // 锁定本轮页面实例
       fetch('/api/notes', { credentials: 'same-origin' })
         .then(function (r) { return r.ok ? r.json() : Promise.reject(new Error('http ' + r.status)); })
         .then(function (d) {
-          if (!notesFeed) return; // fetch 期间 pjax 切走了：当前 DOM 已不是随笔页，直接放弃
+          if (!feed.isConnected) return; // fetch 期间 pjax 切走了：放弃，防双渲染
           var list = (d && d.ok && Array.isArray(d.list)) ? d.list : null;
           if (list && list.length) { notesShow(list); return; }
-          fetchStaticNotes(); // 空库（后台还没录数据）→ 静态清单
+          fetchStaticNotes(feed); // 空库（后台还没录数据）→ 静态清单
         })
-        .catch(fetchStaticNotes); // 接口失败（离线/异常响应）→ 静态清单
+        .catch(function () {
+          if (!feed.isConnected) return; // 竞态守卫：容器已被换走就不再转静态回落
+          fetchStaticNotes(feed); // 接口失败（离线/异常响应）→ 静态清单
+        });
     }
 
-    function fetchStaticNotes() {
-      if (!notesFeed) return;
+    function fetchStaticNotes(feed) {
+      if (!feed || !feed.isConnected) return;
       fetch('/notes/notes.json', { credentials: 'same-origin' })
         .then(function (r) { return r.ok ? r.json() : Promise.reject(new Error('http ' + r.status)); })
         .then(function (list) {
-          if (!notesFeed) return; // 同上，pjax 竞态守卫
+          if (!feed.isConnected) return; // 同上，pjax 竞态守卫
           notesShow(list);
         })
         .catch(function () {
-          if (!notesFeed) return;
+          if (!feed.isConnected) return; // 写错误文案前确认容器还挂在本页实例上
           if (notesEmpty) {
             notesEmpty.textContent = '随笔清单加载失败。';
             notesEmpty.hidden = false;
@@ -6762,24 +6777,33 @@ window.__siteCalendar = (function () {
       var sameDay = d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth() && d.getDate() === now.getDate();
       return [sameDay ? '今天' : (d.getMonth() + 1) + '月' + d.getDate() + '日', p(d.getHours()) + ':' + p(d.getMinutes())];
     }
+    // 留言分页修复（2026-10-01）：「加载更多」是追加语义，原版每轮都 boardList.textContent='' 清空重渲染，
+    // 而 API 是 LIMIT 30 OFFSET n 真分页，点一次更多旧 30 条全丢（留言超 30 条必现）。
+    // 同时补在途 fetch 的 pjax 竞态守卫：落定时页面已被换走、容器脱离文档，直接放弃，防旧响应写进新页容器。
     function boardLoad() {
+      var append = boardOffset > 0; // >0 即「加载更多」：追加不清空
+      var listEl = boardList;       // 本轮目标容器引用（pjax 重进页后模块级 boardList 会指向新 DOM）
       fetch('/api/messages?offset=' + boardOffset, { credentials: 'same-origin' })
         .then(function (r) { return r.json().catch(function () { return { ok: false }; }); })
         .then(function (d) {
+          if (!listEl.isConnected) return; // 在途 fetch 落定时页面已被 pjax 换走：放弃本次
           if (!d.ok) { boardHint.textContent = d.error || '留言加载失败'; return; }
-          boardList.textContent = '';
+          if (!append) listEl.textContent = ''; // 只有首载/发布后重置刷新才清空（顺带重播展信动画）
           // 展信错峰：每封延迟 45ms 入场（样式 letterIn，reduced-motion 由 CSS 关掉），封顶 12 封
           (d.list || []).forEach(function (it, i) {
             var el = boardItem(it);
-            el.style.animationDelay = (Math.min(i, 11) * 45) + 'ms';
-            boardList.appendChild(el);
+            if (!append) el.style.animationDelay = (Math.min(i, 11) * 45) + 'ms'; // 追加页新条目不重播错峰动画
+            listEl.appendChild(el);
           });
-          boardEmpty.hidden = (d.list || []).length > 0;
+          boardEmpty.hidden = (d.list || []).length > 0 || append; // 追加时永不出空提示：末页拉空≠「还没有留言」
           boardMore.hidden = !d.hasMore;
           boardOffset += (d.list || []).length;
           if (!(d.list || []).length) boardHint.textContent = '';
         })
-        .catch(function () { boardHint.textContent = '留言加载失败'; });
+        .catch(function () {
+          if (!listEl.isConnected) return; // 同上：pjax 竞态守卫，错误文案不写进已换走的页面
+          boardHint.textContent = '留言加载失败';
+        });
     }
     function initBoardPage() {
       boardList = document.getElementById('boardList');

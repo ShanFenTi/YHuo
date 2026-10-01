@@ -4823,7 +4823,6 @@
     }
 
     @media (prefers-reduced-motion: reduce) {
-      html[data-page] #toolsView,
       html[data-page] #docsView,
       html[data-page] #boardView,
       html[data-page] #aiView { animation: none; }

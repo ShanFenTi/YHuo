@@ -8016,21 +8016,10 @@ window.__siteCalendar = (function () {
     var albumLbIndex = 0;
     var albumLbKeydown = null;
     var albumLbFavsChanged = null;
-    var albumOnResize = null;
 
     function albumStopCycles() {
       albumTimers.forEach(function (t) { clearInterval(t); });
       albumTimers = [];
-    }
-
-    function albumWallCols(w) {
-      return Math.max(1, Math.min(4, Math.round(w / 320)));
-    }
-
-    function albumLayoutWalls() {
-      document.querySelectorAll('#albumList .wall').forEach(function (wall) {
-        wall.style.setProperty('--cols', albumWallCols(wall.clientWidth || 800));
-      });
     }
 
     function albumGroups() {
@@ -8215,7 +8204,6 @@ window.__siteCalendar = (function () {
           }
         }
       });
-      albumLayoutWalls();
     }
 
     function albumToggleEntry(entry, wall) {
@@ -8274,10 +8262,6 @@ window.__siteCalendar = (function () {
             return { name: m.name || '', url: m.url || '', album: m.album || '' };
           }).filter(function (m) { return m.url; });
           albumRender();
-          if (!reduceMotion) {
-            albumOnResize = function () { albumLayoutWalls(); };
-            window.addEventListener('resize', albumOnResize);
-          }
           // 搜索/个人主页收藏照片跳转带过来的「待打开照片」：渲染完自动开灯箱
           try {
             var pending = sessionStorage.getItem('yhuoAlbumOpenPhoto');
@@ -8330,7 +8314,6 @@ window.__siteCalendar = (function () {
       if (albumAbort) { try { albumAbort.abort(); } catch (e) {} albumAbort = null; }
       if (albumLbKeydown) { document.removeEventListener('keydown', albumLbKeydown); albumLbKeydown = null; }
       if (albumLbFavsChanged) { document.removeEventListener('yhuo:favs-changed', albumLbFavsChanged); albumLbFavsChanged = null; }
-      if (albumOnResize) { window.removeEventListener('resize', albumOnResize); albumOnResize = null; }
       albumImgs = [];
     }
 

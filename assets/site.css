@@ -6723,7 +6723,10 @@
     .album-photos-inner { padding: 4px 22px 24px; }
     .wall {
       display: grid;
-      grid-template-columns: repeat(var(--cols, 3), 1fr);
+      /* 列数纯 CSS 自适应（2026-10-01 修「照片全是最大」）：旧版（含恢复初版）JS 按 clientWidth/320
+         算 --cols 写 inline 变量，存在渲染时序下读到小宽度、把列数写成 1 的时机性 bug（展开照片墙
+         每张照片撑满整行）；auto-fill+minmax 由浏览器按实时布局宽度定列数，无时机依赖 */
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
       gap: 26px 24px;
       padding-top: 14px;
     }

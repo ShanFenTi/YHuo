@@ -7518,13 +7518,23 @@ window.__siteCalendar = (function () {
     function albumCollapseFinish(list, wall, entry) {
       clearTimeout(albumCollapseTimer);
       albumCollapseTimer = null;
+      // 收尾归位（站长五报「收回后抽搐」→ 六报「还是会顿」的根治）：摘 expanded 的瞬间牌堆封面
+      // 从「整行展开位的行中心」瞬移到「网格格子的格中心」，瞬时 scrollIntoView 再叠一跳——
+      // 两次跳变即顿挫感。FLIP 顺序是关键：**旧位必须在类摘除（布局切换）之前量**——
+      // 上一版把两次测量都放在布局切换之后（first==last、位移恒 0），动画从未播放，
+      // 用户看到的仍是裸瞬移。正确序列：量旧位 → 滚动校正（在旧布局上）→ 切布局 →
+      // 量新位 → 封面挂反向位移平滑归零——瞬移与滚动跳变全被吸进一条「牌堆滑回格子」。
+      var reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      var cover = entry.querySelector('.album-cover');
+      var first = (!reduceMotion && cover) ? cover.getBoundingClientRect() : null; // 旧位（整行中心）
+      albumScrollToEntry(entry); // 瞬时滚动校正（此刻还在旧布局上做，封面跳变交给 FLIP 抵消）
       var photos = wall.closest('.album-photos'); // 摘高度收拢态（容器回落 display:none，下次展开从零开始）
       if (photos) { photos.classList.remove('collapsing'); photos.style.removeProperty('--collapse-h'); }
       entry.classList.remove('gathering'); // 牌堆「接卡」态随收尾一起摘
       var hidden = list.querySelectorAll('.album-entry.gone'); // 先记集合：它们此刻 display:none
       list.querySelectorAll('.album-entry.expanded').forEach(function (el) { el.classList.remove('expanded'); });
       list.classList.remove('has-expanded');
-      hidden.forEach(function (el) { el.classList.remove('gone'); }); // 布局在此帧完成收缩
+      hidden.forEach(function (el) { el.classList.remove('gone'); }); // 布局在此帧完成切换
       // 浮回动画：摘再加 + 强制 reflow 保证每次收回都重播（被收回的 entry 自身不播——
       // 它一直可见，opacity 从 0 起会闪灭）
       hidden.forEach(function (el) { el.classList.remove('back'); });
@@ -7537,25 +7547,19 @@ window.__siteCalendar = (function () {
         el.style.removeProperty('--fly-y');
         el.style.removeProperty('--fly-d');
       });
-      // 收尾归位（站长五报「收回后界面抽搐一下」的根治）：摘 expanded 的瞬间，牌堆封面会从
-      // 「整行展开位的行中心」瞬移到「网格格子的格中心」，瞬时 scrollIntoView 再叠一跳——
-      // 两次跳变就是抽搐感。FLIP：先量旧位 → 滚动校正 → 切布局后量新位 → 给封面挂反向位移
-      // 平滑归零——瞬移与滚动跳变都被吸进这一条滑动的「牌堆回家」动画里。
-      var reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-      var cover = entry.querySelector('.album-cover');
-      if (reduceMotion || !cover) { albumScrollToEntry(entry); return; }
-      var first = cover.getBoundingClientRect();
-      albumScrollToEntry(entry); // 瞬时滚动校正（跳变会被下面的 FLIP 反向位移抵消）
-      var last = cover.getBoundingClientRect();
-      var dx = Math.round(first.left - last.left);
-      var dy = Math.round(first.top - last.top);
-      if (dx || dy) {
-        albumFlipCleanup(cover);
-        cover.style.transform = 'translate(' + dx + 'px, ' + dy + 'px)';
-        void cover.offsetWidth; // 反向位移先生效，再过渡到空 = 播放归位
-        cover.style.transition = 'transform .34s cubic-bezier(.3, .8, .3, 1)';
-        cover.style.transform = '';
-        albumFlipTimer = setTimeout(function () { albumFlipCleanup(cover); }, 380);
+      // 布局已切换：量新位播归位动画
+      if (first) {
+        var last = cover.getBoundingClientRect();
+        var dx = Math.round(first.left - last.left);
+        var dy = Math.round(first.top - last.top);
+        if (dx || dy) {
+          albumFlipCleanup(cover);
+          cover.style.transform = 'translate(' + dx + 'px, ' + dy + 'px)';
+          void cover.offsetWidth; // 反向位移先生效，再过渡到空 = 播放归位
+          cover.style.transition = 'transform .34s cubic-bezier(.3, .8, .3, 1)';
+          cover.style.transform = '';
+          albumFlipTimer = setTimeout(function () { albumFlipCleanup(cover); }, 380);
+        }
       }
     }
 

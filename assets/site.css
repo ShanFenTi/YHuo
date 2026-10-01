@@ -6447,16 +6447,24 @@
        归零防大相册入场 stagger 未重置完的残留延迟拖慢退场 */
     .album-photos.collapsing {
       display: block;
+      overflow: visible; /* 收回的卡要飞出容器上缘、落进牌堆封面（发牌的逆过程） */
       height: var(--collapse-h, 0px);
-      transition: height .42s cubic-bezier(.45, 0, .25, 1), opacity .42s ease;
-      opacity: 1;
+      transition: height .5s cubic-bezier(.5, 0, .3, 1);
     }
-    .album-photos.collapsing.wall-fade { opacity: 0; }
+    /* 每张卡的飞回位移由 JS 按其与牌堆封面的实际相对位置写入 --fly-x/--fly-y（albumToggleEntry），
+       逐张错峰（--fly-d）依次收进：加速飞向牌堆、缩到卡背大小、轻微带回旋角度、临进堆前淡出 */
     .wall-item.in.out {
       opacity: 0;
-      transform: translateY(46px) rotate(calc(var(--tilt, 0deg) * 1.5)) scale(.9);
-      transition: transform .42s var(--ease-in), opacity .32s ease;
-      transition-delay: 0s;
+      transform: translate(var(--fly-x, 0px), var(--fly-y, -240px)) rotate(calc(var(--tilt, 0deg) * 2)) scale(.08);
+      transition: transform .48s cubic-bezier(.5, 0, .75, .55), opacity .38s ease-out;
+      transition-delay: var(--fly-d, 0s);
+    }
+    /* 牌堆「接卡」轻弹：卡陆续飞回时堆身微胀一下像被塞进去（gathering 由 JS 在收回期间挂在 entry 上） */
+    .album-entry.gathering .album-stack { animation: album-deck-catch .5s var(--ease-out) .08s backwards; }
+    @keyframes album-deck-catch {
+      0% { transform: none; }
+      40% { transform: scale(1.08) rotate(-1.2deg); }
+      100% { transform: none; }
     }
     /* 其他相册浮回：从 display:none 恢复可见的瞬间从头播（animation 不依赖旧渲染态，
        对 display 切换可靠；fill 默认 none，结束不留 transform——坑 22 教训同款） */
@@ -6467,6 +6475,7 @@
     @media (prefers-reduced-motion: reduce) {
       .wall-item.in.out { transition: none; }
       .album-photos.collapsing { transition: none; }
+      .album-entry.gathering .album-stack { animation: none; }
       .album-entry.back { animation: none; }
     }
     .album-photos-inner { padding: 4px 22px 24px; }

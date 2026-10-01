@@ -7518,7 +7518,8 @@ window.__siteCalendar = (function () {
       clearTimeout(albumCollapseTimer);
       albumCollapseTimer = null;
       var photos = wall.closest('.album-photos'); // 摘高度收拢态（容器回落 display:none，下次展开从零开始）
-      if (photos) { photos.classList.remove('collapsing', 'wall-fade'); photos.style.removeProperty('--collapse-h'); }
+      if (photos) { photos.classList.remove('collapsing'); photos.style.removeProperty('--collapse-h'); }
+      entry.classList.remove('gathering'); // 牌堆「接卡」态随收尾一起摘
       var hidden = list.querySelectorAll('.album-entry.gone'); // 先记集合：它们此刻 display:none
       list.querySelectorAll('.album-entry.expanded').forEach(function (el) { el.classList.remove('expanded'); });
       list.classList.remove('has-expanded');
@@ -7529,7 +7530,12 @@ window.__siteCalendar = (function () {
       void list.offsetWidth;
       hidden.forEach(function (el) { el.classList.add('back'); });
       // 照片退场类清掉（容器已 display:none，无感），下次展开由 albumEnterWall 重播入场
-      wall.querySelectorAll('.wall-item.out').forEach(function (el) { el.classList.remove('out'); });
+      wall.querySelectorAll('.wall-item.out').forEach(function (el) {
+        el.classList.remove('out');
+        el.style.removeProperty('--fly-x');
+        el.style.removeProperty('--fly-y');
+        el.style.removeProperty('--fly-d');
+      });
       albumScrollToEntry(entry);
     }
 
@@ -7559,9 +7565,10 @@ window.__siteCalendar = (function () {
         }, 360);
         albumScrollToEntry(entry);
       } else {
-        // 收回（站长三报「像卡片收回去、慢一点」）：照片墙容器高度锁定后平滑收拢到 0，
-        // 照片同步淡出+深下沉——整叠照片被慢慢收回牌堆的观感；420ms 后完成收尾
-        // （其他相册浮回 + 摘 expanded）。减少动态效果时跳过过渡直接收。
+        // 收回（站长四报「要像卡片收回卡堆里」= 发牌的逆过程）：每张卡按与牌堆封面的实际
+        // 相对位置算出飞回位移（--fly-x/--fly-y），逐张错峰依次收进牌堆（缩小+回旋+临进堆淡出），
+        // 牌堆 gathering 轻弹「接卡」，容器高度同步收拢腾出空间；全部收完再 finish
+        // （其他相册浮回 + 摘 expanded）。减少动态效果时跳过飞回直接收。
         var items = wall.querySelectorAll('.wall-item');
         var reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
         if (!reduceMotion && items.length) {
@@ -7571,10 +7578,25 @@ window.__siteCalendar = (function () {
             photos.classList.add('collapsing');
             void photos.offsetWidth; // 锁定高度先生效，再归零才播过渡
             photos.style.setProperty('--collapse-h', '0px');
-            photos.classList.add('wall-fade');
           }
-          items.forEach(function (el) { el.classList.add('out'); });
-          albumCollapseTimer = setTimeout(function () { albumCollapseFinish(list, wall, entry); }, 440);
+          // 飞回目的地 = 牌堆封面（album-cover）中心偏上（卡片没入堆里的位置）
+          var cover = entry.querySelector('.album-cover');
+          var cr = cover ? cover.getBoundingClientRect() : null;
+          var cx = cr ? cr.left + cr.width / 2 : 0;
+          var cy = cr ? cr.top + cr.height * 0.3 : 0;
+          // 错峰步长随卡数压缩：总错峰封顶 ~420ms，卡再多也不会拖成慢动作连播
+          var step = items.length > 1 ? Math.max(18, Math.min(55, Math.round(420 / (items.length - 1)))) : 0;
+          items.forEach(function (el, i) {
+            var r = el.getBoundingClientRect();
+            if (cr) {
+              el.style.setProperty('--fly-x', Math.round(cx - (r.left + r.width / 2)) + 'px');
+              el.style.setProperty('--fly-y', Math.round(cy - (r.top + r.height / 2)) + 'px');
+            }
+            el.style.setProperty('--fly-d', (i * step) + 'ms');
+            el.classList.add('out');
+          });
+          entry.classList.add('gathering');
+          albumCollapseTimer = setTimeout(function () { albumCollapseFinish(list, wall, entry); }, step * (items.length - 1) + 600);
         } else {
           albumCollapseFinish(list, wall, entry);
         }

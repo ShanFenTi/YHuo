@@ -1,5 +1,6 @@
 // POST /api/user/register { username, password, email?, code? } —— 开放注册，成功即自动登录
-// 邮箱服务启用时 email+code 必填（验证通过才落库）；未启用时保持纯用户名注册。
+// 邮箱服务启用且非"仅站长模式"时：后台开了「注册必须邮箱」（缺省，兼容老配置）= email+code 必填；
+// 关掉则访客可自选——填了就验证，不填就纯用户名注册（之后可在个人主页绑定邮箱找回密码）。
 import { json } from '../../lib/util.js';
 import { hashPassword, randomHex, createUserSession, userCookie } from '../../lib/auth.js';
 import { ensureSchema } from '../../lib/migrate.js';
@@ -23,18 +24,21 @@ export async function onRequestPost({ request, env }) {
     return json({ ok: false, error: '密码需 6-100 位' }, 400);
   }
 
-  // 邮箱验证（服务启用且非"仅站长模式"时强制；仅站长模式普通用户注册不要邮箱）
   const cfg = await getEmailConfig(env);
   let email = null;
   if (cfg.enabled && !cfg.adminOnly) {
-    email = String(body.email || '').trim().toLowerCase();
-    const code = String(body.code || '').trim();
-    if (!isEmailAddr(email)) return json({ ok: false, error: '请填写正确的邮箱' }, 400);
-    if (!/^\d{6}$/.test(code)) return json({ ok: false, error: '请填写 6 位邮箱验证码' }, 400);
-    try {
-      await verifyCode(env, email, 'register', code);
-    } catch (e) {
-      return json({ ok: false, error: (e && e.message) || '验证码校验失败' }, 400);
+    const requireEmail = cfg.registerRequireEmail !== false; // 缺省=强制（兼容老配置）
+    const wanted = String(body.email || '').trim().toLowerCase();
+    if (wanted || requireEmail) {
+      email = wanted;
+      const code = String(body.code || '').trim();
+      if (!isEmailAddr(email)) return json({ ok: false, error: '请填写正确的邮箱' }, 400);
+      if (!/^\d{6}$/.test(code)) return json({ ok: false, error: '请填写 6 位邮箱验证码' }, 400);
+      try {
+        await verifyCode(env, email, 'register', code);
+      } catch (e) {
+        return json({ ok: false, error: (e && e.message) || '验证码校验失败' }, 400);
+      }
     }
   }
 

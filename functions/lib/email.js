@@ -17,7 +17,7 @@ export async function getEmailConfig(env) {
   let cfg = null;
   try { cfg = JSON.parse(row ? row.value : 'null'); } catch {}
   if (!cfg || typeof cfg !== 'object') {
-    return { enabled: false, provider: 'resend', apiKey: null, from: null, adminOnly: false, ownerEmail: null };
+    return { enabled: false, provider: 'resend', apiKey: null, from: null, adminOnly: false, ownerEmail: null, registerRequireEmail: true };
   }
   const ownerEmail = isEmailAddr(cfg.owner_email) ? String(cfg.owner_email).trim().toLowerCase() : null;
   return {
@@ -29,6 +29,9 @@ export async function getEmailConfig(env) {
     // 普通用户不出现邮箱 UI，只有 owner_email 这个账号能用找回密码/绑定/2FA
     adminOnly: !!cfg.admin_only && !!ownerEmail,
     ownerEmail,
+    // 注册必须验证邮箱（2026-10-01）：缺省=强制（兼容老配置）；关闭后注册页出现
+    // 「使用邮箱注册」开关，访客可自选纯用户名注册
+    registerRequireEmail: cfg.register_require_email !== 0,
   };
 }
 

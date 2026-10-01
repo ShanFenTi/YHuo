@@ -454,6 +454,10 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
         <button id="emailAdminOnlyBtn" class="ghost" type="button">开启"仅站长使用"</button>
         <span class="meta2" id="emailAdminOnlyText">关闭：所有用户可用邮箱功能</span>
       </div>
+      <div class="bgset-row" style="margin-top:10px">
+        <button id="emailRegReqBtn" class="ghost" type="button">关闭"注册必须邮箱"</button>
+        <span class="meta2" id="emailRegReqText">已开启：注册必须验证邮箱</span>
+      </div>
     </div>
     <div class="section-card" data-superonly>
       <p class="section-title">测试发送</p>

@@ -2552,10 +2552,12 @@ window.__siteCalendar = (function () {
       var gateMode = 'login';
       var gateEmailEnabled = false;   // 邮箱功能可用（找回密码入口/重置表单）
       var gateEmailRegister = false;  // 注册需邮箱验证（仅站长模式下为 false，普通用户注册不要邮箱）
+      var gateEmailRegisterRequired = false; // 后台「注册必须邮箱」开关（缺省强制；关闭时注册页出「使用邮箱注册」勾选框，访客可自选纯用户名注册）
       var gateTicket = '';          // 登录二次验证的中间票据
       var gateUser = '';            // 进入验证码步骤时暂存用户名
       var gateEmailInput = document.getElementById('gateEmail');
       var gateCodeInput = document.getElementById('gateCode');
+      var gateEmailOpt = document.getElementById('gateEmailOpt');
       var gateNewPassInput = document.getElementById('gateNewPass');
       var gateSendCodeBtn = document.getElementById('gateSendCode');
       var forgotBtn = document.getElementById('forgotBtn');
@@ -2690,7 +2692,12 @@ window.__siteCalendar = (function () {
 
       function setGateMode(mode) {
         gateMode = mode;
-        var emailOn = (gateEmailRegister && mode === 'register') || (gateEmailEnabled && mode === 'reset');
+        // 注册邮箱开关行：仅「邮件服务开启 + 后台未强制」的注册模式显示；
+        // 勾选态决定邮箱/验证码两行是否出现（后台强制时恒显示，开关行隐藏）
+        var regOptVisible = gateEmailRegister && !gateEmailRegisterRequired && mode === 'register';
+        gateSlide(document.getElementById('emailOptField'), regOptVisible);
+        var regEmailOn = gateEmailRegister && mode === 'register' && (gateEmailRegisterRequired || (gateEmailOpt && gateEmailOpt.checked));
+        var emailOn = regEmailOn || (gateEmailEnabled && mode === 'reset');
         var codeOn = emailOn || mode === 'code';
         // code 模式：验证码由服务器在密码验证通过时已发送，隐藏手动发送按钮
         // （先定发送按钮显隐再展开验证码行，量出来的高度才准确）
@@ -2716,13 +2723,20 @@ window.__siteCalendar = (function () {
         .then(function (r) { return r.ok ? r.json() : null; })
         .then(function (d) {
           var was = gateEmailEnabled;
+          var wasReq = gateEmailRegisterRequired;
           gateEmailEnabled = !!(d && d.ok && d.emailEnabled);
           gateEmailRegister = !!(d && d.ok && d.emailRegister);
-          if (was !== gateEmailEnabled || (gateMode === 'register' && !gateEmailRegister)) {
+          gateEmailRegisterRequired = !!(d && d.ok && d.emailRegisterRequired);
+          if (was !== gateEmailEnabled || wasReq !== gateEmailRegisterRequired || (gateMode === 'register' && !gateEmailRegister)) {
             setGateMode(gateMode); // 刷新字段可见性
           }
         })
         .catch(function () {});
+
+      // 注册邮箱开关：勾选切换时重跑字段显隐（邮箱/验证码两行随勾选滑入滑出）
+      if (gateEmailOpt) {
+        gateEmailOpt.addEventListener('change', function () { setGateMode(gateMode); });
+      }
 
       // 登录成功统一收口（普通登录 / 二次验证通过共用）
       function gateLoginDone(d, fallbackUser) {
@@ -2806,15 +2820,17 @@ window.__siteCalendar = (function () {
           if (gateMode === 'register') {
             if (!u || !p) { showLoginMsg('请填写账号和密码'); return; }
             if (p.length < 6) { showLoginMsg('密码至少 6 位'); return; }
-            if (gateEmailRegister) {
+            // 邮箱可选（2026-10-01）：后台强制时必填；否则跟勾选框走——勾了才要邮箱+验证码
+            var useEmail = gateEmailRegister && (gateEmailRegisterRequired || (gateEmailOpt && gateEmailOpt.checked));
+            if (useEmail) {
               if (!email) { showLoginMsg('请填写邮箱'); return; }
               if (!/^\d{6}$/.test(code)) { showLoginMsg('请填写 6 位邮箱验证码'); return; }
             }
             showLoginMsg('注册中…');
             authJson('/api/user/register', {
               username: u, password: p,
-              email: gateEmailRegister ? email : undefined,
-              code: gateEmailRegister ? code : undefined,
+              email: useEmail ? email : undefined,
+              code: useEmail ? code : undefined,
             }, function (d) {
               if (d.ok) {
                 setLoginAvatar(null); // 新注册没有头像

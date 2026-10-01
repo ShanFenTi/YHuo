@@ -2619,9 +2619,10 @@
     $('emailKeyEye').innerHTML = emailKeyShown ? ICO.eyeOff : ICO.eye;
   });
   var emailAdminOnlyNow = false;
+  var emailRegReqNow = true; // 注册必须邮箱（2026-10-01）：缺省强制，兼容老配置
   function emailStateText(enabled) {
     $('emailStateText').textContent = enabled
-      ? '已启用：' + (emailAdminOnlyNow ? '仅站长可用（找回密码/绑定/2FA 限站长邮箱）' : '前台注册需邮箱验证，找回密码/二次验证可用')
+      ? '已启用：' + (emailAdminOnlyNow ? '仅站长可用（找回密码/绑定/2FA 限站长邮箱）' : (emailRegReqNow ? '前台注册需邮箱验证，找回密码/二次验证可用' : '前台注册邮箱可选，找回密码/二次验证可用'))
       : '未启用：前台不显示邮箱相关功能';
     $('emailToggleBtn').textContent = enabled ? '停用' : '启用';
   }
@@ -2631,11 +2632,18 @@
       : '关闭：所有用户可用邮箱功能';
     $('emailAdminOnlyBtn').textContent = on ? '关闭"仅站长使用"' : '开启"仅站长使用"';
   }
+  function emailRegReqText(on) {
+    $('emailRegReqText').textContent = on
+      ? '已开启：注册必须验证邮箱'
+      : '已关闭：注册页出「使用邮箱注册」勾选框，访客可自选纯用户名注册（之后可在个人主页绑定邮箱）';
+    $('emailRegReqBtn').textContent = on ? '关闭"注册必须邮箱"' : '开启"注册必须邮箱"';
+  }
   function loadEmailSettings() {
     api('/api/admin/email').then(function (d) {
       if (!d.ok) { toast(d.error || '读取邮件配置失败', 'err'); return; }
       emailEnabledNow = !!d.enabled;
       emailAdminOnlyNow = !!d.adminOnly;
+      emailRegReqNow = d.registerRequireEmail !== false;
       $('emailProviderDrop').value = d.provider;
       $('emailFrom').value = d.from || '';
       $('emailApiKey').value = '';
@@ -2643,6 +2651,7 @@
       $('emailKeyHint').textContent = d.keySet ? '已保存（尾 4 位 ' + d.keyTail + '）；输入框留空 = 不修改' : '未设置';
       $('emailOwnerInput').value = d.ownerEmail || '';
       emailAdminOnlyText(emailAdminOnlyNow);
+      emailRegReqText(emailRegReqNow);
       emailStateText(d.enabled);
     }).catch(function () { toast('网络错误', 'err'); });
   }
@@ -2659,16 +2668,23 @@
         from: $('emailFrom').value.trim(),
         owner_email: ownerEmail,
         api_key: $('emailApiKey').value.trim() || undefined, // 留空 = 保留原 Key
+        register_require_email: opts.register_require_email != null ? opts.register_require_email : emailRegReqNow,
       })
     }).then(function (d) {
       if (d.ok) {
         emailEnabledNow = !!d.enabled;
+        emailRegReqNow = d.registerRequireEmail !== false;
         $('emailApiKey').value = '';
         loadEmailSettings();
         if (done) done(d);
       } else toast(d.error || '保存失败', 'err');
     }).catch(function () { toast('网络错误', 'err'); });
   }
+  $('emailRegReqBtn').addEventListener('click', function () {
+    saveEmailConfig({ enabled: emailEnabledNow, admin_only: emailAdminOnlyNow, register_require_email: !emailRegReqNow }, function (d) {
+      toast(d.registerRequireEmail ? '注册必须验证邮箱' : '注册邮箱改为可选，访客可自选', 'ok');
+    });
+  });
   $('emailAdminOnlyBtn').addEventListener('click', function () {
     var next = !emailAdminOnlyNow;
     if (next && !$('emailOwnerInput').value.trim()) {

@@ -6619,3 +6619,26 @@
     }
     .shower-chip .sc-star { font-style: normal; color: var(--apple-accent); font-size: 12px; }
 
+
+    /* ===== 登录卡·注册邮箱开关（2026-10-01）：邮件服务开启且后台未强制时显示 =====
+       勾选=邮箱注册（可用于找回密码），去勾=纯用户名注册（之后可在个人主页绑定邮箱） */
+    .login-emailopt {
+      flex-direction: row;
+      align-items: center;
+      gap: 8px;
+      cursor: pointer;
+      user-select: none;
+    }
+    .login-emailopt input[type='checkbox'] {
+      width: 15px;
+      height: 15px;
+      margin: 0;
+      flex: none;
+      accent-color: var(--primary);
+      cursor: pointer;
+    }
+    .login-emailopt span {
+      font-size: 12.5px;
+      font-weight: 500;
+      color: var(--apple-muted-foreground);
+    }

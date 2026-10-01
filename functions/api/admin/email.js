@@ -22,6 +22,7 @@ export async function onRequestGet({ env }) {
     keyTail: cfg.api_key ? String(cfg.api_key).slice(-4) : '',
     adminOnly: !!cfg.admin_only,
     ownerEmail: cfg.owner_email || '',
+    registerRequireEmail: cfg.register_require_email !== 0,
   });
 }
 
@@ -46,18 +47,20 @@ export async function onRequestPut({ request, env }) {
     body.owner_email != null ? body.owner_email : (old.owner_email || '')
   ).trim().toLowerCase();
   const adminOnly = !!body.admin_only && isEmailAddr(ownerEmail); // 开"仅站长"必须有站长邮箱
+  // 注册必须验证邮箱（2026-10-01）：缺省=强制（兼容老配置）；false=注册页访客可自选不用邮箱
+  const registerRequireEmail = body.register_require_email !== false;
 
   if (!isEmailAddr(from)) return json({ ok: false, error: '发件地址格式不正确' }, 400);
   if (body.admin_only && !isEmailAddr(ownerEmail)) {
     return json({ ok: false, error: '开启"仅站长使用"前请填写站长邮箱' }, 400);
   }
 
-  const cfg = { provider, from, api_key: apiKey, enabled, admin_only: adminOnly, owner_email: ownerEmail || null };
+  const cfg = { provider, from, api_key: apiKey, enabled, admin_only: adminOnly, owner_email: ownerEmail || null, register_require_email: registerRequireEmail ? 1 : 0 };
   await env.DB
     .prepare('INSERT INTO site_settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value')
     .bind(CONFIG_KEY, JSON.stringify(cfg))
     .run();
-  return json({ ok: true, enabled, provider, from, keySet: !!apiKey, adminOnly, ownerEmail });
+  return json({ ok: true, enabled, provider, from, keySet: !!apiKey, adminOnly, ownerEmail, registerRequireEmail });
 }
 
 export async function onRequestPost({ request, env }) {

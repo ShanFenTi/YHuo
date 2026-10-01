@@ -562,6 +562,11 @@
         <span>密码</span>
         <input type="password" id="loginPass" placeholder="密码（至少 6 位）">
       </label>
+      <!-- 注册邮箱开关（2026-10-01）：邮件服务开启且后台未强制时显示；勾选=邮箱注册（可用于找回密码），去勾=纯用户名注册（之后可在个人主页绑定邮箱） -->
+      <label class="login-field login-emailopt" id="emailOptField" style="display:none">
+        <input type="checkbox" id="gateEmailOpt" checked>
+        <span>使用邮箱注册</span>
+      </label>
       <p class="login-error" id="loginError" hidden>请填写账号和密码</p>
       <div class="login-actions">
         <button class="login-btn" type="submit" id="loginSubmitBtn">登 录</button>

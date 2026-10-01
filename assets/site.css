@@ -6448,7 +6448,7 @@
     .album-photos.collapsing {
       display: block;
       height: var(--collapse-h, 0px);
-      transition: height .42s var(--ease-in-out), opacity .42s ease;
+      transition: height .42s cubic-bezier(.45, 0, .25, 1), opacity .42s ease;
       opacity: 1;
     }
     .album-photos.collapsing.wall-fade { opacity: 0; }

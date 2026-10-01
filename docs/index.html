@@ -19,7 +19,7 @@
   <title>关于 - YHuo</title>
   <!-- 悬停预取（Speculation Rules API，2026-09-10 性能批次）：moderate=悬停/指针按下才预取，保守不费流量；
        document 规则默认只匹配同源文档链接，HTML 是 GET 静态无副作用预取安全，/admin/* 会触发会话故排除，
-       /api 是 XHR 不会被命中；不支持的浏览器静默忽略。九页外壳同步块（坑 23），改请九处同步 -->
+       /api 是 XHR 不会被命中；不支持的浏览器静默忽略。八页外壳同步块（坑 23），改请八处同步 -->
   <script type="speculationrules">{"prefetch":[{"source":"document","where":{"and":[{"href_matches":"/*"},{"not":{"href_matches":"/admin/*"}}]},"eagerness":"moderate"}]}</script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -30,7 +30,7 @@
   <style id="boot-css">html{background:#f8f7f4}html.dark{background:#000000}html.dark #iconMoon{display:none}html.dark #iconSun{display:inline}</style>
   <!-- 原为 <style type="text/tailwindcss"> + @theme inline，2026-09-15 摘除 Tailwind 浏览器
        运行时编译器（jsdelivr CDN 同步阻塞，且全站经审计零工具类、@theme 变量无外部消费者）：
-       变量块改 :root 原样保留，@layer base preflight 是合法原生 CSS；改这段仍要九页同步（坑 23）-->
+       变量块改 :root 原样保留，@layer base preflight 是合法原生 CSS；改这段仍要八页同步（坑 23）-->
 <style>
     :root {
       --color-background: var(--apple-background);

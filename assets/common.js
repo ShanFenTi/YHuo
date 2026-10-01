@@ -140,7 +140,7 @@ window.__siteCalendar = (function () {
       var reduceMQ = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)');
       if (!reduceMQ || reduceMQ.matches) return;
       if (!document.documentElement.classList.contains('fx-reveal')) return;
-      var SEL = '.page-main :is(.album-bar, .apple-card, .tool-card, .tool-more, .doc-card, .note, .notes-year, .notes-lead)';
+      var SEL = '.page-main :is(.album-bar, .apple-card, .doc-card, .note, .notes-year, .notes-lead)'; // 与 site.css 揭示清单同款（两侧同步改）
       // 文档阅读层（docViewer 是外壳浮层，不在 .page-main 内，单独一档）：mdToHtml 的顶层块 +
       // 更新日志时间轴按天（.cl-day）逐块揭示；只在阅读层开着时采集（关着 display:none 量到 0 会全部被误判已入视口）
       // hr 必须与 site.css 揭示清单同款——CSS 把 hr 压成 opacity:0 待揭示，这里不采集它就永远隐身（mdToHtml 会产 <hr>）
@@ -3358,7 +3358,7 @@ window.__siteCalendar = (function () {
     }
     // ---- 成就徽章墙（零后端改动）：全部由签到 GET 已返回的字段实时计算——
     //      total=累计天数 / streak=连续天数（今天没签时即按昨天起算的历史连续）/ level.lv=当前等级（0~6）。
-    //      容器动态挂在 #ckWeek 之后（外壳 HTML 九页共享一份，不动 HTML），徽章随签到卡整体显隐：
+    //      容器动态挂在 #ckWeek 之后（外壳 HTML 八页共享一份，不动 HTML），徽章随签到卡整体显隐：
     //      卡片 display:none 或管理员模式不拉取（loadCheckin 早退）时，徽章墙天然不出现。
     var CK_BADGES = [
       { ico: '🌱', name: '初来乍到', kind: 'total', need: 1 },
@@ -4376,8 +4376,12 @@ window.__siteCalendar = (function () {
       if (!favEmptyEl) return;
       var m = favMusicEl ? favMusicEl.children.length : 0;
       var favPhotosEl = document.getElementById('favPhotos');
-      var p = favPhotosEl ? favPhotosEl.children.length : 0;
+      var p = (favPhotosEl && !favPhotosEl.hidden) ? favPhotosEl.children.length : 0; // 照片区被开关藏起时不计数
       favEmptyEl.hidden = !!(m + p);
+      // 相册关闭时收藏入口只剩音乐，文案不再指路照片
+      favEmptyEl.textContent = FLAGS_OFF.albumView
+        ? '还没有收藏。播放列表里的 ♥ 收藏音乐。'
+        : '还没有收藏。相册大图右上角的 ♥ 收藏照片，播放列表里的 ♥ 收藏音乐。';
     }
 
     function renderFavorites() {
@@ -4394,8 +4398,14 @@ window.__siteCalendar = (function () {
 
       var favPhotosEl = document.getElementById('favPhotos');
       if (favPhotosEl) {
+        // 相册界面被后台关掉时照片收藏区随入口一起隐藏（收藏数据不动，重开即回；搜索图片组同口径有守卫，
+        // 不藏的话点击只会被 pjax 守卫弹回首页、还留下待打开通道）
+        var albumOn = !FLAGS_OFF.albumView;
+        var photoTitle = favPhotosEl.previousElementSibling; // 「照片」小节标题（外壳静态节点，随区一起藏）
+        favPhotosEl.hidden = !albumOn;
+        if (photoTitle && photoTitle.classList.contains('profilev-sec-title')) photoTitle.hidden = !albumOn;
         favPhotosEl.innerHTML = '';
-        photos.forEach(function (f) {
+        if (albumOn) photos.forEach(function (f) {
           var b = document.createElement('button');
           b.className = 'fav-photo';
           b.type = 'button';
@@ -4407,10 +4417,9 @@ window.__siteCalendar = (function () {
           img.onerror = function () { b.remove(); updateFavEmpty(); }; // 媒体已删除的失效收藏
           b.appendChild(img);
           b.addEventListener('click', function () {
-            // 关掉个人主页，让相册页接收「待打开照片」直接开大图（图已不在相册则只进页面）
+            // 关掉个人主页去看大图：已在相册页就地开灯箱，否则去相册页自动开（图已删则清通道不跳）
             closeProfileView();
-            try { sessionStorage.setItem('yhuoAlbumOpenPhoto', f.url); } catch (e) {}
-            pjaxGo('/album/');
+            albumOpenPhoto(f.url);
           });
           favPhotosEl.appendChild(b);
         });
@@ -6949,13 +6958,12 @@ window.__siteCalendar = (function () {
             push('视频', '视频', stripExt(v.name), function () { pjaxGo('/'); }, { sub: '回首页播放' });
           });
         }
-        // 图片/相册（2026-10-01 随相册页恢复）：点图片 → pjax 去相册页并自动开灯箱（sessionStorage 传 URL）
+        // 图片/相册（2026-10-01 随相册页恢复）：点图片 → albumOpenPhoto（已在相册页就地开灯箱，否则跳页自动开）
         if (!FLAGS_OFF.albumView) {
           var albumNames = {};
           data.images.forEach(function (im) {
             push('图片', '图片', im.name || im.url, function () {
-              try { sessionStorage.setItem('yhuoAlbumOpenPhoto', im.url); } catch (e) {}
-              pjaxGo('/album/');
+              albumOpenPhoto(im.url);
             }, { sub: im.album || '' });
             if (im.album) albumNames[im.album] = true;
           });
@@ -6969,7 +6977,7 @@ window.__siteCalendar = (function () {
         out.forEach(function (it) {
           if (ql && it.hl < 0) return;
           if (scope && it.group !== scope) return; // 前缀作用域（/ 随笔、# 音乐）：只留目标组
-          if (!ql && !scope && it.group !== '界面' && it.group !== '工具') return;
+          if (!ql && !scope && it.group !== '界面') return; // 空查询只列界面快跳，其余组都要有输入才出现
           if (!byGroup[it.group]) { byGroup[it.group] = []; groupOrder.push(it.group); }
           byGroup[it.group].push(it);
         });
@@ -7294,6 +7302,9 @@ window.__siteCalendar = (function () {
     var albumLbIndex = 0;
     var albumLbKeydown = null;
     var albumLbFavsChanged = null;
+    var albumLoaded = false; // 本页图片清单是否到终态（成功/失败；加载中 false——albumOpenPhoto 据此决定就地开灯箱还是写通道等渲染后消费）
+    var albumGoneTimer = null;     // 展开后其他相册「缩小退场完成 → display:none」的 360ms 延迟
+    var albumCollapseTimer = null; // 收回时「照片淡出 → 容器收起+相册浮回」的 200ms 延迟
 
     function albumStopCycles() {
       albumTimers.forEach(function (t) { clearInterval(t); });
@@ -7351,7 +7362,11 @@ window.__siteCalendar = (function () {
       lightbox.classList.add('show');
     }
     function albumLbStep(delta) {
+      var lightbox = document.getElementById('lightbox');
       var lightboxImg = document.getElementById('lightboxImg');
+      // 灯箱没开着不翻页：否则相册页按 ←/→（键盘滚屏/搜索输入框里移光标）会给隐藏 img 换 src 白拉大图。
+      // 用 .show 判据兼盖关闭动画那 250ms（hidden 要等动画播完才置 true）
+      if (!lightbox || lightbox.hidden || !lightbox.classList.contains('show')) return;
       if (!lightboxImg || albumImgs.length < 2) return;
       albumLbIndex = (albumLbIndex + delta + albumImgs.length) % albumImgs.length;
       lightboxImg.src = albumImgs[albumLbIndex].url;
@@ -7378,6 +7393,8 @@ window.__siteCalendar = (function () {
         if (!total) empty.textContent = '相册里还没有照片。在后台「图片」页上传（可分组到相册），这里就会展示。';
       }
       if (!total) return;
+      var idxOf = {}; // url → 全局下标（灯箱索引），替代每张 indexOf 的 O(n²) 扫描
+      albumImgs.forEach(function (im, i) { if (!(im.url in idxOf)) idxOf[im.url] = i; });
       groups.forEach(function (group) {
         var entry = document.createElement('div');
         entry.className = 'album-entry';
@@ -7396,6 +7413,7 @@ window.__siteCalendar = (function () {
           el.src = img.url;
           el.alt = img.name || '';
           el.loading = 'lazy';
+          el.decoding = 'async'; // 解码挪出动画关键路径（展开瞬切高度时避免集中同步解码卡帧）
           wrap.appendChild(el);
           photo.appendChild(wrap);
           stack.appendChild(photo);
@@ -7423,7 +7441,7 @@ window.__siteCalendar = (function () {
         var wall = document.createElement('div');
         wall.className = 'wall';
         group.imgs.forEach(function (img) {
-          var gi = albumImgs.indexOf(img);
+          var gi = idxOf[img.url] != null ? idxOf[img.url] : 0;
           var item = document.createElement('div');
           item.className = 'wall-item';
           item.style.setProperty('--tilt', (((gi * 47) % 17) - 8) + 'deg'); // 旧版同款伪随机倾斜
@@ -7435,6 +7453,7 @@ window.__siteCalendar = (function () {
           el.src = img.url;
           el.alt = img.name || '';
           el.loading = 'lazy';
+          el.decoding = 'async'; // 同上：照片墙错落入场期间不让解码抢主线程
           el.addEventListener('load', function () {
             if (el.naturalHeight > el.naturalWidth) wrap.classList.add('portrait');
           });
@@ -7463,6 +7482,7 @@ window.__siteCalendar = (function () {
             var imgB = document.createElement('img');
             imgB.className = 'under';
             imgB.alt = '';
+            imgB.decoding = 'async';
             frontWrap.appendChild(imgB);
             var aOnTop = true;
             var nextIdx = 3;
@@ -7484,28 +7504,61 @@ window.__siteCalendar = (function () {
       });
     }
 
+    // 收回最后一步（照片淡出 200ms 后调用；快速连点/离页也会立即执行它兜底）：
+    // 一次性收起布局（高度仍不参与动画）+ 之前退场的相册浮回 + 焦点锚回被收回的相册
+    function albumCollapseFinish(list, wall, entry) {
+      clearTimeout(albumCollapseTimer);
+      albumCollapseTimer = null;
+      var hidden = list.querySelectorAll('.album-entry.gone'); // 先记集合：它们此刻 display:none
+      list.querySelectorAll('.album-entry.expanded').forEach(function (el) { el.classList.remove('expanded'); });
+      list.classList.remove('has-expanded');
+      hidden.forEach(function (el) { el.classList.remove('gone'); }); // 布局在此帧完成收缩
+      // 浮回动画：摘再加 + 强制 reflow 保证每次收回都重播（被收回的 entry 自身不播——
+      // 它一直可见，opacity 从 0 起会闪灭）
+      hidden.forEach(function (el) { el.classList.remove('back'); });
+      void list.offsetWidth;
+      hidden.forEach(function (el) { el.classList.add('back'); });
+      // 照片退场类清掉（容器已 display:none，无感），下次展开由 albumEnterWall 重播入场
+      wall.querySelectorAll('.wall-item.out').forEach(function (el) { el.classList.remove('out'); });
+      entry.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
     function albumToggleEntry(entry, wall) {
       var list = document.getElementById('albumList');
       if (!list) return;
+      // 快速连点：上一次收回的淡出还没走完就又点了 → 先立刻完成那次收回再响应本次
+      // （wasExpanded 要在这之后读——finish 会摘掉 expanded，提前读会拿到过时的 true
+      // 把「收回中再点一下=重新展开」误判成又一次收回）
+      if (albumCollapseTimer) albumCollapseFinish(list, wall, entry);
       var wasExpanded = entry.classList.contains('expanded');
-      list.querySelectorAll('.album-entry.expanded').forEach(function (el) {
-        el.classList.remove('expanded');
-      });
-      list.classList.remove('has-expanded');
       if (!wasExpanded) {
+        clearTimeout(albumGoneTimer);
+        list.querySelectorAll('.album-entry.gone').forEach(function (el) { el.classList.remove('gone'); });
+        list.querySelectorAll('.album-entry.expanded').forEach(function (el) {
+          el.classList.remove('expanded');
+        });
+        list.classList.remove('has-expanded');
         entry.classList.add('expanded');
         list.classList.add('has-expanded');
         albumEnterWall(wall);
-        setTimeout(function () {
+        albumGoneTimer = setTimeout(function () {
+          albumGoneTimer = null;
           list.querySelectorAll('.album-entry:not(.expanded)').forEach(function (el) {
             el.classList.add('gone');
           });
         }, 360);
         entry.scrollIntoView({ behavior: 'smooth', block: 'start' });
       } else {
-        list.querySelectorAll('.album-entry.gone').forEach(function (el) {
-          el.classList.remove('gone');
-        });
+        // 收回：照片墙先整体淡出下沉（纯合成不碰布局），200ms 后一次性收起。
+        // 减少动态效果时跳过淡出直接收（与 albumEnterWall 的降级一致）
+        var items = wall.querySelectorAll('.wall-item');
+        var reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        if (!reduceMotion && items.length) {
+          items.forEach(function (el) { el.classList.add('out'); });
+          albumCollapseTimer = setTimeout(function () { albumCollapseFinish(list, wall, entry); }, 200);
+        } else {
+          albumCollapseFinish(list, wall, entry);
+        }
       }
     }
 
@@ -7529,8 +7582,27 @@ window.__siteCalendar = (function () {
       }, items.length * 70 + 700);
     }
 
+    // 跳转相册页打开指定照片的统一入口（搜索图片条目/个人主页收藏照片共用）。
+    // 已在相册页就地开灯箱——同页 pjaxGo 只滚顶不重跑 init，sessionStorage 通道不会被消费，
+    // 还会残留成下次进页凭空弹出的灯箱；不在相册页才写通道、由 initAlbumPage 渲染完消费。
+    // 清单还在加载时写回通道（fetch 完成时会消费）；已就绪却找不到 = 照片已删，清通道防残留。
+    function albumOpenPhoto(url) {
+      if (!url) return;
+      if (currentPage !== 'album') {
+        try { sessionStorage.setItem('yhuoAlbumOpenPhoto', url); } catch (e) {}
+        pjaxGo('/album/');
+        return;
+      }
+      for (var i = 0; i < albumImgs.length; i++) {
+        if (albumImgs[i].url === url) { albumLbOpen(i); return; }
+      }
+      if (!albumLoaded) { try { sessionStorage.setItem('yhuoAlbumOpenPhoto', url); } catch (e) {} }
+      else { try { sessionStorage.removeItem('yhuoAlbumOpenPhoto'); } catch (e) {} }
+    }
+
     function initAlbumPage() {
       var reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      albumLoaded = false;
       albumAbort = new AbortController();
       fetch('/api/playlist', { credentials: 'same-origin', signal: albumAbort.signal })
         .then(function (r) { return r.ok ? r.json() : Promise.reject(new Error('http ' + r.status)); })
@@ -7539,6 +7611,7 @@ window.__siteCalendar = (function () {
           albumImgs = images.map(function (m) {
             return { name: m.name || '', url: m.url || '', album: m.album || '' };
           }).filter(function (m) { return m.url; });
+          albumLoaded = true;
           albumRender();
           // 搜索/个人主页收藏照片跳转带过来的「待打开照片」：渲染完自动开灯箱
           try {
@@ -7552,7 +7625,9 @@ window.__siteCalendar = (function () {
           } catch (e) {}
         })
         .catch(function (e) {
-          if (e && e.name === 'AbortError') return;
+          albumLoaded = true; // 失败也是终态（abort 时页面已离，值随下次 init 复位）
+          if (e && e.name === 'AbortError') return; // 换页中断：通道留着，后退/再进相册的下一次渲染照常消费
+          try { sessionStorage.removeItem('yhuoAlbumOpenPhoto'); } catch (e2) {} // 真失败：清通道防下次进页凭空弹灯箱
           var empty = document.getElementById('albumEmpty');
           if (empty) {
             empty.hidden = false;
@@ -7592,7 +7667,10 @@ window.__siteCalendar = (function () {
       if (albumAbort) { try { albumAbort.abort(); } catch (e) {} albumAbort = null; }
       if (albumLbKeydown) { document.removeEventListener('keydown', albumLbKeydown); albumLbKeydown = null; }
       if (albumLbFavsChanged) { document.removeEventListener('yhuo:favs-changed', albumLbFavsChanged); albumLbFavsChanged = null; }
+      clearTimeout(albumGoneTimer); albumGoneTimer = null;
+      clearTimeout(albumCollapseTimer); albumCollapseTimer = null;
       albumImgs = [];
+      albumLoaded = false;
     }
 
     var PAGE_MODULES = {
@@ -8368,7 +8446,7 @@ window.__siteCalendar = (function () {
     if (window.self !== window.top) return; // 坑 29
     var reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-    // —— 提示：复用外壳现成的顶部欢迎浮窗 #adminToast（九页外壳各有一份）。showTopToast 在主 IIFE
+    // —— 提示：复用外壳现成的顶部欢迎浮窗 #adminToast（八页外壳各有一份）。showTopToast 在主 IIFE
     // 闭包里够不着，这里直接驱动同一 DOM：换文案、藏「进入后台」钮、挂 show，3 秒自毁；
     // 主 IIFE 下次 showTopToast 会重写文案与按钮显隐，两边互不残留 ——
     var toastTimer = 0;

@@ -7525,8 +7525,11 @@ window.__siteCalendar = (function () {
       // 用户看到的仍是裸瞬移。正确序列：量旧位 → 滚动校正（在旧布局上）→ 切布局 →
       // 量新位 → 封面挂反向位移平滑归零——瞬移与滚动跳变全被吸进一条「牌堆滑回格子」。
       var reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-      var cover = entry.querySelector('.album-cover');
-      var first = (!reduceMotion && cover) ? cover.getBoundingClientRect() : null; // 旧位（整行中心）
+      // FLIP 目标必须是居中的视觉主体 .album-stack——不能量 .album-cover 盒子（它占满条目宽度、
+      // 左缘对齐条目起点），按盒子左缘算位移会整体偏大：牌堆先被甩到第一个格子再滑回自己格子
+      // （站长七报「出现在第一个相册位置上再瞬移回去」即此）
+      var cover = entry.querySelector('.album-stack');
+      var first = (!reduceMotion && cover) ? cover.getBoundingClientRect() : null; // 旧位（展开时堆的居中位置）
       albumScrollToEntry(entry); // 瞬时滚动校正（此刻还在旧布局上做，封面跳变交给 FLIP 抵消）
       var photos = wall.closest('.album-photos'); // 摘高度收拢态（容器回落 display:none，下次展开从零开始）
       if (photos) { photos.classList.remove('collapsing'); photos.style.removeProperty('--collapse-h'); }
@@ -7588,8 +7591,8 @@ window.__siteCalendar = (function () {
       if (albumCollapseTimer) albumCollapseFinish(list, wall, entry);
       var wasExpanded = entry.classList.contains('expanded');
       if (!wasExpanded) {
-        var pc = entry.querySelector('.album-cover');
-        if (pc) albumFlipCleanup(pc); // 上一次收回的归位动画还在播就再点开：立即中止，防封面带位移展开
+        var pc = entry.querySelector('.album-stack');
+        if (pc) albumFlipCleanup(pc); // 上一次收回的归位动画还在播就再点开：立即中止，防牌堆带位移展开
         clearTimeout(albumGoneTimer);
         list.querySelectorAll('.album-entry.gone').forEach(function (el) { el.classList.remove('gone'); });
         list.querySelectorAll('.album-entry.expanded').forEach(function (el) {

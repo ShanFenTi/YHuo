@@ -98,6 +98,20 @@ console.log('[3] 前台页面本地引用');
       if (!existsSync(target)) { bad++; fail(`${p} 引用 ${path} 不存在`); }
     }
   }
+  // admin 模板的外链资产（2026-10-01 拆分起引用 /assets/admin.css|js，带 ?v=__V__ 占位符；
+  // admin 页由函数直出、不在上面的八页清单里，单查一遍防"拆分后引用了不存在的文件"）
+  {
+    const adminSrc = readFileSync(join(ROOT, 'functions', 'admin', 'index.js'), 'utf8');
+    const adminRefRe = /(?:src|href)="(\/assets\/[^"']+?)"/g;
+    let m, adminBad = 0, adminN = 0;
+    while ((m = adminRefRe.exec(adminSrc))) {
+      const path = m[1].split('?')[0];
+      adminN++; checked++;
+      if (!existsSync(join(ROOT, path))) { adminBad++; fail(`functions/admin/index.js 引用 ${path} 不存在`); }
+    }
+    if (adminN === 0) { fail('functions/admin/index.js 没有外链 /assets/ 引用（拆分写法变了？同步更新本检查）'); }
+    else if (!adminBad) ok(`admin 模板外链资产 ${adminN} 个全部存在`);
+  }
   if (!bad) ok(`八个页面本地静态引用 ${checked} 个全部存在`);
 }
 
@@ -201,6 +215,25 @@ console.log('[5] admin 求值后内联脚本语法（坑 18 兜底）');
       if (i === 0) fail('admin 求值后页面没有内联 <script>（提取正则失效？）');
       else if (!bad) ok(`admin 求值后页面 内联脚本 ${i} 块全部通过（求值后页面 ${page.length} 字符）`);
     }
+  }
+  // 2026-10-01 拆分后 admin 的主体脚本/样式在 assets/admin.js|css（普通静态文件，无模板转义问题）：
+  // JS 按普通脚本语法校验；CSS 做花括号配平兜底（真语法错误交给浏览器实测兜底）
+  try {
+    new Function(readFileSync(join(ROOT, 'assets', 'admin.js'), 'utf8'));
+    ok('assets/admin.js 语法通过（普通脚本，单反斜杠写法）');
+  } catch (e) {
+    fail(`assets/admin.js 语法错误：${e.message}`);
+  }
+  {
+    const css = readFileSync(join(ROOT, 'assets', 'admin.css'), 'utf8');
+    let bal = 0;
+    for (const ch of css) {
+      if (ch === '{') bal++;
+      else if (ch === '}') bal--;
+      if (bal < 0) break;
+    }
+    if (bal === 0) ok(`assets/admin.css 花括号配平（${css.length} 字符）`);
+    else fail(`assets/admin.css 花括号不配平（差 ${bal}）——疑似截断或多了括号`);
   }
 }
 

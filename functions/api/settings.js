@@ -39,9 +39,9 @@ export async function onRequestGet({ env }) {
         };
       }
     } catch {}
-    // 功能开关：tools/docs 顶栏界面 + weather/lyric/video 首页模块（缺省全开；
-    // 关掉的界面前台直接隐藏，ai 跟随 ai_enabled 不在此列；album/misc 界面已移除，旧库存量键忽略）
-    const flags = { tools: true, docs: true, weather: true, lyric: true, video: true };
+    // 功能开关：tools/docs/album 顶栏界面 + weather/lyric/video 首页模块（缺省全开；
+    // 关掉的界面前台直接隐藏，ai 跟随 ai_enabled 不在此列；misc 界面已移除，旧库存量键忽略）
+    const flags = { tools: true, docs: true, album: true, weather: true, lyric: true, video: true };
     try {
       const f = JSON.parse(map.feature_flags || 'null');
       if (f && typeof f === 'object' && !Array.isArray(f)) {
@@ -69,7 +69,7 @@ export async function onRequestGet({ env }) {
       flags,
     }, 200, { 'Cache-Control': 'public, max-age=60' });
   } catch {
-    const flags = { tools: true, docs: true, weather: true, lyric: true, video: true };
+    const flags = { tools: true, docs: true, album: true, weather: true, lyric: true, video: true };
     return json({ ok: true, accent: null, background: null, quotes: [], quote: null, blur: null, emailEnabled: false, emailRegister: false, emailRegisterRequired: true, playerMode: 'mini', flags }, 200, { 'Cache-Control': 'no-store' });
   }
 }

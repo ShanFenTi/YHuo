@@ -4448,11 +4448,11 @@
     }
   /* 功能开关首屏预隐藏：类由 head 内联脚本按 localStorage 缓存在渲染前打上（无闪现），
      applyFeatureFlags / fetchAiConfig 拉到最新配置后会增删同样的类做校正 */
-  .ff-tools-off #toolsBtn, .ff-docs-off #docsBtn,
+  .ff-tools-off #toolsBtn, .ff-docs-off #docsBtn, .ff-album-off #albumBtn,
   .ff-ai-off #aiBtn { display: none !important; }
   .ff-video-off .video-box { display: none !important; }
   /* 首访无缓存：可选功能先藏（默认先藏、配置到了再放行；接口失败或超时兜底放行） */
-  .ff-boot-hide #toolsBtn, .ff-boot-hide #docsBtn,
+  .ff-boot-hide #toolsBtn, .ff-boot-hide #docsBtn, .ff-boot-hide #albumBtn,
   .ff-boot-hide .video-box { display: none !important; }
   .ff-ai-boot-hide #aiBtn { display: none !important; }
     /* ===== 悬浮音乐播放器（参考博客站款，后台「外观」可选替换迷你播放条） =====
@@ -6641,4 +6641,241 @@
       font-size: 12.5px;
       font-weight: 500;
       color: var(--apple-muted-foreground);
+    }
+
+
+    /* ===== 相册页（/album/，2026-10-01 恢复）：牌堆封面 → 照片墙 → 灯箱 =====
+       旧版（2026-09-05 前寄生首页画廊）的全屏 .album-view 壳不再需要——本版是常规子页，
+       标题行复用子页通用 .album-bar/.album-title（随笔页同款），卡片壳走 .apple-card。 */
+    .album-list {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 28px;
+      user-select: none;
+      margin-top: 14px;
+    }
+    @media (max-width: 1024px) { .album-list { grid-template-columns: repeat(2, 1fr); } }
+    @media (max-width: 640px)  { .album-list { grid-template-columns: 1fr; } }
+
+    .album-entry {
+      border-radius: calc(var(--radius) - 2px);
+      cursor: pointer;
+      transition: opacity .35s var(--ease-out), transform .35s var(--ease-out);
+    }
+    .album-entry.expanded { grid-column: 1 / -1; cursor: default; }
+    /* 展开某个相册时，其它相册缩小退场 */
+    .album-list.has-expanded .album-entry:not(.expanded) { opacity: 0; transform: scale(.92); pointer-events: none; }
+    .album-list.has-expanded .album-entry:not(.expanded).gone { display: none; }
+
+    /* 牌堆封面：三张微旋转叠放，悬停/展开时扇形张开 */
+    .album-cover { padding: 22px 16px 8px; text-align: center; }
+    .album-stack { position: relative; height: 176px; max-width: 240px; margin: 0 auto; }
+    .stack-photo {
+      position: absolute; inset: 0;
+      transform-origin: center;
+      transition: transform .5s var(--spring), opacity .35s ease;
+      will-change: transform;
+    }
+    .stack-photo .img-wrap {
+      position: relative;
+      width: 100%; height: 100%;
+      border-radius: 10px; overflow: hidden;
+      border: 6px solid var(--card);
+      box-shadow: var(--shadow-md);
+      background: var(--card);
+    }
+    /* 两张图叠在一起做交叉淡入淡出（幻灯片式换图，不做位移避免割裂感） */
+    .stack-photo .img-wrap img {
+      position: absolute; inset: 0;
+      width: 100%; height: 100%; object-fit: cover; display: block;
+      transition: opacity .7s ease;
+    }
+    .stack-photo .img-wrap img.under { opacity: 0; }
+    .stack-photo:nth-child(1) { transform: rotate(-4deg) translateY(0)    scale(1);    z-index: 1; }
+    .stack-photo:nth-child(2) { transform: rotate(0deg)  translateY(12px) scale(.96); z-index: 2; }
+    .stack-photo:nth-child(3) { transform: rotate(3deg)  translateY(24px) scale(.92); z-index: 3; }
+    .album-entry:hover .stack-photo:nth-child(1),
+    .album-entry.expanded .stack-photo:nth-child(1) { transform: rotate(-12deg) translateY(-4px)  scale(.95); }
+    .album-entry:hover .stack-photo:nth-child(2),
+    .album-entry.expanded .stack-photo:nth-child(2) { transform: rotate(0deg)   translateY(-10px) scale(1); }
+    .album-entry:hover .stack-photo:nth-child(3),
+    .album-entry.expanded .stack-photo:nth-child(3) { transform: rotate(12deg)  translateY(-4px)  scale(.95); }
+
+    .album-count-badge {
+      position: absolute; bottom: -6px; right: 0; z-index: 4;
+      padding: 3px 12px; border-radius: 999px;
+      background: var(--primary); color: var(--primary-foreground);
+      font-size: 11px; font-weight: 700;
+      box-shadow: var(--shadow-md);
+    }
+
+    .album-info { margin-top: 20px; padding-bottom: 6px; }
+    .album-info h3 { font-size: 17px; font-weight: 700; }
+    .album-info p { font-size: 12px; color: var(--muted-foreground); margin-top: 4px; letter-spacing: .05em; }
+
+    /* 照片墙：max-height 0 → 撑开 */
+    .album-photos {
+      overflow: hidden;
+      max-height: 0; opacity: 0;
+      transition: max-height .45s var(--ease-out), opacity .4s ease;
+    }
+    .album-entry.expanded .album-photos { max-height: 4000px; opacity: 1; }
+    .album-photos-inner { padding: 4px 22px 24px; }
+    .wall {
+      display: grid;
+      grid-template-columns: repeat(var(--cols, 3), 1fr);
+      gap: 26px 24px;
+      padding-top: 14px;
+    }
+
+    /* 拍立得照片卡：白框 + 随机倾斜 + 错落入场 + spring 回正 */
+    .wall-item {
+      position: relative;
+      cursor: zoom-in;
+      opacity: 0;
+      /* 入场前：下移 30px、双倍倾斜；入场后由 .in 归位 */
+      transform: translateY(var(--ey, 30px)) rotate(var(--er, calc(var(--tilt, 0deg) * 2))) scale(var(--es, 1))
+        perspective(700px) rotateX(var(--ix, 0deg)) rotateY(var(--iy, 0deg));
+      transform-origin: center;
+      transition: transform .6s var(--ease-out), opacity .6s ease;
+      transition-delay: var(--d, 0s);
+    }
+    .wall-item.in {
+      --ey: 0px; --er: var(--tilt, 0deg); --es: 1;
+      opacity: 1;
+    }
+    /* 悬停 spring 回正 + 微放大（transition-delay 归零才跟手） */
+    .wall-item.in:hover {
+      --er: 0deg; --es: 1.03;
+      transition: transform .45s var(--spring);
+      transition-delay: 0s;
+      z-index: 10;
+    }
+    .wall-item .frame {
+      background: var(--card);
+      padding: 8px 8px 26px;
+      border-radius: 3px;
+      box-shadow: var(--shadow-md);
+      transition: box-shadow .3s ease;
+    }
+    .wall-item:hover .frame { box-shadow: var(--shadow-xl); }
+    .wall-item .img-wrap { overflow: hidden; border-radius: 2px; aspect-ratio: 4 / 3; }
+    .wall-item .img-wrap.portrait { aspect-ratio: 4 / 5; }
+    .wall-item img { width: 100%; height: 100%; object-fit: cover; display: block; }
+
+    /* ===== 灯箱大图预览（相册页内，随 main 装卸；z 200 低于登录卡 400） ===== */
+    .lightbox[hidden] { display: none; }
+    .lightbox {
+      position: fixed;
+      inset: 0;
+      z-index: 200;
+      background: rgba(0, 0, 0, 0.85);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: zoom-out;
+      padding: 5vw;
+      opacity: 0;
+      visibility: hidden;
+      transition: opacity 250ms var(--ease-out), visibility 250ms var(--ease-out);
+    }
+    .lightbox.show { opacity: 1; visibility: visible; }
+    .lightbox img {
+      max-width: 100%;
+      max-height: 90vh;
+      border-radius: calc(var(--radius) * 0.8);
+      box-shadow: var(--shadow-2xl);
+      transform: scale(0.95);
+      transition: transform 300ms var(--ease-out);
+    }
+    .lightbox.show img { transform: scale(1); }
+
+    .lb-fav {
+      position: absolute;
+      top: 18px;
+      right: 18px;
+      z-index: 2;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 40px;
+      height: 40px;
+      padding: 0;
+      border: none;
+      border-radius: 999px;
+      background: rgba(0, 0, 0, 0.42);
+      color: #fff;
+      cursor: pointer;
+      transition: transform 180ms var(--ease-out), background-color 180ms var(--ease-out);
+    }
+    .lb-fav:hover { transform: scale(1.1); background: rgba(0, 0, 0, 0.58); }
+    .lb-fav svg { fill: none; transition: fill 180ms var(--ease-out), stroke 180ms var(--ease-out); }
+    .lb-fav.faved svg { fill: #ff4d6a; stroke: #ff4d6a; }
+
+    /* 灯箱左右翻页按钮 + 张数指示 */
+    .lb-nav {
+      position: absolute;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 44px;
+      height: 44px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: none;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.15);
+      color: #ffffff;
+      cursor: pointer;
+      -webkit-backdrop-filter: blur(8px);
+      backdrop-filter: blur(8px);
+      transition: background-color 180ms var(--ease-out), transform 180ms var(--ease-out);
+    }
+    .lb-nav:hover {
+      background: rgba(255, 255, 255, 0.3);
+      transform: translateY(-50%) scale(1.08);
+    }
+    .lb-prev { left: 24px; }
+    .lb-next { right: 24px; }
+    .lb-nav[hidden] { display: none; }
+
+    .lb-counter {
+      position: absolute;
+      bottom: 22px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-family: var(--font-mono);
+      font-size: 13px;
+      letter-spacing: 0.15em;
+      color: rgba(255, 255, 255, 0.8);
+    }
+
+    /* ===== 个人主页 · 收藏照片网格（favPhotos，九页外壳 profileView 内） ===== */
+    .fav-photos {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+    .fav-photo {
+      width: 108px;
+      height: 108px;
+      padding: 0;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+      cursor: pointer;
+      background: var(--secondary, var(--card));
+      transition: transform 180ms var(--ease-out), box-shadow 180ms var(--ease-out);
+    }
+    .fav-photo:hover {
+      transform: translateY(-2px) scale(1.03);
+      box-shadow: var(--shadow-md);
+    }
+    .fav-photo img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
     }

@@ -2221,6 +2221,7 @@
   var FLAG_DEFS = [
     { key: 'tools', label: '工具界面' },
     { key: 'docs', label: '文档界面' },
+    { key: 'album', label: '相册界面' },
     { key: 'weather', label: '天气胶囊' },
     { key: 'lyric', label: '歌词横条' },
     { key: 'video', label: '首页视频' }

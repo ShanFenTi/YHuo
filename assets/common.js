@@ -357,8 +357,8 @@ window.__siteCalendar = (function () {
     var PAGE_KEY = document.documentElement.getAttribute('data-page') || 'home'; // 当前页面（各页 <html> 上标死）
     var onGatePassedPageHook = null; // 游客门通过后的页面回调（课表页等需登录页面注册；passGate 触发）
     var schedPageCleanup = null;     // 课表页 document 级监听的清理函数（离页摘除防叠加）
-    var PAGE_ROUTE = { home: '/', tools: '/tools/', docs: '/docs/', ai: '/ai/', board: '/board/', schedule: '/schedule/', blog: '/blog/', notes: '/notes/' };
-    var PAGE_TITLES = { home: document.title, tools: '工具合集 - YHuo', docs: '关于 - YHuo', ai: 'AI 助手 - YHuo', board: '留言板 - YHuo', schedule: '课表 - YHuo', blog: '预览 - YHuo', notes: '随笔 - YHuo' };
+    var PAGE_ROUTE = { home: '/', tools: '/tools/', docs: '/docs/', ai: '/ai/', board: '/board/', schedule: '/schedule/', blog: '/blog/', notes: '/notes/', album: '/album/' };
+    var PAGE_TITLES = { home: document.title, tools: '工具合集 - YHuo', docs: '关于 - YHuo', ai: 'AI 助手 - YHuo', board: '留言板 - YHuo', schedule: '课表 - YHuo', blog: '预览 - YHuo', notes: '随笔 - YHuo', album: '相册 - YHuo' };
 
     // 应用功能开关：给 <html> 打/摘 ff-* 类（CSS 负责隐藏；head 内联脚本已按 localStorage 缓存提前打过，这里按最新配置校正）
     // 并刷新缓存供下次访问首屏预隐藏；天气/歌词条由各自渲染入口判 FLAGS_OFF
@@ -367,6 +367,7 @@ window.__siteCalendar = (function () {
       FLAGS_OFF = {
         toolsView: flags.tools === false,
         docsView: flags.docs === false,
+        albumView: flags.album === false,
         weather: flags.weather === false,
         lyric: flags.lyric === false,
         video: flags.video === false
@@ -376,6 +377,7 @@ window.__siteCalendar = (function () {
       window.__FF_CACHE = flags; // 同步缓存镜像刷新为最新值（启动期代码判断用）
       fc.toggle('ff-tools-off', FLAGS_OFF.toolsView);
       fc.toggle('ff-docs-off', FLAGS_OFF.docsView);
+      fc.toggle('ff-album-off', FLAGS_OFF.albumView);
       fc.toggle('ff-video-off', FLAGS_OFF.video);
       try { localStorage.setItem('yhuoFlags', JSON.stringify(flags)); } catch (e) {}
       if (FLAGS_OFF.video) {
@@ -4375,18 +4377,46 @@ window.__siteCalendar = (function () {
     function updateFavEmpty() {
       if (!favEmptyEl) return;
       var m = favMusicEl ? favMusicEl.children.length : 0;
-      favEmptyEl.hidden = !!m;
+      var favPhotosEl = document.getElementById('favPhotos');
+      var p = favPhotosEl ? favPhotosEl.children.length : 0;
+      favEmptyEl.hidden = !!(m + p);
     }
 
     function renderFavorites() {
       if (!favMusicEl) return;
       favMusicEl.innerHTML = '';
       var music = [];
+      var photos = [];
       Object.keys(favSet).forEach(function (u) {
         var f = favSet[u];
-        // 收藏只处理音乐（相册界面已随杂项页移除，历史里的图片收藏项忽略）
         if (f.type === 'music') music.push(f);
+        // 照片收藏（2026-10-01 随相册页恢复）：点击去相册页自动开灯箱；媒体已删除的失效收藏渲染时自清
+        else if (f.type === 'image') photos.push(f);
       });
+
+      var favPhotosEl = document.getElementById('favPhotos');
+      if (favPhotosEl) {
+        favPhotosEl.innerHTML = '';
+        photos.forEach(function (f) {
+          var b = document.createElement('button');
+          b.className = 'fav-photo';
+          b.type = 'button';
+          b.title = f.title || '查看照片';
+          var img = document.createElement('img');
+          img.src = f.url;
+          img.alt = f.title || '收藏照片';
+          img.loading = 'lazy';
+          img.onerror = function () { b.remove(); updateFavEmpty(); }; // 媒体已删除的失效收藏
+          b.appendChild(img);
+          b.addEventListener('click', function () {
+            // 关掉个人主页，让相册页接收「待打开照片」直接开大图（图已不在相册则只进页面）
+            closeProfileView();
+            try { sessionStorage.setItem('yhuoAlbumOpenPhoto', f.url); } catch (e) {}
+            pjaxGo('/album/');
+          });
+          favPhotosEl.appendChild(b);
+        });
+      }
 
       music.forEach(function (f) {
         var li = document.createElement('li');
@@ -7512,7 +7542,7 @@ window.__siteCalendar = (function () {
       var hideTimer = null;
       var items = [];   // 当前渲染的扁平结果
       var active = 0;
-      var data = { at: 0, docs: [], music: [], videos: [], notes: [] };
+      var data = { at: 0, docs: [], music: [], videos: [], notes: [], images: [] };
 
       function loadData() {
         if (Date.now() - data.at < 60000) return;
@@ -7535,7 +7565,7 @@ window.__siteCalendar = (function () {
             }).catch(function () { data.notes = []; });
           });
         var useStatic = function () {
-          data.music = []; data.videos = [];
+          data.music = []; data.videos = []; data.images = [];
           fetch('/music/playlist.json').then(function (r) { return r.ok ? r.json() : []; }).then(function (a) {
             (Array.isArray(a) ? a : []).forEach(function (n) {
               var name = String(n);
@@ -7555,6 +7585,7 @@ window.__siteCalendar = (function () {
             if (!d || !d.ok) { useStatic(); return; }
             data.music = (d.music || []).map(function (m) { return { name: m.name || '', url: m.url || '' }; });
             data.videos = (d.video || []).map(function (m) { return { name: m.name || m.title || '', url: m.url || '' }; });
+            data.images = (d.images || []).map(function (m) { return { name: m.name || '', url: m.url || '', album: m.album || '' }; });
           })
           .catch(useStatic);
       }
@@ -7597,6 +7628,7 @@ window.__siteCalendar = (function () {
         push('界面', '界面', '留言板', function () { pjaxGo('/board/'); });
         push('界面', '界面', '课表', function () { pjaxGo('/schedule/'); });
         push('界面', '界面', '链接预览演示', function () { pjaxGo('/blog/'); });
+        if (!FLAGS_OFF.albumView) push('界面', '界面', '相册', function () { pjaxGo('/album/'); });
         // 工具卡（打开工具界面并定位到卡片）
         if (!FLAGS_OFF.toolsView) {
           var TOOLS = [
@@ -7637,6 +7669,20 @@ window.__siteCalendar = (function () {
         if (!FLAGS_OFF.video) {
           data.videos.forEach(function (v) {
             push('视频', '视频', stripExt(v.name), function () { pjaxGo('/'); }, { sub: '回首页播放' });
+          });
+        }
+        // 图片/相册（2026-10-01 随相册页恢复）：点图片 → pjax 去相册页并自动开灯箱（sessionStorage 传 URL）
+        if (!FLAGS_OFF.albumView) {
+          var albumNames = {};
+          data.images.forEach(function (im) {
+            push('图片', '图片', im.name || im.url, function () {
+              try { sessionStorage.setItem('yhuoAlbumOpenPhoto', im.url); } catch (e) {}
+              pjaxGo('/album/');
+            }, { sub: im.album || '' });
+            if (im.album) albumNames[im.album] = true;
+          });
+          Object.keys(albumNames).forEach(function (a) {
+            push('相册', '相册', a, function () { pjaxGo('/album/'); });
           });
         }
         // 组内按命中位置排序，组间按各组最佳命中排序（组保持整体，不交错——渲染按组变化插组头）
@@ -7957,6 +8003,337 @@ window.__siteCalendar = (function () {
     // 站内导航在这里拦截：fetch 目标页 → 只替换 <main>（头部/播放器/浮层/页脚都在外壳里不动）→ 音乐跨页不断播。
     // fetch 失败或禁 JS：浏览器整页加载兜底（页面本来就是真文件）。
     // =========================
+    // =========================
+    // 相册页（/album/，2026-10-01 恢复为第九个真实页面；原 2026-09-05 版寄生首页画廊 DOM，随杂项页
+    // 移除失去数据源，现直接吃 /api/playlist 的 images 分支——后台 KV 图片 + media.album 分组）。
+    // 三层结构照旧：牌堆封面（前 3 张叠放 + 悬停扇开 + 4s 封面轮播）→ 点击展开照片墙（拍立得卡错落入场）
+    // → 灯箱（左右翻页 / ♥ 收藏 / Esc / 遮罩关闭）。旧版"大卡片 3D 跟随/照片悬停倾斜"动效依赖
+    // 已随画廊删除的外观开关，不随本恢复带回。
+    // =========================
+    var albumAbort = null;
+    var albumTimers = [];
+    var albumImgs = [];       // 扁平照片清单 [{name,url,album}]（灯箱翻页/收藏按它走）
+    var albumLbIndex = 0;
+    var albumLbKeydown = null;
+    var albumLbFavsChanged = null;
+    var albumOnResize = null;
+
+    function albumStopCycles() {
+      albumTimers.forEach(function (t) { clearInterval(t); });
+      albumTimers = [];
+    }
+
+    function albumWallCols(w) {
+      return Math.max(1, Math.min(4, Math.round(w / 320)));
+    }
+
+    function albumLayoutWalls() {
+      document.querySelectorAll('#albumList .wall').forEach(function (wall) {
+        wall.style.setProperty('--cols', albumWallCols(wall.clientWidth || 800));
+      });
+    }
+
+    function albumGroups() {
+      var groups = [];
+      var byName = {};
+      var ungrouped = null;
+      albumImgs.forEach(function (img) {
+        var a = img.album || '';
+        if (!a) {
+          if (!ungrouped) { ungrouped = { title: '', imgs: [] }; groups.unshift(ungrouped); }
+          ungrouped.imgs.push(img);
+        } else {
+          if (!byName[a]) { byName[a] = { title: a, imgs: [] }; groups.push(byName[a]); }
+          byName[a].imgs.push(img);
+        }
+      });
+      if (!groups.length) groups.push({ title: '全部照片', imgs: [] });
+      if (ungrouped) ungrouped.title = groups.length > 1 ? '未分组' : '全部照片';
+      return groups;
+    }
+
+    // 灯箱：index 按 albumImgs 全局顺序（跨相册连续翻页，与旧版一致）
+    function albumLbPath() {
+      var img = albumImgs[albumLbIndex];
+      return img ? img.url : null;
+    }
+    function albumLbUpdate() {
+      var lbCounter = document.getElementById('lbCounter');
+      var lbPrev = document.getElementById('lbPrev');
+      var lbNext = document.getElementById('lbNext');
+      var lbFav = document.getElementById('lbFav');
+      var many = albumImgs.length > 1;
+      if (lbCounter) lbCounter.textContent = many ? (albumLbIndex + 1) + ' / ' + albumImgs.length : '';
+      if (lbPrev) lbPrev.hidden = !many;
+      if (lbNext) lbNext.hidden = !many;
+      if (lbFav) {
+        var on = !!(albumLbPath() && favHas(albumLbPath()));
+        lbFav.classList.toggle('faved', on);
+        lbFav.setAttribute('aria-pressed', on ? 'true' : 'false');
+      }
+    }
+    function albumLbOpen(i) {
+      var lightbox = document.getElementById('lightbox');
+      var lightboxImg = document.getElementById('lightboxImg');
+      if (!lightbox || !lightboxImg || !albumImgs.length) return;
+      albumLbIndex = i;
+      lightboxImg.src = albumImgs[albumLbIndex].url;
+      albumLbUpdate();
+      lightbox.hidden = false;
+      void lightbox.offsetWidth; // 触发重排以启用过渡动画
+      lightbox.classList.add('show');
+    }
+    function albumLbStep(delta) {
+      var lightboxImg = document.getElementById('lightboxImg');
+      if (!lightboxImg || albumImgs.length < 2) return;
+      albumLbIndex = (albumLbIndex + delta + albumImgs.length) % albumImgs.length;
+      lightboxImg.src = albumImgs[albumLbIndex].url;
+      albumLbUpdate();
+    }
+    function albumLbClose() {
+      var lightbox = document.getElementById('lightbox');
+      if (!lightbox || lightbox.hidden) return;
+      lightbox.classList.remove('show');
+      setTimeout(function () { lightbox.hidden = true; }, 250);
+    }
+
+    function albumRender() {
+      var list = document.getElementById('albumList');
+      var empty = document.getElementById('albumEmpty');
+      if (!list) return;
+      albumStopCycles();
+      list.innerHTML = '';
+      var reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      var groups = albumGroups();
+      var total = albumImgs.length;
+      if (empty) {
+        empty.hidden = total > 0;
+        if (!total) empty.textContent = '相册里还没有照片。在后台「图片」页上传（可分组到相册），这里就会展示。';
+      }
+      if (!total) return;
+      groups.forEach(function (group) {
+        var entry = document.createElement('div');
+        entry.className = 'album-entry';
+
+        // 牌堆封面：前 3 张微旋转叠放 + 数量徽章，悬停扇形张开（纯 CSS）
+        var cover = document.createElement('div');
+        cover.className = 'album-cover';
+        var stack = document.createElement('div');
+        stack.className = 'album-stack';
+        group.imgs.slice(0, 3).forEach(function (img) {
+          var photo = document.createElement('div');
+          photo.className = 'stack-photo';
+          var wrap = document.createElement('div');
+          wrap.className = 'img-wrap';
+          var el = document.createElement('img');
+          el.src = img.url;
+          el.alt = img.name || '';
+          el.loading = 'lazy';
+          wrap.appendChild(el);
+          photo.appendChild(wrap);
+          stack.appendChild(photo);
+        });
+        var badge = document.createElement('div');
+        badge.className = 'album-count-badge';
+        badge.textContent = group.imgs.length + ' 张';
+        stack.appendChild(badge);
+        var info = document.createElement('div');
+        info.className = 'album-info';
+        var h3 = document.createElement('h3');
+        h3.textContent = group.title;
+        var p = document.createElement('p');
+        p.textContent = '点击展开照片墙';
+        info.appendChild(h3);
+        info.appendChild(p);
+        cover.appendChild(stack);
+        cover.appendChild(info);
+
+        // 照片墙：拍立得白框卡，点击开灯箱
+        var photos = document.createElement('div');
+        photos.className = 'album-photos';
+        var inner = document.createElement('div');
+        inner.className = 'album-photos-inner';
+        var wall = document.createElement('div');
+        wall.className = 'wall';
+        group.imgs.forEach(function (img) {
+          var gi = albumImgs.indexOf(img);
+          var item = document.createElement('div');
+          item.className = 'wall-item';
+          item.style.setProperty('--tilt', (((gi * 47) % 17) - 8) + 'deg'); // 旧版同款伪随机倾斜
+          var frame = document.createElement('div');
+          frame.className = 'frame';
+          var wrap = document.createElement('div');
+          wrap.className = 'img-wrap';
+          var el = document.createElement('img');
+          el.src = img.url;
+          el.alt = img.name || '';
+          el.loading = 'lazy';
+          el.addEventListener('load', function () {
+            if (el.naturalHeight > el.naturalWidth) wrap.classList.add('portrait');
+          });
+          wrap.appendChild(el);
+          frame.appendChild(wrap);
+          item.appendChild(frame);
+          item.addEventListener('click', function (e) {
+            e.stopPropagation(); // 点照片开灯箱，别冒泡成收起相册
+            albumLbOpen(gi);
+          });
+          wall.appendChild(item);
+        });
+        inner.appendChild(wall);
+        photos.appendChild(inner);
+
+        entry.appendChild(cover);
+        entry.appendChild(photos);
+        entry.addEventListener('click', function () { albumToggleEntry(entry, wall); });
+        list.appendChild(entry);
+
+        // 封面轮播：每 4 秒最前一张与备用位交叉淡入淡出（悬停/展开/离页时跳过）
+        if (!reduceMotion && group.imgs.length > 3) {
+          var frontWrap = stack.children[2] && stack.children[2].querySelector('.img-wrap');
+          if (frontWrap) {
+            var imgA = frontWrap.querySelector('img');
+            var imgB = document.createElement('img');
+            imgB.className = 'under';
+            imgB.alt = '';
+            frontWrap.appendChild(imgB);
+            var aOnTop = true;
+            var nextIdx = 3;
+            var timer = setInterval(function () {
+              if (document.hidden || entry.classList.contains('expanded') || entry.matches(':hover')) return;
+              var next = group.imgs[nextIdx % group.imgs.length];
+              nextIdx++;
+              var showing = aOnTop ? imgA : imgB;
+              var standby = aOnTop ? imgB : imgA;
+              standby.src = next.url;
+              standby.alt = next.name || '';
+              standby.classList.remove('under');
+              showing.classList.add('under');
+              aOnTop = !aOnTop;
+            }, 4000);
+            albumTimers.push(timer);
+          }
+        }
+      });
+      albumLayoutWalls();
+    }
+
+    function albumToggleEntry(entry, wall) {
+      var list = document.getElementById('albumList');
+      if (!list) return;
+      var wasExpanded = entry.classList.contains('expanded');
+      list.querySelectorAll('.album-entry.expanded').forEach(function (el) {
+        el.classList.remove('expanded');
+      });
+      list.classList.remove('has-expanded');
+      if (!wasExpanded) {
+        entry.classList.add('expanded');
+        list.classList.add('has-expanded');
+        albumEnterWall(wall);
+        setTimeout(function () {
+          list.querySelectorAll('.album-entry:not(.expanded)').forEach(function (el) {
+            el.classList.add('gone');
+          });
+        }, 360);
+        entry.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      } else {
+        list.querySelectorAll('.album-entry.gone').forEach(function (el) {
+          el.classList.remove('gone');
+        });
+      }
+    }
+
+    // 照片错落入场：先整体回到入场前状态，再带 stagger 依次进场
+    function albumEnterWall(wall) {
+      var items = wall.querySelectorAll('.wall-item');
+      if (!items.length) return;
+      var reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      items.forEach(function (el) { el.classList.remove('in'); });
+      if (reduceMotion) {
+        items.forEach(function (el) { el.style.setProperty('--d', '0s'); el.classList.add('in'); });
+        return;
+      }
+      void wall.offsetWidth; // 重排让初始态生效，否则不会重放过渡
+      items.forEach(function (el, i) {
+        el.style.setProperty('--d', (i * 70) + 'ms');
+        el.classList.add('in');
+      });
+      setTimeout(function () {
+        items.forEach(function (el) { el.style.setProperty('--d', '0s'); });
+      }, items.length * 70 + 700);
+    }
+
+    function initAlbumPage() {
+      var reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      albumAbort = new AbortController();
+      fetch('/api/playlist', { credentials: 'same-origin', signal: albumAbort.signal })
+        .then(function (r) { return r.ok ? r.json() : Promise.reject(new Error('http ' + r.status)); })
+        .then(function (d) {
+          var images = (d && d.ok && Array.isArray(d.images)) ? d.images : [];
+          albumImgs = images.map(function (m) {
+            return { name: m.name || '', url: m.url || '', album: m.album || '' };
+          }).filter(function (m) { return m.url; });
+          albumRender();
+          if (!reduceMotion) {
+            albumOnResize = function () { albumLayoutWalls(); };
+            window.addEventListener('resize', albumOnResize);
+          }
+          // 搜索/个人主页收藏照片跳转带过来的「待打开照片」：渲染完自动开灯箱
+          try {
+            var pending = sessionStorage.getItem('yhuoAlbumOpenPhoto');
+            if (pending) {
+              sessionStorage.removeItem('yhuoAlbumOpenPhoto');
+              for (var i = 0; i < albumImgs.length; i++) {
+                if (albumImgs[i].url === pending) { albumLbOpen(i); break; }
+              }
+            }
+          } catch (e) {}
+        })
+        .catch(function (e) {
+          if (e && e.name === 'AbortError') return;
+          var empty = document.getElementById('albumEmpty');
+          if (empty) {
+            empty.hidden = false;
+            empty.textContent = '相册加载失败，请稍后刷新重试。';
+          }
+        });
+
+      // 灯箱交互（元素随本页 main 装卸，init 时绑定）
+      var lbPrev = document.getElementById('lbPrev');
+      var lbNext = document.getElementById('lbNext');
+      var lightbox = document.getElementById('lightbox');
+      var lbFav = document.getElementById('lbFav');
+      if (lbPrev) lbPrev.addEventListener('click', function (e) { e.stopPropagation(); albumLbStep(-1); });
+      if (lbNext) lbNext.addEventListener('click', function (e) { e.stopPropagation(); albumLbStep(1); });
+      if (lightbox) lightbox.addEventListener('click', albumLbClose); // 遮罩点击关闭（img/lb 按钮已 stopPropagation）
+      if (lbFav) {
+        lbFav.addEventListener('click', function (e) {
+          e.stopPropagation();
+          var img = albumImgs[albumLbIndex];
+          if (!img) return;
+          favToggle('image', img.url, img.name, function () { albumLbUpdate(); });
+        });
+      }
+      albumLbKeydown = function (e) {
+        if (e.key === 'Escape') albumLbClose();
+        else if (e.key === 'ArrowLeft') albumLbStep(-1);
+        else if (e.key === 'ArrowRight') albumLbStep(1);
+      };
+      document.addEventListener('keydown', albumLbKeydown);
+      // 收藏在播放列表/别处增删时，灯箱心形同步（refreshHearts 派发）
+      albumLbFavsChanged = function () { albumLbUpdate(); };
+      document.addEventListener('yhuo:favs-changed', albumLbFavsChanged);
+    }
+
+    function destroyAlbumPage() {
+      albumStopCycles();
+      if (albumAbort) { try { albumAbort.abort(); } catch (e) {} albumAbort = null; }
+      if (albumLbKeydown) { document.removeEventListener('keydown', albumLbKeydown); albumLbKeydown = null; }
+      if (albumLbFavsChanged) { document.removeEventListener('yhuo:favs-changed', albumLbFavsChanged); albumLbFavsChanged = null; }
+      if (albumOnResize) { window.removeEventListener('resize', albumOnResize); albumOnResize = null; }
+      albumImgs = [];
+    }
+
     var PAGE_MODULES = {
       home: {
         init: function () { startHomeClock(); startHomeQuote(); startHomeVideo(); startHomeWeather(); startHomeLower(); lyricRebind(); heroGlowFx.start(); },
@@ -7969,6 +8346,7 @@ window.__siteCalendar = (function () {
       },
       docs:  { init: function () { initDocsPage(); } },
       notes: { init: function () { initNotesPage(); }, onHash: function (h) { locateNote(h); } },
+      album: { init: function () { initAlbumPage(); }, destroy: destroyAlbumPage },
       ai:    { init: function () { initAiPage(); }, destroy: destroyAiPage },
       board: { init: function () { initBoardPage(); } },
       schedule: { init: function () { initSchedPage(); }, destroy: destroySchedPage }
@@ -8404,6 +8782,7 @@ window.__siteCalendar = (function () {
       '/ai':       { id: 'site', name: 'YHuo · AI 助手', desc: '多供应商多模型流式对话' },
       '/board':    { id: 'site', name: 'YHuo · 留言板', desc: '给站长或访客留句话' },
       '/schedule': { id: 'site', name: 'YHuo · 课表', desc: 'WakeUp 导入导出 / 每日早报与课前邮件提醒' },
+      '/album':    { id: 'site', name: 'YHuo · 相册', desc: '照片按相册分组，牌堆封面 / 照片墙 / 大图预览' },
       '/blog':     { id: 'site', name: 'YHuo · 链接预览演示', desc: '悬停本页两个示例链接，看预览卡效果' }
     };
 

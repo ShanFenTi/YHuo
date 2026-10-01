@@ -2,6 +2,9 @@
 // GET  /api/admin/admins → 管理员列表（不含密码哈希；含角色/禁用/创建时间/活跃会话数）
 // POST /api/admin/admins {action} →
 //   create         {username, password, role:'admin'|'super'}  新建管理员
+//   promote        {userId, role:'admin'|'super'}              把前台用户授权为管理员（2026-10-01 账号页合并）：
+//                                                              密码沿用其前台密码（password_hash+salt 直接复制，
+//                                                              之后两边改密互不影响）；用户被禁用或已有同名管理员账号时拒绝
 //   reset-password {id, password}                              重置某管理员密码（踢其全部会话；不用于自己——自己改密走「我的」页验旧密码）
 //   set-role       {id, role}                                  调整角色（升/降级）
 //   set-banned     {id, banned}                                禁用/启用（禁用即时踢下线）
@@ -68,6 +71,34 @@ export async function onRequestPost({ request, env }) {
     }
     await logAction(env, request, me.username, '新建管理员 ' + username + '（' + (role === 'super' ? '超级管理员' : '管理员') + '）');
     return json({ ok: true });
+  }
+
+  // 授权：把前台用户提升为管理员（账号页用户行的「授权」入口）。密码沿用前台密码——
+  // users 与 admin_users 的哈希方案相同（PBKDF2+盐），整对复制即「本人现有密码可直接登后台」，
+  // 密码不经理站长的手转告；授权后两边改密互不影响（两套账号表各改各的）
+  if (action === 'promote') {
+    const userId = Number(body.userId || 0);
+    const role = body.role === 'super' ? 'super' : 'admin';
+    if (!Number.isInteger(userId) || userId <= 0) return json({ ok: false, error: '参数错误' }, 400);
+    const u = await env.DB
+      .prepare('SELECT id, username, password_hash, salt, banned FROM users WHERE id = ?')
+      .bind(userId)
+      .first();
+    if (!u) return json({ ok: false, error: '该前台用户不存在（可能已被删除），刷新后重试' }, 404);
+    if (u.banned) return json({ ok: false, error: '该账号已被禁用，先解封再授权' }, 400);
+    try {
+      await env.DB
+        .prepare('INSERT INTO admin_users (username, password_hash, salt, role) VALUES (?, ?, ?, ?)')
+        .bind(u.username, u.password_hash, u.salt, role)
+        .run();
+    } catch (e) {
+      if (String(e && e.message || '').indexOf('UNIQUE') > -1) {
+        return json({ ok: false, error: '「' + u.username + '」已有同名管理员账号，无需重复授权' }, 400);
+      }
+      throw e;
+    }
+    await logAction(env, request, me.username, '将前台用户 ' + u.username + ' 授权为' + (role === 'super' ? '超级管理员' : '管理员') + '（密码沿用前台账号）');
+    return json({ ok: true, username: u.username });
   }
 
   // 以下动作都针对既有账号：先取目标行，不存在 404；不能操作自己（改自己走「我的」页）

@@ -1667,12 +1667,47 @@
     } else if (doWhat === 'del') {
       ask({
         title: '删除管理员 ' + a.username + '？',
-        msg: '账号与其全部会话一并删除，不可恢复（登录记录保留）。',
+        msg: '账号与其全部会话一并删除，不可恢复（登录记录保留）；其前台账号（若有同名注册用户）不受影响。',
         danger: true,
         okText: '删除',
         cb: function (ok) { if (ok) admPost({ action: 'delete', id: id }); },
       });
     }
+  });
+
+  // ---------- 授权弹窗（前台用户 → 管理员，2026-10-01 账号页合并）----------
+  // 密码沿用其前台账号（服务端直接复制哈希+盐），角色二选一默认普通管理员
+  var promoteTarget = null;
+  var promoteRole = 'admin';
+  function setPromoteRole(role) {
+    promoteRole = role;
+    $('promoteRoleAdmin').classList.toggle('on', role === 'admin');
+    $('promoteRoleSuper').classList.toggle('on', role === 'super');
+  }
+  function openPromote(u) {
+    promoteTarget = u;
+    setPromoteRole('admin');
+    $('promoteTitle').textContent = '授权 ' + u.username + ' 为管理员';
+    $('promoteModal').hidden = false;
+  }
+  function closePromote() {
+    $('promoteModal').hidden = true;
+    promoteTarget = null;
+  }
+  $('promoteRoleAdmin').addEventListener('click', function () { setPromoteRole('admin'); });
+  $('promoteRoleSuper').addEventListener('click', function () { setPromoteRole('super'); });
+  $('promoteCancel').addEventListener('click', closePromote);
+  $('promoteBackdrop').addEventListener('click', closePromote);
+  $('promoteOk').addEventListener('click', function () {
+    if (!promoteTarget) return;
+    var t = promoteTarget, role = promoteRole;
+    closePromote();
+    admPost({ action: 'promote', userId: t.id, role: role }, function () {
+      toast('已授权 ' + t.username + '（密码沿用前台账号，立即可登后台）', 'ok');
+      // 两个列表都刷：用户行要换成管理员徽标、管理员列表要出现新行
+      loadUsers();
+      loadAdmins();
+    });
   });
 
   // ---------- 状态页 · 数据备份卡（D1 每日自动备份，KV 保留最近 7 份） ----------
@@ -1948,6 +1983,7 @@
   document.addEventListener('keydown', function (e) {
     if (e.key !== 'Escape') return;
     if (!$('previewModal').hidden) closePreview();
+    else if (!$('promoteModal').hidden) closePromote();
     else if (!$('askModal').hidden) askClose(false);
   });
 
@@ -2015,6 +2051,16 @@
       badge.className = 'chip-tag ' + (u.banned ? 'banned' : 'ok');
       badge.textContent = u.banned ? '已禁用' : '正常';
 
+      // 同名管理员账号标记（GET /api/admin/users 按用户名比对 admin_users 下发）：
+      // 已是管理员的行不再给「授权」钮，防止撞 UNIQUE
+      var admBadge = null;
+      if (u.is_admin) {
+        admBadge = document.createElement('span');
+        admBadge.className = 'chip-tag mono';
+        admBadge.textContent = u.admin_role === 'super' ? '超管' : '管理员';
+        admBadge.title = '该用户名已有管理员账号（下方管理员列表中）';
+      }
+
       var meta = document.createElement('span');
       meta.className = 'meta';
       meta.textContent = '注册于 ' + fmtDate(u.created_at) + ' · ' + fmtRel(u.last_seen_at)
@@ -2022,6 +2068,14 @@
 
       var actions = document.createElement('div');
       actions.className = 'row-actions';
+      if (!u.is_admin) {
+        var promote = document.createElement('button');
+        promote.className = 'ghost';
+        promote.textContent = '授权';
+        promote.title = '授权为管理员（密码沿用其前台密码）';
+        promote.addEventListener('click', function () { openPromote(u); });
+        actions.appendChild(promote);
+      }
       var ban = document.createElement('button');
       ban.className = 'ghost';
       ban.textContent = u.banned ? '解封' : '禁用';
@@ -2033,7 +2087,9 @@
       del.addEventListener('click', function () { removeUser(u); });
 
       actions.appendChild(ban); actions.appendChild(del);
-      li.appendChild(avatar); li.appendChild(title); li.appendChild(badge); li.appendChild(meta);
+      li.appendChild(avatar); li.appendChild(title); li.appendChild(badge);
+      if (admBadge) li.appendChild(admBadge);
+      li.appendChild(meta);
       li.appendChild(actions);
       list.appendChild(li);
     });
@@ -3715,12 +3771,11 @@
   function switchPage(type) {
     // 角色闸（2026-09-30）：普通管理员只进内容运营页——邮件页整体超管专属（尾部调整：
     // 含课表测试发送），用户/管理员/外观/AI 本就超管专属；误入（预览消息/降级瞬间）弹回概览
-    if (myRole !== 'super' && (type === 'users' || type === 'appearance' || type === 'ai' || type === 'admins' || type === 'email')) type = 'overview';
+    if (myRole !== 'super' && (type === 'accounts' || type === 'appearance' || type === 'ai' || type === 'email')) type = 'overview';
     currentType = type;
     navBtns.forEach(function (b) { b.classList.toggle('active', b.getAttribute('data-type') === type); });
     var isOverview = type === 'overview';
-    var isUsers = type === 'users';
-    var isAdmins = type === 'admins';
+    var isAccounts = type === 'accounts';
     var isAppear = type === 'appearance';
     var isAi = type === 'ai';
     var isEmail = type === 'email';
@@ -3728,10 +3783,9 @@
     var isStatus = type === 'status';
     var isNotes = type === 'notes';
     $('overviewPanel').hidden = !isOverview;
-    $('mediaPanel').hidden = isOverview || isUsers || isAdmins || isAppear || isAi || isEmail || isMe || isStatus || isNotes;
+    $('mediaPanel').hidden = isOverview || isAccounts || isAppear || isAi || isEmail || isMe || isStatus || isNotes;
     $('notesPanel').hidden = !isNotes;
-    $('userPanel').hidden = !isUsers;
-    $('adminsPanel').hidden = !isAdmins;
+    $('accountsPanel').hidden = !isAccounts;
     $('appearancePanel').hidden = !isAppear;
     $('aiPanel').hidden = !isAi;
     $('emailPanel').hidden = !isEmail;
@@ -3761,9 +3815,6 @@
         loadSchedTick();
       }
     }
-    if (isAdmins) {
-      loadAdmins();
-    }
     if (isMe) {
       loadMe();
     }
@@ -3776,13 +3827,14 @@
       noteResetForm(); // 每次进页表单归零（日期预填今天），防上次的编辑草稿串场
       loadNotes();
     }
-    if (isUsers) {
+    if (isAccounts) {
       $('userSearch').value = ''; // 换进来重置搜索
       var usb = $('userSearch').closest('.search-box');
       if (usb) usb.classList.remove('has-value');
-      loadUsers();
+      loadUsers(); // 两个列表都拉：授权后两边（用户行管理员徽标 / 管理员账号列表）都要即时反映
+      loadAdmins();
     }
-    if (!isOverview && !isUsers && !isAdmins && !isAppear && !isAi && !isEmail && !isMe && !isStatus && !isNotes) {
+    if (!isOverview && !isAccounts && !isAppear && !isAi && !isEmail && !isMe && !isStatus && !isNotes) {
       $('fileInput').accept = TYPE_EXT[type];
       $('titleInput').value = '';
       selected = {}; // 换标签页清空勾选和搜索
@@ -3808,8 +3860,7 @@
     if (type === 'video') loadVideoMode();
     // 功能界面切换动效：给新显示的面板挂一次进入动画（与上一次不是同一面板时才播）
     var targetPanel = isOverview ? $('overviewPanel') :
-      isUsers ? $('userPanel') :
-      isAdmins ? $('adminsPanel') :
+      isAccounts ? $('accountsPanel') :
       isAppear ? $('appearancePanel') :
       isAi ? $('aiPanel') :
       isEmail ? $('emailPanel') :
@@ -3857,8 +3908,7 @@
       music: { name: '音乐', desc: '曲库管理 · 歌词 / 封面 / 试听' },
       video: { name: '视频', desc: '视频管理 · 首页播放模式 · 行上悬停可预览' },
       image: { name: '图片', desc: '图片管理 · 相册分组 / 拖拽归类' },
-      users: { name: '用户', desc: '注册用户 · 禁用 / 解封 / 删除' },
-      admins: { name: '管理员', desc: '账号管理 · 新建 / 重置密码 / 角色与禁用' },
+      accounts: { name: '账号', desc: '用户与管理员 · 授权 / 角色 / 重置密码' },
       appearance: { name: '外观', desc: '主题色 / 寄语 / 功能开关 / 播放器款式' },
       ai: { name: 'AI', desc: 'AI 供应商 / 模型 / 全局开关' },
       email: { name: '邮件', desc: '邮件服务 / 验证码 / 课表提醒定时任务' },

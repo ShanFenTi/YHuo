@@ -79,8 +79,7 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
       <button data-type="video" title="视频"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M2 8h20M2 16h20M8 4v16M16 4v16"/></svg><span>视频</span></button>
       <button data-type="image" title="图片"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m21 15-5-5L5 21"/></svg><span>图片</span></button>
       <button data-type="notes" title="随笔"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/><path d="M9 7h7M9 11h5"/></svg><span>随笔</span></button>
-      <button data-type="users" data-super-nav title="用户"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg><span>用户</span></button>
-      <button data-type="admins" data-super-nav title="管理员"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 12 2 2 4-4"/></svg><span>管理员</span></button>
+      <button data-type="accounts" data-super-nav title="账号（用户与管理员）"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg><span>账号</span></button>
       <button data-type="appearance" data-super-nav title="外观"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 2a10 10 0 0 0 0 20z" fill="currentColor" stroke="none"/></svg><span>外观</span></button>
       <button data-type="ai" data-super-nav title="AI 设置"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="8" width="16" height="12" rx="2"/><path d="M12 8V4"/><path d="M9 4h6"/><circle cx="9" cy="13" r="1" fill="currentColor" stroke="none"/><circle cx="15" cy="13" r="1" fill="currentColor" stroke="none"/><path d="M9 17h6"/></svg><span>AI</span></button>
       <button data-type="email" data-super-nav title="邮件"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg><span>邮件</span></button>
@@ -102,8 +101,7 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
           <button data-type="video">视频</button>
           <button data-type="image">图片</button>
           <button data-type="notes">随笔</button>
-          <button data-type="users" data-super-nav>用户</button>
-          <button data-type="admins" data-super-nav>管理员</button>
+          <button data-type="accounts" data-super-nav>账号</button>
           <button data-type="appearance" data-super-nav>外观</button>
           <button data-type="ai" data-super-nav>AI</button>
           <button data-type="email" data-super-nav>邮件</button>
@@ -272,10 +270,11 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
     </div>
   </div>
 
-  <div id="userPanel" hidden>
-    <div class="page-head"><div><h2>用户管理</h2><p class="ph-desc">注册用户列表：搜索、封禁与删除。封禁立即踢下线；删除同时清除其数据，不可恢复。</p></div></div>
-    <div class="card">
-      <div class="list-tools" style="margin-top:0">
+  <div id="accountsPanel" hidden>
+    <div class="page-head"><div><h2>用户与管理员</h2><p class="ph-desc">上方管理前台注册用户（封禁 / 删除 / 授权为管理员），下方管理后台管理员账号。授权沿用该用户的前台密码，本人立即可登后台；移除管理员不影响其前台账号。</p></div></div>
+    <div class="section-card">
+      <p class="section-title">前台用户</p>
+      <div class="list-tools" style="margin-top:12px">
         <span class="search-box">
           <span class="sb-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg></span>
           <input type="text" id="userSearch" placeholder="搜索用户名…">
@@ -289,6 +288,28 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
         <span class="es-title">还没有用户</span>
         <span class="es-hint">有访客在前台注册后会出现在这里。</span>
       </div>
+    </div>
+    <div class="section-card">
+      <p class="section-title">新建管理员</p>
+      <p class="section-sub">独立建一个全新的管理员账号（初始密码线下交给本人）；想把已有前台用户设为管理员，用上方用户行的「授权」按钮更快。</p>
+      <div class="form-grid" style="max-width:760px">
+        <div class="field"><label for="admNewName">用户名</label><input type="text" id="admNewName" placeholder="1-50 字，不含空格"></div>
+        <div class="field"><label for="admNewPass">初始密码</label><input type="text" id="admNewPass" placeholder="至少 6 位" autocomplete="off"></div>
+        <div class="field"><label for="admNewRole">角色</label>
+          <select id="admNewRole">
+            <option value="admin" selected>管理员（内容与留言）</option>
+            <option value="super">超级管理员（全部权限）</option>
+          </select>
+        </div>
+      </div>
+      <div class="bgset-row" style="margin-top:12px">
+        <button id="admCreateBtn" type="button">新建</button>
+        <span class="meta2" id="admCreateMsg"></span>
+      </div>
+    </div>
+    <div class="section-card">
+      <p class="section-title">管理员账号列表</p>
+      <div id="admListWrap"><div class="sk-row"><span class="sk sk-dot"></span><span class="sk-lines"><span class="sk sk-l1"></span><span class="sk sk-l2"></span></span></div></div>
     </div>
   </div>
 
@@ -582,31 +603,6 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
       <div id="meLogins"></div>
     </div>
   </div>
-  <div id="adminsPanel" hidden>
-    <div class="page-head"><div><h2>管理员</h2><p class="ph-desc">新建管理员账号、重置密码、调整角色与禁用。普通管理员只能处理内容与留言（音乐/视频/图片/随笔/课表测试发送），账号与站点级配置只对超级管理员开放。</p></div></div>
-    <div class="section-card">
-      <p class="section-title">新建管理员</p>
-      <p class="section-sub">初始密码请线下交给本人，登录后可在「我的」页自行修改；忘记密码由你在这里重置。</p>
-      <div class="form-grid" style="max-width:760px">
-        <div class="field"><label for="admNewName">用户名</label><input type="text" id="admNewName" placeholder="1-50 字，不含空格"></div>
-        <div class="field"><label for="admNewPass">初始密码</label><input type="text" id="admNewPass" placeholder="至少 6 位" autocomplete="off"></div>
-        <div class="field"><label for="admNewRole">角色</label>
-          <select id="admNewRole">
-            <option value="admin" selected>管理员（内容与留言）</option>
-            <option value="super">超级管理员（全部权限）</option>
-          </select>
-        </div>
-      </div>
-      <div class="bgset-row" style="margin-top:12px">
-        <button id="admCreateBtn" type="button">新建</button>
-        <span class="meta2" id="admCreateMsg"></span>
-      </div>
-    </div>
-    <div class="section-card">
-      <p class="section-title">账号列表</p>
-      <div id="admListWrap"><div class="sk-row"><span class="sk sk-dot"></span><span class="sk-lines"><span class="sk sk-l1"></span><span class="sk sk-l2"></span></span></div></div>
-    </div>
-  </div>
   <div id="statusPanel" hidden>
     <div class="page-head"><div><h2>状态</h2><p class="ph-desc">存储空间、邮件额度、数据备份与前端错误监控。</p></div></div>
     <div class="card" id="stStorageCard">
@@ -653,6 +649,22 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
     <div class="ask-btns">
       <button id="askCancel" class="ghost">取消</button>
       <button id="askOk">确定</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal" id="promoteModal" hidden>
+  <div class="modal-backdrop" id="promoteBackdrop"></div>
+  <div class="modal-body">
+    <div class="modal-head"><strong id="promoteTitle"></strong></div>
+    <div class="promote-roles" style="display:flex;gap:8px;margin:14px 0 4px">
+      <button type="button" class="seg-btn on" id="promoteRoleAdmin">管理员（内容与留言）</button>
+      <button type="button" class="seg-btn" id="promoteRoleSuper">超级管理员（全部权限）</button>
+    </div>
+    <p class="meta2" style="margin:10px 0 0">管理员密码沿用其前台密码，本人立即可用现有密码登录后台；之后两边改密互不影响。被禁用的用户需先解封才能授权。</p>
+    <div class="ask-btns">
+      <button id="promoteCancel" class="ghost">取消</button>
+      <button id="promoteOk">确认授权</button>
     </div>
   </div>
 </div>

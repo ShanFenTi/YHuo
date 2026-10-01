@@ -7305,6 +7305,7 @@ window.__siteCalendar = (function () {
     var albumLoaded = false; // 本页图片清单是否到终态（成功/失败；加载中 false——albumOpenPhoto 据此决定就地开灯箱还是写通道等渲染后消费）
     var albumGoneTimer = null;     // 展开后其他相册「缩小退场完成 → display:none」的 360ms 延迟
     var albumCollapseTimer = null; // 收回时「照片淡出 → 容器收起+相册浮回」的 200ms 延迟
+    var albumFlipTimer = null;     // 收尾 FLIP（牌堆归位动画）的行内样式清理延迟
 
     function albumStopCycles() {
       albumTimers.forEach(function (t) { clearInterval(t); });
@@ -7536,7 +7537,35 @@ window.__siteCalendar = (function () {
         el.style.removeProperty('--fly-y');
         el.style.removeProperty('--fly-d');
       });
-      albumScrollToEntry(entry);
+      // 收尾归位（站长五报「收回后界面抽搐一下」的根治）：摘 expanded 的瞬间，牌堆封面会从
+      // 「整行展开位的行中心」瞬移到「网格格子的格中心」，瞬时 scrollIntoView 再叠一跳——
+      // 两次跳变就是抽搐感。FLIP：先量旧位 → 滚动校正 → 切布局后量新位 → 给封面挂反向位移
+      // 平滑归零——瞬移与滚动跳变都被吸进这一条滑动的「牌堆回家」动画里。
+      var reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      var cover = entry.querySelector('.album-cover');
+      if (reduceMotion || !cover) { albumScrollToEntry(entry); return; }
+      var first = cover.getBoundingClientRect();
+      albumScrollToEntry(entry); // 瞬时滚动校正（跳变会被下面的 FLIP 反向位移抵消）
+      var last = cover.getBoundingClientRect();
+      var dx = Math.round(first.left - last.left);
+      var dy = Math.round(first.top - last.top);
+      if (dx || dy) {
+        albumFlipCleanup(cover);
+        cover.style.transform = 'translate(' + dx + 'px, ' + dy + 'px)';
+        void cover.offsetWidth; // 反向位移先生效，再过渡到空 = 播放归位
+        cover.style.transition = 'transform .34s cubic-bezier(.3, .8, .3, 1)';
+        cover.style.transform = '';
+        albumFlipTimer = setTimeout(function () { albumFlipCleanup(cover); }, 380);
+      }
+    }
+
+    // 清掉收尾 FLIP 的行内样式（动画自然播完 / 快速再点时立即中止）
+    function albumFlipCleanup(cover) {
+      clearTimeout(albumFlipTimer);
+      albumFlipTimer = null;
+      if (!cover) return;
+      cover.style.removeProperty('transform');
+      cover.style.removeProperty('transition');
     }
 
     function albumToggleEntry(entry, wall) {
@@ -7548,6 +7577,8 @@ window.__siteCalendar = (function () {
       if (albumCollapseTimer) albumCollapseFinish(list, wall, entry);
       var wasExpanded = entry.classList.contains('expanded');
       if (!wasExpanded) {
+        var pc = entry.querySelector('.album-cover');
+        if (pc) albumFlipCleanup(pc); // 上一次收回的归位动画还在播就再点开：立即中止，防封面带位移展开
         clearTimeout(albumGoneTimer);
         list.querySelectorAll('.album-entry.gone').forEach(function (el) { el.classList.remove('gone'); });
         list.querySelectorAll('.album-entry.expanded').forEach(function (el) {
@@ -7712,6 +7743,7 @@ window.__siteCalendar = (function () {
       clearTimeout(albumCollapseTimer); albumCollapseTimer = null;
       albumImgs = [];
       albumLoaded = false;
+      clearTimeout(albumFlipTimer); albumFlipTimer = null;
     }
 
     var PAGE_MODULES = {

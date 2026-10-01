@@ -536,6 +536,12 @@
       color: #fff; background: linear-gradient(135deg, #c99416, #e9b949);
       border-radius: 999px; padding: 0 7px;
     }
+    /* 普通管理员徽标（2026-09-30）：绿色系，与站长金标/路人灰标区分 */
+    .board-mod-badge {
+      flex: none; font-size: 10px; font-weight: 700; line-height: 15px;
+      color: #fff; background: linear-gradient(135deg, #3f7f5f, #66a583);
+      border-radius: 999px; padding: 0 7px;
+    }
     .board-del {
       border: none; background: none; cursor: pointer; flex: none;
       color: var(--apple-muted-foreground); font-size: 12px; padding: 2px 4px;

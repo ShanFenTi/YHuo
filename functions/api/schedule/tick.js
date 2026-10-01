@@ -49,12 +49,12 @@ export async function onRequestGet({ request, env, waitUntil }) {
   }
   try {
     const r = await runTick(env);
-    await record(env, LAST_OK, { t: bjStamp(), sent: r.sent || 0, disabled: !!r.disabled, errors: (r.errors || []).length });
+    await record(env, LAST_OK, { t: bjStamp(), sent: r.sent || 0, disabled: !!r.disabled, holiday: r.holiday || '', errors: (r.errors || []).length });
     // 每日 D1 备份搭车跑一次（发完邮件之后；maybeRunDailyBackup 内部 try/catch 兜底绝不抛错、
     // 幂等：当天已备过即跳过）。有 waitUntil 就挂后台执行不拖慢响应，没有则原地 await。
     if (typeof waitUntil === 'function') waitUntil(maybeRunDailyBackup(env));
     else await maybeRunDailyBackup(env);
-    return json({ ok: true, sent: r.sent, disabled: !!r.disabled, errors: r.errors || [], users: r.users || [] });
+    return json({ ok: true, sent: r.sent, disabled: !!r.disabled, holiday: r.holiday || '', errors: r.errors || [], users: r.users || [] });
   } catch (e) {
     await record(env, LAST_OK, { t: bjStamp(), error: String((e && e.message) || '执行失败').slice(0, 80) });
     return json({ ok: false, error: (e && e.message) || '执行失败' }, 500);

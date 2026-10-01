@@ -211,12 +211,14 @@ CREATE TABLE IF NOT EXISTS admin_login_logs (
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
--- 留言板（前台用户 user_id；is_admin=1 站长 user_id=0；is_admin=2 路人 user_id=0）
+-- 留言板（前台用户 user_id；is_admin=1 站长(超管)/user_id=0；is_admin=2 路人/user_id=0；
+-- is_admin=3 普通管理员/user_id=0 + admin_id 记发帖人——前台据此显示本人的名字/头像与徽标）
 CREATE TABLE IF NOT EXISTS messages (
   id         INTEGER PRIMARY KEY AUTOINCREMENT,
   user_id    INTEGER NOT NULL DEFAULT 0,
   content    TEXT NOT NULL,
   is_admin   INTEGER NOT NULL DEFAULT 0,
+  admin_id   INTEGER,
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 

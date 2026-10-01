@@ -7282,7 +7282,7 @@ window.__siteCalendar = (function () {
           var wasAdmin = boardMe.admin;
           boardMe = { loggedIn: !!(d && d.username), admin: !!(d && (d.admin || d.alsoAdmin)) };
           boardHint.textContent = boardMe.loggedIn
-            ? (boardMe.admin ? (d.admin ? '以站长身份发布' : '已登录：' + d.username + '（管理员）') : '已登录：' + d.username)
+            ? (boardMe.admin ? (d.adminRole === 'super' ? '以站长身份发布' : '以管理员身份发布（挂管理员徽标）') : (d.admin ? '以站长身份发布' : '已登录：' + d.username + '（管理员）'))
             : '未登录 · 将以 🎭 路人身份留言（限每分钟一条）';
           // 身份与列表并行拉取存在竞速：/api/messages 先回时管理员首屏渲染没有删除钮，
           // 身份确认后补一次重拉（列表已渲染且本次才亮明管理员身份才需要；发布后的
@@ -7295,12 +7295,13 @@ window.__siteCalendar = (function () {
         .catch(function () { boardMe = { loggedIn: false, admin: false }; });
     }
     function boardItem(it) {
-      // isGuest = 服务端 is_admin=2 的路人留言（user_id 同为 0，靠该标记与站长区分）；已登录渲染完全走原逻辑
+      // isGuest = 服务端 is_admin=2 的路人留言；isMod = is_admin=3 的普通管理员留言
+      //（2026-09-30 起与站长区分：管理员徽标 + 本人名字/头像，不再冒名站长）；已登录渲染完全走原逻辑
       var item = document.createElement('div');
-      item.className = 'board-item' + (it.isAdmin ? ' is-admin' : '') + (it.isGuest ? ' is-guest' : '');
+      item.className = 'board-item' + (it.isAdmin ? ' is-admin' : '') + (it.isMod ? ' is-mod' : '') + (it.isGuest ? ' is-guest' : '');
       var av = document.createElement('div');
       av.className = 'board-avatar';
-      av.textContent = it.isAdmin ? '站' : (it.isGuest ? '🎭' : (it.username || '?').slice(0, 1).toUpperCase());
+      av.textContent = it.isAdmin ? '站' : (it.isMod ? (it.username || '管').slice(0, 1).toUpperCase() : (it.isGuest ? '🎭' : (it.username || '?').slice(0, 1).toUpperCase()));
       if (it.avatar) {
         // 有头像：img 覆盖在首字块上；加载失败移除 img 回落首字（已注销用户无 avatar 自然回落）
         var img = document.createElement('img');
@@ -7325,6 +7326,12 @@ window.__siteCalendar = (function () {
         badge.className = 'board-admin-badge';
         badge.textContent = '站长';
         head.appendChild(badge);
+      } else if (it.isMod) {
+        // 普通管理员：主题色徽标（区别于站长金标），样式见 site.css 留言板段
+        var mb = document.createElement('span');
+        mb.className = 'board-mod-badge';
+        mb.textContent = '管理员';
+        head.appendChild(mb);
       } else if (it.isGuest) {
         // 路人：灰色小徽章（样式见 site.css 末尾「留言板路人身份」段），区别于注册用户的等级描边徽标
         var gb = document.createElement('span');

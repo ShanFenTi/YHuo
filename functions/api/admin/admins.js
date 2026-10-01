@@ -120,9 +120,21 @@ export async function onRequestPost({ request, env }) {
     if (target.role === 'super' && (await liveSuperCount(env, target.id)) < 1) {
       return json({ ok: false, error: '至少保留一个可用的超级管理员' }, 400);
     }
+    // 顺带清理其头像 KV 文件；若全局站长形象（留言板官方头像）正好指向它（被删的是
+    // 同步过全局的超管），一并清掉——前台有 onerror 回落不会坏，但别留悬空键
+    const avRow = await env.DB.prepare('SELECT avatar_key FROM admin_users WHERE id = ?').bind(target.id).first();
+    const avKey = avRow ? avRow.avatar_key : null;
+    let gRow = null;
+    if (avKey) gRow = await env.DB.prepare("SELECT value FROM site_settings WHERE key = 'admin_avatar'").first();
+    if (avKey) {
+      try { await env.MEDIA.delete(avKey); } catch (e) {}
+    }
     await env.DB.batch([
       env.DB.prepare('DELETE FROM admin_users WHERE id = ?').bind(target.id),
       env.DB.prepare('DELETE FROM sessions WHERE admin_id = ?').bind(target.id),
+      ...(avKey && gRow && gRow.value === avKey
+        ? [env.DB.prepare("DELETE FROM site_settings WHERE key = 'admin_avatar'")]
+        : []),
     ]);
     await logAction(env, request, me.username, '删除管理员 ' + target.username);
     return json({ ok: true });

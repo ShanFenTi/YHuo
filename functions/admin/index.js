@@ -1562,6 +1562,15 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
         <button id="schedTickRunBtn" class="ghost" type="button">立即执行一次</button>
         <span class="meta2" id="schedTickMsg"></span>
       </div>
+      <div class="field" data-superonly style="margin-top:16px;max-width:560px">
+        <label for="schedHoliInput">节假日表（命中的日期整天停发课表提醒；每日备份不受影响）</label>
+        <textarea id="schedHoliInput" rows="3" placeholder="留空 = 内置默认（元旦/春节/清明/五一/端午/中秋/国庆）；写 none = 不停发；示例：10-01~10-07，2027-02-05~2027-02-11"></textarea>
+        <div class="bgset-row" style="margin-top:8px">
+          <button id="schedHoliSaveBtn" class="ghost" type="button">保存节假日表</button>
+          <span class="meta2" id="schedHoliMsg"></span>
+        </div>
+        <span class="sub" id="schedHoliEff"></span>
+      </div>
       <div class="field" style="margin-top:18px;max-width:420px">
         <label for="schedTestTo">发送测试提醒（收件邮箱留空 = 站长邮箱）</label>
         <div class="bgset-row">
@@ -4468,6 +4477,7 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
     if (last && last.t) {
       seg = '最近一次 tick 访问：' + last.t + '（北京时间）· 密钥正确';
       if (last.error) seg += ' · 执行出错：' + last.error;
+      else if (last.holiday) seg += ' · 节假日停发（' + last.holiday + '）';
       else seg += last.disabled ? ' · 邮件服务未启用' : ' · 发送 ' + (last.sent || 0) + ' 封'
         + (last.errors ? '，' + last.errors + ' 个失败' : '');
       seg += '（后台手动执行也计入）';
@@ -4484,8 +4494,32 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
       schedTickKey = d.key || '';
       $('schedTickUrl').value = d.url || '';
       renderTickLast(d.last, d.lastBad);
+      // 节假日表（超管专属区块）：显示站长配置原文 + 当前生效表与今天是否命中
+      if (d.holidays) {
+        $('schedHoliInput').value = d.holidays.configured || '';
+        var eff = d.holidays.none
+          ? '未启用（none：节假日照常提醒）'
+          : '当前生效 ' + (d.holidays.effective || []).length + ' 条：' + (d.holidays.effective || []).join('、');
+        $('schedHoliEff').textContent = eff + (d.holidays.today ? '　⚠ 今天命中：' + d.holidays.today + '（提醒整天停发）' : '　· 今天不是假日');
+      }
     }).catch(function () {});
   }
+  $('schedHoliSaveBtn').addEventListener('click', function () {
+    var msg = $('schedHoliMsg');
+    msg.textContent = '保存中…';
+    api('/api/admin/schedule', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'set-holidays', value: $('schedHoliInput').value })
+    }).then(function (d) {
+      if (d.ok) {
+        msg.textContent = '已保存';
+        loadSchedTick();
+      } else {
+        msg.textContent = d.error || '保存失败';
+      }
+    }).catch(function () { msg.textContent = '网络错误'; });
+  });
   $('schedTickCopyBtn').addEventListener('click', function () {
     var url = $('schedTickUrl').value;
     if (!url) return;
@@ -5353,8 +5387,9 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
   }
 
   // ---- 安全卡：登录设备 / 最近登录 / 改密 / 2FA 开关 ----
-  // 多管理员分级：当前登录管理员的角色与 id（loadMe 拉取；默认 super 保证异常时 UI 不误降级）
-  var myRole = 'super';
+  // 多管理员分级：当前登录管理员的角色与 id（loadMe 拉取）。默认低权限——loadMe 拿不到
+  // 身份（网络失败等）时按普通管理员渲染（超管入口藏着），接口侧的角色闸仍是真边界
+  var myRole = 'admin';
   var myId = 0;
   function applyRoleUI() {
     document.body.classList.toggle('role-limited', myRole !== 'super');

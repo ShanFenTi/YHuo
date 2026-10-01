@@ -8,7 +8,7 @@ import { json } from '../../lib/util.js';
 import { ensureSchema } from '../../lib/migrate.js';
 import { randomHex } from '../../lib/auth.js';
 import { getEmailConfig, isEmailAddr, sendMail } from '../../lib/email.js';
-import { normSchedule, coursesToday, bjNow, bjDayStr, dailyHtml, classHtml } from '../../lib/schedule.js';
+import { normSchedule, coursesToday, bjNow, bjDayStr, dailyHtml, classHtml, parseHolidayConfig, getHoliday } from '../../lib/schedule.js';
 
 const KEY_NAME = 'schedule_tick_key';
 
@@ -40,12 +40,23 @@ export async function onRequestGet({ request, env }) {
   // tick 访问留痕（tick.js 写入）：last=鉴权成功的最近访问，lastBad=密钥错误的最近访问
   const last = await readSetting(env, 'schedule_tick_last');
   const lastBad = await readSetting(env, 'schedule_tick_bad');
+  // 节假日表（2026-10-01 起）：configured=站长在后台填的原文（空=用内置默认）、
+  // effective=当前实际生效的条目（诊断用）、today=今天是否命中（命中则 tick 整天停发提醒）
+  const hRow = await env.DB.prepare('SELECT value FROM site_settings WHERE key = ?').bind('holiday_dates').first();
+  const hcfg = parseHolidayConfig(hRow ? hRow.value : '');
   return json({
     ok: true,
     key,
     url: origin + '/api/schedule/tick?key=' + key,
     last: last && typeof last === 'object' ? last : null,
     lastBad: lastBad && typeof lastBad === 'object' ? lastBad : null,
+    holidays: {
+      configured: (hRow && hRow.value) || '',
+      none: hcfg.none,
+      effective: hcfg.entries.map((e) => e.raw),
+      invalid: hcfg.invalid || [],
+      today: await getHoliday(env, bjDayStr(bjNow())),
+    },
   }, 200, { 'Cache-Control': 'no-store' }); // 密钥响应不进任何缓存
 }
 
@@ -53,6 +64,21 @@ export async function onRequestPost({ request, env }) {
   await ensureSchema(env);
   let body = {};
   try { body = await request.json(); } catch {}
+  if (body.action === 'set-holidays') {
+    // 保存节假日表：空串=恢复内置默认（存空并清键）、'none'=不停发、条目列表=按条目。
+    // 坏条目直接 400 报出来，不让半张表落库悄悄失效
+    const value = String(body.value ?? '').trim().slice(0, 2000);
+    const cfg = parseHolidayConfig(value);
+    if (cfg.invalid && cfg.invalid.length) {
+      return json({ ok: false, error: '无法识别的条目：' + cfg.invalid.slice(0, 3).join('、') + '（格式：MM-DD、MM-DD~MM-DD、YYYY-MM-DD 或 YYYY-MM-DD~YYYY-MM-DD，逗号/换行分隔；写 none 表示不停发）' }, 400);
+    }
+    if (!value) {
+      await env.DB.prepare("DELETE FROM site_settings WHERE key = 'holiday_dates'").run();
+    } else {
+      await env.DB.prepare("INSERT INTO site_settings (key, value) VALUES ('holiday_dates', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value").bind(value).run();
+    }
+    return json({ ok: true, value, effectiveCount: cfg.entries.length });
+  }
   if (body.action === 'test') return await runTest(env, body);
   if (body.action !== 'regenerate') return json({ ok: false, error: '不支持的操作' }, 400);
   const key = await writeKey(env, randomHex(20));

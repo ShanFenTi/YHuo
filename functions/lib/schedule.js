@@ -310,6 +310,81 @@ export function classHtml(c, minutes) {
     + '<p style="margin:0;color:#999;font-size:12px;">来自 YHuo 个人主页</p></div>';
 }
 
+// ---------- 节假日表（课表提醒停发，2026-10-01 起）----------
+// 法定假日放假没课，早报/课前提醒整天跳过；每日 D1 备份搭在 tick.js 侧独立执行、不受影响。
+// 内置默认 = 固定日期假日（每年同日）+ 近两年农历假日的当年窗口；国务院每年末发布次年安排
+// （含调休微调），以后台「邮件」页的节假日表（site_settings 'holiday_dates'）为准：
+//   未设置/留空 → 用内置默认；'none' → 完全不停发；否则按条目列表（逗号/换行分隔）。
+// 条目格式：MM-DD 或 MM-DD~MM-DD（每年生效）；带年份 YYYY-MM-DD[~YYYY-MM-DD] 仅当年生效。
+// 限制：区间不支持跨年（拆成两条写）；调休上课的周末若排了课，把对应日期写进表里即可停发，
+// 反过来「假日调课要照常提醒」的个别日期目前不支持的（表只做停发方向）。
+const DEFAULT_HOLIDAY_ENTRIES = [
+  '01-01~01-03',              // 元旦
+  '2026-02-15~2026-02-22',    // 2026 春节（除夕 2/16、初一 2/17，窗口放宽覆盖调休）
+  '04-04~04-06',              // 清明
+  '05-01~05-05',              // 劳动节
+  '2026-06-19~2026-06-21',    // 2026 端午
+  '2026-09-25~2026-09-27',    // 2026 中秋
+  '10-01~10-07',              // 国庆
+  '2027-02-05~2027-02-11',    // 2027 春节（初一 2/6，预估窗口，以后台表为准）
+  '2027-06-09~2027-06-11',    // 2027 端午（预估）
+  '2027-09-15~2027-09-17',    // 2027 中秋（预估）
+];
+const HOLIDAY_KEY = 'holiday_dates';
+
+// 单条解析 → { y(0=每年), fv, tv(月*100+日), raw }；格式非法返回 null
+function parseHolidayEntry(s) {
+  const parts = String(s || '').trim().split('~').map((x) => x.trim());
+  if (!parts[0] || parts.length > 2) return null;
+  const parseOne = (str) => {
+    // 两种格式：YYYY-MM-DD（仅当年）或 MM-DD（每年）——注意年份组与分隔符要作为一个
+    // 整体可选，写成 (\d{4})?- 的形式会把无年份的 MM-DD 整条拒掉（首版实测踩过）
+    const m = String(str).match(/^(\d{4})-(\d{2})-(\d{2})$|^(\d{2})-(\d{2})$/);
+    if (!m) return null;
+    const mo = Number(m[2] || m[4]);
+    const da = Number(m[3] || m[5]);
+    if (mo < 1 || mo > 12 || da < 1 || da > 31) return null;
+    return { y: m[1] ? Number(m[1]) : 0, v: mo * 100 + da };
+  };
+  const a = parseOne(parts[0]);
+  const b = parts[1] ? parseOne(parts[1]) : a;
+  if (!a || !b) return null;
+  const y = a.y || b.y;
+  if (a.y && b.y && a.y !== b.y) return null; // 跨年区间不支持
+  if (b.v < a.v) return null;
+  return { y, fv: a.v, tv: b.v, raw: String(s).trim() };
+}
+
+// raw 未设置/空 → 内置默认；'none' → 停发关闭；否则解析条目（invalid 收集坏条目供保存时校验）
+export function parseHolidayConfig(raw) {
+  const text = String(raw || '').trim();
+  if (!text) return { none: false, entries: DEFAULT_HOLIDAY_ENTRIES.map(parseHolidayEntry) };
+  if (text.toLowerCase() === 'none') return { none: true, entries: [] };
+  const entries = [];
+  const invalid = [];
+  text.split(/[\n,，;；]+/).forEach((s) => {
+    if (!s.trim()) return;
+    const e = parseHolidayEntry(s);
+    if (e) entries.push(e);
+    else invalid.push(s.trim());
+  });
+  return { none: false, entries, invalid };
+}
+
+// 当天（北京时间 YYYY-MM-DD）是否假日：命中返回条目原文（诊断展示用），否则 null
+export async function getHoliday(env, ymd) {
+  const row = await env.DB.prepare('SELECT value FROM site_settings WHERE key = ?').bind(HOLIDAY_KEY).first();
+  const { none, entries } = parseHolidayConfig(row ? row.value : '');
+  if (none) return null;
+  const Y = Number(ymd.slice(0, 4));
+  const v = Number(ymd.slice(5, 7)) * 100 + Number(ymd.slice(8, 10));
+  for (const e of entries) {
+    if (e.y && e.y !== Y) continue;
+    if (v >= e.fv && v <= e.tv) return e.raw;
+  }
+  return null;
+}
+
 // ---------- tick：检查并发送本期提醒 ----------
 // 返回 { ok, sent, errors, users }；users 为逐账号诊查明细（邮箱打码），
 // 供后台「立即执行一次」显示"为什么没发/发了什么"，cron 调用方多收几个字段无影响。
@@ -321,6 +396,10 @@ export async function runTick(env) {
 
   const now = bjNow();
   const day = bjDayStr(now);
+  // 法定假日整天停发课表提醒（早报+课前一起停；后台「邮件」页节假日表可覆盖内置默认，
+  // 返回 holiday=命中的条目供后台留痕显示）。每日备份搭在 tick.js 侧独立执行，不受此处早退影响
+  const holiday = await getHoliday(env, day);
+  if (holiday) return { ok: true, sent: 0, holiday, users: [] };
   const p = bjDateParts(now);
   const nowHM = p.hh * 60 + p.mm;
 

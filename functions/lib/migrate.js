@@ -308,8 +308,13 @@ export async function ensureSchema(env) {
   } catch {}
   try {
     await env.DB.prepare(
-      "UPDATE admin_users SET avatar_key = (SELECT value FROM site_settings WHERE key = 'admin_avatar') WHERE role = 'super' AND avatar_key IS NULL"
+      "UPDATE admin_users SET avatar_key = (SELECT value FROM site_settings WHERE key = 'admin_avatar') WHERE id = (SELECT id FROM admin_users WHERE role = 'super' ORDER BY id LIMIT 1) AND avatar_key IS NULL"
     ).run();
+  } catch {}
+  // 留言板管理员身份（2026-09-30）：is_admin=1(超管)/3(普通管理员) 的留言记下发帖人，
+  // 前台据此显示本人的名字/头像与对应徽标（此前普通管理员发言会被当成站长）
+  try {
+    await env.DB.prepare("ALTER TABLE messages ADD COLUMN admin_id INTEGER").run();
   } catch {}
   // 存量相册回填：把 media.album 里已有的相册名补进 albums 表
   // （INSERT OR IGNORE 幂等，ensureSchema 每个隔离实例各跑一遍也无副作用）

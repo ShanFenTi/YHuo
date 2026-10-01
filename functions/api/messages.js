@@ -6,7 +6,7 @@
 // DELETE /api/messages?id=N → 删除留言（仅管理员会话，留言板管理）
 // 等级徽标按 checkins 累计天数实时算（lib/levels.js），不入库
 import { json, getCookie, SESSION_COOKIE } from '../lib/util.js';
-import { USER_COOKIE, getUserSession, isValidSession } from '../lib/auth.js';
+import { USER_COOKIE, getUserSession, getAdminAuth } from '../lib/auth.js';
 import { ensureSchema } from '../lib/migrate.js';
 import { levelOf } from '../lib/levels.js';
 
@@ -34,11 +34,14 @@ function randomHex(len) {
   return [...bytes].map((b) => b.toString(16).padStart(2, '0')).join('');
 }
 
-// 双会话鉴权：前台用户优先，其次管理员会话（与 /api/ai/chat 同口径）；都无 → null（按路人处理）
+// 双会话鉴权：前台用户优先，其次管理员会话（与 /api/ai/chat 同口径）；都无 → null（按路人处理）。
+// 管理员带出身份（2026-09-30）：留言按角色落 is_admin=1(超管/站长)/3(普通管理员)+admin_id，
+// 前台显示本人的名字与头像——此前普通管理员发言会被冒名成「站长」
 async function identity(request, env) {
   const user = await getUserSession(env, getCookie(request, USER_COOKIE));
   if (user) return { kind: 'user', userId: user.userId };
-  if (await isValidSession(env, getCookie(request, SESSION_COOKIE))) return { kind: 'admin' };
+  const admin = await getAdminAuth(env, getCookie(request, SESSION_COOKIE));
+  if (admin) return { kind: 'admin', adminId: admin.id, role: admin.role, username: admin.username };
   return null;
 }
 
@@ -47,14 +50,16 @@ export async function onRequestGet({ request, env }) {
   const url = new URL(request.url);
   const offset = Math.max(0, parseInt(url.searchParams.get('offset') || '0', 10) || 0);
   const res = await env.DB.prepare(
-    'SELECT m.id, m.content, m.created_at, m.is_admin, m.user_id, ' +
+    'SELECT m.id, m.content, m.created_at, m.is_admin, m.user_id, m.admin_id, ' +
     'u.avatar_key AS avatar, ' +
-    "COALESCE(NULLIF(u.nickname, ''), u.username) AS username " +
+    "COALESCE(NULLIF(u.nickname, ''), u.username) AS username, " +
+    'a.username AS admin_username, a.avatar_key AS admin_avatar_key ' +
     'FROM messages m LEFT JOIN users u ON u.id = m.user_id ' +
+    'LEFT JOIN admin_users a ON a.id = m.admin_id ' +
     'ORDER BY m.id DESC LIMIT ? OFFSET ?'
   ).bind(PAGE_SIZE + 1, offset).all();
   const rows = res.results || [];
-  // 涉及用户的签到总数（一次查齐，算等级徽标）；路人（is_admin=2）与站长不参与
+  // 涉及用户的签到总数（一次查齐，算等级徽标）；路人（is_admin=2）与管理员（1/3）不参与
   const ids = [...new Set(rows.filter((r) => !r.is_admin && r.user_id).map((r) => r.user_id))];
   const counts = {};
   if (ids.length) {
@@ -64,7 +69,8 @@ export async function onRequestGet({ request, env }) {
       .all();
     (cRes.results || []).forEach((r) => { counts[r.user_id] = r.n; });
   }
-  // 站长头像（后台「我的」页设置，存 site_settings 'admin_avatar'，KV 键）：页面里有站长留言才查
+  // 站长官方形象（留言板「站长留言」专用，后台「我的」页设置，存 site_settings 'admin_avatar'）：
+  // 页面里有站长留言（is_admin=1）才查；普通管理员留言（is_admin=3）用自己的头像
   let adminAvatar = null;
   if (rows.some((r) => r.is_admin === 1)) {
     const aRow = await env.DB.prepare("SELECT value FROM site_settings WHERE key = 'admin_avatar'").first();
@@ -72,16 +78,25 @@ export async function onRequestGet({ request, env }) {
   }
   const list = rows.slice(0, PAGE_SIZE).map((r) => {
     const lv = levelOf(counts[r.user_id] || 0);
-    // is_admin 复用为身份标记：0=注册用户 1=站长 2=路人（user_id 同为 0，靠本列区分）
+    // is_admin 身份标记：0=注册用户 1=站长(超管) 2=路人 3=管理员(2026-09-30 起)；
+    // 旧库无 admin_id 的历史站长留言回落「站长」名 + 官方形象
     const guest = r.is_admin === 2;
+    const mod = r.is_admin === 3;
     return {
       id: r.id,
       content: r.content,
       created_at: r.created_at,
       user_id: r.user_id, // 路人恒为 0（前端渲染侧判定兜底）
-      username: guest ? '路人' : (r.is_admin ? '站长' : (r.username || '已注销用户')),
-      avatar: guest ? null : (r.is_admin ? adminAvatar : (r.avatar || null)),
-      isAdmin: !!r.is_admin && !guest,
+      username: guest ? '路人'
+        : mod ? (r.admin_username || '管理员')
+        : r.is_admin ? (r.admin_username || '站长')
+        : (r.username || '已注销用户'),
+      avatar: guest ? null
+        : mod ? (r.admin_avatar_key || null)
+        : r.is_admin ? (adminAvatar || r.admin_avatar_key || null)
+        : (r.avatar || null),
+      isAdmin: !!r.is_admin && !guest && !mod,
+      isMod: mod,
       isGuest: guest,
       level: (r.is_admin || guest) ? null : { lv: lv.lv, name: lv.name },
     };
@@ -115,7 +130,10 @@ export async function onRequestPost({ request, env }) {
     }
     await env.DB.prepare('INSERT INTO messages (user_id, content) VALUES (?, ?)').bind(who.userId, content).run();
   } else if (who) {
-    await env.DB.prepare("INSERT INTO messages (user_id, content, is_admin) VALUES (0, ?, 1)").bind(content).run();
+    // 管理员留言：超管=1（站长徽标+官方形象）、普通管理员=3（管理员徽标+本人头像），admin_id 记发帖人
+    await env.DB
+      .prepare('INSERT INTO messages (user_id, content, is_admin, admin_id) VALUES (0, ?, ?, ?)')
+      .bind(content, who.role === 'super' ? 1 : 3, who.adminId || null).run();
   } else {
     // —— 路人发布（2026-09-09）：is_admin=2 标记（不建列不改表），user_id 恒 0 ——
     const now = Date.now();

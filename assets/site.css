@@ -6508,7 +6508,9 @@
       transform: translateY(var(--ey, 30px)) rotate(var(--er, calc(var(--tilt, 0deg) * 2))) scale(var(--es, 1))
         perspective(700px) rotateX(var(--ix, 0deg)) rotateY(var(--iy, 0deg));
       transform-origin: center;
-      transition: transform .6s var(--ease-out), opacity .6s ease;
+      /* 淡入 .28s（2026-10-02 二修「展开顿一下」）：发牌起手即现身、边飞边大，不再空场后突然弹出；
+         与收回的晚段淡出（.out 的 .38s）刻意不对称——展开始于可见、收回终于隐没 */
+      transition: transform .6s var(--ease-out), opacity .28s ease;
       transition-delay: var(--d, 0s);
     }
     .wall-item.in {

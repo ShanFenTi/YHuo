@@ -7675,9 +7675,12 @@ window.__siteCalendar = (function () {
 
     // 照片入场「发牌」（2026-10-02，收回飞回的逆过程）：展开时每张卡从牌堆封面位置飞向自己的
     // 格子——位移复用收回的 --fly-x/--fly-y（同一向量），错峰步长与收回同公式（总错峰封顶 ~420ms），
-    // 牌堆同时轻缩一下像「放牌」（.dealing）。测量顺序有讲究：先把卡摆到各自格心（fly 变量置 0 +
-    // .deal 无过渡），量格心与牌堆位的差写真实位移，再摘 .deal 挂 .in 起飞。减少动态效果时跳过
-    // 飞出直接显示（与收回对称）。
+    // 牌堆同时轻缩一下像「放牌」（.dealing）。二修「展开顿一下」（同日站长实报）：
+    // ①测量改用 offset*（布局盒、天生不受 transform 影响）——首版先把卡摆到格心再量、两次强制
+    //   重排拖长点击到首帧的同步任务，现全程只留起飞前一次重排；cover 与 wall-item 的祖先链在
+    //   entry 以下均无定位元素，offsetParent 相同、坐标同源；
+    // ②淡入提速到 .28s（site.css）——起手即现身，不再是空场后突然弹出。
+    // 减少动态效果时跳过飞出直接显示（与收回对称）。
     function albumEnterWall(wall) {
       var items = wall.querySelectorAll('.wall-item');
       if (!items.length) return;
@@ -7689,31 +7692,24 @@ window.__siteCalendar = (function () {
       if (!reduceMotion && entry) {
         // 此刻 .expanded 已挂（albumToggleEntry 先切布局再进来），格子位与牌堆位都是最终布局
         var cover = entry.querySelector('.album-cover');
-        var cr = cover ? cover.getBoundingClientRect() : null;
-        if (cr) {
+        if (cover) {
           deal = true;
           step = items.length > 1 ? Math.max(18, Math.min(55, Math.round(420 / (items.length - 1)))) : 0;
+          var cx = cover.offsetLeft + cover.offsetWidth / 2;
+          var cy = cover.offsetTop + cover.offsetHeight * 0.3; // 落点=牌堆中上部，与收回飞回的目的地同款
           items.forEach(function (el) {
-            el.style.setProperty('--fly-x', '0px');
-            el.style.setProperty('--fly-y', '0px');
+            el.style.setProperty('--fly-x', Math.round(cx - (el.offsetLeft + el.offsetWidth / 2)) + 'px');
+            el.style.setProperty('--fly-y', Math.round(cy - (el.offsetTop + el.offsetHeight / 2)) + 'px');
             el.classList.add('deal');
           });
-          void wall.offsetWidth; // 卡已摆在各格心（scale/rotate 不动格心），此时量位移才准
-          var cx = cr.left + cr.width / 2;
-          var cy = cr.top + cr.height * 0.3; // 落点=牌堆中上部，与收回飞回的目的地同款
-          items.forEach(function (el) {
-            var r = el.getBoundingClientRect();
-            el.style.setProperty('--fly-x', Math.round(cx - (r.left + r.width / 2)) + 'px');
-            el.style.setProperty('--fly-y', Math.round(cy - (r.top + r.height / 2)) + 'px');
-          });
           entry.classList.add('dealing');
-          void wall.offsetWidth; // 「牌堆里」的初始态落定后再起飞
         }
       }
       if (reduceMotion) {
         items.forEach(function (el) { el.style.setProperty('--d', '0s'); el.classList.add('in'); });
         return;
       }
+      void wall.offsetWidth; // 「牌堆里」的初始态生效后再起飞（全程唯一一次强制重排）
       items.forEach(function (el, i) {
         el.style.setProperty('--d', (i * step) + 'ms');
         el.classList.remove('deal');

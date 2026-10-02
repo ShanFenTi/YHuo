@@ -3639,6 +3639,7 @@ window.__siteCalendar = (function () {
       var schedViewMode = 'list'; // 当前视图：list=看课（默认）/ grid=编辑；记忆在 localStorage
       try { if (localStorage.getItem('yhuoSchedView') === 'grid') schedViewMode = 'grid'; } catch (e) {}
       var schedListDay = 0;   // 列表筛选：0=全部 1-7=周几；loadSched 成功后初始化为今天
+      var schedListRenderedDay = -1; // 上次渲染的筛选日（-1=未渲染过；仅筛选日变化时播卡片入场动画，30s 轻刷新/首次加载不播）
       var schedNowTimer = null; // 「正在上课」轻刷新定时器（30s，离页清理）
       var schedHoliday = null; // 今天命中的假日条目（如 '10-01~10-07'，服务端 getHoliday 下发；放假不上课）
       var SCHED_DAYS = ['周一', '周二', '周三', '周四', '周五', '周六', '周日'];
@@ -3974,6 +3975,9 @@ window.__siteCalendar = (function () {
           });
         }
         if (schedDayListEl) {
+          // 入场动画只在「筛选的星期真变了」时播（30s 轻刷新/首次加载/编辑保存回渲染都不播）
+          var dayChanged = schedListRenderedDay !== -1 && schedListDay !== schedListRenderedDay;
+          schedListRenderedDay = schedListDay;
           schedDayListEl.innerHTML = '';
           var list = schedData.courses
             .map(function (c, i) { return { c: c, i: i }; })
@@ -3989,9 +3993,15 @@ window.__siteCalendar = (function () {
                 ? SCHED_DAYS[schedListDay - 1] + '是假期（' + schedHoliday + '），按课表今天不上课。'
                 : SCHED_DAYS[schedListDay - 1] + '没有安排课程。')
               : '还没有课程。切到「编辑」用 WakeUp 课表一键导入，或点「新增课程」手动添加。';
+            if (dayChanged) empty.classList.add('anim-in');
             schedDayListEl.appendChild(empty);
-          } else list.forEach(function (o) {
-            schedDayListEl.appendChild(schedBuildCourseCard(o.c, o.i));
+          } else list.forEach(function (o, pos) {
+            var card = schedBuildCourseCard(o.c, o.i);
+            if (dayChanged) {
+              card.classList.add('anim-in');
+              card.style.animationDelay = Math.min(pos * 40, 480) + 'ms';
+            }
+            schedDayListEl.appendChild(card);
           });
         }
       }
@@ -4001,7 +4011,8 @@ window.__siteCalendar = (function () {
         var card = document.createElement('div');
         card.className = 'sched-day-card';
         card.dataset.idx = String(i);
-        card.style.setProperty('--sdc-color', schedColor(c.name));
+        // 课程色写 --sdc-course（不直写 --sdc-color）：past/hol-today 的置灰类才能在 CSS 里覆盖竖条色
+        card.style.setProperty('--sdc-course', schedColor(c.name));
         var isNow = schedCourseNow(c);
         var weekOk = schedWeekActive(c);
         var dow = schedTodayDow();

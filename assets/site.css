@@ -2750,7 +2750,7 @@
       gap: 12px;
     }
     .sched-day-card {
-      --sdc-color: var(--apple-primary);
+      --sdc-color: var(--sdc-course, var(--apple-primary)); /* JS 内联写 --sdc-course，类级置灰才能覆盖 --sdc-color */
       display: flex;
       align-items: flex-start;
       gap: 18px;
@@ -2772,6 +2772,12 @@
       opacity: 0.62;
     }
     .sched-day-card.past .sdc-time { color: var(--apple-muted-foreground); }
+    /* 假期当天的排课卡：同样置灰（假期不上课，卡留着只挂「假期」章供查看） */
+    .sched-day-card.hol-today {
+      --sdc-color: color-mix(in srgb, var(--apple-muted-foreground) 65%, var(--apple-border));
+      opacity: 0.62;
+    }
+    .sched-day-card.hol-today .sdc-time { color: var(--apple-muted-foreground); }
     .sched-day-card.off-week { opacity: 0.55; }
     .sdc-when { flex: none; min-width: 112px; }
     .sdc-time {
@@ -2828,6 +2834,16 @@
       0%, 100% { opacity: 1; }
       50% { opacity: 0.3; }
     }
+    /* 日期筛选切换：课程卡错峰入场（仅筛选日变化时由 JS 挂 anim-in，30s 轻刷新/首次加载不播）；
+       fill 用 backwards——延迟期藏起、播完归还级联（both 会把 opacity 永久冻在 1 盖掉 past/hol 的 0.62 置灰） */
+    .sched-day-card.anim-in {
+      animation: schedCardIn 300ms var(--ease-out) backwards;
+    }
+    .sched-day-list .empty-hint.anim-in { animation: schedCardIn 300ms var(--ease-out) backwards; }
+    @keyframes schedCardIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
     .sdc-off {
       flex: none;
       font-size: 10.5px;
@@ -2859,6 +2875,7 @@
     @media (prefers-reduced-motion: reduce) {
       .sdc-live::before { animation: none; }
       .sched-today-chip, .sched-view-btn { transition: none; }
+      .sched-day-card.anim-in, .sched-day-list .empty-hint.anim-in { animation: none; }
       .note-detail { animation: none; }
       .note-card, .note-detail-back { transition: none; }
     }

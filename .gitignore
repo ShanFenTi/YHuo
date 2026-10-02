@@ -12,3 +12,6 @@ package-lock.json
 
 # 旧本地安全体检清单：2026-09-30 站长确认有意删除；规则保留防未来误重建后被 git add . 收入
 bug.md
+
+# wrangler 本地 dev 日志（后台启动时重定向生成，不入库）
+wrangler-dev.log

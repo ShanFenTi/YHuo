@@ -5145,9 +5145,11 @@ window.__siteCalendar = (function () {
             card.addEventListener('click', function () { openDoc(d.title || d.file, d.file); });
             grid.appendChild(card);
           });
+          hidePageSkel('docsSkel'); // 清单已渲染：撤掉静态骨架
         })
         .catch(function () {
           if (!grid.isConnected) return; // 同上竞态守卫：错误文案别写进新页实例
+          hidePageSkel('docsSkel');
           if (emptyEl) {
             emptyEl.textContent = '文档清单加载失败（docs/docs.json）。';
             emptyEl.hidden = false;
@@ -5361,6 +5363,7 @@ window.__siteCalendar = (function () {
         })
         .catch(function () {
           if (!feed.isConnected) return; // 写错误文案前确认容器还挂在本页实例上
+          hidePageSkel('notesSkel'); // 两路全失败也是终态：骨架让位给错误提示
           if (notesEmpty) {
             notesEmpty.textContent = '随笔清单加载失败。';
             notesEmpty.hidden = false;
@@ -5369,6 +5372,7 @@ window.__siteCalendar = (function () {
     }
 
     function notesShow(list) {
+      hidePageSkel('notesSkel'); // 内容出口统一撤骨架（接口成功与静态回落都走这里）
       if (!Array.isArray(list) || !list.length) {
         if (notesEmpty) notesEmpty.hidden = false;
         return;
@@ -6799,9 +6803,11 @@ window.__siteCalendar = (function () {
           boardMore.hidden = !d.hasMore;
           boardOffset += (d.list || []).length;
           if (!(d.list || []).length) boardHint.textContent = '';
+          hidePageSkel('boardSkel'); // 首屏留言已渲染（追加轮重复调隐藏无妨）：撤掉静态骨架
         })
         .catch(function () {
           if (!listEl.isConnected) return; // 同上：pjax 竞态守卫，错误文案不写进已换走的页面
+          hidePageSkel('boardSkel'); // 加载失败也是终态：骨架让位给错误提示
           boardHint.textContent = '留言加载失败';
         });
     }
@@ -7411,6 +7417,7 @@ window.__siteCalendar = (function () {
       var list = document.getElementById('albumList');
       var empty = document.getElementById('albumEmpty');
       if (!list) return;
+      hidePageSkel('albumSkel'); // 数据已到（含空库）：撤掉静态骨架
       albumStopCycles();
       list.innerHTML = '';
       var reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -7849,6 +7856,7 @@ window.__siteCalendar = (function () {
           albumLoaded = true; // 失败也是终态（abort 时页面已离，值随下次 init 复位）
           if (e && e.name === 'AbortError') return; // 换页中断：通道留着，后退/再进相册的下一次渲染照常消费
           try { sessionStorage.removeItem('yhuoAlbumOpenPhoto'); } catch (e2) {} // 真失败：清通道防下次进页凭空弹灯箱
+          hidePageSkel('albumSkel'); // 加载失败也是终态：骨架让位给错误提示
           var empty = document.getElementById('albumEmpty');
           if (empty) {
             empty.hidden = false;
@@ -7980,13 +7988,45 @@ window.__siteCalendar = (function () {
     // 就亮出反馈——顶部进度条变滑动段（.pjax-busy）+ 内容轻降透明度（body.pjax-loading，见 site.css）；
     // 160ms 内返回（本地/快线）完全不出现不闪。fetch 失败整页加载兜底时保留加载态，旧页带着进度条直到卸载
     var pjaxLoadTimer = 0;
-    function pjaxLoadingOn() {
+    // 换页骨架层（2026-10-02 慢线路体验批）：DOM 由这里注入一次——外壳跨 pjax 不换、免八页同步
+    //（坑 23 同款思路，同链接预览卡片注入模式）。与 160ms 反馈同时机显示（秒回不闪），按目标页
+    // key 切轮廓变体；不透明底盖住变暗旧页，观感=旧页→骨架→新页。变体收 4 种：sub（文档/随笔/
+    // 留言/课表/预览通用列表形）、album、home、ai
+    var pjaxSkelEl = null;
+    var PJAX_SKEL_VAR = { home: 'home', ai: 'ai', album: 'album', docs: 'sub', notes: 'sub', board: 'sub', schedule: 'sub', blog: 'sub' };
+    (function () {
+      if (document.getElementById('pjaxSkel')) return;
+      var el = document.createElement('div');
+      el.id = 'pjaxSkel';
+      el.setAttribute('aria-hidden', 'true');
+      el.innerHTML = '<div class="ps-wrap">' +
+        '<div class="ps-var" data-v="sub"><span class="skel ps-eyebrow"></span><div class="ps-card"><div class="ps-grid">' +
+          '<span class="skel" style="height:150px"></span><span class="skel" style="height:150px"></span><span class="skel" style="height:150px"></span><span class="skel" style="height:150px"></span><span class="skel" style="height:150px"></span><span class="skel" style="height:150px"></span></div></div></div>' +
+        '<div class="ps-var" data-v="album"><span class="skel ps-eyebrow"></span><div class="ps-card"><div class="ps-album">' +
+          '<span class="skel"></span><span class="skel"></span><span class="skel"></span></div></div></div>' +
+        '<div class="ps-var" data-v="home"><div class="ps-hero"><span class="skel"></span><span class="skel"></span></div>' +
+          '<div class="ps-lower"><div class="ps-card"><span class="skel" style="height:120px"></span></div><div class="ps-card"><span class="skel" style="height:120px"></span></div></div></div>' +
+        '<div class="ps-var" data-v="ai"><div class="ps-card"><span class="skel ps-ai"></span></div></div>' +
+        '</div>';
+      document.body.appendChild(el);
+      pjaxSkelEl = el;
+    })();
+    // 数据骨架（写在各页 main 里的静态块）统一隐藏口：内容渲染/最终失败时调用
+    function hidePageSkel(id) {
+      var s = document.getElementById(id);
+      if (s) s.hidden = true;
+    }
+    function pjaxLoadingOn(key) {
       if (pjaxLoadTimer) return;
       pjaxLoadTimer = setTimeout(function () {
         pjaxLoadTimer = 0;
         document.body.classList.add('pjax-loading');
         var bar = document.getElementById('progressBar');
         if (bar) bar.classList.add('pjax-busy');
+        if (pjaxSkelEl) {
+          pjaxSkelEl.setAttribute('data-skel', PJAX_SKEL_VAR[key] || 'sub');
+          pjaxSkelEl.classList.add('show');
+        }
       }, 160);
     }
     function pjaxLoadingOff() {
@@ -7994,6 +8034,7 @@ window.__siteCalendar = (function () {
       document.body.classList.remove('pjax-loading');
       var bar = document.getElementById('progressBar');
       if (bar) bar.classList.remove('pjax-busy');
+      if (pjaxSkelEl) pjaxSkelEl.classList.remove('show');
     }
     // pjax 换页同步 head 的分享卡与规范链接（与 title 同理）：此前只换 title，
     // 站内跳页后 canonical/og:url/og:title/og:description/description 仍停在进站那页，
@@ -8017,7 +8058,7 @@ window.__siteCalendar = (function () {
     function pjaxSwap(u, push, restoreY) {
       if (pjaxBusy) return;
       pjaxBusy = true;
-      pjaxLoadingOn();
+      pjaxLoadingOn(pageKeyForPath(u.pathname) || 'sub');
       fetch(u.href, { credentials: 'same-origin' })
         .then(function (r) {
           if (!r.ok) throw new Error('http ' + r.status);

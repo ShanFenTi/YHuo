@@ -6672,3 +6672,66 @@
       object-fit: cover;
       display: block;
     }
+
+    /* =========================
+       骨架屏（2026-10-02 慢线路体验批）：数据未到前先给「形状」
+       ① .data-skel 静态数据骨架：写在各页 main 里（docs/notes/board/album），数据渲染后由 JS
+          置 hidden——main 内容不参与八页外壳比对（坑 23 免同步）；脉冲走 --apple-chip 语义色，
+          深浅主题自动跟随；reduced-motion 去动画留静态块
+       ② #pjaxSkel 换页骨架层：common.js 注入一次（外壳免同步），pjax 160ms 反馈时机显示，
+          按目标页 data-skel 变体切换轮廓；不透明底盖住变暗旧页，观感=旧页→骨架→新页
+       ========================= */
+    .data-skel[hidden] { display: none; }
+    .data-skel { display: grid; gap: 20px; margin-top: 14px; }
+    .data-skel.ds-grid-3 { grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); }
+    .data-skel.ds-stack { grid-template-columns: 1fr; gap: 16px; }
+    .data-skel.ds-album { grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 28px; }
+    .skel {
+      display: block;
+      border-radius: 10px;
+      background: var(--apple-chip, rgba(128, 128, 128, 0.14));
+      animation: skel-pulse 1.4s ease-in-out infinite;
+    }
+    @keyframes skel-pulse { 0%, 100% { opacity: 1; } 50% { opacity: .45; } }
+    @media (prefers-reduced-motion: reduce) {
+      .skel { animation: none; opacity: .6; }
+    }
+
+    /* pjax 换页骨架层：z 40 压过内容与页脚、低于头部胶囊(50)；不透明底直接当「新页加载态」 */
+    #pjaxSkel {
+      position: fixed;
+      inset: 0;
+      z-index: 40;
+      background: var(--background);
+      display: none;
+      overflow: hidden;
+    }
+    #pjaxSkel.show { display: block; }
+    #pjaxSkel .ps-wrap {
+      max-width: 860px;
+      margin: 0 auto;
+      padding: 130px 4vw 40px;
+    }
+    #pjaxSkel .ps-var { display: none; }
+    #pjaxSkel[data-skel="sub"] .ps-var[data-v="sub"],
+    #pjaxSkel[data-skel="album"] .ps-var[data-v="album"],
+    #pjaxSkel[data-skel="home"] .ps-var[data-v="home"],
+    #pjaxSkel[data-skel="ai"] .ps-var[data-v="ai"] { display: block; }
+    #pjaxSkel .ps-eyebrow { width: 130px; height: 14px; margin-bottom: 22px; }
+    #pjaxSkel .ps-card { padding: 24px; border-radius: calc(var(--radius, 1.2rem)); background: var(--card); border: 1px solid var(--border); }
+    #pjaxSkel .ps-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 20px; }
+    #pjaxSkel .ps-album { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 28px; }
+    #pjaxSkel .ps-stack { display: grid; gap: 16px; }
+    #pjaxSkel .ps-hero { display: flex; gap: 24px; align-items: stretch; }
+    #pjaxSkel .ps-hero .skel:first-child { flex: 1 1 auto; height: 320px; }
+    #pjaxSkel .ps-hero .skel:last-child { flex: 0 0 320px; height: 320px; }
+    @media (max-width: 900px) {
+      #pjaxSkel .ps-hero { flex-direction: column; }
+      #pjaxSkel .ps-hero .skel:last-child { flex: none; height: 180px; }
+    }
+    #pjaxSkel .ps-lower { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 20px; margin-top: 20px; }
+    #pjaxSkel .ps-ai { height: calc(100vh - 200px); border-radius: var(--radius, 1.2rem); }
+    #pjaxSkel .ps-album .skel { height: 280px; }
+    @media (max-width: 640px) {
+      #pjaxSkel .ps-album .skel { height: 240px; }
+    }

@@ -7479,7 +7479,7 @@ window.__siteCalendar = (function () {
           el.alt = img.name || '';
           el.loading = 'lazy';
           el.decoding = 'async'; // 同上：照片墙错落入场期间不让解码抢主线程
-          // 照片统一 1:1 方形取景（site.css .wall-item .img-wrap，站长定版 2026-10-02），
+          // 照片统一 4:3 宽幅取景（site.css .wall-item .img-wrap，站长定版 2026-10-02），
           // 不再按横竖分档挂 portrait 类（原横 4:3/竖 4:5 两档并存导致格子有宽有矮）
           wrap.appendChild(el);
           frame.appendChild(wrap);

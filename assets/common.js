@@ -7653,8 +7653,10 @@ window.__siteCalendar = (function () {
           var cr = cover ? cover.getBoundingClientRect() : null;
           var cx = cr ? cr.left + cr.width / 2 : 0;
           var cy = cr ? cr.top + cr.height * 0.3 : 0;
-          // 错峰步长随卡数压缩：总错峰封顶 ~420ms，卡再多也不会拖成慢动作连播
-          var step = items.length > 1 ? Math.max(18, Math.min(55, Math.round(420 / (items.length - 1)))) : 0;
+          // 收回错峰放宽（2026-10-02 三修「照片少时顿感依旧」）：收回要「看得见地一张张收」，
+          // 照片少时错峰也要有明显过程（3 卡相册总错峰 220ms），卡多时总错峰封顶 ~700ms 防拖沓。
+          // 展开的步长独立（发牌快、收牌慢，两张公式不再同步）
+          var step = items.length > 1 ? Math.max(24, Math.min(110, Math.round(600 / (items.length - 1)))) : 0;
           items.forEach(function (el, i) {
             var r = el.getBoundingClientRect();
             if (cr) {
@@ -7666,12 +7668,11 @@ window.__siteCalendar = (function () {
           });
           entry.classList.add('gathering');
           entry.classList.remove('dealing'); // 发牌未播完就收回：放牌动画让位给接卡
-          // 收尾时机（2026-10-02 修「收回后顿一下才显示所有相册」）：卡的透明度过渡只有 .38s ease-out，
-          // 落地前 ~200ms 就已完全看不见——旧定时器在最后一张卡「起飞」后还干等 600ms，全部是死时间
-          // （站长实报的空窗顿挫即此）。提前到起飞后 420ms：视觉上无缝衔接收尾；兜底不低于 520ms
-          // 让 .5s 的高度收拢（.collapsing 过渡）走完再切布局
+          // 收尾时机：卡全程可见地飞回（淡出压在飞行最后 .22s，见 site.css .in.out），最后一张
+          // 「溶进牌堆」= 起飞后 .56s；收尾压着这个点 +40ms 触发，全程无死时间也无抢拍；
+          // 兜底 620ms 保证 .5s 高度收拢走完（1 张照片的相册走这条）
           albumCollapseTimer = setTimeout(function () { albumCollapseFinish(list, wall, entry); },
-            Math.max(520, step * (items.length - 1) + 420));
+            Math.max(620, step * (items.length - 1) + 600));
         } else {
           albumCollapseFinish(list, wall, entry);
         }
@@ -7679,8 +7680,8 @@ window.__siteCalendar = (function () {
     }
 
     // 照片入场「发牌」（2026-10-02，收回飞回的逆过程）：展开时每张卡从牌堆封面位置飞向自己的
-    // 格子——位移复用收回的 --fly-x/--fly-y（同一向量），错峰步长与收回同公式（总错峰封顶 ~420ms），
-    // 牌堆同时轻缩一下像「放牌」（.dealing）。二修「展开顿一下」（同日站长实报）：
+    // 格子——位移复用收回的 --fly-x/--fly-y（同一向量），发牌错峰独立公式（快发慢收：展开步长
+    // 上限 55ms、收回上限 110ms，两张节奏刻意不同），牌堆同时轻缩一下像「放牌」（.dealing）。二修「展开顿一下」（同日站长实报）：
     // ①测量改用 offset*（布局盒、天生不受 transform 影响）——首版先把卡摆到格心再量、两次强制
     //   重排拖长点击到首帧的同步任务，现全程只留起飞前一次重排；cover 与 wall-item 的祖先链在
     //   entry 以下均无定位元素，offsetParent 相同、坐标同源；

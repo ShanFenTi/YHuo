@@ -6451,15 +6451,20 @@
       transition: height .5s cubic-bezier(.5, 0, .3, 1);
     }
     /* 每张卡的飞回位移由 JS 按其与牌堆封面的实际相对位置写入 --fly-x/--fly-y（albumToggleEntry），
-       逐张错峰（--fly-d）依次收进：加速飞向牌堆、缩到卡背大小、轻微带回旋角度、临进堆前淡出 */
+       逐张错峰（--fly-d）依次收进：加速飞向牌堆、缩到卡背大小、轻微带回旋角度——
+       全程可见地飞回（2026-10-02 三修「照片少时顿感依旧」）：旧版淡出 .38s ease-out 起手就快速
+       隐身、而位移曲线前慢后快，卡没走多远就看不见了，飞回过程近乎隐形（观感=照片闪没→空等→
+       相册冒出来）。改：飞行 .56s 全程可见，淡出压到最后 .22s（各自延迟 +.34s 起）——卡缩着
+       旋进牌堆时才溶掉，站长要的「慢一点、有过程」即此 */
     .wall-item.in.out {
       opacity: 0;
       transform: translate(var(--fly-x, 0px), var(--fly-y, -240px)) rotate(calc(var(--tilt, 0deg) * 2)) scale(.08);
-      transition: transform .48s cubic-bezier(.5, 0, .75, .55), opacity .38s ease-out;
-      transition-delay: var(--fly-d, 0s);
+      transition: transform .56s cubic-bezier(.55, 0, .8, .6), opacity .22s ease-in;
+      transition-delay: var(--fly-d, 0s), calc(var(--fly-d, 0s) + .34s);
     }
-    /* 牌堆「接卡」轻弹：卡陆续飞回时堆身微胀一下像被塞进去（gathering 由 JS 在收回期间挂在 entry 上） */
-    .album-entry.gathering .album-stack { animation: album-deck-catch .5s var(--ease-out) .08s backwards; }
+    /* 牌堆「接卡」轻弹：卡陆续飞回时堆身微胀一下像被塞进去（gathering 由 JS 在收回期间挂在 entry 上；
+       延迟 .22s≈首卡临堆时刻，弹在点子上才读得出「接住」） */
+    .album-entry.gathering .album-stack { animation: album-deck-catch .5s var(--ease-out) .22s backwards; }
     @keyframes album-deck-catch {
       0% { transform: none; }
       40% { transform: scale(1.08) rotate(-1.2deg); }

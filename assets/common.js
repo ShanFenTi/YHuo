@@ -7804,8 +7804,12 @@ window.__siteCalendar = (function () {
         });
       }
       albumLbKeydown = function (e) {
-        if (e.key === 'Escape') albumLbClose();
-        else if (e.key === 'ArrowLeft') albumLbStep(-1);
+        if (e.key === 'Escape') { albumLbClose(); return; }
+        // 方向键输入框守卫（2026-10-02 补漏）：Ctrl+K 搜索面板可以叠在开着的灯箱上，输入框里按
+        // ←/→ 是移动光标——不挡的话每按一次就给隐藏大图换 src 白拉流量（与「灯箱关着按方向键」同类）
+        var t = e.target;
+        if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) return;
+        if (e.key === 'ArrowLeft') albumLbStep(-1);
         else if (e.key === 'ArrowRight') albumLbStep(1);
       };
       document.addEventListener('keydown', albumLbKeydown);

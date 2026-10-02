@@ -6477,7 +6477,9 @@
     @keyframes album-entry-back {
       from { opacity: 0; transform: translateY(14px) scale(.96); }
     }
-    .album-entry.back { animation: album-entry-back .34s var(--ease-out); }
+    /* 浮回 .28s（2026-10-02 提速自 .34s）：收尾提前后其他相册的回归要与收卡动作无缝衔接，
+       节奏太慢会把「浮回」读成第二段等待 */
+    .album-entry.back { animation: album-entry-back .28s var(--ease-out); }
     @media (prefers-reduced-motion: reduce) {
       .wall-item.in.out { transition: none; }
       .album-photos.collapsing { transition: none; }

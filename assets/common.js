@@ -7666,7 +7666,12 @@ window.__siteCalendar = (function () {
           });
           entry.classList.add('gathering');
           entry.classList.remove('dealing'); // 发牌未播完就收回：放牌动画让位给接卡
-          albumCollapseTimer = setTimeout(function () { albumCollapseFinish(list, wall, entry); }, step * (items.length - 1) + 600);
+          // 收尾时机（2026-10-02 修「收回后顿一下才显示所有相册」）：卡的透明度过渡只有 .38s ease-out，
+          // 落地前 ~200ms 就已完全看不见——旧定时器在最后一张卡「起飞」后还干等 600ms，全部是死时间
+          // （站长实报的空窗顿挫即此）。提前到起飞后 420ms：视觉上无缝衔接收尾；兜底不低于 520ms
+          // 让 .5s 的高度收拢（.collapsing 过渡）走完再切布局
+          albumCollapseTimer = setTimeout(function () { albumCollapseFinish(list, wall, entry); },
+            Math.max(520, step * (items.length - 1) + 420));
         } else {
           albumCollapseFinish(list, wall, entry);
         }

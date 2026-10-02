@@ -7330,6 +7330,9 @@ window.__siteCalendar = (function () {
     var albumGoneTimer = null;     // 展开后其他相册「缩小退场完成 → display:none」的 360ms 延迟
     var albumCollapseTimer = null; // 收回时「照片淡出 → 容器收起+相册浮回」的 200ms 延迟
     var albumFlipTimer = null;     // 收尾 FLIP（牌堆归位动画）的行内样式清理延迟
+    var albumHeightTimer = null;   // 收尾卡片背景高度回落（满屏→格子）的行内样式清理延迟
+    var albumCollapsing = null;    // 代际守卫：当前收回轮次的 wall——收尾定时器被系统节流拉长后
+                                   // 可能晚到在「重新展开」的状态上，没这个守卫会把新展开误收回去
 
     function albumStopCycles() {
       albumTimers.forEach(function (t) { clearInterval(t); });
@@ -7541,6 +7544,10 @@ window.__siteCalendar = (function () {
     function albumCollapseFinish(list, wall, entry) {
       clearTimeout(albumCollapseTimer);
       albumCollapseTimer = null;
+      // 代际守卫：只对发起本轮收回的状态收尾。定时器被后台节流拉长后，晚到触发时相册可能已被
+      // 重新展开——此时直接丢弃（防误收新展开）；收尾先行的立即完成路径不受影响（同一轮次）
+      if (albumCollapsing !== wall) { albumCollapsing = null; return; }
+      albumCollapsing = null;
       // 收尾归位（站长五报「收回后抽搐」→ 六报「还是会顿」的根治）：摘 expanded 的瞬间牌堆封面
       // 从「整行展开位的行中心」瞬移到「网格格子的格中心」，瞬时 scrollIntoView 再叠一跳——
       // 两次跳变即顿挫感。FLIP 顺序是关键：**旧位必须在类摘除（布局切换）之前量**——
@@ -7553,7 +7560,20 @@ window.__siteCalendar = (function () {
       // （站长七报「出现在第一个相册位置上再瞬移回去」即此）
       var cover = entry.querySelector('.album-stack');
       var first = (!reduceMotion && cover) ? cover.getBoundingClientRect() : null; // 旧位（展开时堆的居中位置）
-      albumScrollToEntry(entry); // 瞬时滚动校正（此刻还在旧布局上做，封面跳变交给 FLIP 抵消）
+      // 卡片背景「满屏 → 格子」的高度回落（站长定版 2026-10-02：收回要有过程、页面不瞬间失去滚动）：
+      // 收回开始时 JS 给列表锁了「视口底沿」级的 min-height 撑住卡片背景与页面高度（防高度收拢
+      // 中途触发滚动钳制把画面上拽）；这里先把当前列表高度锁死再摘类——布局切换与变短压进同一帧，
+      // 随后量自然高、把滚动一次性落到终态安全位、高度过渡回落。滚动放在量新位之前做：
+      // FLIP 的 first/last 都按视口坐标算，这次滚动连同布局切换一起被牌堆归位动画吸收
+      var glide = !reduceMotion && !!list.style.minHeight;
+      var lockedH = 0;
+      if (glide) {
+        lockedH = list.offsetHeight;
+        list.style.height = lockedH + 'px';
+        list.style.minHeight = '';
+      } else {
+        albumScrollToEntry(entry); // 无撑高路径（减少动态/空相册）维持原瞬时锚定
+      }
       var photos = wall.closest('.album-photos'); // 摘高度收拢态（容器回落 display:none，下次展开从零开始）
       if (photos) { photos.classList.remove('collapsing'); photos.style.removeProperty('--collapse-h'); }
       entry.classList.remove('gathering'); // 牌堆「接卡」态随收尾一起摘
@@ -7574,6 +7594,18 @@ window.__siteCalendar = (function () {
         el.style.removeProperty('--fly-y');
         el.style.removeProperty('--fly-d');
       });
+      // 终态滚动位 + 高度回落：先瞬时量「摘掉撑高后的自然页高」，算出不会触发滚动钳制的终态
+      // 滚动位（≤96px 锚定，页面比一屏短就落 0），同帧滚过去（不经绘制，跳变由 FLIP 吸收）；
+      // 再让列表高度从锁定值过渡到自然值——卡片背景平滑缩回格子，滚动条同步缩短，全程无钳制
+      if (glide) {
+        list.style.height = 'auto';
+        var naturalH = list.offsetHeight;
+        list.style.height = lockedH + 'px';
+        void list.offsetWidth;
+        var finalDocH = document.documentElement.scrollHeight - (lockedH - naturalH);
+        window.scrollTo(0, Math.max(0, Math.min(96, finalDocH - window.innerHeight)));
+        albumHeightGlide(list, lockedH, naturalH);
+      }
       // 布局已切换：量新位播归位动画
       if (first) {
         var last = cover.getBoundingClientRect();
@@ -7606,6 +7638,28 @@ window.__siteCalendar = (function () {
       cover.style.removeProperty('transition');
     }
 
+    // 卡片背景高度回落（满屏 → 格子）：从锁定值过渡到自然值。双路清理同 FLIP
+    //（transitionend 即清 + 380ms 兜底；快速再点展开会连行内样式一起清）
+    function albumHeightGlide(list, fromH, toH) {
+      clearTimeout(albumHeightTimer);
+      albumHeightTimer = null;
+      if (fromH === toH) { list.style.removeProperty('height'); return; }
+      list.style.transition = 'height .3s var(--ease-out)';
+      list.style.height = toH + 'px';
+      var clear = function () {
+        clearTimeout(albumHeightTimer);
+        albumHeightTimer = null;
+        list.style.removeProperty('height');
+        list.style.removeProperty('transition');
+      };
+      list.addEventListener('transitionend', function onHE(e) {
+        if (e.propertyName !== 'height') return;
+        list.removeEventListener('transitionend', onHE);
+        clear();
+      });
+      albumHeightTimer = setTimeout(clear, 380);
+    }
+
     function albumToggleEntry(entry, wall) {
       var list = document.getElementById('albumList');
       if (!list) return;
@@ -7613,10 +7667,17 @@ window.__siteCalendar = (function () {
       // （wasExpanded 要在这之后读——finish 会摘掉 expanded，提前读会拿到过时的 true
       // 把「收回中再点一下=重新展开」误判成又一次收回）
       if (albumCollapseTimer) albumCollapseFinish(list, wall, entry);
+      albumCollapsing = null; // 上面的立即收尾已消费本轮；此后不再有合法的迟到收尾
       var wasExpanded = entry.classList.contains('expanded');
       if (!wasExpanded) {
         var pc = entry.querySelector('.album-stack');
         if (pc) albumFlipCleanup(pc); // 上一次收回的归位动画还在播就再点开：立即中止，防牌堆带位移展开
+        // 上一次收回的高度回落若还在播：清掉行内高度/过渡/计时器，别跟 .expanded 的满屏最低高度打架
+        clearTimeout(albumHeightTimer);
+        albumHeightTimer = null;
+        list.style.removeProperty('height');
+        list.style.removeProperty('transition');
+        list.style.removeProperty('min-height');
         clearTimeout(albumGoneTimer);
         list.querySelectorAll('.album-entry.gone').forEach(function (el) { el.classList.remove('gone'); });
         list.querySelectorAll('.album-entry.expanded').forEach(function (el) {
@@ -7641,6 +7702,12 @@ window.__siteCalendar = (function () {
         var items = wall.querySelectorAll('.wall-item');
         var reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
         if (!reduceMotion && items.length) {
+          // 撑住页面（站长定版：收回期间页面始终可滑）：列表锁「延伸到视口底沿」的最低高度——
+          // 卡片背景（.apple-card 壳）随之盖住整屏，照片墙高度收拢时页面总高不再跌破
+          // 滚动位+视口，浏览器不会中途钳制滚动位置把画面上拽（「突然变成不滑动」的根因）；
+          // 收尾在 albumCollapseFinish 里量自然高、滚动落终态、高度过渡回落
+          var lr = list.getBoundingClientRect();
+          list.style.minHeight = Math.round(window.innerHeight - lr.top) + 'px';
           var photos = wall.closest('.album-photos');
           if (photos) {
             photos.style.setProperty('--collapse-h', photos.offsetHeight + 'px');
@@ -7668,12 +7735,14 @@ window.__siteCalendar = (function () {
           });
           entry.classList.add('gathering');
           entry.classList.remove('dealing'); // 发牌未播完就收回：放牌动画让位给接卡
+          albumCollapsing = wall;            // 登记本轮收回（收尾定时器晚到的代际守卫凭据）
           // 收尾时机：卡全程可见地飞回（淡出压在飞行最后 .22s，见 site.css .in.out），最后一张
           // 「溶进牌堆」= 起飞后 .56s；收尾压着这个点 +40ms 触发，全程无死时间也无抢拍；
           // 兜底 620ms 保证 .5s 高度收拢走完（1 张照片的相册走这条）
           albumCollapseTimer = setTimeout(function () { albumCollapseFinish(list, wall, entry); },
             Math.max(620, step * (items.length - 1) + 600));
         } else {
+          albumCollapsing = wall; // 直收路径（减少动态/空相册）同样登记
           albumCollapseFinish(list, wall, entry);
         }
       }
@@ -7825,6 +7894,8 @@ window.__siteCalendar = (function () {
       if (albumLbFavsChanged) { document.removeEventListener('yhuo:favs-changed', albumLbFavsChanged); albumLbFavsChanged = null; }
       clearTimeout(albumGoneTimer); albumGoneTimer = null;
       clearTimeout(albumCollapseTimer); albumCollapseTimer = null;
+      clearTimeout(albumHeightTimer); albumHeightTimer = null;
+      albumCollapsing = null;
       albumImgs = [];
       albumLoaded = false;
       clearTimeout(albumFlipTimer); albumFlipTimer = null;

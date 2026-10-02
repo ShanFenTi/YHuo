@@ -6379,6 +6379,10 @@
     /* order:-1 = 展开项即刻排到列表最前（站长要求「展开后显示在最上面」，2026-10-01）：
        与 JS 的瞬时锚定一次到位；其他相册 360ms 后 display:none 时展开项位置不变，无二次跳变 */
     .album-entry.expanded { grid-column: 1 / -1; cursor: default; order: -1; }
+    /* 展开时卡片背景盖满一屏（站长定版 2026-10-02）：照片少时 .apple-card 壳也延伸到屏幕底，
+       页面始终可滑；收回期间的动态撑高与收尾回落由 JS 管（albumToggleEntry 锁视口底沿、
+       albumCollapseFinish 量自然高后过渡回落），这里只管展开静态态 */
+    .album-list.has-expanded { min-height: calc(100vh - 96px); }
     /* 展开某个相册时，其它相册缩小退场 */
     .album-list.has-expanded .album-entry:not(.expanded) { opacity: 0; transform: scale(.92); pointer-events: none; }
     .album-list.has-expanded .album-entry:not(.expanded).gone { display: none; }

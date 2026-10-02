@@ -226,6 +226,8 @@
           <p class="notes-lead">一些个人思考、日记和零碎的感悟——不成文章，随手记下。</p>
           <div class="data-skel ds-stack" id="notesSkel" aria-hidden="true"><span class="skel" style="height:84px"></span><span class="skel" style="height:84px"></span><span class="skel" style="height:84px"></span><span class="skel" style="height:84px"></span><span class="skel" style="height:84px"></span></div>
           <div class="notes-feed" id="notesFeed"></div>
+          <!-- 笔记详情态（2026-10-02 两态交互）：点击列表摘要卡切到这里，#note-<id> 可分享；容器在 main 内免八页外壳同步（坑 23） -->
+          <div class="note-detail" id="notesDetail" hidden></div>
           <p class="empty-hint" id="notesEmpty" hidden>还没有随笔。写一条：往 notes/notes.json 加一条 {date, mood, text}（date 形如 2026-09-07，mood=天气/时段如 晴/夜，可留空），或直接在后台「随笔」页写。</p>
         </div>
       </div>

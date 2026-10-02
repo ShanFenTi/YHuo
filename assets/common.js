@@ -7557,6 +7557,7 @@ window.__siteCalendar = (function () {
       var photos = wall.closest('.album-photos'); // 摘高度收拢态（容器回落 display:none，下次展开从零开始）
       if (photos) { photos.classList.remove('collapsing'); photos.style.removeProperty('--collapse-h'); }
       entry.classList.remove('gathering'); // 牌堆「接卡」态随收尾一起摘
+      entry.classList.remove('dealing');   // 防御：发牌未播完被连点收尾时顺手清
       var hidden = list.querySelectorAll('.album-entry.gone'); // 先记集合：它们此刻 display:none
       list.querySelectorAll('.album-entry.expanded').forEach(function (el) { el.classList.remove('expanded'); });
       list.classList.remove('has-expanded');
@@ -7664,6 +7665,7 @@ window.__siteCalendar = (function () {
             el.classList.add('out');
           });
           entry.classList.add('gathering');
+          entry.classList.remove('dealing'); // 发牌未播完就收回：放牌动画让位给接卡
           albumCollapseTimer = setTimeout(function () { albumCollapseFinish(list, wall, entry); }, step * (items.length - 1) + 600);
         } else {
           albumCollapseFinish(list, wall, entry);
@@ -7671,24 +7673,63 @@ window.__siteCalendar = (function () {
       }
     }
 
-    // 照片错落入场：先整体回到入场前状态，再带 stagger 依次进场
+    // 照片入场「发牌」（2026-10-02，收回飞回的逆过程）：展开时每张卡从牌堆封面位置飞向自己的
+    // 格子——位移复用收回的 --fly-x/--fly-y（同一向量），错峰步长与收回同公式（总错峰封顶 ~420ms），
+    // 牌堆同时轻缩一下像「放牌」（.dealing）。测量顺序有讲究：先把卡摆到各自格心（fly 变量置 0 +
+    // .deal 无过渡），量格心与牌堆位的差写真实位移，再摘 .deal 挂 .in 起飞。减少动态效果时跳过
+    // 飞出直接显示（与收回对称）。
     function albumEnterWall(wall) {
       var items = wall.querySelectorAll('.wall-item');
       if (!items.length) return;
       var reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-      items.forEach(function (el) { el.classList.remove('in'); });
+      items.forEach(function (el) { el.classList.remove('in'); el.classList.remove('deal'); });
+      var entry = wall.closest('.album-entry');
+      var step = 70;
+      var deal = false;
+      if (!reduceMotion && entry) {
+        // 此刻 .expanded 已挂（albumToggleEntry 先切布局再进来），格子位与牌堆位都是最终布局
+        var cover = entry.querySelector('.album-cover');
+        var cr = cover ? cover.getBoundingClientRect() : null;
+        if (cr) {
+          deal = true;
+          step = items.length > 1 ? Math.max(18, Math.min(55, Math.round(420 / (items.length - 1)))) : 0;
+          items.forEach(function (el) {
+            el.style.setProperty('--fly-x', '0px');
+            el.style.setProperty('--fly-y', '0px');
+            el.classList.add('deal');
+          });
+          void wall.offsetWidth; // 卡已摆在各格心（scale/rotate 不动格心），此时量位移才准
+          var cx = cr.left + cr.width / 2;
+          var cy = cr.top + cr.height * 0.3; // 落点=牌堆中上部，与收回飞回的目的地同款
+          items.forEach(function (el) {
+            var r = el.getBoundingClientRect();
+            el.style.setProperty('--fly-x', Math.round(cx - (r.left + r.width / 2)) + 'px');
+            el.style.setProperty('--fly-y', Math.round(cy - (r.top + r.height / 2)) + 'px');
+          });
+          entry.classList.add('dealing');
+          void wall.offsetWidth; // 「牌堆里」的初始态落定后再起飞
+        }
+      }
       if (reduceMotion) {
         items.forEach(function (el) { el.style.setProperty('--d', '0s'); el.classList.add('in'); });
         return;
       }
-      void wall.offsetWidth; // 重排让初始态生效，否则不会重放过渡
       items.forEach(function (el, i) {
-        el.style.setProperty('--d', (i * 70) + 'ms');
+        el.style.setProperty('--d', (i * step) + 'ms');
+        el.classList.remove('deal');
         el.classList.add('in');
       });
       setTimeout(function () {
-        items.forEach(function (el) { el.style.setProperty('--d', '0s'); });
-      }, items.length * 70 + 700);
+        items.forEach(function (el) {
+          el.style.setProperty('--d', '0s');
+          if (!el.classList.contains('out')) { // 收回若已开跑，飞回变量归它用，别动
+            el.style.removeProperty('--fly-x');
+            el.style.removeProperty('--fly-y');
+            el.style.removeProperty('--fly-d');
+          }
+        });
+        if (entry) entry.classList.remove('dealing');
+      }, step * (items.length - 1) + 750);
     }
 
     // 跳转相册页打开指定照片的统一入口（搜索图片条目/个人主页收藏照片共用）。

@@ -6465,6 +6465,13 @@
       40% { transform: scale(1.08) rotate(-1.2deg); }
       100% { transform: none; }
     }
+    /* 牌堆「放牌」轻缩：展开发牌时堆身微收一下像把牌撒出去（gathering 接卡的镜像，dealing 由 JS 挂） */
+    .album-entry.dealing .album-stack { animation: album-deck-release .5s var(--ease-out) .08s backwards; }
+    @keyframes album-deck-release {
+      0% { transform: none; }
+      40% { transform: scale(.93) rotate(1.2deg); }
+      100% { transform: none; }
+    }
     /* 其他相册浮回：从 display:none 恢复可见的瞬间从头播（animation 不依赖旧渲染态，
        对 display 切换可靠；fill 默认 none，结束不留 transform——坑 22 教训同款） */
     @keyframes album-entry-back {
@@ -6475,6 +6482,8 @@
       .wall-item.in.out { transition: none; }
       .album-photos.collapsing { transition: none; }
       .album-entry.gathering .album-stack { animation: none; }
+      .album-entry.dealing .album-stack { animation: none; }
+      .wall-item.deal { transition: none; }
       .album-entry.back { animation: none; }
     }
     .album-photos-inner { padding: 4px 22px 24px; }
@@ -6505,6 +6514,14 @@
     .wall-item.in {
       --ey: 0px; --er: var(--tilt, 0deg); --es: 1;
       opacity: 1;
+    }
+    /* 展开发牌（2026-10-02，收回飞回的逆过程）：JS 先把卡摆到牌堆位置（--fly-x/--fly-y 与收回
+       同一套向量），摘 .deal 挂 .in 即从牌堆飞向格子——过渡曲线/延迟用 .in 的基础规则承担。
+       transition:none 是关键：初始态的摆放（含测量期间变量从 0 改为真实位移）绝不能播过渡 */
+    .wall-item.deal {
+      opacity: 0;
+      transform: translate(var(--fly-x, 0px), var(--fly-y, 0px)) rotate(calc(var(--tilt, 0deg) * 2)) scale(.08);
+      transition: none;
     }
     /* 悬停 spring 回正 + 微放大（transition-delay 归零才跟手） */
     .wall-item.in:hover {

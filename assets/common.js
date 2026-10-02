@@ -3640,6 +3640,7 @@ window.__siteCalendar = (function () {
       try { if (localStorage.getItem('yhuoSchedView') === 'grid') schedViewMode = 'grid'; } catch (e) {}
       var schedListDay = 0;   // 列表筛选：0=全部 1-7=周几；loadSched 成功后初始化为今天
       var schedNowTimer = null; // 「正在上课」轻刷新定时器（30s，离页清理）
+      var schedHoliday = null; // 今天命中的假日条目（如 '10-01~10-07'，服务端 getHoliday 下发；放假不上课）
       var SCHED_DAYS = ['周一', '周二', '周三', '周四', '周五', '周六', '周日'];
       var SCHED_COLORS = [
         '#5b8def', '#e8618c', '#3aa981', '#e0913d', '#8b6fd6', '#4ab3c4', '#d16a4a', '#6f7f95',
@@ -3747,9 +3748,9 @@ window.__siteCalendar = (function () {
         var w = schedCurWeek();
         return !w || !c.weeks || !c.weeks.length || c.weeks.indexOf(w) !== -1;
       }
-      // 现在是否正在上这节课：今天 + 本周有效 + 当前时间落在起止区间内
+      // 现在是否正在上这节课：今天 + 本周有效 + 当前时间落在起止区间内（假日整天不上课直接 false）
       function schedCourseNow(c) {
-        if (c.day !== schedTodayDow() || !schedWeekActive(c)) return false;
+        if (schedHoliday || c.day !== schedTodayDow() || !schedWeekActive(c)) return false;
         var nt = (schedData && schedData.nodeTimes) || [];
         var s = nt[c.startNode - 1] || { h: 8, m: 0 };
         var e = nt[c.endNode - 1] || s;
@@ -3759,11 +3760,13 @@ window.__siteCalendar = (function () {
         var nm = now.getHours() * 60 + now.getMinutes();
         return nm >= sm && nm < em;
       }
-      // 已上过（置灰）：本周真实存在且已结束——日子在今天之前，或今天但结束时间已到
+      // 已上过（置灰）：本周真实存在且已结束——日子在今天之前，或今天但结束时间已到。
+      // 假期当天不算「上过」（根本没上课），已过去的日子照常算
       function schedCoursePast(c) {
         var dow = schedTodayDow();
         if (c.day > dow || !schedWeekActive(c)) return false;
         if (c.day < dow) return true;
+        if (schedHoliday) return false;
         var nt = (schedData && schedData.nodeTimes) || [];
         var e = nt[c.endNode - 1] || { h: 22, m: 0 };
         var em = (e.h * 60 + e.m + schedNodeMinutes()) % 1440;
@@ -3918,14 +3921,32 @@ window.__siteCalendar = (function () {
         if (schedTodayDateEl) {
           schedTodayDateEl.textContent = now.getFullYear() + '-' + schedPad2(now.getMonth() + 1) + '-' + schedPad2(now.getDate());
         }
-        // 今日卡胶囊：只列本周真要上的课（按教学周过滤；没设学期起始全部算）
-        var todayList = schedData.courses
+        // 假期说明行：命中假日表时日期下注明区间与停发（邮件停发同源同状态，服务端 getHoliday 下发）
+        if (schedTodayDateEl) {
+          var holNote = document.getElementById('schedTodayHol');
+          if (!holNote) {
+            holNote = document.createElement('p');
+            holNote.id = 'schedTodayHol';
+            holNote.className = 'sched-today-holnote';
+            schedTodayDateEl.parentNode.appendChild(holNote);
+          }
+          holNote.hidden = !schedHoliday;
+          holNote.textContent = schedHoliday ? '法定假期 ' + schedHoliday + ' · 邮件提醒已停发' : '';
+        }
+        // 今日卡胶囊：只列本周真要上的课（按教学周过滤；没设学期起始全部算）；
+        // 假期整天不上课——胶囊区换成假期提示（邮件提醒停发与这里是同一条假日表，服务端下发）
+        var todayList = schedHoliday ? [] : schedData.courses
           .map(function (c, i) { return { c: c, i: i }; })
           .filter(function (o) { return o.c.day === dow && schedWeekActive(o.c); })
           .sort(function (a, b) { return a.c.startNode - b.c.startNode || a.c.endNode - b.c.endNode; });
         if (schedTodayChips) {
           schedTodayChips.innerHTML = '';
-          if (!todayList.length) {
+          if (schedHoliday) {
+            var holi = document.createElement('span');
+            holi.className = 'sched-today-holiday';
+            holi.textContent = '假期中 · 今天不上课 🎉';
+            schedTodayChips.appendChild(holi);
+          } else if (!todayList.length) {
             var free = document.createElement('span');
             free.className = 'sched-today-free';
             free.textContent = '今天没有课 🎉';
@@ -3964,8 +3985,10 @@ window.__siteCalendar = (function () {
             var empty = document.createElement('p');
             empty.className = 'empty-hint';
             empty.textContent = schedListDay
-              ? SCHED_DAYS[schedListDay - 1] + '没有安排课程。'
-              : '还没有课程。点「新增课程」手动添加，或切到「编辑」用 WakeUp 课表一键导入。';
+              ? (schedHoliday && schedListDay === dow
+                ? SCHED_DAYS[schedListDay - 1] + '是假期（' + schedHoliday + '），按课表今天不上课。'
+                : SCHED_DAYS[schedListDay - 1] + '没有安排课程。')
+              : '还没有课程。切到「编辑」用 WakeUp 课表一键导入，或点「新增课程」手动添加。';
             schedDayListEl.appendChild(empty);
           } else list.forEach(function (o) {
             schedDayListEl.appendChild(schedBuildCourseCard(o.c, o.i));
@@ -3981,9 +4004,12 @@ window.__siteCalendar = (function () {
         card.style.setProperty('--sdc-color', schedColor(c.name));
         var isNow = schedCourseNow(c);
         var weekOk = schedWeekActive(c);
+        var dow = schedTodayDow();
+        var isHolToday = !!schedHoliday && c.day === dow; // 假期当天的排课：显示但挂「假期」章
         if (isNow) card.classList.add('now');
         else if (schedCoursePast(c)) card.classList.add('past');
         if (!weekOk) card.classList.add('off-week');
+        if (isHolToday) card.classList.add('hol-today');
         var when = document.createElement('div');
         when.className = 'sdc-when';
         var tm = document.createElement('p');
@@ -4009,6 +4035,13 @@ window.__siteCalendar = (function () {
           off.className = 'sdc-off';
           off.textContent = '非本周';
           nameRow.appendChild(off);
+        }
+        if (isHolToday) {
+          var hol = document.createElement('span');
+          hol.className = 'sdc-hol';
+          hol.title = '假期中（' + schedHoliday + '），按法定节假日今天不上课，邮件提醒也已停发';
+          hol.textContent = '假期';
+          nameRow.appendChild(hol);
         }
         mainBox.appendChild(nameRow);
         var meta = [];
@@ -4280,6 +4313,7 @@ window.__siteCalendar = (function () {
           .then(function (d) {
             if (!d || !d.ok) { schedShowAnon(); return; } // 未登录/接口不可用 → 登录空态
             schedData = d.schedule;
+            schedHoliday = d.holiday || null; // 今天命中的假日条目（null=非假日）
             schedViewWeek = 0;
             schedListDay = schedTodayDow(); // 进页默认看今天（筛选可随时切）
             schedCloseEditor();

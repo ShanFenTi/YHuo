@@ -1,4 +1,6 @@
-// GET /api/schedule → 当前身份课表（没存过返回默认空结构）
+// GET /api/schedule → 当前身份课表（没存过返回默认空结构）；响应带 holiday=今天命中的假日条目
+//   （如 '10-01~10-07'，null=非假日）——与邮件停发同源（lib/schedule.js getHoliday），
+//   前台看课视图据此显示假期状态（2026-10-02 站长反馈：放假了页面不该还显示「正在上课」）
 // PUT /api/schedule → 三种 body：
 //   { schedule: {...} }        整份保存（前端每次改动全量提交，结构见 lib/schedule.js）
 //   { wakeUp: <WakeUp导出JSON> } 导入 WakeUp JSON：服务端解析替换课程，保留提醒设置/作息
@@ -8,7 +10,7 @@
 import { json, getCookie, SESSION_COOKIE } from '../lib/util.js';
 import { getUserSession, isValidSession, USER_COOKIE } from '../lib/auth.js';
 import { ensureSchema } from '../lib/migrate.js';
-import { normSchedule, parseWakeUp, parseWakeUpCsv } from '../lib/schedule.js';
+import { normSchedule, parseWakeUp, parseWakeUpCsv, getHoliday, bjNow, bjDayStr } from '../lib/schedule.js';
 
 // 返回当前身份：{ kind:'user', userId } 或 { kind:'admin' }；未登录返回 null
 async function identity(request, env) {
@@ -62,7 +64,8 @@ export async function onRequestGet({ request, env }) {
   const id = await identity(request, env);
   if (!id) return json({ ok: false, error: '未登录' }, 401);
   const { exists, data } = await readSchedule(env, id);
-  return json({ ok: true, exists, schedule: normSchedule(data) });
+  const holiday = await getHoliday(env, bjDayStr(bjNow()));
+  return json({ ok: true, exists, schedule: normSchedule(data), holiday });
 }
 
 export async function onRequestPut({ request, env }) {

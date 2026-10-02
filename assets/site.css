@@ -507,11 +507,54 @@
       .search-toggle { width: 32px; height: 32px; }
     }
 
-    /* 留言板：发布区 + 留言列表（等级徽标/站长标识/删除钮） */
+    /* 留言板：发布区 + 留言列表（等级徽标/站长标识/删除钮）。
+       发布框 2026-10-02 重写：原用工具页 .tool-area/.tool-btn 类，工具页移除批删掉了那段样式，
+       文本框/按钮裸奔成浏览器默认样式（站长实报「太丑」）——改留言板自有类，
+       设计语言对齐登录卡输入框（10px 圆角 + primary 聚焦环 + color-mix 阴影） */
+    .board-compose { display: flex; flex-direction: column; gap: 10px; }
+    .board-area {
+      width: 100%;
+      min-height: 88px;
+      padding: 12px 14px;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: var(--secondary, var(--card));
+      color: var(--apple-foreground);
+      font-family: inherit;
+      font-size: 14px;
+      line-height: 1.6;
+      resize: vertical;
+      transition: border-color 180ms var(--ease-out), box-shadow 180ms var(--ease-out);
+    }
+    .board-area::placeholder { color: var(--apple-muted-foreground); }
+    .board-area:focus {
+      outline: none;
+      border-color: var(--apple-primary);
+      box-shadow: 0 0 0 3px color-mix(in srgb, var(--apple-primary) 22%, transparent);
+    }
+    .board-btn {
+      flex: none;
+      padding: 8px 18px;
+      border: none;
+      border-radius: 999px;
+      background: var(--primary);
+      color: var(--primary-foreground);
+      font-family: inherit;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: transform 160ms var(--ease-out), box-shadow 160ms var(--ease-out), opacity 160ms var(--ease-out);
+    }
+    .board-btn:hover { transform: translateY(-1px); box-shadow: var(--shadow-md); }
+    .board-btn:active { transform: translateY(0) scale(.97); box-shadow: none; }
+    .board-btn:disabled { opacity: .55; cursor: default; transform: none; box-shadow: none; }
+    @media (prefers-reduced-motion: reduce) {
+      .board-btn, .board-area { transition: none; }
+      .board-btn:hover { transform: none; }
+    }
     .board-compose-foot { display: flex; align-items: center; gap: 10px; margin-top: 2px; }
     .board-hint { flex: 1; font-size: 12px; color: var(--apple-muted-foreground); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .board-count { flex: none; font-size: 11px; color: var(--apple-muted-foreground); font-variant-numeric: tabular-nums; }
-    .board-compose-foot .tool-btn { flex: none; }
     .board-list { margin-top: 14px; }
     /* 信箱化（2026-09-17）：每条留言 = 一封信，卡片化；信纸/邮戳/邮票/展信动画全在末段「留言板信箱」段 */
     .board-item { display: flex; gap: 12px; padding: 14px 16px; }

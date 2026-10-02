@@ -1054,3 +1054,70 @@
   /* 多管理员分级（2026-09-30）：普通管理员隐藏超管专属入口与区块——
      前端隐藏只是体验层，真正的边界在 /api/admin/* 中间件按角色 403 */
   body.role-limited [data-superonly], body.role-limited [data-super-nav] { display: none !important; }
+
+  /* ---------- 随笔·文章管理（2026-10-02 改版，设计稿定稿）：工具行 + 文章列表 + 写一篇弹窗 ---------- */
+  .nb-toolbar { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; flex-wrap: wrap; }
+  .nb-toolbar .search-box { flex: 0 1 300px; }
+  .nb-toolbar .spacer { flex: 1; }
+  .nb-toolbar #noteWriteBtn {
+    background: var(--brand); color: var(--on-brand); border: none; border-radius: 999px;
+    font-weight: 700; font-size: 14px; padding: 10px 22px; cursor: pointer;
+    transition: transform .15s, filter .15s;
+  }
+  .nb-toolbar #noteWriteBtn:hover { filter: brightness(1.08); }
+  .nb-toolbar #noteWriteBtn:active { transform: scale(.97); }
+  /* 文章行：头行（标题+徽标+操作）/ meta 行（时间·阅读·标签）/ 摘要行 */
+  .nb-row { padding: 14px 2px; border-bottom: 1px solid var(--row-line); }
+  .nb-row:last-child { border-bottom: none; }
+  .nb-row-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .nb-title { font-weight: 700; font-size: 15px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .nb-badge {
+    flex: none; font-size: 11.5px; font-weight: 600; border-radius: 999px; padding: 2px 10px;
+    border: 1px solid var(--border);
+  }
+  .nb-badge.published { color: var(--ok); border-color: color-mix(in srgb, var(--ok) 35%, var(--border)); background: color-mix(in srgb, var(--ok) 9%, transparent); }
+  .nb-badge.draft { color: var(--muted); background: var(--chip); }
+  .nb-row .row-actions { margin-left: auto; display: flex; gap: 6px; }
+  /* 设计稿按钮常显：覆盖 762 行全局「悬停才显示」规则（.nb-row 不在它的 hover 白名单里，不覆盖会永久隐形） */
+  .nb-row .row-actions { opacity: 1; pointer-events: auto; }
+  .nb-row .row-actions .mini {
+    background: none; border: 1px solid var(--border); border-radius: 999px;
+    font: inherit; font-size: 12.5px; font-weight: 600; color: var(--fg);
+    padding: 5px 14px; cursor: pointer; transition: background .15s, color .15s, border-color .15s;
+  }
+  .nb-row .row-actions .mini:hover { background: var(--hover); }
+  .nb-row .row-actions .mini.danger { color: var(--danger); border-color: color-mix(in srgb, var(--danger) 40%, var(--border)); }
+  .nb-row .row-actions .mini.danger:hover { background: color-mix(in srgb, var(--danger) 10%, transparent); }
+  .nb-row-meta { font-size: 12.5px; color: var(--muted); margin-top: 5px; font-variant-numeric: tabular-nums; }
+  .nb-row-sum { font-size: 13px; color: var(--fg); opacity: .8; line-height: 1.6; margin-top: 5px; }
+  /* 写一篇弹窗 */
+  .nb-modal { width: min(720px, 94vw); max-height: 92vh; overflow-y: auto; }
+  .nb-md-hint { font-size: 12.5px; color: var(--muted); margin: -4px 0 12px; }
+  .nb-two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .nb-draft-row { display: flex; align-items: center; gap: 8px; font-size: 13.5px; margin-top: 10px; cursor: pointer; }
+  .nb-draft-row input { width: 16px; height: 16px; accent-color: var(--brand); }
+  .nb-subbox { margin-top: 12px; border: 1px dashed var(--border); border-radius: 10px; padding: 10px 12px; }
+  .nb-preview {
+    font-size: 14px; line-height: 1.7; overflow-wrap: break-word;
+  }
+  .nb-preview h2, .nb-preview h3, .nb-preview h4, .nb-preview h5 { margin: 10px 0 4px; font-weight: 700; }
+  .nb-preview h2 { font-size: 17px; } .nb-preview h3 { font-size: 15.5px; } .nb-preview h4 { font-size: 14px; } .nb-preview h5 { font-size: 13.5px; }
+  .nb-preview p { margin: 6px 0; }
+  .nb-preview ul { padding-left: 20px; margin: 6px 0; }
+  .nb-preview blockquote { border-left: 3px solid var(--border); padding-left: 10px; color: var(--muted); margin: 6px 0; }
+  .nb-preview pre { background: var(--chip); border-radius: 8px; padding: 10px; overflow-x: auto; margin: 6px 0; }
+  .nb-preview code { font-family: ui-monospace, SFMono-Regular, Consolas, monospace; font-size: 13px; }
+  .nb-preview a { color: var(--brand); }
+  .nb-foot { display: flex; justify-content: flex-end; margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--row-line); }
+  .nb-foot #noteSaveBtn {
+    background: var(--brand); color: var(--on-brand); border: none; border-radius: 999px;
+    font-weight: 700; font-size: 14px; padding: 9px 26px; cursor: pointer;
+    transition: transform .15s, filter .15s;
+  }
+  .nb-foot #noteSaveBtn:hover { filter: brightness(1.08); }
+  .nb-foot #noteSaveBtn:disabled { opacity: .55; cursor: default; }
+  @media (max-width: 640px) {
+    .nb-two-col { grid-template-columns: 1fr; }
+    .nb-title { white-space: normal; flex: 1 1 100%; }
+    .nb-row .row-actions { margin-left: 0; }
+  }

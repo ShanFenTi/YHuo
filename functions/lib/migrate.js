@@ -188,14 +188,21 @@ const DDL = [
     created_at TEXT NOT NULL DEFAULT (datetime('now'))
   )`,
   // 随笔（后台「随笔」页管理，前台 /notes/ 时间线展示）：date=随笔日期 YYYY-MM-DD
-  // （前台按它倒序 + 年份分组，也是单条锚点 id），mood=心情短语可空，text=正文
-  // （支持迷你 Markdown，前台 common.js mdToHtml 渲染；服务端只存文本不解析）
+  // （前台按它倒序 + 年份分组，也是单条锚点 id），mood=天气/时段可空（2026-10-02 后台改版起不再录入，
+  // 存量保留），text=正文（支持迷你 Markdown，前台 common.js mdToHtml 渲染；服务端只存文本不解析）。
+  // 2026-10-02 后台随笔改「文章管理」形态新增：title=标题、tags=标签（逗号分隔原串）、
+  // summary=摘要（空则展示端从正文截取）、draft=1 草稿（公开接口不下发）、views=前台阅读计数
   `CREATE TABLE IF NOT EXISTS notes (
     id         INTEGER PRIMARY KEY AUTOINCREMENT,
     date       TEXT NOT NULL,
     mood       TEXT NOT NULL DEFAULT '',
     text       TEXT NOT NULL,
-    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    title      TEXT NOT NULL DEFAULT '',
+    tags       TEXT NOT NULL DEFAULT '',
+    summary    TEXT NOT NULL DEFAULT '',
+    draft      INTEGER NOT NULL DEFAULT 0,
+    views      INTEGER NOT NULL DEFAULT 0
   )`,
   `CREATE INDEX IF NOT EXISTS idx_notes_date ON notes (date, id)`,
   // 前端错误上报（RUM）：前台 common.js 顶部采集段把 window.onerror / unhandledrejection /
@@ -307,6 +314,23 @@ export async function ensureSchema(env) {
   // 前台据此显示本人的名字/头像与对应徽标（此前普通管理员发言会被当成站长）
   try {
     await env.DB.prepare("ALTER TABLE messages ADD COLUMN admin_id INTEGER").run();
+  } catch {}
+  // 随笔文章化字段（2026-10-02 后台随笔改「文章管理」形态）：标题/标签/摘要/草稿/阅读数，
+  // 老库补列后存量全部落默认值（无标题=展示端回落日期、非草稿、阅读 0），行为与改版前一致
+  try {
+    await env.DB.prepare("ALTER TABLE notes ADD COLUMN title TEXT NOT NULL DEFAULT ''").run();
+  } catch {}
+  try {
+    await env.DB.prepare("ALTER TABLE notes ADD COLUMN tags TEXT NOT NULL DEFAULT ''").run();
+  } catch {}
+  try {
+    await env.DB.prepare("ALTER TABLE notes ADD COLUMN summary TEXT NOT NULL DEFAULT ''").run();
+  } catch {}
+  try {
+    await env.DB.prepare("ALTER TABLE notes ADD COLUMN draft INTEGER NOT NULL DEFAULT 0").run();
+  } catch {}
+  try {
+    await env.DB.prepare("ALTER TABLE notes ADD COLUMN views INTEGER NOT NULL DEFAULT 0").run();
   } catch {}
   // 存量相册回填：把 media.album 里已有的相册名补进 albums 表
   // （INSERT OR IGNORE 幂等，ensureSchema 每个隔离实例各跑一遍也无副作用）

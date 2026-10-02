@@ -5423,6 +5423,28 @@
       border: 1px solid color-mix(in srgb, var(--primary) 22%, transparent);
     }
 
+    /* 标题与标签（2026-10-02 后台随笔文章化）：老数据无标题/标签不渲染，行为与改版前一致 */
+    .note-title {
+      font-size: 17px;
+      font-weight: 700;
+      letter-spacing: -0.01em;
+      margin: 2px 0 6px;
+    }
+    .note-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin: -2px 0 8px;
+    }
+    .note-tag {
+      font-size: 11.5px;
+      line-height: 1;
+      color: var(--apple-muted-foreground);
+      border: 1px solid var(--apple-border);
+      border-radius: 999px;
+      padding: 4px 9px;
+    }
+
     .note-body {
       font-size: 14.5px;
       line-height: 1.75;

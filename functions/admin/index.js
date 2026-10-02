@@ -233,23 +233,66 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
   </div>
 
   <div id="notesPanel" hidden>
-    <div class="page-head"><div><h2>随笔管理</h2><p class="ph-desc">前台 /notes/ 时间线的内容源；保存后访客刷新即生效。</p></div></div>
-    <div class="card" style="margin-bottom:16px">
-      <p class="appear-label2" style="margin-top:0" id="noteFormTitle">新增随笔（日期自动取当天）</p>
-      <div class="field" style="max-width:280px"><label for="noteMood">天气 / 时段（可空）</label>
-        <input type="text" id="noteMood" placeholder="如 晴 / 雨 / 夜" maxlength="12">
+    <div class="page-head"><div><h2>随笔</h2><p class="ph-desc">前台 /notes/ 时间线的内容源；保存后访客刷新即生效。草稿只有后台可见。</p></div></div>
+    <!-- 工具行：写一篇 + 搜索 + 刷新（2026-10-02 文章管理改版，设计稿定稿） -->
+    <div class="nb-toolbar">
+      <button id="noteWriteBtn" type="button">写一篇</button>
+      <span class="search-box">
+        <span class="sb-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg></span>
+        <input type="text" id="noteSearch" placeholder="搜索标题或正文…">
+        <button type="button" class="sb-clear" data-for="noteSearch" title="清空搜索" aria-label="清空搜索"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
+      </span>
+      <span class="spacer"></span>
+      <button id="notesRefreshBtn" class="ghost" type="button">刷新</button>
+    </div>
+    <div class="card">
+      <p class="meta2" id="notesSumm" style="margin:0 0 4px"></p>
+      <div id="notesList"></div>
+      <div class="empty-state" id="notesEmpty" hidden>
+        <span class="es-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></span>
+        <span class="es-title">还没有随笔</span>
+        <span class="es-hint">点左上角「写一篇」发布第一篇；搜索无结果时也会显示这里。</span>
       </div>
-      <div class="field" style="margin-top:12px"><label for="noteText">正文</label>
-        <textarea id="noteText" rows="4" placeholder="1~2000 字；支持迷你 Markdown：**粗** *斜* 行内码 [链接](url) > 引用，前台按它渲染"></textarea>
+    </div>
+  </div>
+
+  <!-- 写一篇/编辑弹窗（2026-10-02 文章管理改版）：表单从常驻卡片改为居中弹窗，markup 禁反引号与美元符花括号（坑 18） -->
+  <div class="modal" id="noteModal" hidden>
+    <div class="modal-backdrop" id="noteModalBackdrop"></div>
+    <div class="modal-body nb-modal">
+      <div class="modal-head"><strong id="noteModalTitle">写一篇随笔</strong><button id="noteModalClose" class="icon-mini" type="button" title="关闭" aria-label="关闭"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg></button></div>
+      <p class="nb-md-hint">支持简易 Markdown：# 标题、**加粗**、- 列表、&gt; 引用、三个反引号代码块。</p>
+      <div class="field"><label for="noteTitle">标题</label>
+        <input type="text" id="noteTitle" placeholder="标题" maxlength="60">
       </div>
+      <div class="nb-two-col">
+        <div class="field"><label for="noteTags">标签</label>
+          <input type="text" id="noteTags" placeholder="标签，用逗号分隔（如 前端,工程）" maxlength="60">
+        </div>
+        <div class="field"><label for="noteSummary">摘要</label>
+          <input type="text" id="noteSummary" placeholder="摘要（留空自动从正文截取）" maxlength="120">
+        </div>
+      </div>
+      <div class="field"><label for="noteText">正文</label>
+        <textarea id="noteText" rows="10" placeholder="正文…"></textarea>
+      </div>
+      <label class="nb-draft-row"><input type="checkbox" id="noteDraft"> 保存为草稿（前台不显示）</label>
       <div class="bgset-row" style="margin-top:10px">
-        <button id="noteSaveBtn" type="button">保存</button>
-        <button id="noteCancelEditBtn" class="ghost" type="button" hidden>取消编辑</button>
+        <button id="notePreviewBtn" class="ghost" type="button">预览</button>
         <button id="notePolishBtn" class="ghost" type="button" title="让默认模型把正文润色一遍，先预览再决定是否应用">AI 润色</button>
         <span class="meta2" id="noteFormMsg"></span>
       </div>
+      <!-- 预览：正文按前台同款迷你 Markdown 渲染（后台副本），只读不改稿 -->
+      <div id="notePreviewBox" hidden class="nb-subbox">
+        <div class="bgset-row" style="margin:0 0 8px">
+          <strong style="font-size:13px">预览</strong>
+          <span class="spacer"></span>
+          <button id="notePreviewClose" class="ghost" type="button">收起</button>
+        </div>
+        <div id="notePreviewBody" class="nb-preview"></div>
+      </div>
       <!-- 润色预览：结果先落这里，正文原样不动（防丢稿），「应用」才写回 textarea -->
-      <div id="notePolishBox" hidden style="margin-top:10px;border:1px dashed var(--border);border-radius:10px;padding:10px 12px;">
+      <div id="notePolishBox" hidden class="nb-subbox">
         <div class="bgset-row" style="margin:0 0 8px">
           <strong style="font-size:13px">润色预览</strong>
           <span class="meta2" id="notePolishMeta"></span>
@@ -257,16 +300,11 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
           <button id="notePolishApply" type="button">应用到正文</button>
           <button id="notePolishDiscard" class="ghost" type="button">放弃</button>
         </div>
-        <textarea id="notePolishText" rows="4" readonly style="width:100%"></textarea>
+        <textarea id="notePolishText" rows="5" readonly style="width:100%"></textarea>
       </div>
-    </div>
-    <div class="card">
-      <div class="visit-head"><strong>全部随笔</strong><span class="meta2" id="notesSumm"></span></div>
-      <div class="bgset-row" style="margin-top:8px">
-        <button id="notesImportBtn" class="ghost" type="button">从静态清单导入</button>
-        <span class="meta2">把 notes/notes.json 里的存量随笔导入数据库（日期与正文完全相同的自动跳过）；导入后前台以数据库为准。</span>
+      <div class="nb-foot">
+        <button id="noteSaveBtn" type="button">保存</button>
       </div>
-      <div id="notesList" style="margin-top:10px"></div>
     </div>
   </div>
 

@@ -5679,6 +5679,25 @@ window.__siteCalendar = (function () {
           mood.textContent = n.mood;
           meta.appendChild(mood);
         }
+        // 标题与标签（2026-10-02 后台随笔文章化）：老数据无标题不渲染，行为与改版前一致
+        if (n.title) {
+          var ttl = document.createElement('h3');
+          ttl.className = 'note-title';
+          ttl.textContent = String(n.title);
+          art.appendChild(ttl);
+        }
+        var tagList = String(n.tags || '').split(',').map(function (s) { return s.trim(); }).filter(Boolean);
+        if (tagList.length) {
+          var tagsEl = document.createElement('div');
+          tagsEl.className = 'note-tags';
+          tagList.forEach(function (t) {
+            var tag = document.createElement('span');
+            tag.className = 'note-tag';
+            tag.textContent = '#' + t;
+            tagsEl.appendChild(tag);
+          });
+          art.appendChild(tagsEl);
+        }
         art.appendChild(meta);
         var body = document.createElement('div');
         body.className = 'note-body';
@@ -5704,6 +5723,25 @@ window.__siteCalendar = (function () {
         frag.appendChild(art);
       });
       notesFeed.appendChild(frag);
+      // 阅读计数上报（2026-10-02 后台随笔文章化配套）：渲染后对本会话没上报过的篇目各 POST 一次
+      // （sessionStorage 去重，刷新不重复计）；静态清单回落没有 id 不上报。fire-and-forget 失败静默
+      var seenKey = 'yhuoNoteSeen';
+      var seen = {};
+      try { seen = JSON.parse(sessionStorage.getItem(seenKey) || '{}') || {}; } catch (e) { seen = {}; }
+      var fresh = items.filter(function (n) { return n.id && !seen[n.id]; });
+      if (fresh.length) {
+        fresh.forEach(function (n) { seen[n.id] = 1; });
+        try { sessionStorage.setItem(seenKey, JSON.stringify(seen)); } catch (e2) {}
+        fresh.forEach(function (n) {
+          fetch('/api/notes/view', {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id: n.id }),
+            keepalive: true,
+          }).catch(function () {});
+        });
+      }
     }
 
     // 从 URL 锚点定位单条随笔（/notes/#2026-09-07；全站搜索/分享直达同用此入口）

@@ -3628,8 +3628,6 @@ window.__siteCalendar = (function () {
       var schedTodayChips = document.getElementById('schedTodayChips');
       var schedDayFilterEl = document.getElementById('schedDayFilter');
       var schedDayListEl = document.getElementById('schedDayList');
-      var schedListImportBtn = document.getElementById('schedListImportBtn');
-      var schedListAddBtn = document.getElementById('schedListAddBtn');
       var schedENote = document.getElementById('schedENote');
       var schedNodeMin = document.getElementById('schedNodeMin');
       var schedData = null;   // 归一化课表（termStart/nodeTimes/courses/daily/remindAhead）
@@ -4594,11 +4592,7 @@ window.__siteCalendar = (function () {
         schedListDay = Number(b.dataset.day) || 0;
         renderSchedList();
       });
-      // 导入复用编辑视图的文件选择链路（选文件→读内容→PUT wakeUp），成功后 renderSchedAll 两视图同步
-      if (schedListImportBtn) schedListImportBtn.addEventListener('click', function () {
-        if (schedImportBtn) schedImportBtn.click();
-      });
-      if (schedListAddBtn) schedListAddBtn.addEventListener('click', function () { schedOpenEditor(-1); });
+      // 导入/新增不设列表侧入口（2026-10-02 站长定稿：看课纯浏览），全在「编辑」视图
       // 每节时长：改完立即刷新列表（结束时间随节时长变化）再保存
       if (schedNodeMin) schedNodeMin.addEventListener('change', function () {
         if (!schedData) return;

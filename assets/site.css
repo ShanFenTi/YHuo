@@ -2719,7 +2719,7 @@
     }
     .sched-today-chip.past { opacity: 0.55; }
     .sched-today-chip.past .stc-time { color: var(--apple-muted-foreground); }
-    /* 筛选行：周几胶囊左，导入/新增右；窄屏自然换行 */
+    /* 筛选行：周几胶囊（导入/新增在编辑视图，看课侧无动作钮） */
     .sched-filter-row {
       display: flex;
       align-items: center;
@@ -2728,12 +2728,6 @@
       margin-bottom: 14px;
     }
     .sched-day-pills { flex-wrap: wrap; }
-    .sched-list-actions {
-      display: flex;
-      gap: 8px;
-      flex-wrap: wrap;
-      margin-left: auto;
-    }
     /* 课程卡：左竖条=课程色（与周视图同名课同色），不套大卡壳直接排在页面上 */
     .sched-day-list {
       display: flex;

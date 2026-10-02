@@ -2717,6 +2717,8 @@
       border-color: color-mix(in srgb, var(--apple-primary) 45%, transparent);
       background: color-mix(in srgb, var(--apple-primary) 10%, var(--apple-secondary));
     }
+    .sched-today-chip.past { opacity: 0.55; }
+    .sched-today-chip.past .stc-time { color: var(--apple-muted-foreground); }
     /* 筛选行：周几胶囊左，导入/新增右；窄屏自然换行 */
     .sched-filter-row {
       display: flex;
@@ -2755,6 +2757,12 @@
       border-left-color: var(--sdc-color);
       background: color-mix(in srgb, var(--apple-primary) 5%, var(--apple-card));
     }
+    /* 已上过（本周已过的日子或今天已结束）：整卡置灰降透明，竖条与时间不再用彩色 */
+    .sched-day-card.past {
+      --sdc-color: color-mix(in srgb, var(--apple-muted-foreground) 65%, var(--apple-border));
+      opacity: 0.62;
+    }
+    .sched-day-card.past .sdc-time { color: var(--apple-muted-foreground); }
     .sched-day-card.off-week { opacity: 0.55; }
     .sdc-when { flex: none; min-width: 112px; }
     .sdc-time {

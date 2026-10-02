@@ -3761,6 +3761,17 @@ window.__siteCalendar = (function () {
         var nm = now.getHours() * 60 + now.getMinutes();
         return nm >= sm && nm < em;
       }
+      // 已上过（置灰）：本周真实存在且已结束——日子在今天之前，或今天但结束时间已到
+      function schedCoursePast(c) {
+        var dow = schedTodayDow();
+        if (c.day > dow || !schedWeekActive(c)) return false;
+        if (c.day < dow) return true;
+        var nt = (schedData && schedData.nodeTimes) || [];
+        var e = nt[c.endNode - 1] || { h: 22, m: 0 };
+        var em = (e.h * 60 + e.m + schedNodeMinutes()) % 1440;
+        var now = new Date();
+        return now.getHours() * 60 + now.getMinutes() >= em;
+      }
 
       function renderSchedGrid() {
         if (!schedGridEl || !schedData) return;
@@ -3924,7 +3935,7 @@ window.__siteCalendar = (function () {
           } else todayList.forEach(function (o) {
             var b = document.createElement('button');
             b.type = 'button';
-            b.className = 'sched-today-chip' + (schedCourseNow(o.c) ? ' now' : '');
+            b.className = 'sched-today-chip' + (schedCourseNow(o.c) ? ' now' : (schedCoursePast(o.c) ? ' past' : ''));
             b.title = '在列表中定位这门课';
             var nm = document.createElement('span');
             nm.className = 'stc-name';
@@ -3973,6 +3984,7 @@ window.__siteCalendar = (function () {
         var isNow = schedCourseNow(c);
         var weekOk = schedWeekActive(c);
         if (isNow) card.classList.add('now');
+        else if (schedCoursePast(c)) card.classList.add('past');
         if (!weekOk) card.classList.add('off-week');
         var when = document.createElement('div');
         when.className = 'sdc-when';

@@ -2828,42 +2828,18 @@
       border-radius: 999px;
       padding: 2px 8px;
     }
-    .sdc-actions { flex: none; display: flex; gap: 2px; }
-    .sdc-btn {
-      border: 0;
-      background: transparent;
-      font: inherit;
-      font-size: 12.5px;
-      font-weight: 600;
-      color: var(--apple-muted-foreground);
-      padding: 6px 8px;
-      border-radius: 8px;
-      cursor: pointer;
-      white-space: nowrap;
-      transition: color 140ms var(--ease-out), background-color 140ms var(--ease-out);
-    }
-    .sdc-btn:hover {
-      color: var(--apple-foreground);
-      background: color-mix(in srgb, var(--apple-foreground) 6%, transparent);
-    }
-    .sdc-btn.danger:hover, .sdc-btn.danger.armed {
-      color: var(--apple-destructive);
-      background: color-mix(in srgb, var(--apple-destructive) 10%, transparent);
-    }
-    /* 窄屏课程卡：时间+操作一行，课名/备注整行铺开 */
+    /* 窄屏课程卡：时间+周几合并一行，课名/备注整行铺开 */
     @media (max-width: 560px) {
       .sched-page-title { font-size: 26px; }
       .sched-today-info { flex: 1 1 100%; } /* 日期独占一行，胶囊换行排下方（flex:1 会把日期挤到卡底） */
-      .sched-day-card { flex-wrap: wrap; gap: 6px 12px; padding: 14px; }
+      .sched-day-card { gap: 4px 12px; padding: 14px; }
       .sdc-when { min-width: 0; display: flex; align-items: baseline; gap: 8px; }
       .sdc-day { margin: 0; }
-      .sdc-actions { margin-left: auto; }
-      .sdc-main { flex: 1 1 100%; }
       .sched-today-chips { justify-content: flex-start; }
     }
     @media (prefers-reduced-motion: reduce) {
       .sdc-live::before { animation: none; }
-      .sched-today-chip, .sched-view-btn, .sdc-btn { transition: none; }
+      .sched-today-chip, .sched-view-btn { transition: none; }
     }
 
     /* 个人主页操作区按钮行（危险项描红） */

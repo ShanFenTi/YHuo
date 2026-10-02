@@ -4024,42 +4024,10 @@ window.__siteCalendar = (function () {
           mt.textContent = meta.join('　');
           mainBox.appendChild(mt);
         }
-        var acts = document.createElement('div');
-        acts.className = 'sdc-actions';
-        var ed = document.createElement('button');
-        ed.type = 'button';
-        ed.className = 'sdc-btn';
-        ed.textContent = '编辑';
-        ed.addEventListener('click', function () { schedOpenEditor(i); });
-        var de = document.createElement('button');
-        de.type = 'button';
-        de.className = 'sdc-btn danger';
-        de.textContent = '删除';
-        de.addEventListener('click', function () { schedDeleteCourse(i, de); });
-        acts.appendChild(ed);
-        acts.appendChild(de);
+        // 卡片不带编辑/删除钮（2026-10-02 站长定稿：看课纯浏览，修改课程去「编辑」视图）
         card.appendChild(when);
         card.appendChild(mainBox);
-        card.appendChild(acts);
         return card;
-      }
-
-      // 列表删除：两段式确认（首点变红武装 2.5s，再点才删）——沿用清空课程同款防误触
-      function schedDeleteCourse(i, btn) {
-        if (!schedData || !schedData.courses[i]) return;
-        if (btn.dataset.armed !== '1') {
-          btn.dataset.armed = '1';
-          btn.textContent = '确认删除？';
-          btn.classList.add('armed');
-          setTimeout(function () {
-            btn.dataset.armed = '0';
-            btn.textContent = '删除';
-            btn.classList.remove('armed');
-          }, 2500);
-          return;
-        }
-        schedData.courses.splice(i, 1);
-        schedSave('课程已删除'); // 成功后 renderSchedAll 重渲染列表，武装态自然消失
       }
 
       // 今日卡胶囊点击：切到该课的星期筛选，滚动定位并描边高亮

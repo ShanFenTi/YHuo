@@ -85,7 +85,7 @@ export async function onRequestPut({ request, env }) {
       return json({ ok: false, error: (e && e.message) || '导入失败' }, 400);
     }
     data = normSchedule({
-      termStart: old.termStart, nodeTimes: old.nodeTimes,
+      termStart: old.termStart, nodeTimes: old.nodeTimes, nodeMinutes: old.nodeMinutes,
       daily: old.daily, remindAhead: old.remindAhead,
       courses,
     });

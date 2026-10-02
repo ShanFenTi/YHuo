@@ -217,16 +217,77 @@
 
   <main class="page-main">
 
-      <!-- 课表（周视图 + WakeUp 导入 + 邮件提醒设置）；未启用时只显示入口行 -->
+      <!-- 课表（2026-10-02 双视图重做）：列表视图=看课（默认，今日卡+周几筛选+课程卡），
+           周视图=排课/导入（原整卡降级为编辑工具）；未登录不再整页空白，显示登录空态 -->
+      <!-- 页头：两种视图共用，未登录也显示（配合下方登录空态卡） -->
+      <header class="sched-page-head">
+        <p class="sched-page-eyebrow">SCHEDULE</p>
+        <h1 class="sched-page-title">课表</h1>
+        <p class="sched-page-lead">按星期查看，正在上的课会标出「正在上课」。切到「编辑」可排课、导入 WakeUp 课表、设置邮件提醒。</p>
+      </header>
+
+      <!-- 未登录空态：/api/schedule 401 或接口失败时显示（原先整卡隐藏页面空白） -->
+      <div class="apple-card" id="schedAnon" style="display:none">
+        <div class="card-padding">
+          <p class="empty-hint" style="padding:4px 0 14px;">登录后查看自己的课表——支持 WakeUp 课表导入、每日早报与上课前邮件提醒。</p>
+          <button class="appear-btn" id="schedAnonLogin" type="button">登录 / 注册</button>
+        </div>
+      </div>
+
+      <!-- 启用入口（服务端没有课表数据时显示；已启用即隐藏） -->
       <div class="apple-card" id="schedCard" style="display:none">
         <div class="card-padding">
-          <p class="card-eyebrow">课表 · SCHEDULE</p>
-          <!-- 启用入口（服务端没有课表数据时显示） -->
           <div id="schedEnable" hidden>
             <button class="appear-btn" id="schedEnableBtn" type="button">＋ 启用课表</button>
             <p class="profile-hint" style="margin-top:10px;">导入 WakeUp 课表或手动添加课程，配合邮箱获得每日早报和上课前提醒。</p>
           </div>
-          <div id="schedBody" hidden>
+        </div>
+      </div>
+
+      <!-- 课表本体（已启用）：视图切换 + 列表视图 + 编辑视图 -->
+      <div id="schedBody" hidden>
+        <div class="sched-viewbar">
+          <div class="sched-view-switch" id="schedViewSwitch" role="group" aria-label="切换视图">
+            <button type="button" class="sched-view-btn" data-view="list">看课</button>
+            <button type="button" class="sched-view-btn" data-view="grid">编辑</button>
+          </div>
+          <p class="profile-msg sched-viewbar-msg" id="schedMsg"></p>
+        </div>
+
+        <!-- 列表视图（看课，默认）：今日卡 + 周几筛选 + 课程卡 -->
+        <section id="schedListView">
+          <div class="apple-card sched-today">
+            <div class="card-padding sched-today-in">
+              <div class="sched-today-info">
+                <p class="sched-today-dow" id="schedTodayDow">今天</p>
+                <p class="sched-today-date" id="schedTodayDate"></p>
+              </div>
+              <div class="sched-today-chips" id="schedTodayChips"></div>
+            </div>
+          </div>
+          <div class="sched-filter-row">
+            <div class="sched-pill-row sched-day-pills" id="schedDayFilter" role="group" aria-label="按星期查看">
+              <button type="button" class="sched-pill" data-day="0">全部</button>
+              <button type="button" class="sched-pill" data-day="1">周一</button>
+              <button type="button" class="sched-pill" data-day="2">周二</button>
+              <button type="button" class="sched-pill" data-day="3">周三</button>
+              <button type="button" class="sched-pill" data-day="4">周四</button>
+              <button type="button" class="sched-pill" data-day="5">周五</button>
+              <button type="button" class="sched-pill" data-day="6">周六</button>
+              <button type="button" class="sched-pill" data-day="7">周日</button>
+            </div>
+            <div class="sched-list-actions">
+              <button class="appear-btn" id="schedListImportBtn" type="button">↑ 导入 WakeUp 格式</button>
+              <button class="appear-btn" id="schedListAddBtn" type="button">↓ 新增课程</button>
+            </div>
+          </div>
+          <div class="sched-day-list" id="schedDayList"></div>
+        </section>
+
+        <!-- 编辑视图（原周视图整卡原样保留） -->
+        <section id="schedEditView" hidden>
+          <div class="apple-card">
+          <div class="card-padding">
           <div class="sched-toolbar">
             <div class="sched-week-nav">
               <button class="sched-mini-btn" id="schedWeekPrev" type="button" aria-label="上一周">‹</button>
@@ -275,15 +336,20 @@
               <button class="appear-btn danger-btn" id="schedRemoveBtn" type="button">移除课表</button>
             </div>
           </div>
-          <!-- 作息时间（每节上课时间，展开编辑） -->
+          <!-- 作息时间（每节上课时间 + 每节时长，展开编辑）；每节时长供列表视图算结束时间 -->
           <details class="sched-nodetimes">
             <summary>作息时间（各节上课时间）</summary>
+            <div class="sched-nodetimes-extra">
+              <label class="sched-inline">每节时长（分钟）
+                <input class="sched-inline-input sched-num-input" type="number" id="schedNodeMin" min="20" max="120" step="5" aria-label="每节时长（分钟）">
+              </label>
+            </div>
             <div class="sched-nodetimes-grid" id="schedNodeTimes"></div>
           </details>
-          <p class="profile-msg" id="schedMsg"></p>
           <p class="profile-hint" id="schedEmailHint" hidden></p>
           </div>
-        </div>
+          </div>
+        </section>
       </div>
 
   <!-- 课程编辑弹窗：点课程块或"添加课程"弹出，居中显示（不用滚到卡片底部找表单） -->
@@ -295,6 +361,7 @@
         <input class="profilev-input" id="schedEPlace" type="text" placeholder="教室" aria-label="教室">
         <input class="profilev-input" id="schedETeacher" type="text" placeholder="教师" aria-label="教师">
       </div>
+      <input class="profilev-input" id="schedENote" type="text" maxlength="30" placeholder="备注（选填，如 带习题册 / 实验课）" aria-label="备注（选填，如 带习题册 / 实验课）">
       <!-- 周几：胶囊点选（隐藏原生 select，保留无障碍） -->
       <div class="sched-field-label">星期</div>
       <div class="sched-pill-row" id="schedEDayPills" role="group" aria-label="星期">

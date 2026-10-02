@@ -3,9 +3,11 @@
 //   {
 //     termStart: 'YYYY-MM-DD',            // 学期第一周的周一
 //     nodeTimes: [{h:8,m:0}, ...],        // 各节次上课时间（下标 0 = 第 1 节）
+//     nodeMinutes: 45,                    // 每节时长（分钟）：前台列表算结束时间/「正在上课」判定用
 //     courses: [{ name, place, teacher,   // day: 1-7（周一~周日）
 //                 day, startNode, endNode,
 //                 weeks: [1,2,...],       // 上课的教学周列表
+//                 note: '',               // 备注（选填，如「带习题册」，前台列表展示）
 //                 remind: false }],       // 重点课：课前单独提醒
 //     daily: { on: true, time: '07:00' }, // 每日早报
 //     remindAhead: 30                      // 重点课提前几分钟提醒
@@ -55,6 +57,8 @@ export function normSchedule(raw) {
   // 节次时间
   const nt = Array.isArray(d.nodeTimes) ? d.nodeTimes.slice(0, MAX_NODES).map(normTime) : [];
   out.nodeTimes = nt.length >= 2 ? nt : DEFAULT_NODE_TIMES.slice();
+  // 每节时长（分钟）：列表视图算课程结束时间用，缺省 45 兼容老数据
+  out.nodeMinutes = Math.max(20, Math.min(120, Math.floor(Number(d.nodeMinutes) || 45)));
   // 课程
   const list = Array.isArray(d.courses) ? d.courses : [];
   out.courses = [];
@@ -71,6 +75,7 @@ export function normSchedule(raw) {
     out.courses.push({
       name, place: String(c.place || '').trim().slice(0, 60),
       teacher: String(c.teacher || '').trim().slice(0, 40),
+      note: String(c.note || '').trim().slice(0, 30),
       day, startNode, endNode, weeks,
       remind: !!c.remind,
     });

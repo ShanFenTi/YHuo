@@ -3617,12 +3617,31 @@ window.__siteCalendar = (function () {
       var schedNodeTimesEl = document.getElementById('schedNodeTimes');
       var schedMsg = document.getElementById('schedMsg');
       var schedEmailHint = document.getElementById('schedEmailHint');
+      // 列表视图（2026-10-02 双视图重做）：列表=看课默认，周视图=编辑；未登录空态卡
+      var schedAnonBox = document.getElementById('schedAnon');
+      var schedAnonLogin = document.getElementById('schedAnonLogin');
+      var schedViewSwitch = document.getElementById('schedViewSwitch');
+      var schedListViewEl = document.getElementById('schedListView');
+      var schedEditViewEl = document.getElementById('schedEditView');
+      var schedTodayDowEl = document.getElementById('schedTodayDow');
+      var schedTodayDateEl = document.getElementById('schedTodayDate');
+      var schedTodayChips = document.getElementById('schedTodayChips');
+      var schedDayFilterEl = document.getElementById('schedDayFilter');
+      var schedDayListEl = document.getElementById('schedDayList');
+      var schedListImportBtn = document.getElementById('schedListImportBtn');
+      var schedListAddBtn = document.getElementById('schedListAddBtn');
+      var schedENote = document.getElementById('schedENote');
+      var schedNodeMin = document.getElementById('schedNodeMin');
       var schedData = null;   // 归一化课表（termStart/nodeTimes/courses/daily/remindAhead）
       var schedViewWeek = 0;  // 正在查看的教学周（0 = 跟随当前周）
       var schedEditIdx = -2; // 编辑中的课程下标（-1 = 新增，-2 = 未在编辑）
       var schedPreview = null; // 编辑中的实时预览（null = 不显示；{name,day,startNode,endNode}）
       var schedDocMouseUp = null; // 周视图拖选的 document mouseup（重渲染前先摘旧的，防叠加）
       var schedClearTimer = null; // 清空课程两段式确认的武装计时器
+      var schedViewMode = 'list'; // 当前视图：list=看课（默认）/ grid=编辑；记忆在 localStorage
+      try { if (localStorage.getItem('yhuoSchedView') === 'grid') schedViewMode = 'grid'; } catch (e) {}
+      var schedListDay = 0;   // 列表筛选：0=全部 1-7=周几；loadSched 成功后初始化为今天
+      var schedNowTimer = null; // 「正在上课」轻刷新定时器（30s，离页清理）
       var SCHED_DAYS = ['周一', '周二', '周三', '周四', '周五', '周六', '周日'];
       var SCHED_COLORS = [
         '#5b8def', '#e8618c', '#3aa981', '#e0913d', '#8b6fd6', '#4ab3c4', '#d16a4a', '#6f7f95',
@@ -3707,6 +3726,40 @@ window.__siteCalendar = (function () {
           start = prev = cur;
         }
         return parts.join(',');
+      }
+
+      // ---------- 列表视图时间计算（数据只有各节开始时间；结束 = 末节开始 + 每节时长） ----------
+      function schedPad2(n) { return (n < 10 ? '0' : '') + n; }
+      // 每节时长（分钟）：与服务端 normSchedule 同口径钳制，缺省 45 兼容老数据
+      function schedNodeMinutes() {
+        return Math.max(20, Math.min(120, Math.floor(Number(schedData && schedData.nodeMinutes) || 45)));
+      }
+      // 课程起止时间文本："08:00-09:40"
+      function schedCourseSpan(c) {
+        var nt = (schedData && schedData.nodeTimes) || [];
+        var s = nt[c.startNode - 1] || { h: 8, m: 0 };
+        var e = nt[c.endNode - 1] || s;
+        var em = (e.h * 60 + e.m + schedNodeMinutes()) % 1440; // 跨午夜兜底（正常作息不会）
+        return schedPad2(s.h) + ':' + schedPad2(s.m) + '-' + schedPad2(Math.floor(em / 60)) + ':' + schedPad2(em % 60);
+      }
+      // 今天周几（本地时间，1=周一…7=周日；与后端 coursesToday 的 (getDay()+6)%7+1 同式）
+      function schedTodayDow() { var d = new Date(); return ((d.getDay() + 6) % 7) + 1; }
+      // 该课本周是否上（没设学期起始 = 周次无从算起，全部视为有效）
+      function schedWeekActive(c) {
+        var w = schedCurWeek();
+        return !w || !c.weeks || !c.weeks.length || c.weeks.indexOf(w) !== -1;
+      }
+      // 现在是否正在上这节课：今天 + 本周有效 + 当前时间落在起止区间内
+      function schedCourseNow(c) {
+        if (c.day !== schedTodayDow() || !schedWeekActive(c)) return false;
+        var nt = (schedData && schedData.nodeTimes) || [];
+        var s = nt[c.startNode - 1] || { h: 8, m: 0 };
+        var e = nt[c.endNode - 1] || s;
+        var sm = s.h * 60 + s.m;
+        var em = (e.h * 60 + e.m + schedNodeMinutes()) % 1440;
+        var now = new Date();
+        var nm = now.getHours() * 60 + now.getMinutes();
+        return nm >= sm && nm < em;
       }
 
       function renderSchedGrid() {
@@ -3846,6 +3899,193 @@ window.__siteCalendar = (function () {
         }
       }
 
+      // ---------- 列表视图（看课，默认）：今日卡 + 周几筛选 + 课程卡 ----------
+      function renderSchedList() {
+        if (!schedData) return;
+        schedRebuildColors();
+        var dow = schedTodayDow();
+        var now = new Date();
+        if (schedTodayDowEl) schedTodayDowEl.textContent = '今天是' + SCHED_DAYS[dow - 1];
+        if (schedTodayDateEl) {
+          schedTodayDateEl.textContent = now.getFullYear() + '-' + schedPad2(now.getMonth() + 1) + '-' + schedPad2(now.getDate());
+        }
+        // 今日卡胶囊：只列本周真要上的课（按教学周过滤；没设学期起始全部算）
+        var todayList = schedData.courses
+          .map(function (c, i) { return { c: c, i: i }; })
+          .filter(function (o) { return o.c.day === dow && schedWeekActive(o.c); })
+          .sort(function (a, b) { return a.c.startNode - b.c.startNode || a.c.endNode - b.c.endNode; });
+        if (schedTodayChips) {
+          schedTodayChips.innerHTML = '';
+          if (!todayList.length) {
+            var free = document.createElement('span');
+            free.className = 'sched-today-free';
+            free.textContent = '今天没有课 🎉';
+            schedTodayChips.appendChild(free);
+          } else todayList.forEach(function (o) {
+            var b = document.createElement('button');
+            b.type = 'button';
+            b.className = 'sched-today-chip' + (schedCourseNow(o.c) ? ' now' : '');
+            b.title = '在列表中定位这门课';
+            var nm = document.createElement('span');
+            nm.className = 'stc-name';
+            nm.textContent = o.c.name;
+            var tm = document.createElement('span');
+            tm.className = 'stc-time';
+            tm.textContent = schedCourseSpan(o.c);
+            b.appendChild(nm);
+            b.appendChild(tm);
+            b.addEventListener('click', function () { schedJumpToCourse(o.i); });
+            schedTodayChips.appendChild(b);
+          });
+        }
+        if (schedDayFilterEl) {
+          Array.prototype.forEach.call(schedDayFilterEl.children, function (b) {
+            b.classList.toggle('on', Number(b.dataset.day) === schedListDay);
+          });
+        }
+        if (schedDayListEl) {
+          schedDayListEl.innerHTML = '';
+          var list = schedData.courses
+            .map(function (c, i) { return { c: c, i: i }; })
+            .filter(function (o) { return !schedListDay || o.c.day === schedListDay; })
+            .sort(function (a, b) {
+              return a.c.day - b.c.day || a.c.startNode - b.c.startNode || a.c.endNode - b.c.endNode;
+            });
+          if (!list.length) {
+            var empty = document.createElement('p');
+            empty.className = 'empty-hint';
+            empty.textContent = schedListDay
+              ? SCHED_DAYS[schedListDay - 1] + '没有安排课程。'
+              : '还没有课程。点「新增课程」手动添加，或切到「编辑」用 WakeUp 课表一键导入。';
+            schedDayListEl.appendChild(empty);
+          } else list.forEach(function (o) {
+            schedDayListEl.appendChild(schedBuildCourseCard(o.c, o.i));
+          });
+        }
+      }
+
+      // 课程卡：左竖条=课程色（与周视图同名课同色），时间区间 + 周次，正在上课挂徽标
+      function schedBuildCourseCard(c, i) {
+        var card = document.createElement('div');
+        card.className = 'sched-day-card';
+        card.dataset.idx = String(i);
+        card.style.setProperty('--sdc-color', schedColor(c.name));
+        var isNow = schedCourseNow(c);
+        var weekOk = schedWeekActive(c);
+        if (isNow) card.classList.add('now');
+        if (!weekOk) card.classList.add('off-week');
+        var when = document.createElement('div');
+        when.className = 'sdc-when';
+        var tm = document.createElement('p');
+        tm.className = 'sdc-time';
+        tm.textContent = schedCourseSpan(c);
+        var dy = document.createElement('p');
+        dy.className = 'sdc-day';
+        dy.textContent = SCHED_DAYS[c.day - 1] + ' · ' + (c.weeks && c.weeks.length ? schedWeeksText(c.weeks) + '周' : '每周');
+        when.appendChild(tm);
+        when.appendChild(dy);
+        var mainBox = document.createElement('div');
+        mainBox.className = 'sdc-main';
+        var nameRow = document.createElement('p');
+        nameRow.className = 'sdc-name';
+        nameRow.textContent = c.name;
+        if (isNow) {
+          var live = document.createElement('span');
+          live.className = 'sdc-live';
+          live.textContent = '正在上课';
+          nameRow.appendChild(live);
+        } else if (!weekOk) {
+          var off = document.createElement('span');
+          off.className = 'sdc-off';
+          off.textContent = '非本周';
+          nameRow.appendChild(off);
+        }
+        mainBox.appendChild(nameRow);
+        var meta = [];
+        if (c.teacher) meta.push('教师：' + c.teacher);
+        if (c.place) meta.push('地点：' + c.place);
+        if (c.note) meta.push(c.note);
+        if (c.remind) meta.push('⏰ 课前提醒');
+        if (meta.length) {
+          var mt = document.createElement('p');
+          mt.className = 'sdc-meta';
+          mt.textContent = meta.join('　');
+          mainBox.appendChild(mt);
+        }
+        var acts = document.createElement('div');
+        acts.className = 'sdc-actions';
+        var ed = document.createElement('button');
+        ed.type = 'button';
+        ed.className = 'sdc-btn';
+        ed.textContent = '编辑';
+        ed.addEventListener('click', function () { schedOpenEditor(i); });
+        var de = document.createElement('button');
+        de.type = 'button';
+        de.className = 'sdc-btn danger';
+        de.textContent = '删除';
+        de.addEventListener('click', function () { schedDeleteCourse(i, de); });
+        acts.appendChild(ed);
+        acts.appendChild(de);
+        card.appendChild(when);
+        card.appendChild(mainBox);
+        card.appendChild(acts);
+        return card;
+      }
+
+      // 列表删除：两段式确认（首点变红武装 2.5s，再点才删）——沿用清空课程同款防误触
+      function schedDeleteCourse(i, btn) {
+        if (!schedData || !schedData.courses[i]) return;
+        if (btn.dataset.armed !== '1') {
+          btn.dataset.armed = '1';
+          btn.textContent = '确认删除？';
+          btn.classList.add('armed');
+          setTimeout(function () {
+            btn.dataset.armed = '0';
+            btn.textContent = '删除';
+            btn.classList.remove('armed');
+          }, 2500);
+          return;
+        }
+        schedData.courses.splice(i, 1);
+        schedSave('课程已删除'); // 成功后 renderSchedAll 重渲染列表，武装态自然消失
+      }
+
+      // 今日卡胶囊点击：切到该课的星期筛选，滚动定位并描边高亮
+      function schedJumpToCourse(i) {
+        var c = schedData && schedData.courses[i];
+        if (!c) return;
+        schedListDay = c.day;
+        renderSchedList();
+        var el = schedDayListEl ? schedDayListEl.querySelector('[data-idx="' + i + '"]') : null;
+        if (!el) return;
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        el.classList.add('cmdk-flash');
+        setTimeout(function () { el.classList.remove('cmdk-flash'); }, 1600);
+      }
+
+      // 视图切换：list=看课（默认）/ grid=编辑；记忆在 localStorage（yhuoSchedView）
+      function schedShowView(mode) {
+        schedViewMode = mode === 'grid' ? 'grid' : 'list';
+        try { localStorage.setItem('yhuoSchedView', schedViewMode); } catch (e) {}
+        if (schedListViewEl) schedListViewEl.hidden = schedViewMode !== 'list';
+        if (schedEditViewEl) schedEditViewEl.hidden = schedViewMode !== 'grid';
+        if (schedViewSwitch) {
+          Array.prototype.forEach.call(schedViewSwitch.children, function (b) {
+            b.classList.toggle('on', b.dataset.view === schedViewMode);
+          });
+        }
+        if (schedViewMode === 'list') renderSchedList();
+      }
+
+      // 「正在上课」随时间轻刷新：30s 重渲染列表视图（跨零点/周几翻转也在这里生效）；
+      // 定时器随 schedPageCleanup 摘除，pjax 反复进出不叠加
+      function schedStartNowTick() {
+        if (schedNowTimer) clearInterval(schedNowTimer);
+        schedNowTimer = setInterval(function () {
+          if (schedData && schedViewMode === 'list') renderSchedList();
+        }, 30000);
+      }
+
       function renderSchedNodeTimes() {
         if (!schedNodeTimesEl || !schedData) return;
         var box = schedNodeTimesEl;
@@ -3878,10 +4118,12 @@ window.__siteCalendar = (function () {
         if (schedDailyOn) schedDailyOn.checked = !!(schedData.daily && schedData.daily.on);
         if (schedDailyTime) schedDailyTime.value = (schedData.daily && schedData.daily.time) || '07:00';
         if (schedAhead) schedAhead.value = schedData.remindAhead || 30;
+        if (schedNodeMin) schedNodeMin.value = String(schedNodeMinutes());
         schedSyncDailyDep();
         schedSyncTimePills();
         schedSyncAheadPills();
         renderSchedGrid();
+        renderSchedList();
         renderSchedNodeTimes();
       }
 
@@ -3975,6 +4217,7 @@ window.__siteCalendar = (function () {
         schedEName.value = c ? c.name : '';
         schedEPlace.value = c ? c.place : '';
         schedETeacher.value = c ? c.teacher : '';
+        if (schedENote) schedENote.value = c ? (c.note || '') : '';
         schedEDayVal = c ? c.day : (preDay || 1);
         var st = c ? c.startNode : (preStart || 1);
         var en = c ? c.endNode : (preEnd || preStart || (st + 1));
@@ -4032,15 +4275,24 @@ window.__siteCalendar = (function () {
           .catch(function () { showSchedMsg('网络错误', true); });
       }
 
-      // 启用/移除两个视图：没存过课表 → 只显示"＋ 启用课表"入口；有数据 → 完整卡
+      // 启用/移除两个视图：没存过课表 → 只显示"＋ 启用课表"入口；有数据 → 完整视图
       var schedEnableBox = document.getElementById('schedEnable');
       var schedBodyBox = document.getElementById('schedBody');
       var schedEnableBtn = document.getElementById('schedEnableBtn');
       var schedRemoveBtn = document.getElementById('schedRemoveBtn');
       var schedClearBtn = document.getElementById('schedClearBtn');
       function schedShowBody(on) {
+        if (schedAnonBox) schedAnonBox.style.display = 'none';
         if (schedEnableBox) schedEnableBox.hidden = on;
+        // schedCard 现在只承载启用入口：已启用即隐藏（列表/编辑视图在 schedBody 里）
+        if (schedCard) schedCard.style.display = on ? 'none' : '';
         if (schedBodyBox) schedBodyBox.hidden = !on;
+      }
+      // 未登录/接口失败：显示登录空态卡（原先整卡隐藏页面空白）
+      function schedShowAnon() {
+        if (schedCard) schedCard.style.display = 'none';
+        if (schedBodyBox) schedBodyBox.hidden = true;
+        if (schedAnonBox) schedAnonBox.style.display = '';
       }
 
       function loadSched() {
@@ -4048,17 +4300,19 @@ window.__siteCalendar = (function () {
         fetch('/api/schedule', { credentials: 'same-origin' })
           .then(function (r) { return r.ok ? r.json() : null; })
           .then(function (d) {
-            if (!d || !d.ok) { schedCard.style.display = 'none'; return; } // 未登录/接口不可用
-            schedCard.style.display = '';
+            if (!d || !d.ok) { schedShowAnon(); return; } // 未登录/接口不可用 → 登录空态
             schedData = d.schedule;
             schedViewWeek = 0;
+            schedListDay = schedTodayDow(); // 进页默认看今天（筛选可随时切）
             schedCloseEditor();
             renderSchedAll();
             showSchedMsg('');
             schedShowBody(!!d.exists); // 没启用过只显示入口行
+            schedShowView(schedViewMode); // 应用记忆的视图（默认列表=看课）
+            schedStartNowTick();
             if (d.exists) renderSchedEmailHint();
           })
-          .catch(function () { if (schedCard) schedCard.style.display = 'none'; });
+          .catch(function () { schedShowAnon(); });
       }
 
       // 启用：把默认空课表存到服务端（落行），切到完整视图
@@ -4281,6 +4535,7 @@ window.__siteCalendar = (function () {
         if (!weeks.length) { showSchedMsg('周次格式不正确，示例：1-16 或 1,3,5 或 1-16(单)', true); return; }
         var c = {
           name: name, place: schedEPlace.value.trim(), teacher: schedETeacher.value.trim(),
+          note: schedENote ? schedENote.value.trim().slice(0, 30) : '',
           day: schedEDayVal,
           startNode: Math.max(1, Math.min(20, start)),
           endNode: Math.max(1, Math.min(20, end)),
@@ -4348,8 +4603,35 @@ window.__siteCalendar = (function () {
         schedSave('提醒设置已保存');
       });
 
-      // 未登录：弹登录卡（页面本体留白），游客门通过后由 onGatePassedPageHook 拉取课表
+      // ---------- 列表视图交互 ----------
+      if (schedViewSwitch) schedViewSwitch.addEventListener('click', function (e) {
+        var b = e.target.closest ? e.target.closest('.sched-view-btn') : null;
+        if (b) schedShowView(b.dataset.view);
+      });
+      if (schedDayFilterEl) schedDayFilterEl.addEventListener('click', function (e) {
+        var b = e.target.closest ? e.target.closest('.sched-pill') : null;
+        if (!b) return;
+        schedListDay = Number(b.dataset.day) || 0;
+        renderSchedList();
+      });
+      // 导入复用编辑视图的文件选择链路（选文件→读内容→PUT wakeUp），成功后 renderSchedAll 两视图同步
+      if (schedListImportBtn) schedListImportBtn.addEventListener('click', function () {
+        if (schedImportBtn) schedImportBtn.click();
+      });
+      if (schedListAddBtn) schedListAddBtn.addEventListener('click', function () { schedOpenEditor(-1); });
+      // 每节时长：改完立即刷新列表（结束时间随节时长变化）再保存
+      if (schedNodeMin) schedNodeMin.addEventListener('change', function () {
+        if (!schedData) return;
+        schedData.nodeMinutes = Math.max(20, Math.min(120, parseInt(schedNodeMin.value, 10) || 45));
+        schedNodeMin.value = String(schedData.nodeMinutes);
+        renderSchedList();
+        schedSave('作息时间已保存');
+      });
+      if (schedAnonLogin) schedAnonLogin.addEventListener('click', function () { window.openGate(); });
+
+      // 未登录：显示登录空态卡并弹登录卡，游客门通过后由 onGatePassedPageHook 拉取课表
       if (!isMember()) {
+        schedShowAnon();
         window.openGate();
       } else {
         loadSched();
@@ -4359,6 +4641,7 @@ window.__siteCalendar = (function () {
       schedPageCleanup = function () {
         document.removeEventListener('keydown', schedEditorEscHandler, true);
         if (schedDocMouseUp) document.removeEventListener('mouseup', schedDocMouseUp);
+        if (schedNowTimer) { clearInterval(schedNowTimer); schedNowTimer = null; }
         onGatePassedPageHook = null;
       };
     }

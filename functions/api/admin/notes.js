@@ -4,8 +4,8 @@
 //     created_at=北京时间当下——列表展示「YYYY-MM-DD HH:mm」用；表单无日期项，随笔即当时所记）
 //   { action: 'update', id, title?, tags?, summary?, draft?, text } 改一条（日期/mood 保持创建时的不变）
 //   { action: 'delete', id }                        删一条
-//   { action: 'import', list: [{date, mood, text}] } 静态清单批量导入（date+text 全同的跳过；界面入口已随
-//     2026-10-02 改版撤下，API 保留给手工/脚本迁移用）
+//   { action: 'import', list: [{date, mood, text}] } 静态清单批量导入（date+text 全同的跳过；界面入口
+//     曾随 2026-10-02 改版撤下，2026-10-03 恢复——后台随笔页工具行「从静态清单导入」钮）
 // 2026-10-02 后台随笔改「文章管理」形态（设计稿定稿）：title ≤60、tags ≤60（逗号分隔原串，前端拆展示）、
 // summary ≤120（空则展示端从正文截取）、draft 0/1（公开接口不下发草稿）；mood 不再录入（存量保留原值）。
 // 校验：text 1~2000 字（导入项另校验 date YYYY-MM-DD）；date 只存不解析（显示/分组都在前台）。

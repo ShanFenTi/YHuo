@@ -3474,6 +3474,36 @@
   });
   $('notesRefreshBtn').addEventListener('click', function () { loadNotes(); });
 
+  // 从静态清单导入（2026-10-03 恢复入口；10-02 改版曾按设计稿撤下，POST import 动作一直在）：
+  // 场景=后台只要写过一篇，前台 /notes/ 就走数据库、静态 notes.json 整份不再参与显示——
+  // 先把静态条目搬进来变成后台可编辑文章。服务端按「日期+正文」去重（重复点导入安全），
+  // 静态文件本身不动；普通管理员也可用（notes 是内容接口，不在超管前缀表）
+  $('notesImportBtn').addEventListener('click', function () {
+    ask({
+      title: '从静态清单导入随笔？',
+      msg: '读取仓库 notes/notes.json 的手工条目批量搬进数据库，与已有随笔按「日期+正文」自动去重（重复导入安全，静态文件不动）。适用场景：后台一旦写过随笔，前台就只显示数据库里的，静态清单不再出现——先把它们导进来就不会丢。',
+      okText: '导入',
+      cb: function (okVal) {
+        if (!okVal) return;
+        fetch('/notes/notes.json', { credentials: 'same-origin' })
+          .then(function (r) { if (!r.ok) throw new Error('http ' + r.status); return r.json(); })
+          .then(function (list) {
+            if (!Array.isArray(list) || !list.length) { toast('静态清单为空或格式不对', 'err'); return; }
+            return api('/api/admin/notes', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ action: 'import', list: list })
+            }).then(function (r) {
+              if (!r.ok) { toast(r.error || '导入失败', 'err'); return; }
+              toast('导入完成：新增 ' + r.imported + ' 篇' + (r.skipped ? '，跳过重复 ' + r.skipped + ' 篇' : ''), 'ok');
+              loadNotes();
+            });
+          })
+          .catch(function () { toast('读取静态清单失败（notes/notes.json 不存在或格式不对）', 'err'); });
+      }
+    });
+  });
+
   $('noteSaveBtn').addEventListener('click', function () {
     var payload = {
       action: noteEditingId ? 'update' : 'create',

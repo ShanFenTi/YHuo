@@ -243,6 +243,7 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
         <button type="button" class="sb-clear" data-for="noteSearch" title="清空搜索" aria-label="清空搜索"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
       </span>
       <span class="spacer"></span>
+      <button id="notesImportBtn" class="ghost" type="button">从静态清单导入</button>
       <button id="notesRefreshBtn" class="ghost" type="button">刷新</button>
     </div>
     <div class="card">

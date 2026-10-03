@@ -5777,12 +5777,17 @@ window.__siteCalendar = (function () {
               // 光标侧向后仰进屏幕（符号经本地视觉核对：左上角悬停=左上角下陷）
               art.style.setProperty('--press-rx', (-py * 2.5).toFixed(2) + 'deg');
               art.style.setProperty('--press-ry', (px * 2.5).toFixed(2) + 'deg');
+              // 压痕定位（观感优化 2026-10-03）：暗影跟光标走——px/py [-1,1] 映射成 0~100%
+              art.style.setProperty('--press-x', ((px + 1) * 50).toFixed(1) + '%');
+              art.style.setProperty('--press-y', ((py + 1) * 50).toFixed(1) + '%');
             });
           });
           art.addEventListener('pointerleave', function () {
             if (pressFrame) { cancelAnimationFrame(pressFrame); pressFrame = 0; }
             art.style.setProperty('--press-rx', '0deg');
             art.style.setProperty('--press-ry', '0deg');
+            art.style.setProperty('--press-x', '50%');
+            art.style.setProperty('--press-y', '50%');
           });
         }
         var ttl = document.createElement('h3');

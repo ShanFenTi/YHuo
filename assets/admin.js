@@ -3260,7 +3260,10 @@
     notePreviewReset();
   }
 
+  var noteModalCloseTimer = null; // 退场动画计时器（closing 期间再开要取消）
   function openNoteModal(n) {
+    if (noteModalCloseTimer) { clearTimeout(noteModalCloseTimer); noteModalCloseTimer = null; }
+    $('noteModal').classList.remove('closing'); // 关闭中再开：取消退场序列正常打开
     noteResetForm();
     if (n) {
       noteEditingId = n.id;
@@ -3276,9 +3279,21 @@
   }
 
   function closeNoteModal() {
-    if ($('noteModal').hidden) return;
-    $('noteModal').hidden = true;
+    if ($('noteModal').hidden || $('noteModal').classList.contains('closing')) return;
+    // 退场动画：挂 .closing 播 nbBackOut/nbBodyOut，动画结束再 hidden（减少动态时 animation 缩到 0.01ms，
+    // animationend 立即到；兜底 timer 双保险防 animationend 丢失）
+    $('noteModal').classList.add('closing');
     noteEditingId = 0;
+    var finish = function () {
+      if (noteModalCloseTimer) { clearTimeout(noteModalCloseTimer); noteModalCloseTimer = null; }
+      $('noteModal').classList.remove('closing');
+      $('noteModal').hidden = true;
+    };
+    var done = false;
+    var once = function () { if (done) return; done = true; finish(); };
+    var body = $('noteModal').querySelector('.nb-modal');
+    body.addEventListener('animationend', once, { once: true });
+    noteModalCloseTimer = setTimeout(once, 260);
   }
 
   function loadNotes() {

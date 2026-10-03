@@ -1091,7 +1091,17 @@
   .nb-row-meta { font-size: 12.5px; color: var(--muted); margin-top: 5px; font-variant-numeric: tabular-nums; }
   .nb-row-sum { font-size: 13px; color: var(--fg); opacity: .8; line-height: 1.6; margin-top: 5px; }
   /* 写一篇弹窗 */
+  /* 写一篇弹窗（2026-10-02）：专属入场/退场动效——通用 modalBodyIn 0.34s 偏弱感知生硬（站长反馈），
+     入场加大位移拉长时长；退场 .closing 类由 JS 挂上、动画结束后再置 hidden */
   .nb-modal { width: min(720px, 94vw); max-height: 92vh; overflow-y: auto; }
+  #noteModal:not([hidden]) .modal-backdrop { animation: nbBackIn .24s ease; }
+  #noteModal:not([hidden]) .nb-modal { animation: nbBodyIn .42s var(--ease-spring); }
+  #noteModal.closing .modal-backdrop { animation: nbBackOut .18s ease forwards; }
+  #noteModal.closing .nb-modal { animation: nbBodyOut .2s var(--ease-outc) forwards; }
+  @keyframes nbBackIn { from { opacity: 0; } to { opacity: 1; } }
+  @keyframes nbBodyIn { from { opacity: 0; transform: translateY(26px) scale(.94); filter: blur(5px); } to { opacity: 1; transform: none; filter: none; } }
+  @keyframes nbBackOut { from { opacity: 1; } to { opacity: 0; } }
+  @keyframes nbBodyOut { from { opacity: 1; transform: none; filter: none; } to { opacity: 0; transform: translateY(16px) scale(.96); filter: blur(4px); } }
   .nb-md-hint { font-size: 12.5px; color: var(--muted); margin: -4px 0 12px; }
   .nb-two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
   .nb-draft-row { display: flex; align-items: center; gap: 8px; font-size: 13.5px; margin-top: 10px; cursor: pointer; }

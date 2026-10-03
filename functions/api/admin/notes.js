@@ -5,12 +5,14 @@
 //   { action: 'update', id, title?, tags?, summary?, draft?, text } 改一条（日期/mood 保持创建时的不变）
 //   { action: 'delete', id }                        删一条
 //   { action: 'import', list: [{date, mood, text}] } 静态清单批量导入（date+text 全同的跳过；界面入口
-//     曾随 2026-10-02 改版撤下，2026-10-03 恢复——后台随笔页工具行「从静态清单导入」钮）
+//     曾随 2026-10-02 改版撤下，2026-10-03 恢复——后台随笔页工具行「从静态清单导入」钮；
+//     同日起首访自动种子接管常规转正（lib/notesSeed.js），此按钮为兜底）
 // 2026-10-02 后台随笔改「文章管理」形态（设计稿定稿）：title ≤60、tags ≤60（逗号分隔原串，前端拆展示）、
 // summary ≤120（空则展示端从正文截取）、draft 0/1（公开接口不下发草稿）；mood 不再录入（存量保留原值）。
 // 校验：text 1~2000 字（导入项另校验 date YYYY-MM-DD）；date 只存不解析（显示/分组都在前台）。
 import { json } from '../../lib/util.js';
 import { ensureSchema } from '../../lib/migrate.js';
+import { seedStaticNotes } from '../../lib/notesSeed.js';
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -45,8 +47,9 @@ function cleanImportItem(item) {
   return { date, mood, text };
 }
 
-export async function onRequestGet({ env }) {
+export async function onRequestGet({ request, env }) {
   await ensureSchema(env);
+  await seedStaticNotes(env, request); // 首访自动转正静态清单（站长不要手动导入；旗标防重跑），后台列表即刻同权
   const res = await env.DB.prepare(
     'SELECT id, date, mood, text, created_at, title, tags, summary, draft, views FROM notes ORDER BY date DESC, id DESC'
   ).all();

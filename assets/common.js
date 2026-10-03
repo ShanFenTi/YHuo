@@ -5759,20 +5759,28 @@ window.__siteCalendar = (function () {
           if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); open(); }
         });
         // 3D「按角陷角」按压（2026-10-03，站长澄清要的是按一个角只陷那个角，非整卡下沉；
-        // 同日站长反馈幅度太大，±5° 减半为 ±2.5°）：pointermove 按光标在卡内相对位置写
-        // --press-rx/--press-ry，CSS hover 态以 perspective(700px) 旋转——光标所在角向后仰进屏幕、
-        // 对角微翘，移开归位；触屏不绑（滚动不歪卡）、reduced-motion 不绑（hover 只剩瞬时压痕）
+        // 同日站长反馈幅度太大，±5° 减半为 ±2.5°；又反馈动效手感不好——rAF 节流逐帧写+
+        // 分程过渡（hover 120ms 跟手 / 离开 280ms 落定））：pointermove 只存最新事件，
+        // requestAnimationFrame 每帧最多写一次 --press-rx/--press-ry，触屏不绑（滚动不歪卡）、
+        // reduced-motion 不绑（hover 只剩瞬时压痕）
         if (!matchMedia('(prefers-reduced-motion: reduce)').matches) {
+          var pressFrame = 0, pressX = 0, pressY = 0;
           art.addEventListener('pointermove', function (e) {
             if (e.pointerType !== 'mouse') return;
-            var r = art.getBoundingClientRect();
-            var px = Math.max(-1, Math.min(1, (e.clientX - r.left - r.width / 2) / (r.width / 2)));
-            var py = Math.max(-1, Math.min(1, (e.clientY - r.top - r.height / 2) / (r.height / 2)));
-            // 光标侧向后仰进屏幕（符号经本地视觉核对：左上角悬停=左上角下陷）
-            art.style.setProperty('--press-rx', (-py * 2.5).toFixed(2) + 'deg');
-            art.style.setProperty('--press-ry', (px * 2.5).toFixed(2) + 'deg');
+            // 只记最新事件，帧里统一写——高频 move 不再逐次触发样式写入
+            pressX = e.clientX; pressY = e.clientY;
+            if (!pressFrame) pressFrame = requestAnimationFrame(function () {
+              pressFrame = 0;
+              var r = art.getBoundingClientRect();
+              var px = Math.max(-1, Math.min(1, (pressX - r.left - r.width / 2) / (r.width / 2)));
+              var py = Math.max(-1, Math.min(1, (pressY - r.top - r.height / 2) / (r.height / 2)));
+              // 光标侧向后仰进屏幕（符号经本地视觉核对：左上角悬停=左上角下陷）
+              art.style.setProperty('--press-rx', (-py * 2.5).toFixed(2) + 'deg');
+              art.style.setProperty('--press-ry', (px * 2.5).toFixed(2) + 'deg');
+            });
           });
           art.addEventListener('pointerleave', function () {
+            if (pressFrame) { cancelAnimationFrame(pressFrame); pressFrame = 0; }
             art.style.setProperty('--press-rx', '0deg');
             art.style.setProperty('--press-ry', '0deg');
           });

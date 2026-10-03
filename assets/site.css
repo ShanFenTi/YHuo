@@ -5472,7 +5472,8 @@
       border-radius: 12px;
       background: color-mix(in srgb, var(--apple-foreground) 2%, transparent);
       cursor: pointer;
-      transition: transform 160ms var(--ease-out), border-color 160ms var(--ease-out),
+      /* transform 280ms：移出悬停时用更长的减速曲线「落定」回去（悬停内 120ms 见 hover 态） */
+      transition: transform 280ms var(--ease-out), border-color 160ms var(--ease-out),
         box-shadow 160ms var(--ease-out), background-color 160ms var(--ease-out);
     }
     .note-card::before {
@@ -5493,6 +5494,8 @@
        写 --press-rx/--press-ry（±2.5° 封顶、仅鼠标、reduced-motion 不绑），非悬停态零 transform。
        真正按下（:active）拍平压深、回弹更快 */
     .note-card:hover {
+      /* 悬停内移动：更快贴住指针（跟手不飘）；离开后回落到基础态 280ms 缓缓落定 */
+      transition-duration: 120ms;
       transform: perspective(700px) rotateX(var(--press-rx, 0deg)) rotateY(var(--press-ry, 0deg)) translateY(1px);
       box-shadow: inset 0 2px 6px color-mix(in srgb, black 10%, transparent), var(--shadow-2xs);
     }

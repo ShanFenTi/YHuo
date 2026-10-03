@@ -1308,9 +1308,29 @@
 
       var title = document.createElement('span');
       title.className = 'title';
-      title.textContent = it.title;
       title.title = it.title;
       title.addEventListener('click', function () { startRename(it, title); });
+      if (currentType === 'image') {
+        // 超长文件名悬停跑马灯（2026-10-03 站长提案；静止仍省略号，悬停可读全名）：
+        // pointerenter 时量溢出量写 --mq-shift/--mq-dur（约 26px/s，3~14s 封顶），
+        // CSS 在内层 span 平移、两端各停 12% 时长折返；overflow:hidden 的 .title 充当裁剪窗
+        var mqInner = document.createElement('span');
+        mqInner.className = 'mq-inner';
+        mqInner.textContent = it.title;
+        title.appendChild(mqInner);
+        title.addEventListener('pointerenter', function () {
+          var shift = mqInner.scrollWidth - title.clientWidth;
+          if (shift > 4) {
+            title.classList.add('mq');
+            title.style.setProperty('--mq-shift', shift + 'px');
+            title.style.setProperty('--mq-dur', Math.min(14, Math.max(3, shift / 26)).toFixed(1) + 's');
+          } else {
+            title.classList.remove('mq');
+          }
+        });
+      } else {
+        title.textContent = it.title;
+      }
 
       var meta = document.createElement('span');
       meta.className = 'meta';

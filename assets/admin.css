@@ -530,6 +530,17 @@
     color: var(--muted); font-size: 11.5px; white-space: nowrap;
     overflow: hidden; text-overflow: ellipsis; /* 尺寸+日期超窄卡时也走省略号（2026-10-03 截断修复） */
   }
+  /* 超长文件名悬停跑马灯（2026-10-03 站长提案）：静止省略号，悬停标题=内层 span 平移读全名；
+     shift/时长由 JS pointerenter 写入（约 26px/s），两端各停 12% 时长再折返；
+     reduced-motion 走全局 0.01ms 覆盖=实际不动 */
+  .img-grid .ic-info .title .mq-inner { display: inline-block; vertical-align: top; }
+  .img-grid .ic-info .title.mq:hover .mq-inner {
+    animation: titleMq var(--mq-dur, 7s) linear infinite alternate;
+  }
+  @keyframes titleMq {
+    0%, 12% { transform: translateX(0); }
+    88%, 100% { transform: translateX(calc(-1 * var(--mq-shift, 0px))); }
+  }
   .img-grid .ic-info .ai-drop.row-album { align-self: flex-start; margin-top: 3px; }
   .img-grid .ic-info .inline-edit { margin: 0 0 2px; }
   .empty { color: var(--muted); font-size: 14px; text-align: center; padding: 34px 0; }

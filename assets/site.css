@@ -5488,10 +5488,11 @@
       border: 2px solid color-mix(in srgb, var(--apple-foreground) 28%, var(--apple-border));
       transition: border-color 160ms var(--ease-out), background-color 160ms var(--ease-out);
     }
-    /* 按压感（2026-10-03 站长点单：悬停向下凹陷）：卡片下沉贴面——外浮影收掉、顶缘加内凹压痕；
-       真正按下（:active）压得更深、回弹更快（对齐导航抽屉项 scale .98/.96+80ms 的既有按压语言） */
+    /* 按压感（2026-10-03 站长两轮定稿：3D「按角陷角」——光标压在哪个角，那个角向后仰进屏幕，
+       对角微翘；旋转量由 common.js pointermove 写 --press-rx/--press-ry（仅鼠标、reduced-motion 不绑），
+       非悬停态零 transform。外浮影收掉换顶缘内凹压痕；真正按下（:active）拍平压深、回弹更快 */
     .note-card:hover {
-      transform: translateY(2px);
+      transform: perspective(700px) rotateX(var(--press-rx, 0deg)) rotateY(var(--press-ry, 0deg)) translateY(1px);
       border-color: color-mix(in srgb, var(--primary) 55%, var(--apple-border));
       box-shadow: inset 0 2px 6px color-mix(in srgb, black 10%, transparent), var(--shadow-2xs);
     }

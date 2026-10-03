@@ -5758,6 +5758,25 @@ window.__siteCalendar = (function () {
         art.addEventListener('keydown', function (e) {
           if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); open(); }
         });
+        // 3D「按角陷角」按压（2026-10-03，站长澄清要的是按一个角只陷那个角，非整卡下沉）：
+        // pointermove 按光标在卡内相对位置写 --press-rx/--press-ry，CSS hover 态以 perspective(700px)
+        // 旋转——光标所在角向后仰进屏幕、对角微翘，移开归位；触屏不绑（滚动不歪卡）、
+        // reduced-motion 不绑（hover 只剩瞬时压痕）
+        if (!matchMedia('(prefers-reduced-motion: reduce)').matches) {
+          art.addEventListener('pointermove', function (e) {
+            if (e.pointerType !== 'mouse') return;
+            var r = art.getBoundingClientRect();
+            var px = Math.max(-1, Math.min(1, (e.clientX - r.left - r.width / 2) / (r.width / 2)));
+            var py = Math.max(-1, Math.min(1, (e.clientY - r.top - r.height / 2) / (r.height / 2)));
+            // 光标侧向后仰进屏幕（符号经本地视觉核对：左上角悬停=左上角下陷）
+            art.style.setProperty('--press-rx', (-py * 5).toFixed(2) + 'deg');
+            art.style.setProperty('--press-ry', (px * 5).toFixed(2) + 'deg');
+          });
+          art.addEventListener('pointerleave', function () {
+            art.style.setProperty('--press-rx', '0deg');
+            art.style.setProperty('--press-ry', '0deg');
+          });
+        }
         var ttl = document.createElement('h3');
         ttl.className = 'note-title';
         ttl.textContent = noteCardTitle(n);

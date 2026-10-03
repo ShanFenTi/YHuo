@@ -386,12 +386,12 @@
   .stat .ico svg { width: 20px; height: 20px; }
   .stat .num { font-size: 22px; font-weight: 700; line-height: 1.1; }
   .stat .lbl { font-size: 12px; color: var(--muted); }
-  /* 上传区：居中式大拖放区（点击/拖入均可；拖入高亮走 .dragover） */
+  /* 上传区：紧凑横条（2026-10-03 站长反馈太大，由 130px 居中大拖放区压成一排；点击/拖入均可，拖入高亮走 .dragover） */
   .upload-row {
-    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 7px;
-    min-height: 130px; padding: 24px 20px; text-align: center; cursor: pointer;
+    display: flex; flex-direction: row; align-items: center; gap: 12px; flex-wrap: wrap;
+    padding: 10px 14px; cursor: pointer;
     background: color-mix(in srgb, var(--hover) 40%, transparent);
-    border: 1.5px dashed var(--border); border-radius: 16px;
+    border: 1.5px dashed var(--border); border-radius: 12px;
     transition: border-color var(--t-fast) var(--ease-outc), background var(--t-fast) var(--ease-outc);
   }
   .upload-row:hover {
@@ -399,12 +399,15 @@
     background: color-mix(in srgb, var(--brand) 5%, transparent);
   }
   .upload-row .ur-ico {
-    width: 44px; height: 44px; border-radius: 14px; margin-bottom: 2px; flex: none;
+    width: 30px; height: 30px; border-radius: 10px; flex: none;
     display: flex; align-items: center; justify-content: center;
     background: color-mix(in srgb, var(--brand) 12%, transparent); color: var(--brand);
   }
-  .upload-row .ur-ico svg { width: 22px; height: 22px; display: block; }
-  .upload-row .upload-hint { margin: 0; max-width: 580px; line-height: 1.6; }
+  .upload-row .ur-ico svg { width: 16px; height: 16px; display: block; }
+  .upload-row .upload-hint {
+    margin: 0; flex: 1 1 300px; min-width: 220px; line-height: 1.55;
+    font-size: 12px; color: var(--muted); text-align: left;
+  }
   .upload-actions { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-top: 12px; }
   .upload-actions input[type=text] { flex: 1 1 220px; margin: 0; }
   .upload-actions button { flex: none; }

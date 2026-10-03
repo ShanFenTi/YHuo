@@ -100,16 +100,17 @@ async function runTest(env, body) {
   }
 
   // 收件人须是绑定了已验证邮箱、启用过课表的前台账号（测试的意义就是验证真实数据链路）；
-  // 管理员课表（site_settings 'admin_schedule'）也可测：邮箱命中管理员绑定邮箱/站长邮箱即可
+  // 超管的课表（2026-10-03 按人分份：schedules.user_id = -admin_users.id）也可测：
+  // 邮箱命中管理员绑定邮箱/站长邮箱即可
   const row = await env.DB
     .prepare('SELECT s.data FROM schedules s JOIN users u ON u.id = s.user_id WHERE lower(u.email) = ? AND u.email_verified = 1 AND u.banned = 0')
     .bind(email).first();
   if (!row) {
     const adminRow = await env.DB
-      .prepare("SELECT value FROM site_settings WHERE key = 'admin_schedule'").first();
-    if (adminRow && adminRow.value) {
+      .prepare('SELECT s.data FROM schedules s WHERE s.user_id = -(SELECT id FROM admin_users WHERE role = \'super\' ORDER BY id LIMIT 1)').first();
+    if (adminRow && adminRow.data) {
       // 原样传给 runTestFor（它自带 JSON.parse 容错）——此处先 parse 遇坏值会裸抛 500
-      return await runTestFor(env, email, adminRow.value);
+      return await runTestFor(env, email, adminRow.data);
     }
     return json({ ok: false, error: '该邮箱没有可测试的课表：需要在前台个人主页启用课表，且账号已绑定此邮箱并完成验证' }, 404);
   }

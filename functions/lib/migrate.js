@@ -332,6 +332,14 @@ export async function ensureSchema(env) {
   try {
     await env.DB.prepare("ALTER TABLE notes ADD COLUMN views INTEGER NOT NULL DEFAULT 0").run();
   } catch {}
+  // 管理员课表按人分份（2026-10-03）：admin_schedule 全局键幂等迁移到超管名下（schedules.user_id
+  // = -admin_users.id，负数=管理员与 schedule_sent 哨兵先例一致）。旧键保留不删（迁移源可回溯），
+  // 新读写逻辑（api/schedule.js storageId）已不再读它；INSERT OR IGNORE 幂等可重复执行
+  try {
+    await env.DB.prepare(
+      "INSERT OR IGNORE INTO schedules (user_id, data) SELECT -(SELECT id FROM admin_users WHERE role = 'super' ORDER BY id LIMIT 1), value FROM site_settings WHERE key = 'admin_schedule' AND (SELECT id FROM admin_users WHERE role = 'super' ORDER BY id LIMIT 1) IS NOT NULL"
+    ).run();
+  } catch {}
   // 存量相册回填：把 media.album 里已有的相册名补进 albums 表
   // （INSERT OR IGNORE 幂等，ensureSchema 每个隔离实例各跑一遍也无副作用）
   try {

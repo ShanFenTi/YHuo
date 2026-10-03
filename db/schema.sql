@@ -155,7 +155,8 @@ CREATE TABLE IF NOT EXISTS ai_chat_history (
 CREATE INDEX IF NOT EXISTS idx_ai_chat_owner ON ai_chat_history (owner, id);
 CREATE INDEX IF NOT EXISTS idx_ai_chat_conv ON ai_chat_history (conv_id);
 
--- 课表（每用户一份 JSON）；管理员课表存 site_settings.admin_schedule 不占本表
+-- 课表（每用户一份 JSON；user_id = 正的 users.id，负的 admin_users.id = 管理员，
+-- 2026-10-03 起管理员课表按人分份也存本表，旧全局键 admin_schedule 已迁移不再使用）
 CREATE TABLE IF NOT EXISTS schedules (
   user_id    INTEGER PRIMARY KEY,
   data       TEXT NOT NULL,

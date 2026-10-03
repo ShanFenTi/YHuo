@@ -411,7 +411,7 @@ export async function runTick(env) {
   const { results: rows } = await env.DB
     .prepare('SELECT s.user_id, s.data FROM schedules s JOIN users u ON u.id = s.user_id WHERE u.banned = 0 AND u.email IS NOT NULL AND u.email_verified = 1')
     .all();
-  const tally = { sent: 0 }; // 计数走对象：runAdminTick 里发出的也要计回总数（此前按值传，管理员侧计数丢失）
+  const tally = { sent: 0 }; // 计数走对象：runAdminTicks 里发出的也要计回总数（此前按值传，管理员侧计数丢失）
   const errors = [];
   const users = [];
   for (const row of rows || []) {
@@ -475,70 +475,80 @@ export async function runTick(env) {
     }
     users.push(info);
   }
-  // 管理员课表（存 site_settings 'admin_schedule'）：提醒发到管理员绑定邮箱（admin_email），
-  // 未绑定则发站长邮箱（owner_email）；防重发键用 -1（与真实 user_id 不冲突）
-  await runAdminTick(env, cfg, now, day, nowHM, tally, errors, users);
+  // 管理员课表（2026-10-03 按人分份：schedules.user_id = -admin_users.id，负数=管理员）：
+  // 逐个管理员独立判定与发送——超管提醒发管理员绑定邮箱（admin_email，回落站长邮箱），
+  // 普通管理员暂无绑定邮箱（邮箱体系目前仅超管可绑）先跳过；防重键 = 各自的负 id
+  await runAdminTicks(env, cfg, now, day, nowHM, tally, errors, users);
   return { ok: true, sent: tally.sent, errors, users };
 }
 
-async function runAdminTick(env, cfg, now, day, nowHM, tally, errors, users) {
-  const row = await env.DB.prepare("SELECT value FROM site_settings WHERE key = 'admin_schedule'").first();
-  if (!row) return;
-  let data;
-  try { data = normSchedule(JSON.parse(row.value)); } catch { return; }
-  const { date, list } = coursesToday(data, now);
-  if (date !== day) return;
-  const info = { todayCount: list.length, dailyOn: data.daily.on, dailyTime: data.daily.time, isAdmin: true };
-  if (!list.length) { info.skip = '今天没课'; users.push(info); return; }
-  // 收件邮箱：管理员绑定邮箱优先，其次站长邮箱
+async function runAdminTicks(env, cfg, now, day, nowHM, tally, errors, users) {
+  const { results: rows } = await env.DB
+    .prepare('SELECT s.user_id, s.data, a.username, a.role FROM schedules s JOIN admin_users a ON a.id = -s.user_id WHERE a.banned = 0 ORDER BY a.id')
+    .all();
+  if (!rows.length) return;
+  // 收件邮箱：超管绑定邮箱（admin_email）优先、回落站长邮箱；普通管理员暂无绑定维度
   const mine = await env.DB.prepare("SELECT value FROM site_settings WHERE key = 'admin_email'").first();
-  let email = (mine && isEmailAddr(mine.value)) ? String(mine.value).trim().toLowerCase() : null;
-  if (!email && cfg.ownerEmail) email = cfg.ownerEmail;
-  if (!email) { info.skip = '未配置管理员邮箱/站长邮箱'; users.push(info); return; }
-  if (cfg.adminOnly && email !== cfg.ownerEmail) { info.skip = '仅站长模式，管理员邮箱不是站长邮箱'; users.push(info); return; }
-  info.email = maskEmail(email);
-  const SENT_KEY = -1;
-  try {
-    if (data.daily && data.daily.on) {
-      const [hh, mm] = data.daily.time.split(':').map(Number);
-      if (nowHM >= hh * 60 + mm) {
-        info.dailyDue = true;
-        if (await claimSend(env, SENT_KEY, day, 'daily', '0')) {
-          try {
-            await sendMail(env, email, '今日课程（' + day + '）', dailyHtml(day, list), 'sched-daily');
-          } catch (e) {
-            await releaseSend(env, SENT_KEY, day, 'daily', '0');
-            throw e;
+  const superEmail = (mine && isEmailAddr(mine.value)) ? String(mine.value).trim().toLowerCase() : (cfg.ownerEmail || null);
+  for (const row of rows) {
+    const info = { todayCount: 0, dailyOn: false, dailyTime: '', isAdmin: true, username: row.username };
+    try {
+      let data;
+      try { data = normSchedule(JSON.parse(row.data)); } catch { continue; }
+      const { date, list } = coursesToday(data, now);
+      if (date !== day) continue;
+      info.todayCount = list.length;
+      info.dailyOn = data.daily.on;
+      info.dailyTime = data.daily.time;
+      if (!list.length) { info.skip = '今天没课'; users.push(info); continue; }
+      // 收件人：超管发管理员绑定邮箱；普通管理员暂无绑定邮箱（数据已独立，提醒待邮箱体系开放后自动生效）
+      let email = row.role === 'super' ? superEmail : null;
+      if (!email) { info.skip = '普通管理员暂无绑定邮箱，课表提醒暂不发送'; users.push(info); continue; }
+      if (cfg.adminOnly && email !== cfg.ownerEmail) { info.skip = '仅站长模式，管理员邮箱不是站长邮箱'; users.push(info); continue; }
+      info.email = maskEmail(email);
+      // 防重键 = 负的管理员 id（各管理员独立锁，2026-10-03 起不再共享 -1）
+      const SENT_KEY = row.user_id;
+      if (data.daily && data.daily.on) {
+        const [hh, mm] = data.daily.time.split(':').map(Number);
+        if (nowHM >= hh * 60 + mm) {
+          info.dailyDue = true;
+          if (await claimSend(env, SENT_KEY, day, 'daily', '0')) {
+            try {
+              await sendMail(env, email, '今日课程（' + day + '）', dailyHtml(day, list), 'sched-daily');
+            } catch (e) {
+              await releaseSend(env, SENT_KEY, day, 'daily', '0');
+              throw e;
+            }
+            tally.sent++;
+            info.dailySent = true;
+          } else info.dailyAlready = true;
+        } else info.dailyDue = false;
+      }
+      info.remindCount = list.filter(c => c.remind).length;
+      info.inWindow = 0;
+      for (const c of list) {
+        if (!c.remind) continue;
+        const startMin = Number(c.startHH) * 60 + Number(c.startMM);
+        if (nowHM >= startMin - data.remindAhead && nowHM < startMin) {
+          const ref = String(c.idx);
+          if (await claimSend(env, SENT_KEY, day, 'class', ref)) {
+            try {
+              await sendMail(env, email, '即将上课：' + c.name, classHtml(c, data.remindAhead), 'sched-class');
+            } catch (e) {
+              await releaseSend(env, SENT_KEY, day, 'class', ref);
+              throw e;
+            }
+            tally.sent++;
+            info.inWindow++;
           }
-          tally.sent++;
-          info.dailySent = true;
-        } else info.dailyAlready = true;
-      } else info.dailyDue = false;
-    }
-    info.remindCount = list.filter(c => c.remind).length;
-    info.inWindow = 0;
-    for (const c of list) {
-      if (!c.remind) continue;
-      const startMin = Number(c.startHH) * 60 + Number(c.startMM);
-      if (nowHM >= startMin - data.remindAhead && nowHM < startMin) {
-        const ref = String(c.idx);
-        if (await claimSend(env, SENT_KEY, day, 'class', ref)) {
-          try {
-            await sendMail(env, email, '即将上课：' + c.name, classHtml(c, data.remindAhead), 'sched-class');
-          } catch (e) {
-            await releaseSend(env, SENT_KEY, day, 'class', ref);
-            throw e;
-          }
-          tally.sent++;
-          info.inWindow++;
         }
       }
+    } catch (e) {
+      errors.push(String((e && e.message) || e).slice(0, 100));
+      info.error = String((e && e.message) || e).slice(0, 80);
     }
-  } catch (e) {
-    errors.push(String((e && e.message) || e).slice(0, 100));
-    info.error = String((e && e.message) || e).slice(0, 80);
+    users.push(info);
   }
-  users.push(info);
 }
 
 // 邮箱打码：a***@domain（诊断明细不回完整邮箱，防泄漏到 cron 响应日志）

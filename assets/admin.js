@@ -439,7 +439,8 @@
   }
 
   function loadList() {
-    return api('/api/admin/media').then(function (data) {
+    // cache:'reload'：管理清单必须真拉——启发式缓存会吃掉刚 POST 完的变更（相册排序实测踩坑）
+    return api('/api/admin/media', { cache: 'reload' }).then(function (data) {
       if (data.ok) {
         items = data.items;
         serverAlbums = data.albums || [];
@@ -849,15 +850,17 @@
 
   // ---------- 相册管理（仅图片类型） ----------
   var albumFilter = ''; // '' 全部图片，'__none__' 未分组，其他 = 相册名
-  var serverAlbums = []; // albums 表里的相册名单（GET /api/admin/media 随清单返回，空相册也持久保存）
+  var serverAlbums = []; // albums 表里的相册名单（GET /api/admin/media 随清单返回，按 sort_order 排好；空相册也持久保存）
   function albumNames() {
+    // 顺序以 serverAlbums（albums.sort_order）为准——相册排序 2026-10-03 落地后它才是权威序；
+    // media.album 派生名只兜底补缺（理论上一进 albums 表就有，纯防御）
     var set = [];
+    serverAlbums.forEach(function (a) {
+      if (a && set.indexOf(a) === -1) set.push(a);
+    });
     (items.image || []).forEach(function (it) {
       var a = (it.album || '').trim();
       if (a && set.indexOf(a) === -1) set.push(a);
-    });
-    serverAlbums.forEach(function (a) {
-      if (set.indexOf(a) === -1) set.push(a);
     });
     return set;
   }
@@ -897,6 +900,34 @@
     var menu = document.createElement('div');
     menu.className = 'album-menu';
     menu.id = 'albumMenuPop';
+    // 排序（2026-10-03 相册排序落地）：上移/下移，已在边界时不显示该项
+    var orderList = albumNames();
+    var idx = orderList.indexOf(name);
+    function moveAlbum(dir) {
+      closeAlbumMenu();
+      api('/api/admin/albums', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'move', name: name, dir: dir })
+      }).then(function (d) {
+        if (d.ok) { loadList(); toast(dir === 'up' ? '已上移' : '已下移', 'ok'); }
+        else toast(d.error || '操作失败', 'err');
+      });
+    }
+    if (idx > 0) {
+      var up = document.createElement('button');
+      up.type = 'button';
+      up.textContent = '上移';
+      up.addEventListener('click', function () { moveAlbum('up'); });
+      menu.appendChild(up);
+    }
+    if (idx > -1 && idx < orderList.length - 1) {
+      var down = document.createElement('button');
+      down.type = 'button';
+      down.textContent = '下移';
+      down.addEventListener('click', function () { moveAlbum('down'); });
+      menu.appendChild(down);
+    }
     var rn = document.createElement('button');
     rn.type = 'button';
     rn.textContent = '重命名';
@@ -990,9 +1021,32 @@
     var listEl = $('albumSideList');
     listEl.innerHTML = '';
 
+    // 相册封面：取该分组第一张图（数据已在内存零新请求）；空分组给占位底
+    function coverOf(value) {
+      var hit = null;
+      (items.image || []).some(function (it) {
+        var a = (it.album || '').trim();
+        if (value === '' ? true : (value === '__none__' ? !a : a === value)) { hit = it; return true; }
+        return false;
+      });
+      return hit && hit.r2_key ? '/media/' + hit.r2_key : null;
+    }
+
     function makeItem(value, label, count, isAlbum) {
       var item = document.createElement('div');
       item.className = 'album-side-item' + (albumFilter === value ? ' active' : '');
+      // 封面缩略图（2026-10-03 观感优化）：一眼看出相册内容
+      var cover = document.createElement('span');
+      cover.className = 'as-cover';
+      var src = coverOf(value);
+      if (src) {
+        var img = document.createElement('img');
+        img.src = src;
+        img.alt = '';
+        img.loading = 'lazy';
+        cover.appendChild(img);
+      }
+      item.appendChild(cover);
       var nm = document.createElement('span');
       nm.className = 'as-name';
       nm.textContent = label;

@@ -704,15 +704,26 @@
   .album-side-head { font-size: 12px; font-weight: 600; color: var(--muted); letter-spacing: .08em; padding: 0 8px 8px; }
   .album-side-list { display: flex; flex-direction: column; gap: 2px; }
   .album-side-item {
-    display: flex; align-items: center; gap: 6px;
-    padding: 7px 8px; border-radius: 9px; cursor: pointer; font-size: 13px;
+    display: flex; align-items: center; gap: 8px;
+    padding: 6px 8px; border-radius: 10px; cursor: pointer; font-size: 13px;
     border: 1px dashed transparent;
-    transition: background 150ms, border-color 150ms;
+    transition: background 150ms, border-color 150ms, box-shadow 150ms;
     user-select: none;
   }
   .album-side-item:hover { background: var(--hover); }
   .album-side-item.active { background: var(--fg); color: var(--bg); font-weight: 600; }
-  .album-side-item.drop-hint { border-color: var(--fg); background: var(--chip-hover); }
+  .album-side-item.drop-hint {
+    border-style: solid; border-color: var(--fg);
+    background: var(--chip-hover);
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--fg) 22%, transparent);
+  }
+  /* 相册封面缩略图（2026-10-03 观感优化）：空分组=占位底色 */
+  .album-side-item .as-cover {
+    flex: none; width: 26px; height: 26px; border-radius: 7px; overflow: hidden;
+    background: color-mix(in srgb, var(--fg) 7%, transparent);
+    display: inline-flex; align-items: center; justify-content: center;
+  }
+  .album-side-item .as-cover img { width: 100%; height: 100%; object-fit: cover; display: block; }
   .album-side-item .as-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .album-side-item .as-count {
     flex: none; font-size: 11px; color: var(--muted);
@@ -747,6 +758,7 @@
     .album-side { width: 100%; position: static; }
     .album-side-list { flex-direction: row; flex-wrap: wrap; }
     .album-side-item { border: 1px solid var(--border); border-radius: 999px; padding: 5px 10px; }
+    .album-side-item .as-cover { width: 18px; height: 18px; border-radius: 6px; }
   }
   ul.list li .ai-drop.row-album .ai-drop-btn { padding: 4px 8px; font-size: 12px; border-radius: 8px; }
   ul.list li .ai-drop.row-album .ai-drop-lbl { max-width: 96px; }

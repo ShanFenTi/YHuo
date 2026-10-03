@@ -205,7 +205,7 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
         <div class="album-side-head">相册</div>
         <div class="album-side-list" id="albumSideList"></div>
         <button class="ghost album-side-new" id="albumSideNewBtn"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>新建相册</button>
-        <p class="album-side-hint">把图片拖到相册名上即可归类；勾选后点相册名可批量移入。点 ⋯ 重命名或解散（解散不删图）。</p>
+        <p class="album-side-hint">把图片拖到相册名上即可归类；勾选后点相册名可批量移入。点 ⋯ 重命名、上移/下移排序或解散（解散不删图，顺序即前台 /album/ 的相册排列）。</p>
       </aside>
       <div class="album-main">
         <div class="storage-line">

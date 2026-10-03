@@ -7853,6 +7853,7 @@ window.__siteCalendar = (function () {
     var albumAbort = null;
     var albumTimers = [];
     var albumImgs = [];       // 扁平照片清单 [{name,url,album}]（灯箱翻页/收藏按它走）
+    var albumOrderNames = null; // 后台相册顺序表（playlist albums 字段，2026-10-03 相册排序接通；null=老响应无此字段走出现序）
     var albumLbIndex = 0;
     var albumLbKeydown = null;
     var albumLbFavsChanged = null;
@@ -7876,15 +7877,27 @@ window.__siteCalendar = (function () {
       albumImgs.forEach(function (img) {
         var a = img.album || '';
         if (!a) {
-          if (!ungrouped) { ungrouped = { title: '', imgs: [] }; groups.unshift(ungrouped); }
+          if (!ungrouped) { ungrouped = { title: '', imgs: [], named: false }; groups.unshift(ungrouped); }
           ungrouped.imgs.push(img);
         } else {
-          if (!byName[a]) { byName[a] = { title: a, imgs: [] }; groups.push(byName[a]); }
+          if (!byName[a]) { byName[a] = { title: a, imgs: [], named: true }; groups.push(byName[a]); }
           byName[a].imgs.push(img);
         }
       });
-      if (!groups.length) groups.push({ title: '全部照片', imgs: [] });
+      if (!groups.length) groups.push({ title: '全部照片', imgs: [], named: false });
       if (ungrouped) ungrouped.title = groups.length > 1 ? '未分组' : '全部照片';
+      // 相册组按后台排序呈现（2026-10-03）：albums.sort_order 经 /api/playlist albums 字段下发；
+      // 未分组（named=false）恒在最前，顺序表里没有的相册保持出现序兜底
+      if (albumOrderNames && albumOrderNames.length) {
+        var fixed = groups.filter(function (g) { return !g.named; });
+        var named = groups.filter(function (g) { return g.named; });
+        named.sort(function (a, b) {
+          var ia = albumOrderNames.indexOf(a.title); if (ia === -1) ia = 9999;
+          var ib = albumOrderNames.indexOf(b.title); if (ib === -1) ib = 9999;
+          return ia - ib;
+        });
+        groups = fixed.concat(named);
+      }
       return groups;
     }
 
@@ -8363,6 +8376,7 @@ window.__siteCalendar = (function () {
           albumImgs = images.map(function (m) {
             return { name: m.name || '', url: m.url || '', album: m.album || '' };
           }).filter(function (m) { return m.url; });
+          albumOrderNames = (d && Array.isArray(d.albums)) ? d.albums : null;
           albumLoaded = true;
           albumRender();
           // 搜索/个人主页收藏照片跳转带过来的「待打开照片」：渲染完自动开灯箱
@@ -8429,6 +8443,7 @@ window.__siteCalendar = (function () {
       clearTimeout(albumHeightTimer); albumHeightTimer = null;
       albumCollapsing = null;
       albumImgs = [];
+      albumOrderNames = null;
       albumLoaded = false;
       clearTimeout(albumFlipTimer); albumFlipTimer = null;
     }

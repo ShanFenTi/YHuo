@@ -1,7 +1,10 @@
-// POST /api/admin/albums → 相册新建/重命名/解散
+// POST /api/admin/albums → 相册新建/重命名/解散/排序
 // { action: 'create', name }：新建空相册（落 albums 表，刷新不消失）
 // { action: 'rename', from, to }：把 from 相册改名为 to（media.album 与 albums 表同步）
 // { action: 'delete', name }：解散相册（图片回"未分组"，不动文件本体，albums 行一并删除）
+// { action: 'move', name, dir: 'up'|'down' }：相册排序上移/下移（2026-10-03 相册排序 UI 落地，
+//   §11 欠账；后台 ⋯ 菜单操作——侧栏同时承载图片拖放归类，拖拽排序语义冲突故不采用；
+//   前台 /album/ 牌堆与照片墙的相册顺序随 albums.sort_order 呈现，playlist.js 随清单下发顺序表）
 import { json } from '../../lib/util.js';
 import { ensureSchema } from '../../lib/migrate.js';
 
@@ -55,6 +58,29 @@ export async function onRequestPost({ request, env }) {
       env.DB.prepare("UPDATE media SET album = '' WHERE album = ?").bind(name),
       env.DB.prepare('DELETE FROM albums WHERE name = ?').bind(name),
     ]);
+    return json({ ok: true });
+  }
+
+  if (action === 'move') {
+    const name = String(body.name || '').trim().slice(0, 50);
+    const dir = String(body.dir || '') === 'up' ? 'up' : 'down';
+    if (!name) return json({ ok: false, error: '参数错误' }, 400);
+    // 相册名只存在于 media 不在 albums 时先补行（历史派生名自愈）
+    await env.DB.prepare('INSERT OR IGNORE INTO albums (name) VALUES (?)').bind(name).run();
+    // 按 (sort_order, name) 取当前序，交换相邻项后全量重编号 1..n——存量 sort_order 全 0 的
+    // 老数据也在第一次移动时被规范化，无需迁移
+    const { results } = await env.DB.prepare('SELECT name FROM albums ORDER BY sort_order, name').all();
+    const names = (results || []).map((r) => r.name);
+    const i = names.indexOf(name);
+    const j = dir === 'up' ? i - 1 : i + 1;
+    if (i === -1 || j < 0 || j >= names.length) return json({ ok: true }); // 已在边界：无操作
+    const swapped = names.slice();
+    swapped[i] = names[j];
+    swapped[j] = names[i];
+    const stmts = swapped.map((n, k) =>
+      env.DB.prepare('UPDATE albums SET sort_order = ? WHERE name = ?').bind(k + 1, n)
+    );
+    await env.DB.batch(stmts);
     return json({ ok: true });
   }
 

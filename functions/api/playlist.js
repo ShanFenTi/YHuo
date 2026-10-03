@@ -19,11 +19,16 @@ export async function onRequestGet({ env }) {
         if (r.cover) it.cover = '/media/' + r.cover;
         return it;
       });
-    // 图片带相册字段（后台图片页仍在用；前台消费方=外观抽屉背景选择器的站内图网格）
+    // 图片带相册字段（后台图片页仍在用；前台消费方=外观抽屉背景选择器的站内图网格 + /album/ 分组）
     const images = results
       .filter((r) => r.type === 'image')
       .map((r) => ({ name: r.title, url: '/media/' + r.r2_key, album: r.album || '' }));
-    return json({ ok: true, music, video: pick('video'), images });
+    // 相册顺序表（2026-10-03 相册排序接通：后台 ⋯ 菜单上移/下移写 albums.sort_order，
+    // /album/ 的相册组按此序呈现；老前端不读此字段零影响）
+    const { results: albumRows } = await env.DB
+      .prepare('SELECT name FROM albums ORDER BY sort_order, name')
+      .all();
+    return json({ ok: true, music, video: pick('video'), images, albums: albumRows.map((r) => r.name) });
   } catch {
     return json({ ok: false });
   }

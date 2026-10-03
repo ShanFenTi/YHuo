@@ -468,6 +468,10 @@
   ul.list.img-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(164px, 1fr)); gap: 14px; }
   ul.list.img-grid li {
     position: relative; display: flex; flex-direction: column; overflow: hidden;
+    align-items: stretch; /* 覆盖行式基础规则的 align-items:center——竖向 flex 的横轴是宽度，
+                             center 会让子元素按内容收缩并居中，长文件名把信息区撑到
+                             两倍卡宽、两边一起被裁（2026-10-03 截断顽疾根因）；stretch=子元素
+                             收满卡宽，.title 既有 ellipsis 才真正生效 */
     padding: 0; border: 1px solid var(--border); border-radius: 14px; background: var(--card);
     transition: border-color var(--t-fast) var(--ease-outc), box-shadow var(--t-med) var(--ease-soft), translate var(--t-med) var(--ease-spring);
   }
@@ -522,7 +526,10 @@
     overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
   }
   .img-grid .ic-info .title:hover { text-decoration: underline; }
-  .img-grid .ic-info .meta { color: var(--muted); font-size: 11.5px; white-space: nowrap; }
+  .img-grid .ic-info .meta {
+    color: var(--muted); font-size: 11.5px; white-space: nowrap;
+    overflow: hidden; text-overflow: ellipsis; /* 尺寸+日期超窄卡时也走省略号（2026-10-03 截断修复） */
+  }
   .img-grid .ic-info .ai-drop.row-album { align-self: flex-start; margin-top: 3px; }
   .img-grid .ic-info .inline-edit { margin: 0 0 2px; }
   .empty { color: var(--muted); font-size: 14px; text-align: center; padding: 34px 0; }

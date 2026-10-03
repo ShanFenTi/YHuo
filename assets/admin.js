@@ -2030,6 +2030,12 @@
         });
         actions.appendChild(promote);
       }
+      var resetPw = document.createElement('button');
+      resetPw.className = 'ghost';
+      resetPw.textContent = '重置密码';
+      resetPw.title = '设置新密码并踢其下线（忘记密码/密码泄露时用）';
+      resetPw.addEventListener('click', function () { resetUserPassword(u); });
+
       var ban = document.createElement('button');
       ban.className = 'ghost';
       ban.textContent = u.banned ? '解封' : '禁用';
@@ -2040,7 +2046,7 @@
       del.textContent = '删除';
       del.addEventListener('click', function () { removeUser(u); });
 
-      actions.appendChild(ban); actions.appendChild(del);
+      actions.appendChild(resetPw); actions.appendChild(ban); actions.appendChild(del);
       li.appendChild(avatar); li.appendChild(title); li.appendChild(badge);
       if (admBadge) li.appendChild(admBadge);
       li.appendChild(meta);
@@ -2066,6 +2072,31 @@
     }).then(function (data) {
       if (data.ok) { loadUsers(); toast(banned ? '已禁用' : '已解封', 'ok'); }
       else toast(data.error || '操作失败', 'err');
+    });
+  }
+
+  // 重置前台用户密码（2026-10-03）：后台直接设新密码——纯用户名注册没绑邮箱的用户忘密码时
+  // 邮箱找回走不通，这是唯一的补救口；账号被盗时也是止损手段。成功后其全部前台会话被踢
+  function resetUserPassword(u) {
+    ask({
+      title: '重置 ' + u.username + ' 的密码',
+      msg: '其全部前台登录会话会被踢出，需用新密码重新登录；新密码请自行转告本人。'
+        + (u.is_admin ? '注意：该用户名同时是管理员，后台登录密码是独立的一份，不受本次重置影响。' : ''),
+      input: true,
+      placeholder: '新密码（至少 6 位）',
+      okText: '重置',
+      cb: function (ok, val) {
+        if (!ok) return;
+        if (!val || val.length < 6 || val.length > 100) { toast('密码需 6-100 位', 'err'); return; }
+        api('/api/admin/users/' + u.id, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ password: val })
+        }).then(function (d) {
+          if (d.ok) toast('已重置 ' + u.username + ' 的密码', 'ok');
+          else toast(d.error || '重置失败', 'err');
+        });
+      },
     });
   }
 

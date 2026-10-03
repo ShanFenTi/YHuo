@@ -5722,8 +5722,17 @@ window.__siteCalendar = (function () {
         .sort(function (a, b) { return String(a.date) < String(b.date) ? 1 : (String(a.date) > String(b.date) ? -1 : 0); });
       notesCacheList = items; // notesHandleHash 按 id/日期回查
       if (!items.length) { if (notesEmpty) notesEmpty.hidden = false; return; }
+      // 年份计数（年份节点显示「2026 · N 篇」，2026-10-03 时间树改版）
+      var yearCount = {};
+      items.forEach(function (n) {
+        var y = String(n.date).slice(0, 4);
+        yearCount[y] = (yearCount[y] || 0) + 1;
+      });
       var usedId = {};
       var curYear = '';
+      // 时间树容器：左主轴（CSS ::before）+ 年份节点 + 每卡挂点，样式见 site.css「随笔页」段
+      var tl = document.createElement('div');
+      tl.className = 'notes-timeline';
       var frag = document.createDocumentFragment();
       items.forEach(function (n) {
         var year = String(n.date).slice(0, 4);
@@ -5731,7 +5740,7 @@ window.__siteCalendar = (function () {
           curYear = year;
           var yh = document.createElement('h2');
           yh.className = 'notes-year';
-          yh.textContent = year;
+          yh.textContent = year + ' · ' + yearCount[year] + ' 篇';
           frag.appendChild(yh);
         }
         var id = String(n.date), k = 2;
@@ -5783,7 +5792,8 @@ window.__siteCalendar = (function () {
         art.appendChild(ex);
         frag.appendChild(art);
       });
-      notesFeed.appendChild(frag);
+      tl.appendChild(frag);
+      notesFeed.appendChild(tl);
       // 阅读计数不再随列表渲染批量上报（2026-10-02 两态改版）：改为打开详情时对该篇计一次，
       // 「阅读数」从此等于真实打开次数（noteReportView 在 openNoteDetail 内）
     }

@@ -5416,39 +5416,86 @@
       margin: -6px 0 12px;
     }
 
+    /* 时间树容器（2026-10-03，参考博客站同款排布）：左主轴竖线 + 年份实心节点 + 每卡空心挂点；
+       主轴中心在 padding 盒 x=6px（left 5px + 宽 2px 的一半），年份点 12px 挂 -24px（中心 6 对齐）、
+       卡片环 8px 挂 -22px（中心 6 对齐，别改回 -24px 会偏 2px） */
+    .notes-timeline {
+      position: relative;
+      padding-left: 24px;
+    }
+    .notes-timeline::before {
+      content: "";
+      position: absolute;
+      left: 5px;
+      top: 10px;
+      bottom: 10px;
+      width: 2px;
+      border-radius: 2px;
+      background: linear-gradient(180deg,
+        color-mix(in srgb, var(--primary) 45%, transparent),
+        var(--apple-border) 70%,
+        transparent);
+    }
+
     .notes-year {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      margin: 20px 0 2px;
-      font-size: 14px;
+      position: relative;
+      margin: 26px 0 10px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 13px;
       font-weight: 700;
-      letter-spacing: 0.08em;
+      letter-spacing: 0.1em;
       color: var(--primary);
     }
-
-    .notes-year::after {
+    .notes-year:first-child { margin-top: 4px; }
+    .notes-year::before {
       content: "";
-      flex: 1;
-      height: 1px;
-      background: var(--apple-border);
+      position: absolute;
+      left: -24px;
+      top: 50%;
+      width: 12px;
+      height: 12px;
+      transform: translateY(-50%);
+      border-radius: 50%;
+      background: var(--primary);
+      box-shadow: 0 0 0 4px color-mix(in srgb, var(--primary) 14%, transparent);
     }
 
-    .note {
-      padding: 14px 2px 13px;
-      border-bottom: 1px solid var(--apple-border);
-      border-radius: 10px;
-    }
+    /* 列表卡：白卡化（原底纹行+底部分隔线），挂在时间轴上（.note 保留类名——locateNote 按
+       .contains('note') 找锚点卡，fx-reveal 揭示清单也按它扫） */
+    .note { position: relative; }
 
-    .note:last-child { border-bottom-color: transparent; }
-
-    /* 摘要卡态（2026-10-02 两态改版）：整卡可点进详情，正文全文只在详情态渲染 */
     .note-card {
+      display: block;
+      margin-bottom: 12px;
+      padding: 14px 16px;
+      border: 1px solid var(--apple-border);
+      border-radius: 12px;
+      background: color-mix(in srgb, var(--apple-foreground) 2%, transparent);
       cursor: pointer;
-      transition: background-color 160ms var(--ease-out), transform 160ms var(--ease-out);
+      transition: transform 160ms var(--ease-out), border-color 160ms var(--ease-out),
+        box-shadow 160ms var(--ease-out), background-color 160ms var(--ease-out);
+    }
+    .note-card::before {
+      content: "";
+      position: absolute;
+      left: -22px;
+      top: 26px;
+      width: 8px;
+      height: 8px;
+      transform: translateY(-50%);
+      border-radius: 50%;
+      background: var(--apple-card);
+      border: 2px solid color-mix(in srgb, var(--apple-foreground) 28%, var(--apple-border));
+      transition: border-color 160ms var(--ease-out), background-color 160ms var(--ease-out);
     }
     .note-card:hover {
-      background: color-mix(in srgb, var(--apple-foreground) 3%, transparent);
+      transform: translateX(3px);
+      border-color: color-mix(in srgb, var(--primary) 55%, var(--apple-border));
+      box-shadow: var(--shadow-md);
+    }
+    .note-card:hover::before {
+      border-color: var(--primary);
+      background: var(--primary);
     }
     .note-card:focus-visible {
       outline: 2px solid var(--apple-primary);

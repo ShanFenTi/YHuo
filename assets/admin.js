@@ -3255,6 +3255,7 @@
     $('noteSummary').value = '';
     $('noteText').value = '';
     $('noteDraft').checked = false;
+    $('noteText').dispatchEvent(new Event('input')); // 让字数计数器立即归零（否则显示上一次残留，敲键才归）
     noteFormMsg('');
     notePolishReset();
     notePreviewReset();
@@ -3273,6 +3274,7 @@
       $('noteSummary').value = n.summary || '';
       $('noteText').value = n.text || '';
       $('noteDraft').checked = !!n.draft;
+      $('noteText').dispatchEvent(new Event('input')); // 编辑回填后字数计数同步（.value 赋值不触发 input）
     }
     $('noteModal').hidden = false;
     $('noteTitle').focus();

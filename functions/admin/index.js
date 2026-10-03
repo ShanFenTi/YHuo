@@ -256,53 +256,56 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
     </div>
   </div>
 
-  <!-- 写一篇/编辑弹窗（2026-10-02 文章管理改版）：表单从常驻卡片改为居中弹窗，markup 禁反引号与美元符花括号（坑 18） -->
+  <!-- 写一篇/编辑弹窗（2026-10-02 文章管理改版；同日二次优化为三段式：头部/滚区/常驻底栏——
+       预览/AI 润色/保存任何滚动位置都可直接点，结果盒限高内部滚）。markup 禁反引号与美元符花括号（坑 18） -->
   <div class="modal" id="noteModal" hidden>
     <div class="modal-backdrop" id="noteModalBackdrop"></div>
     <div class="modal-body nb-modal">
       <div class="modal-head"><strong id="noteModalTitle">写一篇随笔</strong><button id="noteModalClose" class="icon-mini" type="button" title="关闭" aria-label="关闭"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg></button></div>
-      <p class="nb-md-hint">支持简易 Markdown：# 标题、**加粗**、- 列表、&gt; 引用、三个反引号代码块。</p>
-      <div class="field"><label for="noteTitle">标题</label>
-        <input type="text" id="noteTitle" placeholder="标题" maxlength="60">
-      </div>
-      <div class="nb-two-col">
-        <div class="field"><label for="noteTags">标签</label>
-          <input type="text" id="noteTags" placeholder="标签，用逗号分隔（如 前端,工程）" maxlength="60">
+      <div class="nb-scroll">
+        <p class="nb-md-hint">支持简易 Markdown：# 标题、**加粗**、- 列表、&gt; 引用、三个反引号代码块。</p>
+        <div class="field"><label for="noteTitle">标题</label>
+          <input type="text" id="noteTitle" placeholder="标题" maxlength="60">
         </div>
-        <div class="field"><label for="noteSummary">摘要</label>
-          <input type="text" id="noteSummary" placeholder="摘要（留空自动从正文截取）" maxlength="120">
+        <div class="nb-two-col">
+          <div class="field"><label for="noteTags">标签</label>
+            <input type="text" id="noteTags" placeholder="标签，用逗号分隔（如 前端,工程）" maxlength="60">
+          </div>
+          <div class="field"><label for="noteSummary">摘要</label>
+            <input type="text" id="noteSummary" placeholder="摘要（留空自动从正文截取）" maxlength="120">
+          </div>
+        </div>
+        <div class="field"><label for="noteText">正文</label>
+          <textarea id="noteText" rows="10" placeholder="正文…"></textarea>
+        </div>
+        <label class="nb-draft-row"><input type="checkbox" id="noteDraft"> 保存为草稿（前台不显示）</label>
+        <!-- 预览：正文按前台同款迷你 Markdown 渲染（后台副本），只读不改稿 -->
+        <div id="notePreviewBox" hidden class="nb-subbox">
+          <div class="bgset-row" style="margin:0 0 8px">
+            <strong style="font-size:13px">预览</strong>
+            <span class="spacer"></span>
+            <button id="notePreviewClose" class="ghost" type="button">收起</button>
+          </div>
+          <div id="notePreviewBody" class="nb-preview"></div>
+        </div>
+        <!-- 润色预览：结果先落这里，正文原样不动（防丢稿），「应用」才写回 textarea -->
+        <div id="notePolishBox" hidden class="nb-subbox">
+          <div class="bgset-row" style="margin:0 0 8px">
+            <strong style="font-size:13px">润色预览</strong>
+            <span class="meta2" id="notePolishMeta"></span>
+            <span class="spacer"></span>
+            <button id="notePolishApply" type="button">应用到正文</button>
+            <button id="notePolishDiscard" class="ghost" type="button">放弃</button>
+          </div>
+          <textarea id="notePolishText" rows="5" readonly style="width:100%"></textarea>
         </div>
       </div>
-      <div class="field"><label for="noteText">正文</label>
-        <textarea id="noteText" rows="10" placeholder="正文…"></textarea>
-      </div>
-      <label class="nb-draft-row"><input type="checkbox" id="noteDraft"> 保存为草稿（前台不显示）</label>
-      <div class="bgset-row" style="margin-top:10px">
+      <!-- 常驻底栏：预览/润色/保存任何滚动位置都可直接点；noteFormMsg 提示也在这 -->
+      <div class="nb-foot">
         <button id="notePreviewBtn" class="ghost" type="button">预览</button>
         <button id="notePolishBtn" class="ghost" type="button" title="让默认模型把正文润色一遍，先预览再决定是否应用">AI 润色</button>
         <span class="meta2" id="noteFormMsg"></span>
-      </div>
-      <!-- 预览：正文按前台同款迷你 Markdown 渲染（后台副本），只读不改稿 -->
-      <div id="notePreviewBox" hidden class="nb-subbox">
-        <div class="bgset-row" style="margin:0 0 8px">
-          <strong style="font-size:13px">预览</strong>
-          <span class="spacer"></span>
-          <button id="notePreviewClose" class="ghost" type="button">收起</button>
-        </div>
-        <div id="notePreviewBody" class="nb-preview"></div>
-      </div>
-      <!-- 润色预览：结果先落这里，正文原样不动（防丢稿），「应用」才写回 textarea -->
-      <div id="notePolishBox" hidden class="nb-subbox">
-        <div class="bgset-row" style="margin:0 0 8px">
-          <strong style="font-size:13px">润色预览</strong>
-          <span class="meta2" id="notePolishMeta"></span>
-          <span class="spacer"></span>
-          <button id="notePolishApply" type="button">应用到正文</button>
-          <button id="notePolishDiscard" class="ghost" type="button">放弃</button>
-        </div>
-        <textarea id="notePolishText" rows="5" readonly style="width:100%"></textarea>
-      </div>
-      <div class="nb-foot">
+        <span class="spacer"></span>
         <button id="noteSaveBtn" type="button">保存</button>
       </div>
     </div>

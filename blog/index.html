@@ -145,6 +145,27 @@
       setTimeout(function () { _fc.remove('ff-boot-hide', 'ff-ai-boot-hide'); }, 3000); // 兜底：接口无响应也放行
     } catch (e) {}
   </script>
+  <script>
+    // 全屏开场动画·首帧判定（2026-10-04，八页外壳同步，坑 23）：「会话一次的门票」在这里决定——
+    // 本会话没放过（yhuoIntroDone）且不是带锚点的深链（#note-<id> 等分享落地不垫演出）且没开
+    // 「减少动态效果」，才给 <html> 打 intro-pending：site.css「开场动画」段的封面（纸底+暖橙
+    // 光晕，与画布层同源）从第一帧盖住站点；字标与揭幕由 common.js 开场段接管（打 intro-go
+    // 表示已接管）。判定即写会话旗标：同会话刷新/前进后退不再重演，pjax 换页不整页加载天然不触发。
+    // 下面这段 9 秒定时器是自含兜底（不依赖 common.js）：万一脚本整个没加载出来，封面最多捂
+    // 9 秒必拆，绝不把站点捂死；正常编排约 1.5 秒就拆完，这个定时器到点只是空跑。
+    try {
+      if (!sessionStorage.getItem('yhuoIntroDone') && !location.hash
+        && !(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches)) {
+        sessionStorage.setItem('yhuoIntroDone', '1');
+        document.documentElement.classList.add('intro-pending');
+        setTimeout(function () {
+          document.documentElement.classList.remove('intro-pending', 'intro-go', 'intro-out', 'intro-skip');
+          var _iv = document.getElementById('introRoot');
+          if (_iv && _iv.parentNode) _iv.parentNode.removeChild(_iv);
+        }, 9000);
+      }
+    } catch (e) {}
+  </script>
 </head>
 <body>
 

@@ -7228,3 +7228,97 @@
     @media (max-width: 640px) {
       #pjaxSkel .ps-album .skel { height: 240px; }
     }
+
+    /* ===== 全屏开场动画（2026-10-04） =====
+       判定在八页外壳 head 内联小片段（会话一次 yhuoIntroDone / 深链 #hash 跳过 / reduced-motion 跳过，
+       命中才打 html.intro-pending——坑 23 同步块，check-code 步骤[4] 把关）。封面（::after）从首帧就在：
+       纸底 + 顶部暖橙光晕与 html 画布层同源同参数，揭幕揭开的正是同一张画布，观感是「画布先到、内容跟进」。
+       字标（#introRoot）由 common.js 开场段注入；揭幕与深色切换是同一套圆形语言、方向相反——
+       那边是新主题从点击处摊开，这边是封面向版心合拢。⚠️ 别把封面挪进 body：它必须在 common.js
+       执行前就随 CSS 上帧，只能挂在 html 伪元素上。 */
+    html.intro-pending { overflow: hidden; } /* 封面期间锁滚动，随类摘除一并放行 */
+    html.intro-pending::after {
+      content: '';
+      position: fixed;
+      inset: 0;
+      z-index: 500; /* 全站最高层（现有最大 400）；字标 501 压在其上 */
+      background:
+        radial-gradient(62% 100% at 50% -8%, rgba(204, 116, 66, 0.16), rgba(204, 116, 66, 0) 62%) top center / 100% 540px no-repeat,
+        var(--background, #f8f7f4);
+    }
+    html.dark.intro-pending::after {
+      background:
+        radial-gradient(62% 100% at 50% -8%, rgba(231, 163, 124, 0.12), rgba(231, 163, 124, 0) 62%) top center / 100% 540px no-repeat,
+        var(--background, #000000);
+    }
+    #introRoot {
+      position: fixed;
+      inset: 0;
+      z-index: 501;
+      display: grid;
+      place-items: center;
+      padding-bottom: 9vh; /* 字标略抬到版心偏上，落点接近首页时钟的位置 */
+      pointer-events: none; /* 输入由 common.js 的 window 监听接住，页面元素在封面期间收不到点击 */
+    }
+    .intro-brand {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 16px;
+      animation: introBrandIn 560ms var(--ease-out) both;
+    }
+    @keyframes introBrandIn {
+      from { opacity: 0; transform: translateY(14px); filter: blur(10px); }
+      to { opacity: 1; transform: translateY(0); filter: blur(0); }
+    }
+    .intro-word {
+      font-size: clamp(44px, 9vw, 72px);
+      font-weight: 700;
+      letter-spacing: 0.18em;
+      margin-right: -0.18em; /* 抵消末字符字距，视觉真居中 */
+      text-transform: uppercase; /* 与顶栏 .logo 同口径 */
+      line-height: 1;
+      color: var(--apple-foreground);
+    }
+    .intro-dot {
+      display: inline-block;
+      width: 0.16em;
+      height: 0.16em;
+      margin-left: 0.12em;
+      border-radius: 50%;
+      background: var(--primary);
+      transform: scale(0);
+      animation: introDotIn 260ms var(--spring) 460ms forwards;
+    }
+    @keyframes introDotIn { to { transform: scale(1); } }
+    .intro-sub {
+      font-family: var(--font-mono);
+      font-size: 13px;
+      letter-spacing: 0.32em;
+      margin-right: -0.32em;
+      color: var(--apple-muted-foreground);
+      animation: introSubIn 440ms var(--ease-out) 380ms both;
+    }
+    @keyframes introSubIn {
+      from { opacity: 0; transform: translateY(6px); }
+      to { opacity: 1; transform: none; }
+    }
+    /* 揭幕：封面 clip-path 圆收拢到版心点；#introRoot 随行淡出。
+       只动 clip-path/opacity/transform/filter，全合成器友好 */
+    html.intro-pending.intro-out::after {
+      animation: introIris var(--intro-iris-dur, 600ms) var(--ease-out) forwards;
+    }
+    @keyframes introIris {
+      from { clip-path: circle(100% at 50% 44%); }
+      to { clip-path: circle(0% at 50% 44%); }
+    }
+    html.intro-out #introRoot { animation: introBrandOut 240ms var(--ease-out) forwards; }
+    @keyframes introBrandOut {
+      to { opacity: 0; transform: translateY(-8px); }
+    }
+    html.intro-skip { --intro-iris-dur: 260ms; } /* 任意输入跳过：快速收拢 */
+    @media (prefers-reduced-motion: reduce) {
+      /* JS 判定本就不演；这层是兜底——真打上了类也瞬时完成，不停留 */
+      html.intro-pending.intro-out::after { animation-duration: 1ms; }
+      #introRoot, #introRoot .intro-brand, #introRoot .intro-dot, #introRoot .intro-sub { animation-duration: 1ms !important; }
+    }

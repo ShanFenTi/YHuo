@@ -3,6 +3,63 @@
 // 所有页面共用； meteor 流星特效已并入文件尾部。
 // =============================================
 // =============================================
+// 全屏开场动画（2026-10-04）：这里只做编排，判定在八页外壳 head 内联小片段——
+// 会话一次（yhuoIntroDone）/ 深链 #hash 跳过（分享落地直奔内容）/ reduced-motion 跳过，
+// 命中才打 html.intro-pending。本文件是 body 末尾的同步脚本：封面（html.intro-pending::after，
+// site.css「开场动画」段）从首帧就盖着站点，脚本到达后补字标入场、到点圆形揭幕
+//（与深色切换同一套圆形语言，方向相反：封面向版心合拢）。铁律：任何一步出错当场拆封面放行，
+// 绝不能把站点捂在封面后面；head 片段另有 9 秒自含兜底（认 intro-go = 已接管）。
+// =============================================
+(function () {
+  var root = document.documentElement;
+  if (!root.classList.contains('intro-pending')) return; // head 没打类＝本会话已放过/深链/减动效，不演
+  root.classList.add('intro-go'); // 「common.js 已接管」信号，head 兜底定时器认这个
+
+  function cleanup() {
+    try {
+      root.classList.remove('intro-pending', 'intro-go', 'intro-out', 'intro-skip');
+      var ov = document.getElementById('introRoot');
+      if (ov && ov.parentNode) ov.parentNode.removeChild(ov);
+    } catch (e) {}
+  }
+
+  try {
+    var ov = document.createElement('div');
+    ov.id = 'introRoot';
+    ov.setAttribute('aria-hidden', 'true');
+    ov.innerHTML = '<div class="intro-brand">'
+      + '<span class="intro-word">YHuo<i class="intro-dot"></i></span>'
+      + '<span class="intro-sub">个人主页</span>'
+      + '</div>';
+    document.body.appendChild(ov);
+
+    // 线路慢、脚本到得晚（>2s）：封面早看腻了，压缩停顿少耽误人
+    var late = !!(window.performance && performance.now && performance.now() > 2000);
+
+    var done = false;
+    function finish(fast) {
+      if (done) return;
+      done = true;
+      detach();
+      root.classList.add('intro-out');
+      if (fast) root.classList.add('intro-skip'); // 快速揭幕（CSS 里 --intro-iris-dur 收短）
+      setTimeout(cleanup, fast ? 300 : 680); // 与揭幕时长对齐；不用 animationend——后台标签动画事件不可靠
+    }
+    function onDisturb() { finish(true); } // 任意输入（点/键/滚/触）即跳过
+    function detach() {
+      for (var j = 0; j < DISTURB.length; j++) window.removeEventListener(DISTURB[j], onDisturb);
+    }
+    var DISTURB = ['pointerdown', 'keydown', 'wheel', 'touchstart'];
+    for (var i = 0; i < DISTURB.length; i++) {
+      window.addEventListener(DISTURB[i], onDisturb, { passive: true });
+    }
+    setTimeout(function () { finish(false); }, late ? 350 : 880);
+  } catch (e) {
+    cleanup(); // 出错绝不久留
+  }
+})();
+
+// =============================================
 // 节气与流星雨历法（2026-09-17，创意集 1.2/1.3）：纯函数挂 window.__siteCalendar，
 // 供首页「今日印记」（节气红章/流星雨极大预告，startHomeClock 段 applyHeroMarks）
 // 与文件尾流星 IIFE 的极大夜密度加倍共用。放最前：首页模块启动时就要用。

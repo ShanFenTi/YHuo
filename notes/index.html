@@ -146,20 +146,27 @@
     } catch (e) {}
   </script>
   <script>
-    // 全屏开场动画·首帧判定（2026-10-04，八页外壳同步，坑 23）：「会话一次的门票」在这里决定——
-    // 本会话没放过（yhuoIntroDone）且不是带锚点的深链（#note-<id> 等分享落地不垫演出）且没开
-    // 「减少动态效果」，才给 <html> 打 intro-pending：site.css「开场动画」段的封面（纸底+暖橙
-    // 光晕，与画布层同源）从第一帧盖住站点；字标与揭幕由 common.js 开场段接管（打 intro-go
-    // 表示已接管）。判定即写会话旗标：同会话刷新/前进后退不再重演，pjax 换页不整页加载天然不触发。
-    // 下面这段 9 秒定时器是自含兜底（不依赖 common.js）：万一脚本整个没加载出来，封面最多捂
-    // 9 秒必拆，绝不把站点捂死；正常编排约 1.5 秒就拆完，这个定时器到点只是空跑。
+    // 全屏开场动画·首帧判定（2026-10-04，八页外壳同步，坑 23；2026-10-06 四处修订）
+    //
+    // ⚠️⚠️ 临时改法：本地测试用「每次进入都演」——2026-10-06 站长要求（原本是会话一次）
+    //    做法= 摘掉 yhuoIntroDone 会话旗标的读写两行。回退= 把下面 if 里的
+    //      '&& !sessionStorage.getItem(...)' 与 setItem 那行加回来（见 git diff 里的删除行）。
+    //    ⚠️ 这个改法只适合本地反复看效果，**上线前必须回退**，否则真实访客每次刷新都被挡 1.1 秒。
+    //
+    // 判定在这里做——不是带锚点的深链（#note-<id> 等分享落地不垫演出）、没开「减少动态效果」、
+    // 后台功能开关未关掉开场动画（读上面功能开关块已同步暴露的 window.__FF_CACHE.intro，缺省开；
+    // 首访无缓存时按开处理——与 docs/album/weather 等既有开关同一套机制），才给 <html> 打
+    // intro-pending：site.css「开场动画」段的封面（纸底+暖橙光晕，与画布层同源）从第一帧盖住站点；
+    // 字标与揭幕由 common.js 开场段接管。pjax 换页不整页加载天然不触发。
+    // 下面这段 9 秒定时器是自含兜底（不依赖 common.js、到点无条件拆解，不读任何信号类）：
+    // 万一脚本整个没加载出来，封面最多捂 9 秒必拆，绝不把站点捂死；正常编排约 1.1 秒就拆完，
+    // 这个定时器到点只是空跑。
     try {
-      if (!sessionStorage.getItem('yhuoIntroDone') && !location.hash
+      if (!(window.__FF_CACHE && window.__FF_CACHE.intro === false) && !location.hash
         && !(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches)) {
-        sessionStorage.setItem('yhuoIntroDone', '1');
         document.documentElement.classList.add('intro-pending');
         setTimeout(function () {
-          document.documentElement.classList.remove('intro-pending', 'intro-go', 'intro-out', 'intro-skip');
+          document.documentElement.classList.remove('intro-pending', 'intro-out', 'intro-skip');
           var _iv = document.getElementById('introRoot');
           if (_iv && _iv.parentNode) _iv.parentNode.removeChild(_iv);
         }, 9000);

@@ -7238,12 +7238,13 @@
        命中才打 html.intro-pending——坑 23 同步块，check-code 步骤[4] 把关）。⚠️ 原会话一次
        （sessionStorage yhuoIntroDone）已于 2026-10-06 本地测试期临时摘除，改成每次整页加载都演，
        上线前须回退（回退说明写在八页 head 片段注释里）。
-       封面 = html.intro-pending 的 **::before（左半）+ ::after（右半）** 两片，从首帧就在：
-       纸底 + 顶部暖橙光晕与 html 画布层同源同参数，观感是「画布先到、内容跟进」。
-       字标（#introRoot，z501）由 common.js 开场段注入，**压两片之上**。
-       揭幕 = **从中间裂开向两侧滑走**（2026-10-06 站长定，替换掉原「缩成版心一点」的圆形收拢）。
+       封面 = html.intro-pending 的**单片 ::after（满屏）**，从首帧就在：
+       纸底 + 顶部暖橙光晕（叠顶部白高光、底部极淡暗角三层）与 html 画布层同源同参数，
+       观感是「画布先到、内容跟进」。
+       字标（#introRoot，z501）由 common.js 开场段注入，**压在封面之上**。
+       揭幕 = **整层封面直接淡出**（opacity 1→0；2026-10-06 定稿，形态沿革见下方「淡出」段注释）。
        ⚠️ 别把封面挪进 body：它必须在 common.js 执行前就随 CSS 上帧，只能挂 html 伪元素上。
-       ⚠️ 两片都挂 html 上而非 body：body 内的元素会随 pjax 换页被替换，封面会掉。 */
+       ⚠️ 封面挂 html 上而非 body：body 内的元素会随 pjax 换页被替换，封面会掉。 */
     html.intro-pending { overflow: hidden; } /* 封面期间锁滚动，随类摘除一并放行 */
     #introRoot {
       position: fixed;
@@ -7259,39 +7260,42 @@
       flex-direction: column;
       align-items: center;
       gap: 16px;
-      animation: introBrandIn 700ms var(--ease-out) both;
+      /* 字标 620ms 落位（原 700ms）——与圆点 420+260=680ms、副标 360+460=820ms 形成先后层次 */
+      animation: introBrandIn 620ms var(--ease-out) both;
     }
-    /* 开场进度条（2026-10-06）：封面底部一条 2px 细线，随揭幕时机从0% 走到 100%。
-       ⚠️ 这不是真实加载进度——开场期间没有任何资源在下载（封面是纯 CSS、字标由已加载的
-       common.js 注入），真进度会瞬间冲到 100%。它的作用是把「等待揭幕」这段过程可视化，
-       并与 finish() 严格同步：时长取 --intro-progress-dur（由 common.js 按当前停顿/跳过
-       时长同步写入），所以走完即揭幕、跳过时冲完，两者不会脱节。 */
+    /* 开场进度条（2026-10-06）：封面底部一条 3px 细线，随揭幕时机从 0% 走到 100%。两套模式：
+       快线路（脚本 ≤2s 到）= 假进度条：按停顿时长匀速走完，纯装饰，与 finish() 严格同步；
+       慢线路（脚本 >2s 到）= 真进度条：common.js 用 Resource Timing 观测已在下载的资源到达率
+       （零额外请求），走满即揭幕，另有 WAIT_CAP 上限兜底。时长取 --intro-progress-dur
+       （由 common.js 按当前停顿/跳过时长同步写入），所以走完即揭幕、跳过时冲完，两者不脱节。 */
     .intro-progress {
       position: absolute;
       left: 50%;
-      bottom: 8vh;
-      width: min(220px, 42vw);
-      height: 2px;
+      bottom: 9vh; /* 与字标 padding-bottom:9vh 呼应，落在同一视觉水平线上 */
+      width: min(200px, 38vw);
+      height: 3px;
       transform: translateX(-50%);
-      border-radius: 2px;
-      background: color-mix(in srgb, var(--apple-foreground) 12%, transparent);
+      border-radius: 3px;
+      background: color-mix(in srgb, var(--apple-foreground) 9%, transparent);
       overflow: hidden;
-      animation: introBarIn 320ms var(--ease-out) both;
+      animation: introBarIn 300ms var(--ease-out) both;
     }
     .intro-progress > i {
       display: block;
       height: 100%;
       width: 100%;
       border-radius: inherit;
-      background: var(--primary);
+      /* 静态暖陶土渐变（左浅右实），比纯色更有走向感；绘制一次、不逐帧。 */
+      background: linear-gradient(90deg,
+        color-mix(in srgb, var(--primary) 65%, transparent), var(--primary));
       transform-origin: left center;
       transform: scaleX(0);
-      /* --intro-progress-dur 缺省=正常停顿 1100ms；common.js 在 finish() 里按实际时长覆盖。
+      /* --intro-progress-dur 由 common.js 按当前停顿/跳过时长同步写入（正常档 PAUSE）。
          ⚠️ 用 transform: scaleX() 而非 width 动画（2026-10-06 站长报「卡」后改）：
          width 是**重绘**属性，逐帧重新布局+绘制这条线；transform 是合成器属性，零重绘。
-         真进度模式（慢线路）由 JS 直接写 style.width——那是低频离散更新（每个资源落地才写一次），
+         真进度模式（慢线路）由 JS 逐帧写 style.transform——那是低频离散更新（每个资源落地才写一次），
          不构成逐帧动画，不在此列。 */
-      animation: introBarFill var(--intro-progress-dur, 1100ms) var(--ease-out) forwards;
+      animation: introBarFill var(--intro-progress-dur, 1400ms) var(--ease-out) forwards;
     }
     /* 真进度模式（慢线路）：JS 写 width、CSS 动画已停，这里加一点高亮与光点提示「在真加载」 */
     .intro-progress.is-real > i {
@@ -7331,52 +7335,50 @@
       to   { opacity: 1; transform: translateY(0) scale(1); }
     }
     .intro-word {
-      font-size: clamp(44px, 9vw, 72px);
-      font-weight: 700;
-      letter-spacing: 0.18em;
-      margin-right: -0.18em; /* 抵消末字符字距，视觉真居中 */
+      /* 2026-10-06 收敛精致版：字重 700→640（DM Sans 可变轴）、字号上限 72→68px、
+         字距 .18em→.16em。字距与 margin-right 必须相等才真居中。 */
+      font-size: clamp(42px, 8.6vw, 68px);
+      font-weight: 640;
+      letter-spacing: 0.16em;
+      margin-right: -0.16em; /* 抵消末字符字距，视觉真居中（= letter-spacing） */
+      font-kerning: normal;
       text-transform: uppercase; /* 与顶栏 .logo 同口径 */
       line-height: 1;
       color: var(--apple-foreground);
     }
     .intro-dot {
       display: inline-block;
-      width: 0.16em;
-      height: 0.16em;
+      width: 0.17em;
+      height: 0.17em;
       margin-left: 0.12em;
       border-radius: 50%;
       background: var(--primary);
+      /* 静态外环：细一圈陶土描边，收一点印感。属 box-shadow 但**不逐帧**——
+         入场动画只动 transform: scale()，外环随整块一起被合成器缩放，零重绘。 */
+      box-shadow: 0 0 0 1px color-mix(in srgb, var(--primary) 30%, transparent);
       transform: scale(0);
-      animation: introDotIn 300ms var(--spring) 580ms forwards;
+      animation: introDotIn 260ms var(--spring) 420ms forwards;
     }
     @keyframes introDotIn { to { transform: scale(1); } }
     .intro-sub {
       font-family: var(--font-mono);
-      font-size: 13px;
-      letter-spacing: 0.32em;
-      margin-right: -0.32em;
+      font-size: 12.5px;
+      letter-spacing: 0.30em;
+      margin-right: -0.30em; /* = letter-spacing，视觉真居中 */
       color: var(--apple-muted-foreground);
-      animation: introSubIn 520ms var(--ease-out) 520ms both;
+      /* 落位时刻 = 延迟 360 + 时长 460 = 820ms（停顿 1400ms 前留足呼吸） */
+      animation: introSubIn 460ms var(--ease-out) 360ms both;
     }
     @keyframes introSubIn {
       from { opacity: 0; transform: translateY(6px); }
       to { opacity: 1; transform: none; }
     }
-    /* 揭幕 = 上下展开（2026-10-06 站长定，**替换掉原圆形收拢**）。
-       原设计是 clip-path circle(120%→0%) 缩成版心一点（与深色切换同一套圆形语言），
-       站长明确不要这种，改为「裂开」：封面从正中裂成两片向左右滑出视野，
-       页面内容在下面正常显现、**不参与**任何裁剪或位移。
-
-       实现要点：
-       · 一个 ::after 只能有一个 clip-path，裂成两片需要**两个伪元素**——
-         2026-10-06 起为**单片满屏淡出**（此前试过圆形收拢/左右裂开/上下展开三版分片方案，均废弃）。
-       · inset() 的 top/bottom 是距上/下边缘的裁切量：左右两片都用
-         inset(0 50% 0 0) 起步（各自只剩半屏宽）→ 终点 inset(0 50% 0 50%) /
-         inset(0 0 0 50%)（各自被压到 0 宽、滑出视野），裂口始终在正中。
-       · 裂口边缘给一道暖橙高光（accent 光带），强化「被撕开」的物理感。
-       · 只动 clip-path（全合成器友好、不建滚动容器、不改布局），
-         刻意不用 transform 推开——那会让两片带出各自的合成层与锯齿边。
-       · 收尾靠摘除 .intro-out 类让选择器失配自动复原，与编排层 cleanup 对齐。 */
+    /* 揭幕形态（2026-10-06 定稿）= **单片满屏淡出**：封面整层 opacity 1→0，无位移、无裁剪、无分片。
+       形态沿革（四版，前三版均已废弃，别再改回去）：
+         ① 圆形收拢 clip-path circle(120%→0%)（否）→ ② 从中间裂开向左右滑出（否）
+         → ③ 上下展开两片 translateY（否）→ ④ **单片淡出（定稿）**，实现见下方「淡出」段。
+       废弃原因：三版分片方案都要为「分片」额外处理 background 坐标系对齐（左右那版踩过
+       「光晕圆心跑到视口外」的坑），单片满屏天生没有这个问题。 */
     /* 封面 = html.intro-pending::after 单片满屏（2026-10-06 站长定「加载完直接淡出」后简化）。
        ⚠️ 曾用 ::before+::after 两片做「上下展开」，现已废弃——单片淡出更简、也更稳：
        两片方案要为分片做 background 坐标系对齐（左右分片时踩过光晕圆心跑到视口外的坑），
@@ -7388,18 +7390,25 @@
       position: fixed;
       inset: 0;
       z-index: 500; /* 全站最高层（次高 400）；字标 501 压在其上 */
+      /* 纵深质感（2026-10-06）：陶土光晕 + 顶部白高光 + 底部极淡暗角三层叠在纸底上。
+         ⚠️ 全是静态 background（只在插入/揭幕时绘制，不逐帧），零合成成本。 */
       background:
         radial-gradient(62% 100% at 50% -8%, rgba(204, 116, 66, 0.16), rgba(204, 116, 66, 0) 62%) top center / 100% 540px no-repeat,
+        radial-gradient(120% 55% at 50% 0%, rgba(255, 255, 255, 0.55), rgba(255, 255, 255, 0) 70%) top center / 100% 60% no-repeat,
+        radial-gradient(140% 60% at 50% 108%, rgba(27, 28, 30, 0.035), rgba(27, 28, 30, 0) 60%) bottom center / 100% 55% no-repeat,
         var(--background, #f8f7f4);
     }
     html.dark.intro-pending::after {
       background:
         radial-gradient(62% 100% at 50% -8%, rgba(231, 163, 124, 0.12), rgba(231, 163, 124, 0) 62%) top center / 100% 540px no-repeat,
+        radial-gradient(120% 55% at 50% 0%, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0) 70%) top center / 100% 60% no-repeat,
+        radial-gradient(140% 60% at 50% 108%, rgba(0, 0, 0, 0.28), rgba(0, 0, 0, 0) 60%) bottom center / 100% 55% no-repeat,
         var(--background, #000000);
     }
     /* 访客设了自定义背景（body.has-custom-bg，由 common.js 背景应用逻辑打）时，底图与流星层都在
        z-index:-1、被不透明纸底盖住，淡出后图会「啪一下出现」——那就破坏「画布先到、内容跟进」的连续感。
        这里只把纸底层换成 transparent（暖橙光晕层保留、与画布层同源参数不动），让底图/流星透出。
+       ⚠️ 这两条**故意不加**上面新增的白高光/暗角——它们会把底图压住，正是本条要避免的断层。
        ⚠️ 伪元素挂 html 而has-custom-bg 类在 body 上，只能靠 :has() 反向选中；
        :has() 特异性取参数中最强者（body.has-custom-bg = 0,1,1），深色那条再加 .dark 抬高一档。 */
     html.intro-pending:has(body.has-custom-bg)::after {
@@ -7435,10 +7444,19 @@
       --intro-fade-dur: 300ms;
       --intro-progress-dur: 300ms;
     }
+    /* 字体对齐（2026-10-06）：字标元素必须先插入（否则 Google Fonts 的字体文件不会被请求），
+       但入场动画要等字体就绪再跑，避免「先显本地字、再换字体」的闪跳。
+       做法= common.js 先给 <html> 加 .intro-fontpending、再插入 #introRoot，
+       这里把五处入场动画全部暂停在 0% 起点；字体就绪（或 300ms 上限到）后 common.js 摘类，
+       五条动画同帧一起解冻，原有先后时序不变。 */
+    html.intro-fontpending .intro-brand,
+    html.intro-fontpending .intro-dot,
+    html.intro-fontpending .intro-sub,
+    html.intro-fontpending .intro-progress,
+    html.intro-fontpending .intro-progress > i { animation-play-state: paused; }
     @media (prefers-reduced-motion: reduce) {
       /* JS 判定本就不演；这层是兜底——真打上了类也瞬时完成，不停留。
          ⚠️ 淡出只有一片（::after），reduced-motion 只需覆盖它一条。 */
-         漏一条则那半片仍会走 700ms 滑走，观感是"半边撕开"。 */
       html.intro-pending.intro-out::after { animation-duration: 1ms; }
       #introRoot, #introRoot .intro-brand, #introRoot .intro-dot, #introRoot .intro-sub,
       #introRoot .intro-progress, #introRoot .intro-progress > i,

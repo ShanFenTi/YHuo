@@ -4,29 +4,44 @@
 // =============================================
 // =============================================
 // 全屏开场动画（2026-10-04）：这里只做编排，判定在八页外壳 head 内联小片段——
-// 会话一次（yhuoIntroDone）/ 深链 #hash 跳过（分享落地直奔内容）/ reduced-motion 跳过/
-// 后台功能开关关掉跳过（读 head 已缓存的 window.__FF_CACHE.intro，2026-10-06）；
+// 会话一次（yhuoIntroDone，本地测试期临时摘除中）/ 深链 #hash 跳过（分享落地直奔内容）/
+// reduced-motion 跳过 / 后台功能开关关掉跳过（读 head 已缓存的 window.__FF_CACHE.intro，2026-10-06）；
 // ⚠️ 2026-10-06 起本地测试期临时改成「每次整页加载都演」（摘掉会话旗标），上线前须回退，见八页 head 片段内的回退说明。
 // 命中才打 html.intro-pending。本文件是 body 末尾的同步脚本：封面（html.intro-pending::after，
-// site.css「开场动画」段）从首帧就盖着站点，脚本到达后补字标入场、到点圆形揭幕
-//（与深色切换同一套圆形语言，方向相反：封面向版心合拢）。铁律：任何一步出错当场拆封面放行，
-// 绝不能把站点捂在封面后面；head 片段另有 9 秒自含兜底定时器（不依赖本文件，无条件拆解）。
+// site.css「开场动画」段）从首帧就盖着站点，脚本到达后补字标入场、到点**整层封面淡出**揭幕。
+// 2026-10-06 追加两处：①字标入场等 document.fonts.ready（300ms 上限）再起，免 Web 字体闪换；
+// ②开场期推迟流星层 / 雨雪粒子挂载（它们被封面盖住看不见，挂上纯属白跑，是「打开还是卡」的主因）。
+// 铁律：任何一步出错当场拆封面放行，绝不能把站点捂在封面后面；
+// head 片段另有 9 秒自含兜底定时器（不依赖本文件，无条件拆解）。
 // 2026-10-06：原intro-go 信号类确认为死类（全仓零消费者，head 兜底定时器并未读它，注释曾失真）已删。
 // =============================================
 (function () {
   var root = document.documentElement;
   if (!root.classList.contains('intro-pending')) return; // head 没打类＝本会话已放过/深链/减动效/后台关掉，不演
 
+  // 计时工具 + 提升到闭包作用域的引用（2026-10-06）：跳过输入 onDisturb 可能在任何时刻触发，
+  // 包括 boot()（字体就绪后）之前，故 finish/barEl/barFill/real/po 必须是闭包级、且使用处一律判空。
+  function now() { return (window.performance && performance.now) ? performance.now() : Date.now(); }
+  var barEl = null, barFill = null, real = null, po = null;
+  var done = false, started = false, tBoot = 0;
+
   function cleanup() {
     try {
-      root.classList.remove('intro-pending', 'intro-out', 'intro-skip');
-      var ov = document.getElementById('introRoot');
-      if (ov && ov.parentNode) ov.parentNode.removeChild(ov);
+      // intro-fontpending 也要摘：万一在字体就绪前就被跳过，boot() 会早退，这个暂停类不能留在 html 上
+      root.classList.remove('intro-pending', 'intro-out', 'intro-skip', 'intro-fontpending');
+      var el = document.getElementById('introRoot');
+      if (el && el.parentNode) el.parentNode.removeChild(el);
     } catch (e) {}
   }
 
+  var ovOk = false, ov = null;
   try {
-    var ov = document.createElement('div');
+    // ⚠️ 顺序：先给 <html> 加 .intro-fontpending，再插入字标。
+    // 字标元素一进 DOM 才会触发 DM Sans / JetBrains Mono 的字体请求（不插就不下字体），
+    // 而 site.css 会把这五条入场动画暂停在 0% 起点；等字体就绪（或 300ms 上限到）由 boot() 摘类解冻。
+    // 目的 = 消除「先显本地字体、再换成 Web 字体」的闪跳（2026-10-06）。
+    root.classList.add('intro-fontpending');
+    ov = document.createElement('div');
     ov.id = 'introRoot';
     ov.setAttribute('aria-hidden', 'true');
     ov.innerHTML = '<div class="intro-brand">'
@@ -39,108 +54,138 @@
       //     走到 100% 即揭幕，但有 WAIT_CAP 上限兜底，绝不把站点捂死。
       + '<div class="intro-progress"><i></i></div>';
     document.body.appendChild(ov);
-    var barEl = ov.querySelector('.intro-progress');
-    var barFill = ov.querySelector('.intro-progress > i');
+    barEl = ov.querySelector('.intro-progress');
+    barFill = ov.querySelector('.intro-progress > i');
+    ovOk = true;
+  } catch (e) {
+    cleanup(); // 出错绝不久留（含摘 intro-fontpending）
+  }
+  if (!ovOk) return; // 封面没建立起来：交给 head 的 9 秒兜底拆解，不再走编排
 
-    // 线路慢、脚本到得晚（>2s）：封面早看腻了，压缩停顿少耽误人。
-    // ⚠️ 这里 700ms 仍小于副标入场完成的 1040ms——**有意为之的取舍**：慢线路下封面已捂了 2 秒以上，
-    // 再等满 1.1 秒太奢侈，宁可让字标没收完就揭幕（观感是「字标淡出中被圆圈收掉」，仍成立但不完美）。
-    // 正常线路走 1100ms，不抢字标。想两档都不抢就把 late 分支也提到 1100ms。
-    var late = !!(window.performance && performance.now && performance.now() > 2000);
-    var PAUSE = late ? 700 : 1100;         // 假进度条走完的时刻（也是快线路的揭幕停顿）
-    var WAIT_CAP = late ? 2600 : 1600;      // 真进度模式的上限：超过就强制揭幕，不等资源
-    ov.style.setProperty('--intro-progress-dur', PAUSE + 'ms');
-
-    // ---- 真进度：资源到达率（仅慢线路启用）----
-    // 用 Resource Timing 观测**已经在下载**的资源，零额外请求——不重新 fetch 任何接口
-    // （/api/settings 站内已被请求 4 次，再加一次只会更慢）。
-    // 分子=已 responseEnd 的资源数，分母=已发起的资源数；分母会随新资源发起而增长，
-    // 故进度可能回退——这是真实取舍，如实反映「还在加载」。
-    var real = null, po = null;
-    if (late) {
-      try {
-        // 只算影响首屏观感的资源（脚本/样式/图片/媒体/接口），排除 beacon 之类噪声，
-        // 免得一个 ping 把进度拖在 90%
-        var WANT = /\/assets\/|\.(?:js|css|png|jpe?g|webp|gif|svg|mp4|mp3|webm|woff2?)(?:\?|$)|\/api\//;
-        function calcReal() {
-          var list = performance.getEntriesByType('resource') || [];
-          var all = 0, landed = 0;
-          for (var i = 0; i < list.length; i++) {
-            if (!WANT.test(list[i].name)) continue;
-            all++;
-            if (list[i].responseEnd > 0) landed++;
-          }
-          // 分母为 0（无可观测资源）时视为已完成，交由 WAIT_CAP 兜底揭幕
-          return all === 0 ? 1 : landed / all;
+  // ---- 真进度：资源到达率（仅慢线路启用）— 由 boot() 在解冻后调用 ----
+  // 用 Resource Timing 观测**已经在下载**的资源，零额外请求——不重新 fetch 任何接口
+  // （/api/settings 站内已被请求 4 次，再加一次只会更慢）。
+  // 分子=已 responseEnd 的资源数，分母=已发起的资源数；分母会随新资源发起而增长，
+  // 故进度可能回退——这是真实取舍，如实反映「还在加载」。
+  function setupReal() {
+    try {
+      // 只算影响首屏观感的资源（脚本/样式/图片/媒体/接口），排除 beacon 之类噪声，
+      // 免得一个 ping 把进度拖在 90%
+      var WANT = /\/assets\/|\.(?:js|css|png|jpe?g|webp|gif|svg|mp4|mp3|webm|woff2?)(?:\?|$)|\/api\//;
+      function calcReal() {
+        var list = performance.getEntriesByType('resource') || [];
+        var all = 0, landed = 0;
+        for (var i = 0; i < list.length; i++) {
+          if (!WANT.test(list[i].name)) continue;
+          all++;
+          if (list[i].responseEnd > 0) landed++;
         }
-        real = calcReal;
-        if (barFill) {
-          // ⚠️ 写transform: scaleX() 而非 width（2026-10-06 站长报「卡」后改）：
-          // 起始态 CSS 里已是 scaleX(0)，这里同属性覆盖不冲突；width 则是重绘属性。
-          // 且此处**必须**同时把 transform-origin 交给 CSS（已设left center），不要inline 重设。
-          barFill.style.animation = 'none';   // 真进度改由 JS 逐帧写，否则与 CSS 动画打架
-          barFill.style.transform = 'scaleX(' + (Math.round(calcReal() * 1000) / 1000) + ')';
-        }
-        if (barEl) barEl.classList.add('is-real');
-        // 资源陆续到位时刷新；走满即揭幕（真进度的意义：资源到齐才揭示）。
-        // ⚠️ observe({buffered:true}) 会**同步**回调一次，此刻 done/finish 尚未就位，
-        // 故延到下一帧再 observe，避开闭包初始化竞态。
-        if (window.PerformanceObserver) {
-          try {
-            po = new PerformanceObserver(function () {
-              if (done || !barFill) return;
-              var p = calcReal();
-              barFill.style.transform = 'scaleX(' + (Math.round(p * 1000) / 1000) + ')';
-              if (p >= 0.999) finish(false);
-            });
-            var startObs = function () {
-              if (done) { po = null; return; }   // 已收尾就别再挂观测器，避免泄漏
-              try { po.observe({ type: 'resource', buffered: true }); } catch (e2) { po = null; }
-            };
-            if (window.requestAnimationFrame) requestAnimationFrame(startObs);
-            else setTimeout(startObs, 0);
-          } catch (e2) { po = null; /* 观测器不可用则退回纯等待 + 上限兜底 */ }
-        }
-      } catch (e) { real = null; }
-    }
-
-    var done = false;
-    function stopReal() { if (po) { try { po.disconnect(); } catch (e) {} po = null; } }
-    function finish(fast) {
-      if (done) return;
-      done = true;
-      detach();
-      stopReal();
-      // 跳过时先把剩余进度冲满再揭幕——避免「线停在半路突然消失」。
-      // 假进度：CSS 里 --intro-progress-dur 已被 intro-skip 收短到 300ms，动画自然冲线。
-      // 真进度：CSS 动画已停（改由 JS 写 width），瞬变会跳，故显式补一条 300ms 过渡再置满。
-      if (fast && barFill) {
-        // 真进度下 CSS 动画已停（transform 由 JS 写），故补一条 280ms 过渡再置满，避免瞬变跳。
-        // 假进度下 CSS 动画本身走 --intro-progress-dur（intro-skip 已收短到 300ms），无需干预。
-        if (real) {
-          barFill.style.transition = 'transform 280ms cubic-bezier(0.32, 0.72, 0, 1)';
-          barFill.style.transform = 'scaleX(1)';
-        }
+        // 分母为 0（无可观测资源）时视为已完成，交由 WAIT_CAP 兜底揭幕
+        return all === 0 ? 1 : landed / all;
       }
-      root.classList.add('intro-out');
-      if (fast) root.classList.add('intro-skip'); // 快速淡出（CSS 里 --intro-fade-dur 收短到 300ms）
-      setTimeout(cleanup, fast ? 340 : 580); // 与淡出时长对齐（500/300ms）留余量；不用 animationend——后台标签动画事件不可靠
+      real = calcReal;
+      if (barFill) {
+        // ⚠️ 写 transform: scaleX() 而非 width（2026-10-06 站长报「卡」后改）：
+        // 起始态 CSS 里已是 scaleX(0)，这里同属性覆盖不冲突；width 则是重绘属性。
+        // 且此处**必须**同时把 transform-origin 交给 CSS（已设 left center），不要 inline 重设。
+        barFill.style.animation = 'none';   // 真进度改由 JS 逐帧写，否则与 CSS 动画打架
+        barFill.style.transform = 'scaleX(' + (Math.round(calcReal() * 1000) / 1000) + ')';
+      }
+      if (barEl) barEl.classList.add('is-real');
+      // 资源陆续到位时刷新；走满即揭幕（真进度的意义：资源到齐才揭示）。
+      // ⚠️ observe({buffered:true}) 会**同步**回调一次，此刻 done/finish 尚未就位，
+      // 故延到下一帧再 observe，避开闭包初始化竞态。
+      if (window.PerformanceObserver) {
+        try {
+          po = new PerformanceObserver(function () {
+            if (done || !barFill) return;
+            var p = calcReal();
+            barFill.style.transform = 'scaleX(' + (Math.round(p * 1000) / 1000) + ')';
+            if (p >= 0.999) {
+              // 最小展示时间 900ms（服务「看清」）：真进度可能瞬间到位（资源早已缓存），
+              // 若立刻揭幕，副标（820ms 落位）根本来不及看清。不满 900ms 就延后揭幕。
+              var wait = 900 - (now() - tBoot);
+              if (wait > 0) setTimeout(function () { finish(false); }, wait);
+              else finish(false);
+            }
+          });
+          var startObs = function () {
+            if (done) { po = null; return; }   // 已收尾就别再挂观测器，避免泄漏
+            try { po.observe({ type: 'resource', buffered: true }); } catch (e2) { po = null; }
+          };
+          if (window.requestAnimationFrame) requestAnimationFrame(startObs);
+          else setTimeout(startObs, 0);
+        } catch (e2) { po = null; /* 观测器不可用则退回纯等待 + 上限兜底 */ }
+      }
+    } catch (e) { real = null; }
+  }
+
+  function stopReal() { if (po) { try { po.disconnect(); } catch (e) {} po = null; } }
+  function finish(fast) {
+    if (done) return;
+    done = true;
+    detach();
+    stopReal();
+    // 跳过时先把剩余进度冲满再揭幕——避免「线停在半路突然消失」。
+    // 假进度：CSS 里 --intro-progress-dur 已被 intro-skip 收短到 300ms，动画自然冲线。
+    // 真进度：CSS 动画已停（改由 JS 写 transform），瞬变会跳，故显式补一条过渡再置满。
+    if (fast && barFill) {
+      // 真进度下 CSS 动画已停（transform 由 JS 写），故补一条 280ms 过渡再置满，避免瞬变跳。
+      // 假进度下 CSS 动画本身走 --intro-progress-dur（intro-skip 已收短到 300ms），无需干预。
+      if (real) {
+        barFill.style.transition = 'transform 280ms cubic-bezier(0.32, 0.72, 0, 1)';
+        barFill.style.transform = 'scaleX(1)';
+      }
     }
-    function onDisturb() { finish(true); } // 任意输入（点/键/滚/触）即跳过
-    function detach() {
-      for (var j = 0; j < DISTURB.length; j++) window.removeEventListener(DISTURB[j], onDisturb);
-    }
-    var DISTURB = ['pointerdown', 'keydown', 'wheel', 'touchstart'];
-    for (var i = 0; i < DISTURB.length; i++) {
-      window.addEventListener(DISTURB[i], onDisturb, { passive: true });
-    }
+    root.classList.add('intro-out');
+    if (fast) root.classList.add('intro-skip'); // 快速淡出（CSS 里 --intro-fade-dur 收短到 300ms）
+    // 与淡出时长对齐（500/300ms）留余量；不用 animationend——后台标签动画事件不可靠。
+    // ⚠️ 硬约束：cleanup 延时必须 ≥ 淡出时长，否则先摘类再播完动画、封面凭空消失。
+    setTimeout(cleanup, fast ? 340 : 580);
+  }
+  function onDisturb() { finish(true); } // 任意输入（点/键/滚/触）即跳过
+  function detach() {
+    for (var j = 0; j < DISTURB.length; j++) window.removeEventListener(DISTURB[j], onDisturb);
+  }
+  var DISTURB = ['pointerdown', 'keydown', 'wheel', 'touchstart'];
+  // 跳过监听**立即挂**，不等字体——用户在字体等待期间点一下就该能跳过
+  for (var i = 0; i < DISTURB.length; i++) {
+    window.addEventListener(DISTURB[i], onDisturb, { passive: true });
+  }
+
+  // ---- 揭幕编排：boot() = 摘字体暂停类 + 起计时 ----
+  // 字体就绪（或 300ms 上限到）才 boot，避免字标入场跑在字体交换之前；
+  // 计时从 boot 起算，故「字标 820ms 落位 → 停顿 PAUSE」的关系不受字体等待影响。
+  function boot() {
+    if (done || started) return;   // 已跳过 / 已启动
+    started = true;
+    root.classList.remove('intro-fontpending');   // 解冻：五条入场动画同帧一起跑
+    tBoot = now();
+    // 线路慢、脚本到得晚（>2s）：封面早看腻了，压缩停顿少耽误人（但仍保证副标 820ms 落位）。
+    var late = !!(window.performance && performance.now && performance.now() > 2000);
+    var PAUSE = late ? 1000 : 1400;         // 假进度条走完的时刻（也是快线路的揭幕停顿）
+    var WAIT_CAP = late ? 2600 : 1600;      // 真进度模式的上限：超过就强制揭幕，不等资源
+    if (ov) ov.style.setProperty('--intro-progress-dur', PAUSE + 'ms');
+    if (late) setupReal();                  // 慢线路：真进度条（快线路走 CSS 假进度条，不调它）
     // 快线路：假进度条匀速走完 PAUSE 即揭幕。
-    // 慢线路：真进度条由 PerformanceObserver 驱动、走到100% 时finish()；这里只兜一个上限，
+    // 慢线路：真进度条由 PerformanceObserver 驱动、走到 100% 时 finish()；这里只兜一个上限，
     //   到点仍未满则强制揭幕（资源没到就让它后台继续，绝不把站点捂在封面后面）。
     if (real) setTimeout(function () { finish(false); }, WAIT_CAP);
     else setTimeout(function () { finish(false); }, PAUSE);
-  } catch (e) {
-    cleanup(); // 出错绝不久留
+  }
+
+  // 字体竞速：document.fonts.ready 先到则立即 boot；300ms 上限先到也 boot（字体被墙不卡死）。
+  var fontDone = false;
+  try {
+    void ov.offsetHeight; // 强制一次布局，让浏览器确定字标需要哪些字形、把字体请求排上队
+    fontDone = !!(document.fonts && document.fonts.status === 'loaded');
+  } catch (e) {}
+  if (fontDone || !document.fonts || !document.fonts.ready) {
+    boot();
+  } else {
+    var fontCap = setTimeout(function () { boot(); }, 300);
+    document.fonts.ready.then(function () { clearTimeout(fontCap); boot(); })
+      .catch(function () { clearTimeout(fontCap); boot(); });
   }
 })();
 
@@ -8897,17 +8942,38 @@ window.__siteCalendar = (function () {
         frag.appendChild(meteor);
         meteors.push(meteor);
       }
-      // 主群：目标点全屏均匀（全屏基础覆盖）
-      for (var i = 0; i < count; i++) {
-        spawnMeteor(Math.random(), 0.12 + Math.random() * 0.8);
+      // 主群 + 补充群的实际挂载：包成函数，好在开场动画结束后再挂（见下方门控）
+      function mount() {
+        if (!count) return; // 减弱动态档 0 颗，连空 fragment 都不用挂
+        // 主群：目标点全屏均匀（全屏基础覆盖）
+        for (var i = 0; i < count; i++) {
+          spawnMeteor(Math.random(), 0.12 + Math.random() * 0.8);
+        }
+        // 补充群（数量≈主群 70%）：目标点收紧到穿过左下角的几何带（tx -0.05~0.35 / ty 0.5~0.95，
+        // 该带内约八成迹线会扫过左下角九宫格）——穿过左下角的迹线在屏时间短，仅靠均匀分布观感
+        // 仍稀（用户再报"左下角太少了"），用更高出现频率补密度；宽屏同样生效、无副作用
+        for (var j = 0; j < Math.round(count * 0.7); j++) {
+          spawnMeteor(-0.05 + Math.random() * 0.4, 0.5 + Math.random() * 0.45);
+        }
+        root.appendChild(frag);
       }
-      // 补充群（数量≈主群 70%）：目标点收紧到穿过左下角的几何带（tx -0.05~0.35 / ty 0.5~0.95，
-      // 该带内约八成迹线会扫过左下角九宫格）——穿过左下角的迹线在屏时间短，仅靠均匀分布观感
-      // 仍稀（用户再报"左下角太少了"），用更高出现频率补密度；宽屏同样生效、无副作用
-      for (var j = 0; j < Math.round(count * 0.7); j++) {
-        spawnMeteor(-0.05 + Math.random() * 0.4, 0.5 + Math.random() * 0.45);
+      // ⚠️ 开场动画期间**推迟挂载**（2026-10-06 防卡）：`.fx-meteors` 是 z-index:-1，开场期被封面
+      // 完全盖住、一颗都看不见；但 30~120 颗流星每颗都是常驻合成层 + infinite 动画（流星雨极大夜
+      // 还会翻倍），与开场动画并发纯属白跑，是「打开还是卡」的主因之一。
+      // 做法照抄 fx-reveal 门控（100ms 轮询 + 9000ms 上限，与 head 兜底定时器一致），
+      // 摘类（揭幕完成）后立即挂载 —— 绝不允许永久不挂。
+      if (document.documentElement.classList.contains('intro-pending')) {
+        var mWaited = 0;
+        var mIv = setInterval(function () {
+          mWaited += 100;
+          if (!document.documentElement.classList.contains('intro-pending') || mWaited >= 9000) {
+            clearInterval(mIv);
+            mount();
+          }
+        }, 100);
+      } else {
+        mount();
       }
-      root.appendChild(frag);
       // 旋转屏幕/改窗口尺寸后"横行程÷屏宽"的比例会变，按存下的目标点重算出生坐标保持全屏覆盖
       var resizeTimer = 0;
       window.addEventListener('resize', function () {
@@ -9688,10 +9754,27 @@ window.__siteCalendar = (function () {
       }, 200);
     });
 
-    sizeCanvas();
-    regenerate(readKind());
-    setInterval(function () {
-      var k = readKind();
-      if (k !== kind) regenerate(k); // 类别变了才重建，同类别不打断正在下落的粒子
-    }, POLL_MS);
+    sizeCanvas(); // 量画布尺寸（不挂 rAF），保留原位——首帧尺寸与 resize 处理都靠它
+    // ⚠️ 开场动画期间**推迟**首个 regenerate 与轮询（2026-10-06 防卡）：canvas 层 z-index:-1，
+    // 开场期被封面完全盖住；雨 40~140 段 / 雪 24~90 个粒子若此刻就挂上 rAF，属纯主线程逐帧 2D 浪费。
+    // 做法同流星层（100ms 轮询 + 9000ms 上限，与 head 兜底一致），摘类后立即启动，绝不永久不启。
+    function startParticles() {
+      regenerate(readKind());
+      setInterval(function () {
+        var k = readKind();
+        if (k !== kind) regenerate(k); // 类别变了才重建，同类别不打断正在下落的粒子
+      }, POLL_MS);
+    }
+    if (document.documentElement.classList.contains('intro-pending')) {
+      var wWaited = 0;
+      var wIv = setInterval(function () {
+        wWaited += 100;
+        if (!document.documentElement.classList.contains('intro-pending') || wWaited >= 9000) {
+          clearInterval(wIv);
+          startParticles();
+        }
+      }, 100);
+    } else {
+      startParticles();
+    }
   })();

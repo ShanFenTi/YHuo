@@ -7,7 +7,9 @@ const ACCENTS = ['terracotta', 'purple', 'pink', 'green', 'orange'];
 
 // 功能开关白名单（true=显示，缺省开）。ai 不在此列——跟随 AI 页全局开关（site_settings.ai_enabled）
 // album（相册界面）2026-10-01 随 /album/ 第九页恢复重新入列（2026-09-05 曾移除）；misc（杂项界面）已随功能移除：旧库存量里的同名键会被忽略
-const FLAG_KEYS = ['docs', 'album', 'weather', 'lyric', 'video'];
+// intro（开场动画）2026-10-06 入列：与界面类开关不同，它是「行为」而非「界面」——关掉只是不演首帧动画，
+// 八页外壳与页面内容一概不动；判定读八页 head 片段里的 window.__FF_CACHE.intro 缓存（首访无缓存时仍演一次）
+const FLAG_KEYS = ['docs', 'album', 'weather', 'lyric', 'video', 'intro'];
 
 async function getSetting(env, key) {
   const row = await env.DB.prepare('SELECT value FROM site_settings WHERE key = ?').bind(key).first();

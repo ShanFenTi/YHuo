@@ -373,7 +373,7 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
     </div>
     <div class="section-card">
       <p class="section-title">功能开关</p>
-      <p class="section-sub">关闭的界面前台直接隐藏，保存后访客下次进页面生效。AI 界面跟随「AI」页的全局启用开关，不在这里控制。</p>
+      <p class="section-sub">关闭的界面前台直接隐藏，保存后访客下次进页面生效。「开场动画」关掉只是不演首帧动画，页面内容一概不动。AI 界面跟随「AI」页的全局启用开关，不在这里控制。</p>
       <div id="flagRows"></div>
       <div class="bgset-row" style="margin-top:12px">
         <button id="flagSaveBtn" class="ghost" type="button">保存功能开关</button>

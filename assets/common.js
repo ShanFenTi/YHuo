@@ -4,20 +4,22 @@
 // =============================================
 // =============================================
 // 全屏开场动画（2026-10-04）：这里只做编排，判定在八页外壳 head 内联小片段——
-// 会话一次（yhuoIntroDone）/ 深链 #hash 跳过（分享落地直奔内容）/ reduced-motion 跳过，
+// 会话一次（yhuoIntroDone）/ 深链 #hash 跳过（分享落地直奔内容）/ reduced-motion 跳过/
+// 后台功能开关关掉跳过（读 head 已缓存的 window.__FF_CACHE.intro，2026-10-06）；
+// ⚠️ 2026-10-06 起本地测试期临时改成「每次整页加载都演」（摘掉会话旗标），上线前须回退，见八页 head 片段内的回退说明。
 // 命中才打 html.intro-pending。本文件是 body 末尾的同步脚本：封面（html.intro-pending::after，
 // site.css「开场动画」段）从首帧就盖着站点，脚本到达后补字标入场、到点圆形揭幕
 //（与深色切换同一套圆形语言，方向相反：封面向版心合拢）。铁律：任何一步出错当场拆封面放行，
-// 绝不能把站点捂在封面后面；head 片段另有 9 秒自含兜底（认 intro-go = 已接管）。
+// 绝不能把站点捂在封面后面；head 片段另有 9 秒自含兜底定时器（不依赖本文件，无条件拆解）。
+// 2026-10-06：原intro-go 信号类确认为死类（全仓零消费者，head 兜底定时器并未读它，注释曾失真）已删。
 // =============================================
 (function () {
   var root = document.documentElement;
-  if (!root.classList.contains('intro-pending')) return; // head 没打类＝本会话已放过/深链/减动效，不演
-  root.classList.add('intro-go'); // 「common.js 已接管」信号，head 兜底定时器认这个
+  if (!root.classList.contains('intro-pending')) return; // head 没打类＝本会话已放过/深链/减动效/后台关掉，不演
 
   function cleanup() {
     try {
-      root.classList.remove('intro-pending', 'intro-go', 'intro-out', 'intro-skip');
+      root.classList.remove('intro-pending', 'intro-out', 'intro-skip');
       var ov = document.getElementById('introRoot');
       if (ov && ov.parentNode) ov.parentNode.removeChild(ov);
     } catch (e) {}
@@ -30,20 +32,99 @@
     ov.innerHTML = '<div class="intro-brand">'
       + '<span class="intro-word">YHuo<i class="intro-dot"></i></span>'
       + '<span class="intro-sub">个人主页</span>'
-      + '</div>';
+      + '</div>'
+      // 开场进度条（2026-10-06）：两种模式——
+      //   快（脚本 ≤2s 到）= 假进度条：一条线按停顿时长匀速走完，纯装饰、时机与揭幕严格同步。
+      //   慢（脚本 >2s到）= 真进度条：观测真实资源到达率（Resource Timing，零额外网络请求），
+      //     走到 100% 即揭幕，但有 WAIT_CAP 上限兜底，绝不把站点捂死。
+      + '<div class="intro-progress"><i></i></div>';
     document.body.appendChild(ov);
+    var barEl = ov.querySelector('.intro-progress');
+    var barFill = ov.querySelector('.intro-progress > i');
 
-    // 线路慢、脚本到得晚（>2s）：封面早看腻了，压缩停顿少耽误人
+    // 线路慢、脚本到得晚（>2s）：封面早看腻了，压缩停顿少耽误人。
+    // ⚠️ 这里 700ms 仍小于副标入场完成的 1040ms——**有意为之的取舍**：慢线路下封面已捂了 2 秒以上，
+    // 再等满 1.1 秒太奢侈，宁可让字标没收完就揭幕（观感是「字标淡出中被圆圈收掉」，仍成立但不完美）。
+    // 正常线路走 1100ms，不抢字标。想两档都不抢就把 late 分支也提到 1100ms。
     var late = !!(window.performance && performance.now && performance.now() > 2000);
+    var PAUSE = late ? 700 : 1100;         // 假进度条走完的时刻（也是快线路的揭幕停顿）
+    var WAIT_CAP = late ? 2600 : 1600;      // 真进度模式的上限：超过就强制揭幕，不等资源
+    ov.style.setProperty('--intro-progress-dur', PAUSE + 'ms');
+
+    // ---- 真进度：资源到达率（仅慢线路启用）----
+    // 用 Resource Timing 观测**已经在下载**的资源，零额外请求——不重新 fetch 任何接口
+    // （/api/settings 站内已被请求 4 次，再加一次只会更慢）。
+    // 分子=已 responseEnd 的资源数，分母=已发起的资源数；分母会随新资源发起而增长，
+    // 故进度可能回退——这是真实取舍，如实反映「还在加载」。
+    var real = null, po = null;
+    if (late) {
+      try {
+        // 只算影响首屏观感的资源（脚本/样式/图片/媒体/接口），排除 beacon 之类噪声，
+        // 免得一个 ping 把进度拖在 90%
+        var WANT = /\/assets\/|\.(?:js|css|png|jpe?g|webp|gif|svg|mp4|mp3|webm|woff2?)(?:\?|$)|\/api\//;
+        function calcReal() {
+          var list = performance.getEntriesByType('resource') || [];
+          var all = 0, landed = 0;
+          for (var i = 0; i < list.length; i++) {
+            if (!WANT.test(list[i].name)) continue;
+            all++;
+            if (list[i].responseEnd > 0) landed++;
+          }
+          // 分母为 0（无可观测资源）时视为已完成，交由 WAIT_CAP 兜底揭幕
+          return all === 0 ? 1 : landed / all;
+        }
+        real = calcReal;
+        if (barFill) {
+          // ⚠️ 写transform: scaleX() 而非 width（2026-10-06 站长报「卡」后改）：
+          // 起始态 CSS 里已是 scaleX(0)，这里同属性覆盖不冲突；width 则是重绘属性。
+          // 且此处**必须**同时把 transform-origin 交给 CSS（已设left center），不要inline 重设。
+          barFill.style.animation = 'none';   // 真进度改由 JS 逐帧写，否则与 CSS 动画打架
+          barFill.style.transform = 'scaleX(' + (Math.round(calcReal() * 1000) / 1000) + ')';
+        }
+        if (barEl) barEl.classList.add('is-real');
+        // 资源陆续到位时刷新；走满即揭幕（真进度的意义：资源到齐才揭示）。
+        // ⚠️ observe({buffered:true}) 会**同步**回调一次，此刻 done/finish 尚未就位，
+        // 故延到下一帧再 observe，避开闭包初始化竞态。
+        if (window.PerformanceObserver) {
+          try {
+            po = new PerformanceObserver(function () {
+              if (done || !barFill) return;
+              var p = calcReal();
+              barFill.style.transform = 'scaleX(' + (Math.round(p * 1000) / 1000) + ')';
+              if (p >= 0.999) finish(false);
+            });
+            var startObs = function () {
+              if (done) { po = null; return; }   // 已收尾就别再挂观测器，避免泄漏
+              try { po.observe({ type: 'resource', buffered: true }); } catch (e2) { po = null; }
+            };
+            if (window.requestAnimationFrame) requestAnimationFrame(startObs);
+            else setTimeout(startObs, 0);
+          } catch (e2) { po = null; /* 观测器不可用则退回纯等待 + 上限兜底 */ }
+        }
+      } catch (e) { real = null; }
+    }
 
     var done = false;
+    function stopReal() { if (po) { try { po.disconnect(); } catch (e) {} po = null; } }
     function finish(fast) {
       if (done) return;
       done = true;
       detach();
+      stopReal();
+      // 跳过时先把剩余进度冲满再揭幕——避免「线停在半路突然消失」。
+      // 假进度：CSS 里 --intro-progress-dur 已被 intro-skip 收短到 300ms，动画自然冲线。
+      // 真进度：CSS 动画已停（改由 JS 写 width），瞬变会跳，故显式补一条 300ms 过渡再置满。
+      if (fast && barFill) {
+        // 真进度下 CSS 动画已停（transform 由 JS 写），故补一条 280ms 过渡再置满，避免瞬变跳。
+        // 假进度下 CSS 动画本身走 --intro-progress-dur（intro-skip 已收短到 300ms），无需干预。
+        if (real) {
+          barFill.style.transition = 'transform 280ms cubic-bezier(0.32, 0.72, 0, 1)';
+          barFill.style.transform = 'scaleX(1)';
+        }
+      }
       root.classList.add('intro-out');
-      if (fast) root.classList.add('intro-skip'); // 快速揭幕（CSS 里 --intro-iris-dur 收短）
-      setTimeout(cleanup, fast ? 300 : 680); // 与揭幕时长对齐；不用 animationend——后台标签动画事件不可靠
+      if (fast) root.classList.add('intro-skip'); // 快速淡出（CSS 里 --intro-fade-dur 收短到 300ms）
+      setTimeout(cleanup, fast ? 340 : 580); // 与淡出时长对齐（500/300ms）留余量；不用 animationend——后台标签动画事件不可靠
     }
     function onDisturb() { finish(true); } // 任意输入（点/键/滚/触）即跳过
     function detach() {
@@ -53,7 +134,11 @@
     for (var i = 0; i < DISTURB.length; i++) {
       window.addEventListener(DISTURB[i], onDisturb, { passive: true });
     }
-    setTimeout(function () { finish(false); }, late ? 350 : 880);
+    // 快线路：假进度条匀速走完 PAUSE 即揭幕。
+    // 慢线路：真进度条由 PerformanceObserver 驱动、走到100% 时finish()；这里只兜一个上限，
+    //   到点仍未满则强制揭幕（资源没到就让它后台继续，绝不把站点捂在封面后面）。
+    if (real) setTimeout(function () { finish(false); }, WAIT_CAP);
+    else setTimeout(function () { finish(false); }, PAUSE);
   } catch (e) {
     cleanup(); // 出错绝不久留
   }
@@ -206,12 +291,16 @@ window.__siteCalendar = (function () {
       var docTargets = [];
       var ticking = false;
       function collect() {
+        if (document.documentElement.classList.contains('intro-pending')) return; // 开场期间不采集，省掉全量选择器+布局测量
         targets = Array.prototype.slice.call(document.querySelectorAll(SEL));
         var viewer = document.getElementById('docViewer');
         docTargets = (viewer && !viewer.hidden) ? Array.prototype.slice.call(document.querySelectorAll(SEL_DOC)) : [];
       }
       function show() {
         ticking = false;
+        // 开场动画期间一律不揭示（2026-10-06 防卡）：scroll/resize/MutationObserver
+        // 都可能在此期间触发 show()，绕过启动处的推迟逻辑，必须在此处兜住。
+        if (document.documentElement.classList.contains('intro-pending')) return;
         var line = window.innerHeight * 0.94;
         var batch = [];
         var i, el;
@@ -234,8 +323,30 @@ window.__siteCalendar = (function () {
           window.requestAnimationFrame(show);
         }
       }
-      collect();
-      show();
+      // ⚠️ 开场动画期间**先不采集不揭示**（2026-10-06 站长报「打开过程中还是卡」后改）：
+      // 本模块会给几十个卡片同时播 `fx-reveal-in`（含 filter: blur(10px) 逐帧重绘，0.6s×N），
+      // 若与开场动画（1.8s）重叠，两批重绘叠加 = 明显卡顿。
+      // 做法=开场期间（html.intro-pending 挂着）推迟启动，等揭幕完成摘类后再采集揭示。
+      // 此时卡片内容仍被 CSS 的 :not(.is-revealed) 压成 opacity:0——但**此时它们被封面完全盖住看不见**，
+      // 揭幕那一刻类已摘、内容已在同一帧被批量打上 is-revealed 并开始动画，观感无空窗。
+      var introHold = document.documentElement.classList.contains('intro-pending');
+      function startReveal() {
+        collect();
+        show();
+      }
+      if (introHold) {
+        // 开场最长 9 秒（head 片段自含兜底），超时也必须启动，绝不永久藏内容
+        var waited = 0;
+        var iv = setInterval(function () {
+          waited += 100;
+          if (!document.documentElement.classList.contains('intro-pending') || waited >= 9000) {
+            clearInterval(iv);
+            startReveal();
+          }
+        }, 100);
+      } else {
+        startReveal();
+      }
       window.addEventListener('scroll', queueShow, { passive: true });
       window.addEventListener('resize', queueShow, { passive: true });
       window.addEventListener('load', queueShow);

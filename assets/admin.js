@@ -2322,13 +2322,15 @@
     }).catch(function () { toast('网络错误', 'err'); });
   });
 
-  // ---------- 功能开关（前台界面/首页模块显隐；/api/settings 下发，缺省全开） ----------
+  // ---------- 功能开关（前台界面/首页模块显隐 + 开场动画；/api/settings 下发，缺省全开） ----------
+  // intro 是行为开关不是界面开关：关掉只是不演首帧动画，页面与外壳一概不动
   var FLAG_DEFS = [
     { key: 'docs', label: '文档界面' },
     { key: 'album', label: '相册界面' },
     { key: 'weather', label: '天气胶囊' },
     { key: 'lyric', label: '歌词横条' },
-    { key: 'video', label: '首页视频' }
+    { key: 'video', label: '首页视频' },
+    { key: 'intro', label: '开场动画' }
   ];
   var flagState = {};
 

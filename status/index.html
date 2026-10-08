@@ -14,57 +14,113 @@
   <link rel="icon" type="image/png" href="/assets/icons/favicon.png">
   <title>YHuo — 站点状态</title>
   <!-- 独立自足页（同 offline.html 思路）：不进八页外壳体系、不进导航（避开坑 23 同步成本），
-       入口 = 关于页「站点数据」卡底部链接 + sitemap。数据只来自公开的 /api/health（布尔 + 备份日期）。 -->
+       入口 = 关于页「站点数据」卡底部链接 + sitemap。数据只来自公开的 /api/health（布尔 + 备份日期）。
+       2026-10-08 复古主题批次接入：本页引入全站 site.css 并读取访客主题存档（localStorage accent/apple-theme），
+       状态卡跟随用户选的主题（含四款复古皮肤）；本页内联样式只保留布局骨架，皮肤层全部交给 site.css ——
+       复古结构性覆盖段（html[data-accent] 选择器）在本页同样生效。 -->
+  <script>
+    // 主题跟随：在 site.css 加载前把访客存档写到 <html>（与 common.js 首帧逻辑同口径，避免闪一次默认色）
+    (function () {
+      try {
+        var a = localStorage.getItem('accent');
+        if (a) document.documentElement.setAttribute('data-accent', a);
+        var t = localStorage.getItem('apple-theme');
+        if (t === 'dark' || (!t && matchMedia && matchMedia('(prefers-color-scheme: dark)').matches)) document.documentElement.classList.add('dark');
+      } catch (e) {}
+    })();
+  </script>
+  <link rel="stylesheet" href="/assets/site.css">
   <style>
+    /* 布局骨架：颜色全部走 site.css 语义变量（--apple-* 映射自 --background/--card/--border 等），
+       主题色/深浅/复古四款结构性覆盖段全部自动跟随；本页不再硬编码任何颜色 */
     :root { color-scheme: light dark; }
     * { box-sizing: border-box; }
     body {
       margin: 0; min-height: 100vh; display: flex; align-items: center; justify-content: center;
       padding: 24px;
-      background: radial-gradient(ellipse 900px 480px at 50% -160px, rgba(204, 116, 66, 0.16), transparent 70%), #f8f7f4;
-      color: #1b1c1e;
-      font-family: "DM Sans", "PingFang SC", "Microsoft YaHei", ui-sans-serif, system-ui, sans-serif;
+      /* 画布同源：浅/深光晕用 --glow-a/b（主题跟随，复古四款自动换年代色） */
+      background: radial-gradient(ellipse 900px 480px at 50% -160px, color-mix(in srgb, var(--glow-a, #cc7442) 16%, transparent), transparent 70%), var(--apple-background, #f8f7f4);
+      color: var(--apple-foreground, #1b1c1e);
+      font-family: var(--font-sans, "DM Sans", "PingFang SC", "Microsoft YaHei", ui-sans-serif, system-ui, sans-serif);
       -webkit-font-smoothing: antialiased;
     }
-    @media (prefers-color-scheme: dark) {
-      body { background: radial-gradient(ellipse 900px 480px at 50% -160px, rgba(231, 163, 124, 0.12), transparent 70%), #000; color: #f2f0ec; }
-      .card { border-color: #2a2a2c !important; }
-      .sub { color: #9a9ca1 !important; }
-      .row { border-color: #262628 !important; }
+    html.dark body {
+      background: radial-gradient(ellipse 900px 480px at 50% -160px, color-mix(in srgb, var(--glow-b, #e7a37c) 12%, transparent), transparent 70%), var(--apple-background, #000);
     }
     .card {
       width: 100%; max-width: 460px;
-      background: rgba(255, 255, 255, 0.86); border: 1px solid #e6e3da; border-radius: 18px;
+      background: var(--apple-card, #fff);
+      border: 1px solid var(--apple-border, #e6e3da);
+      border-radius: 18px;
       padding: 26px 26px 20px;
-      box-shadow: 0 16px 40px -18px rgba(0, 0, 0, 0.10);
+      box-shadow: var(--shadow-lg, 0 16px 40px -18px rgba(0, 0, 0, 0.10));
     }
-    h1 { font-size: 20px; margin: 0 0 4px; }
-    .sub { font-size: 13px; color: #5f6166; margin: 0 0 18px; }
+    h1 { font-size: 20px; margin: 0 0 4px; color: var(--apple-foreground); }
+    .sub { font-size: 13px; color: var(--apple-muted-foreground); margin: 0 0 18px; }
     .row {
       display: flex; align-items: center; gap: 12px;
-      padding: 13px 2px; border-top: 1px solid #eeebe3;
+      padding: 13px 2px; border-top: 1px solid var(--apple-border);
     }
     .row:first-of-type { border-top: 0; }
-    .dot { width: 10px; height: 10px; border-radius: 50%; flex: 0 0 auto; background: #b9b6ad; }
-    .dot.ok { background: #2f9e5f; box-shadow: 0 0 0 3px rgba(47, 158, 95, 0.15); }
+    .dot { width: 10px; height: 10px; border-radius: 50%; flex: 0 0 auto; background: var(--apple-muted); }
+    .dot.ok { background: var(--success, #2f9e5f); box-shadow: 0 0 0 3px color-mix(in srgb, var(--success, #2f9e5f) 15%, transparent); }
     .dot.warn { background: #d9930d; box-shadow: 0 0 0 3px rgba(217, 147, 13, 0.15); }
-    .dot.bad { background: #d64545; box-shadow: 0 0 0 3px rgba(214, 69, 69, 0.15); }
-    .name { font-size: 14px; font-weight: 600; }
-    .desc { font-size: 12px; color: #8a8c91; margin-top: 2px; }
-    .state { margin-left: auto; font-size: 13px; color: #8a8c91; text-align: right; }
-    .state.ok { color: #27814e; }
+    .dot.bad { background: var(--destructive, #d64545); box-shadow: 0 0 0 3px color-mix(in srgb, var(--destructive, #d64545) 15%, transparent); }
+    .name { font-size: 14px; font-weight: 600; color: var(--apple-foreground); }
+    .desc { font-size: 12px; color: var(--apple-muted-foreground); margin-top: 2px; }
+    .state { margin-left: auto; font-size: 13px; color: var(--apple-muted-foreground); text-align: right; }
+    .state.ok { color: var(--success, #27814e); }
     .state.warn { color: #a86f08; }
-    .state.bad { color: #b93a3a; }
-    .foot { display: flex; align-items: center; justify-content: space-between; margin-top: 16px; font-size: 12px; color: #8a8c91; }
-    .foot a { color: #b0532b; text-decoration: none; }
+    .state.bad { color: var(--destructive, #b93a3a); }
+    .foot { display: flex; align-items: center; justify-content: space-between; margin-top: 16px; font-size: 12px; color: var(--apple-muted-foreground); }
+    .foot a { color: var(--apple-primary); text-decoration: none; }
     .foot a:hover { text-decoration: underline; }
     button.refresh {
       font: inherit; font-size: 12px; padding: 4px 12px; border-radius: 999px;
-      border: 1px solid #e6e3da; background: transparent; color: inherit; cursor: pointer;
+      border: 1px solid var(--apple-border); background: transparent; color: inherit; cursor: pointer;
       transition: background 0.2s;
     }
-    button.refresh:hover { background: rgba(176, 83, 43, 0.08); }
+    button.refresh:hover { background: color-mix(in srgb, var(--apple-primary) 8%, transparent); }
     @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+
+    /* 复古四款（2026-10-08）：健康灯圆点→方灯，卡片窗格化，与站内同语言。
+      （site.css 的复古覆盖段选择器是 html[data-accent] 前缀，在本页同样生效；
+        这里只补本页特有类的复古形态） */
+    html[data-accent='win98'] .dot,
+    html[data-accent='portal'] .dot,
+    html[data-accent='crt'] .dot,
+    html[data-accent='oldbook'] .dot {
+      border-radius: 0;
+    }
+    html[data-accent='win98'] .card {
+      border: 2px solid var(--apple-border);
+      border-radius: 0;
+      box-shadow: none;
+      background: #ffffff;
+    }
+    html[data-accent='win98'].dark .card {
+      background: var(--apple-card);
+    }
+    html[data-accent='win98'] h1::after {
+      content: '';
+      display: block;
+      margin-top: 6px;
+      height: 14px;
+      background: linear-gradient(90deg, #000080 0%, #1084d0 100%);
+    }
+    html[data-accent='portal'] .card {
+      border-radius: 0;
+      box-shadow: none;
+    }
+    html[data-accent='crt'] .card {
+      border-radius: 0;
+      box-shadow: 0 0 18px rgba(51, 255, 102, 0.16);
+    }
+    html[data-accent='oldbook'] .card {
+      border: 3px double #b89a6a;
+      border-radius: 0;
+      box-shadow: none;
+    }
   </style>
 </head>
 <body>

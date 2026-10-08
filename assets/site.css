@@ -660,6 +660,302 @@
       box-shadow: 2px 2px 0 rgba(107, 63, 42, 0.08);
     }
 
+    /* ============================================================
+       复古主题二次深化（2026-10-08 晚）：从「换色换角」到「换骨架」。
+       前半段只动了皮，页面骨架仍是现代 Web（悬浮胶囊顶栏/软 hover/
+       大字大留白），本段补上「老网页」的结构性语言。四款共享 + 各款
+       标志性细节两层。全部纯 CSS，零 JS 零页面结构改动。
+       ============================================================ */
+
+    /* ---- 老骨架 A：通栏实色顶条（不再是悬浮胶囊） ----
+       顶栏胶囊拉满视口宽、方角、底部实线边——老网站顶栏是「通栏一条」。
+       .site-header 本身是 fixed 全宽壳，把胶囊拉满即成通栏条。 */
+    html[data-accent='win98'] .site-header,
+    html[data-accent='portal'] .site-header,
+    html[data-accent='crt'] .site-header,
+    html[data-accent='oldbook'] .site-header {
+      padding: 0;
+    }
+    html[data-accent='win98'] .header-pill,
+    html[data-accent='portal'] .header-pill,
+    html[data-accent='crt'] .header-pill,
+    html[data-accent='oldbook'] .header-pill {
+      width: 100%;
+      max-width: none;
+      border-radius: 0;
+      border-width: 0 0 2px 0;
+      border-bottom-style: solid;
+      border-bottom-color: var(--apple-border);
+      box-shadow: none;
+    }
+    /* 窄屏抽屉按钮同平（在通栏条内） */
+    html[data-accent='win98'] .nav-toggle,
+    html[data-accent='portal'] .nav-toggle,
+    html[data-accent='crt'] .nav-toggle,
+    html[data-accent='oldbook'] .nav-toggle {
+      border-radius: 0;
+    }
+
+    /* ---- 老骨架 B：全组件浮雕化 + 输入凹陷化 ----
+       凸起 = 上左亮/下右暗；凹陷 = 上左暗/下右亮。旧色用 color-mix
+       从纸底派生（深浅主题自动适配），不逐主题写死。 */
+    html[data-accent='win98'] .theme-toggle,
+    html[data-accent='win98'] .login-toggle,
+    html[data-accent='win98'] .search-toggle,
+    html[data-accent='win98'] .appear-knob,
+    html[data-accent='win98'] .back-top {
+      background: #d4d0c8;
+      color: #000000;
+      border: 1px solid;
+      border-color: #ffffff #404040 #404040 #ffffff;
+      box-shadow: none;
+    }
+    html[data-accent='win98'] .theme-toggle:active,
+    html[data-accent='win98'] .login-toggle:active,
+    html[data-accent='win98'] .search-toggle:active {
+      border-color: #404040 #ffffff #ffffff #404040;
+    }
+
+    /* ---- 老骨架 C：压平现代软动效（老网页没有「悬停浮起」） ----
+       卡片 hover 抬升/按钮 translateY 全部压平，反馈改用老语言
+       （链接变色/按下浮雕翻转，已在各款段内下发）。 */
+    html[data-accent='win98'] .apple-card:hover,
+    html[data-accent='portal'] .apple-card:hover,
+    html[data-accent='crt'] .apple-card:hover,
+    html[data-accent='oldbook'] .apple-card:hover,
+    html[data-accent='win98'] .doc-card:hover,
+    html[data-accent='portal'] .doc-card:hover,
+    html[data-accent='crt'] .doc-card:hover,
+    html[data-accent='oldbook'] .doc-card:hover,
+    html[data-accent='win98'] .note-card:hover,
+    html[data-accent='portal'] .note-card:hover,
+    html[data-accent='crt'] .note-card:hover,
+    html[data-accent='oldbook'] .note-card:hover {
+      transform: none;
+      box-shadow: var(--shadow-sm);
+    }
+
+    /* ---- 老骨架 D：小字密排（老网页 = 小字） ----
+       只作用于继承文本（body 层基准字号降一档），组件显式字号不动，
+       防布局破坏。 */
+    html[data-accent='win98'] body,
+    html[data-accent='portal'] body,
+    html[data-accent='crt'] body,
+    html[data-accent='oldbook'] body {
+      font-size: 14px;
+    }
+
+    /* ---- 老骨架 E：经典选中文本（navy 反白 / CRT 荧光反色） ---- */
+    html[data-accent='win98'] ::selection,
+    html[data-accent='portal'] ::selection,
+    html[data-accent='oldbook'] ::selection {
+      background: #000080;
+      color: #ffffff;
+    }
+    html[data-accent='crt'] ::selection {
+      background: #33ff66;
+      color: #000000;
+    }
+
+    /* ---- 老骨架 F：方形滚动条（Win98 桌面感） ---- */
+    html[data-accent='win98'] ::-webkit-scrollbar,
+    html[data-accent='portal'] ::-webkit-scrollbar,
+    html[data-accent='crt'] ::-webkit-scrollbar,
+    html[data-accent='oldbook'] ::-webkit-scrollbar {
+      width: 16px;
+      height: 16px;
+    }
+    html[data-accent='win98'] ::-webkit-scrollbar-track,
+    html[data-accent='portal'] ::-webkit-scrollbar-track,
+    html[data-accent='crt'] ::-webkit-scrollbar-track,
+    html[data-accent='oldbook'] ::-webkit-scrollbar-track {
+      background: repeating-conic-gradient(#d4d0c8 0% 25%, #ffffff 0% 50%) 0 0 / 4px 4px;
+    }
+    html[data-accent='win98'] ::-webkit-scrollbar-thumb,
+    html[data-accent='portal'] ::-webkit-scrollbar-thumb,
+    html[data-accent='crt'] ::-webkit-scrollbar-thumb,
+    html[data-accent='oldbook'] ::-webkit-scrollbar-thumb {
+      border-radius: 0;
+      border: 2px solid;
+      border-color: #ffffff #404040 #404040 #ffffff;
+      background: #d4d0c8;
+    }
+    html[data-accent='crt'] ::-webkit-scrollbar-track {
+      background: #0a120a;
+    }
+    html[data-accent='crt'] ::-webkit-scrollbar-thumb {
+      border-color: #33ff66 #0a3d1c #0a3d1c #33ff66;
+      background: #0f2b12;
+    }
+
+    /* ---- 老骨架 G：卡片窗格化（2px 实线 + 内容区内边线，像窗口窗格） ----
+       全屏沉浸组件（灯箱/播放器）不做，避免过度装饰。 */
+    html[data-accent='win98'] .apple-card,
+    html[data-accent='portal'] .apple-card,
+    html[data-accent='oldbook'] .apple-card {
+      border: 2px solid var(--apple-border);
+      box-shadow: none;
+    }
+    html[data-accent='win98'] .apple-card:hover {
+      border-color: var(--apple-border);
+    }
+
+    /* ---- Win98 标志性细节：经典标题条渐变 + 任务条页脚 + 窗格化 ---- */
+    /* 顶条 = Win98 活动窗口标题条本命渐变（#000080→#1084d0，左→右）+ 白粗体站名 */
+    html[data-accent='win98'] .header-pill {
+      background: linear-gradient(90deg, #000080 0%, #1084d0 100%);
+      border-bottom: 2px solid #404040;
+      color: #ffffff;
+    }
+    html[data-accent='win98'].dark .header-pill {
+      background: linear-gradient(90deg, #1a1a4a 0%, #0c5a94 100%);
+    }
+    html[data-accent='win98'] .header-pill .logo {
+      color: #ffffff;
+      font-weight: 700;
+    }
+    html[data-accent='win98'] .nav-link {
+      color: #ffffff;
+    }
+    html[data-accent='win98'] .nav-link:hover {
+      background: rgba(255, 255, 255, 0.18);
+    }
+    html[data-accent='win98'] .header-actions button {
+      color: #ffffff;
+    }
+    /* 页脚 = 灰色任务条（outset 浮雕 + 凹陷内槽） */
+    html[data-accent='win98'] .site-footer {
+      background: #d4d0c8;
+      border-top: 1px solid;
+      border-color: #ffffff #404040 #404040 #ffffff;
+      color: #000000;
+    }
+    html[data-accent='win98'].dark .site-footer {
+      background: #2b2b2b;
+      border-color: #6a6a6a #101010 #101010 #6a6a6a;
+      color: #e8e8e8;
+    }
+    /* 卡片标题区 = 灰色渐变条（Win98 窗格标题）——外观抽屉与各卡 eyebrow 行 */
+    html[data-accent='win98'] .card-eyebrow {
+      background: linear-gradient(90deg, #d4d0c8, #efefef);
+      color: #000000;
+      padding: 3px 8px;
+      margin: -4px -4px 10px;
+      border: 1px solid;
+      border-color: #ffffff #404040 #404040 #ffffff;
+      letter-spacing: 0.06em;
+    }
+
+    /* ---- 早期门户标志性细节：通栏已由老骨架 A 下发，补栏目渐变条 + 正文白底蓝框 ---- */
+    html[data-accent='portal'] .card-eyebrow {
+      background: linear-gradient(90deg, #1f3a60 0%, #4a6f9e 100%);
+      color: #ffffff;
+      padding: 3px 8px;
+      margin: -4px -4px 10px;
+      letter-spacing: 0.06em;
+    }
+    html[data-accent='portal'] .doc-article {
+      background: #ffffff;
+      border: 1px solid #b8c8d8;
+      padding: 16px;
+    }
+    html[data-accent='portal'].dark .doc-article {
+      background: #16202e;
+    }
+
+    /* ---- CRT 标志性细节：方括号导航 + 悬停反色 + 磷光暗角 + 可选闪烁 ---- */
+    /* 导航项加 [方括号]（终端菜单语言）；反色悬停 = 荧光绿底黑字 */
+    html[data-accent='crt'] .nav-link::before { content: '['; }
+    html[data-accent='crt'] .nav-link::after { content: ']'; }
+    html[data-accent='crt'] .nav-link::before,
+    html[data-accent='crt'] .nav-link::after {
+      opacity: 0.55;
+      transition: opacity 120ms linear;
+    }
+    html[data-accent='crt'] .nav-link:hover::before,
+    html[data-accent='crt'] .nav-link:hover::after,
+    html[data-accent='crt'] .nav-link.active::before,
+    html[data-accent='crt'] .nav-link.active::after {
+      opacity: 1;
+    }
+    html[data-accent='crt'] .nav-link:hover {
+      background: var(--brand-400);
+      color: #000000;
+      text-shadow: none;
+    }
+    /* 磷光增强：双层辉光（现有 text-shadow 之上再叠 drop-shadow） + 屏幕暗角 */
+    html[data-accent='crt'] body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      z-index: 2;
+      pointer-events: none;
+      background: radial-gradient(ellipse at center,
+        transparent 55%, rgba(0, 0, 0, 0.38) 100%);
+    }
+    html[data-accent='crt'] .nav-link.active {
+      background: transparent;
+      color: var(--brand-400);
+      box-shadow: 0 0 12px rgba(51, 255, 102, 0.55), inset 0 0 6px rgba(51, 255, 102, 0.25);
+      text-shadow: 0 0 6px rgba(51, 255, 102, 0.8);
+    }
+    /* 可选极轻微闪烁（磷光呼吸感；reduced-motion 全局兜底自动静止） */
+    @media (prefers-reduced-motion: no-preference) {
+      html[data-accent='crt'] body {
+        animation: crtFlicker 4s steps(1) infinite;
+      }
+      @keyframes crtFlicker {
+        0%, 100% { opacity: 1; }
+        92% { opacity: 1; }
+        93% { opacity: 0.97; }
+        94% { opacity: 1; }
+        97% { opacity: 0.985; }
+        98% { opacity: 1; }
+      }
+    }
+
+    /* ---- 老书纸标志性细节：双线框 + 纸晕 + 段首缩进首字下沉 + 花饰分隔线 ---- */
+    /* 卡片改老书装帧双线框（3px double，外粗内细像包背装书衣） */
+    html[data-accent='oldbook'] .apple-card,
+    html[data-accent='oldbook'] .doc-card,
+    html[data-accent='oldbook'] .note-card {
+      border: 3px double #b89a6a;
+      box-shadow: none;
+    }
+    /* 纸面旧晕：四边轻微变暗（radial 叠在画布上，不挡交互） */
+    html[data-accent='oldbook'] body::after {
+      content: '';
+      position: fixed;
+      inset: 0;
+      z-index: 1;
+      pointer-events: none;
+      background: radial-gradient(ellipse at center,
+        transparent 60%, rgba(107, 63, 42, 0.10) 100%);
+    }
+    /* 正文排版：段首两字缩进 + 首字下沉（文档页/随笔正文） */
+    html[data-accent='oldbook'] .doc-article p {
+      text-indent: 2em;
+    }
+    html[data-accent='oldbook'] .doc-article > p:first-of-type::first-letter {
+      float: left;
+      font-size: 2.6em;
+      line-height: 0.9;
+      padding: 4px 8px 0 0;
+      color: #6b3f2a;
+      font-weight: 700;
+    }
+    /* 分隔线改居中花饰（老书章回分隔） */
+    html[data-accent='oldbook'] .doc-article hr {
+      border: none;
+      text-align: center;
+      margin: 18px 0;
+    }
+    html[data-accent='oldbook'] .doc-article hr::after {
+      content: '❦';
+      color: #8a5a3c;
+      font-size: 16px;
+    }
+
     /* Dark mode */
     .dark {
       --background: var(--background-900);

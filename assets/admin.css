@@ -216,9 +216,20 @@
   .msg.ok { color: var(--muted); }
   .msg.ok::before { content: "✓ "; }
   .appear-label2 { font-size: 12px; font-weight: 600; color: var(--muted); letter-spacing: .05em; margin: 20px 0 10px; }
-  .accent-row { display: flex; gap: 10px; }
-  .accent-dot { width: 34px; height: 34px; border-radius: 50%; border: 3px solid transparent; padding: 0; }
-  .accent-dot.active { border-color: var(--fg); }
+  /* 主题色选择（2026-10-08 升级）：纯色圆点 → 双色迷你预览卡（上条=主题色，下底=纸底色），
+     与前台外观面板同语言；复古四款直角（.accent-dot.retro），悬停浮起，选中描边；行尾显示当前主题名 */
+  .accent-row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+  .accent-dot {
+    width: 38px; height: 32px;
+    border: 1px solid rgba(0,0,0,.18); border-radius: 6px; padding: 0;
+    background: linear-gradient(180deg, var(--sw, transparent) 0%, var(--sw, transparent) 38%, var(--sw2, var(--card)) 38%, var(--sw2, var(--card)) 100%);
+    cursor: pointer; transition: transform .15s var(--ease-outc), box-shadow .15s var(--ease-outc);
+  }
+  .accent-dot:hover { transform: translateY(-2px); box-shadow: 0 3px 8px rgba(0,0,0,.18); }
+  .accent-dot.retro { border-radius: 2px; }
+  .accent-dot.active { border-color: var(--fg); box-shadow: 0 0 0 2px var(--card), 0 0 0 3.5px var(--fg); }
+  .accent-name { font-size: 13px; color: var(--muted); margin-left: 4px; }
+  .accent-name b { color: var(--fg); font-weight: 700; }
   .player-mode-btn.active:hover { opacity: 1; } /* 激活态本体走组件层的分组规则（与 vm-chip/el-chip/range-btn 同一份反色 chip） */
   .bgset-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
   .bg-preview { width: 160px; height: 90px; object-fit: cover; border-radius: 10px; border: 1px solid var(--border); }

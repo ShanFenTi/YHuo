@@ -2207,14 +2207,25 @@
   ];
   var currentAccent = null;
 
+  // 预览卡参数：sw2=纸底色、retro=直角卡（与前台外观面板 .swatch 同语言；
+  // 改前台八页外壳 inline style 时两表同步）
+  var ACCENT_SW2 = {
+    terracotta: '#f8f7f4', purple: '#f8f7f4', pink: '#f8f7f4', green: '#f8f7f4', orange: '#f8f7f4',
+    qinghua: '#f6f7f9', celadon: '#f4f6f2', ink: '#f7f6f3', coffee: '#f9f5ee',
+    win98: '#c0c0c0', portal: '#e8f0f8', crt: '#0a120a', oldbook: '#f4ecd8'
+  };
+  var ACCENT_RETRO = { win98: true, portal: true, crt: true, oldbook: true };
+
   function renderAccents() {
     var row = $('accentRow');
     row.innerHTML = '';
     ACCENTS.forEach(function (a) {
       var b = document.createElement('button');
-      b.className = 'accent-dot' + (currentAccent === a.name ? ' active' : '');
-      b.style.background = a.color;
+      b.className = 'accent-dot' + (currentAccent === a.name ? ' active' : '') + (ACCENT_RETRO[a.name] ? ' retro' : '');
+      b.style.setProperty('--sw', a.color);
+      b.style.setProperty('--sw2', ACCENT_SW2[a.name] || 'var(--card)');
       b.title = a.label + (currentAccent === a.name ? '（当前）' : '');
+      b.setAttribute('aria-label', a.label + '主题');
       b.addEventListener('click', function () {
         api('/api/admin/appearance', {
           method: 'PUT',
@@ -2227,6 +2238,16 @@
       });
       row.appendChild(b);
     });
+    // 行尾当前主题名（renderAccents 在点击/载入两条路都会调，实时跟随）
+    var cur = null;
+    ACCENTS.forEach(function (a) { if (a.name === currentAccent) cur = a; });
+    var name = document.createElement('span');
+    name.className = 'accent-name';
+    name.textContent = '当前默认主题：';
+    var bold = document.createElement('b');
+    bold.textContent = cur ? cur.label : '陶土（站点默认）';
+    name.appendChild(bold);
+    row.appendChild(name);
   }
 
   function renderBgPreview(bgKey) {

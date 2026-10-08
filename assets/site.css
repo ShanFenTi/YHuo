@@ -1434,6 +1434,132 @@
       border-radius: 0;
     }
 
+    /* ============================================================
+       复古主题窄屏适配（2026-10-08 晚四）：老骨架与窄屏断点的四处打架逐个拆——
+       后方断点特异性同级会胜出，必须用更高特异性拉回；全部纯 CSS。
+       ============================================================ */
+
+    /* ---- 窄屏①：通栏顶条在 767/480px 断点被 .site-header padding 挤出两侧漏边——
+       retro 下顶条必须真通栏（padding:0 拉回，特异性 0,2,0 压过断点内 0,1,0） */
+    @media (max-width: 767px) {
+      html[data-accent='win98'] .site-header,
+      html[data-accent='portal'] .site-header,
+      html[data-accent='crt'] .site-header,
+      html[data-accent='oldbook'] .site-header {
+        padding: 0;
+      }
+      html[data-accent='win98'] .header-pill,
+      html[data-accent='portal'] .header-pill,
+      html[data-accent='crt'] .header-pill,
+      html[data-accent='oldbook'] .header-pill {
+        width: 100%;
+        border-radius: 0;
+        border-width: 0 0 2px 0;
+      }
+    }
+
+    /* ---- 窄屏②：一言胶囊换行断点（640px）把圆角改回 18px——retro 压回方角 ---- */
+    @media (max-width: 640px) {
+      html[data-accent='win98'] .hero-quote,
+      html[data-accent='portal'] .hero-quote,
+      html[data-accent='crt'] .hero-quote,
+      html[data-accent='oldbook'] .hero-quote {
+        border-radius: 2px;
+      }
+    }
+
+    /* ---- 窄屏③：色板预览卡在小面板里收紧（13 枚卡 36px 宽在 300px 面板 6 枚/行 →
+       手机 8 枚/行），主题名行同步收紧行距 */
+    @media (max-width: 480px) {
+      .swatch {
+        width: 30px;
+        height: 26px;
+      }
+      .swatch-row {
+        gap: 8px;
+      }
+      .swatch-name {
+        margin-top: 6px;
+      }
+    }
+
+    /* ---- 窄屏④：抽屉（≤900px 汉堡模式打开）——本体已方角实底，补：
+       抽屉内导航项与关闭钮同步方角、Win98 浮雕；抽屉头部底边 2px 实线（老菜单分隔） */
+    @media (max-width: 900px) {
+      html[data-accent='win98'] .nav-drawer-link,
+      html[data-accent='portal'] .nav-drawer-link,
+      html[data-accent='crt'] .nav-drawer-link,
+      html[data-accent='oldbook'] .nav-drawer-link {
+        border-radius: 0;
+      }
+      html[data-accent='win98'] .nav-drawer-close {
+        border-radius: 0;
+        background: #d4d0c8;
+        color: #000000;
+        border: 1px solid;
+        border-color: #ffffff #404040 #404040 #ffffff;
+      }
+      html[data-accent='win98'] .nav-drawer-close:active {
+        border-color: #404040 #ffffff #ffffff #404040;
+      }
+      html[data-accent='win98'] .nav-drawer-head,
+      html[data-accent='portal'] .nav-drawer-head,
+      html[data-accent='crt'] .nav-drawer-head,
+      html[data-accent='oldbook'] .nav-drawer-head {
+        border-bottom-width: 2px;
+      }
+      /* 通栏顶条在汉堡模式的高度：hero 顶部留白跟随（retro 下顶条更高 2px 底边） */
+      html[data-accent='win98'] .hero-section,
+      html[data-accent='portal'] .hero-section,
+      html[data-accent='crt'] .hero-section,
+      html[data-accent='oldbook'] .hero-section {
+        padding-top: 70px;
+      }
+    }
+    @media (max-width: 767px) {
+      html[data-accent='win98'] .hero-section,
+      html[data-accent='portal'] .hero-section,
+      html[data-accent='crt'] .hero-section,
+      html[data-accent='oldbook'] .hero-section {
+        padding-top: 72px;
+      }
+    }
+    @media (max-width: 480px) {
+      html[data-accent='win98'] .hero-section,
+      html[data-accent='portal'] .hero-section,
+      html[data-accent='crt'] .hero-section,
+      html[data-accent='oldbook'] .hero-section {
+        padding-top: 68px;
+      }
+    }
+
+    /* ---- 窄屏⑤：通栏迷你播放器在手机上不要太高（行内 padding 收紧），
+       CRT 展幕扫描线层变淡（小屏闪恧感知更强），老书纸纸晕减淡（小屏四角暗角占比过大） */
+    @media (max-width: 640px) {
+      html[data-accent='win98'] .mini-player,
+      html[data-accent='portal'] .mini-player,
+      html[data-accent='crt'] .mini-player,
+      html[data-accent='oldbook'] .mini-player {
+        padding-top: 6px;
+        padding-bottom: 6px;
+      }
+      html[data-accent='crt'] body::after {
+        background: repeating-linear-gradient(
+          0deg,
+          rgba(0, 0, 0, 0.06) 0px, rgba(0, 0, 0, 0.06) 1px,
+          transparent 1px, transparent 3px
+        );
+      }
+      html[data-accent='oldbook'] body::after {
+        background: radial-gradient(ellipse at center,
+          transparent 70%, rgba(107, 63, 42, 0.07) 100%);
+      }
+      html[data-accent='crt'] body::before {
+        background: radial-gradient(ellipse at center,
+          transparent 65%, rgba(0, 0, 0, 0.28) 100%);
+      }
+    }
+
     /* Dark mode */
     .dark {
       --background: var(--background-900);

@@ -570,8 +570,8 @@ window.__siteCalendar = (function () {
     var PAGE_KEY = document.documentElement.getAttribute('data-page') || 'home'; // 当前页面（各页 <html> 上标死）
     var onGatePassedPageHook = null; // 游客门通过后的页面回调（课表页等需登录页面注册；passGate 触发）
     var schedPageCleanup = null;     // 课表页 document 级监听的清理函数（离页摘除防叠加）
-    var PAGE_ROUTE = { home: '/', docs: '/docs/', ai: '/ai/', board: '/board/', schedule: '/schedule/', blog: '/blog/', notes: '/notes/', album: '/album/' };
-    var PAGE_TITLES = { home: document.title, docs: '关于 - YHuo', ai: 'AI 助手 - YHuo', board: '留言板 - YHuo', schedule: '课表 - YHuo', blog: '预览 - YHuo', notes: '随笔 - YHuo', album: '相册 - YHuo' };
+    var PAGE_ROUTE = { home: '/', docs: '/docs/', ai: '/ai/', board: '/board/', schedule: '/schedule/', blog: '/blog/', notes: '/notes/', album: '/album/', about: '/about/' };
+    var PAGE_TITLES = { home: document.title, docs: '关于 - YHuo', ai: 'AI 助手 - YHuo', board: '留言板 - YHuo', schedule: '课表 - YHuo', blog: '预览 - YHuo', notes: '随笔 - YHuo', album: '相册 - YHuo', about: '关于本站 - YHuo' };
 
     // 应用功能开关：给 <html> 打/摘 ff-* 类（CSS 负责隐藏；head 内联脚本已按 localStorage 缓存提前打过，这里按最新配置校正）
     // 并刷新缓存供下次访问首屏预隐藏；天气/歌词条由各自渲染入口判 FLAGS_OFF
@@ -8734,6 +8734,7 @@ window.__siteCalendar = (function () {
         destroy: function () { stopHomeClock(); destroyHomeQuote(); homeLowerAbort(); clearInterval(lyricTypeTimer); lyricTypeTimer = null; heroGlowFx.stop(); }
       },
       docs:  { init: function () { initDocsPage(); }, destroy: stopHealthPoll },
+      about: { init: function () { if (window.__aboutStory) window.__aboutStory.start(); }, destroy: function () { if (window.__aboutStory) window.__aboutStory.stop(); } },
       notes: { init: function () { initNotesPage(); }, onHash: function (h) { notesHandleHash(h); } },
       album: { init: function () { initAlbumPage(); }, destroy: destroyAlbumPage },
       ai:    { init: function () { initAiPage(); }, destroy: destroyAiPage },

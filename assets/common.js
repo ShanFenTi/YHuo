@@ -485,7 +485,10 @@ window.__siteCalendar = (function () {
       themeRevealStyle.id = 'theme-reveal-style';
       document.head.appendChild(themeRevealStyle);
     }
-    themeBtn.addEventListener('click', function () {
+    // ⚠️ /about/（滚动叙事介绍页）没有站点外壳：顶栏/播放器/浮层元素一概不存在，
+    // 启动期凡直接绑外壳元素的必须先判空，否则一个 TypeError 会打断整个 IIFE、
+    // 连尾部 runPageHook(currentPage,'init') 都到不了（2026-10-08 /about/ 白屏死表盘根因）
+    if (themeBtn) themeBtn.addEventListener('click', function () {
       if (themeSwitching) return;
       var isDark = document.documentElement.classList.contains('dark');
       var next = isDark ? 'light' : 'dark';
@@ -618,8 +621,8 @@ window.__siteCalendar = (function () {
       });
     });
 
-    // 回到顶部按钮
-    backTopBtn.addEventListener('click', function () {
+    // 回到顶部按钮（/about/ 无外壳无此钮，判空同 themeBtn）
+    if (backTopBtn) backTopBtn.addEventListener('click', function () {
       window.scrollTo({ top: 0, behavior: 'smooth' });
     });
 

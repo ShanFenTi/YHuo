@@ -1134,6 +1134,282 @@
       border-width: 2px;
     }
 
+    /* ============================================================
+       复古主题四次补刀（2026-10-08 晚三）：小控件逐个过——上一批只盖了
+       「面」上的东西，这一批把散在各处的独立控件全部拉回年代里。
+       覆盖清单：顶栏三圆钮/灯箱翻页钮与关闭钮/子页关闭钮/播放器控制钮/
+       AI 发送钮与模型切换钮/AI 会话 chip/留言板输入框/全站搜索 ESC 键
+       与结果项/空态图标方块。全部纯 CSS，零 JS。
+       ============================================================ */
+
+    /* ---- ① 顶栏三圆钮：通栏标题条内应是「嵌入式平面按钮」——悬停浅底、
+       按下凹陷（经典工具栏按钮行为），不再是圆形浮钮 ---- */
+    html[data-accent='win98'] .theme-toggle,
+    html[data-accent='win98'] .login-toggle,
+    html[data-accent='win98'] .search-toggle,
+    html[data-accent='portal'] .theme-toggle,
+    html[data-accent='portal'] .login-toggle,
+    html[data-accent='portal'] .search-toggle,
+    html[data-accent='crt'] .theme-toggle,
+    html[data-accent='crt'] .login-toggle,
+    html[data-accent='crt'] .search-toggle,
+    html[data-accent='oldbook'] .theme-toggle,
+    html[data-accent='oldbook'] .login-toggle,
+    html[data-accent='oldbook'] .search-toggle {
+      border-radius: 0;
+      background: none;
+      border: none;
+    }
+    html[data-accent='win98'] .theme-toggle:hover,
+    html[data-accent='win98'] .login-toggle:hover,
+    html[data-accent='win98'] .search-toggle:hover,
+    html[data-accent='portal'] .theme-toggle:hover,
+    html[data-accent='portal'] .login-toggle:hover,
+    html[data-accent='portal'] .search-toggle:hover {
+      background: rgba(255, 255, 255, 0.18);
+    }
+    html[data-accent='crt'] .theme-toggle:hover,
+    html[data-accent='crt'] .login-toggle:hover,
+    html[data-accent='crt'] .search-toggle:hover {
+      background: rgba(51, 255, 102, 0.14);
+    }
+    html[data-accent='oldbook'] .theme-toggle:hover,
+    html[data-accent='oldbook'] .login-toggle:hover,
+    html[data-accent='oldbook'] .search-toggle:hover {
+      background: rgba(0, 0, 0, 0.07);
+    }
+
+    /* ---- ② 灯箱翻页钮/关闭钮、子页关闭钮：圆形毛玻璃浮钮 → 方形实钮 ---- */
+    html[data-accent='win98'] .lb-nav,
+    html[data-accent='win98'] .album-close,
+    html[data-accent='portal'] .lb-nav,
+    html[data-accent='portal'] .album-close,
+    html[data-accent='crt'] .lb-nav,
+    html[data-accent='crt'] .album-close,
+    html[data-accent='oldbook'] .lb-nav,
+    html[data-accent='oldbook'] .album-close {
+      border-radius: 0;
+      -webkit-backdrop-filter: none;
+      backdrop-filter: none;
+    }
+    html[data-accent='win98'] .lb-nav,
+    html[data-accent='win98'] .album-close {
+      background: #d4d0c8;
+      color: #000000;
+      border: 1px solid;
+      border-color: #ffffff #404040 #404040 #ffffff;
+    }
+    html[data-accent='win98'] .lb-nav:hover,
+    html[data-accent='win98'] .album-close:hover {
+      transform: none;
+      background: #d4d0c8;
+    }
+    html[data-accent='win98'] .lb-nav:active,
+    html[data-accent='win98'] .album-close:active {
+      border-color: #404040 #ffffff #ffffff #404040;
+    }
+    html[data-accent='crt'] .lb-nav {
+      background: rgba(10, 18, 10, 0.8);
+      border: 1px solid #1e351e;
+      color: #33ff66;
+    }
+    html[data-accent='crt'] .lb-nav:hover {
+      background: #33ff66;
+      color: #000000;
+      transform: translateY(-50%);
+    }
+
+    /* ---- ③ 播放器控制钮（上一首/播放/下一首/列表等）：圆形描边钮 →
+       方形窗体钮；主播放钮的渐变+外发光→浮雕实底，悬停不再缩放浮起 ---- */
+    html[data-accent='win98'] .ctrl-btn,
+    html[data-accent='portal'] .ctrl-btn,
+    html[data-accent='crt'] .ctrl-btn,
+    html[data-accent='oldbook'] .ctrl-btn {
+      border-radius: 0;
+    }
+    html[data-accent='win98'] .ctrl-btn {
+      background: #d4d0c8;
+      color: #000000;
+      border: 1px solid;
+      border-color: #ffffff #404040 #404040 #ffffff;
+    }
+    html[data-accent='win98'] .ctrl-btn:hover {
+      background: #d4d0c8;
+      transform: none;
+      box-shadow: none;
+    }
+    html[data-accent='win98'] .ctrl-btn:active {
+      transform: none;
+      border-color: #404040 #ffffff #ffffff #404040;
+    }
+    html[data-accent='win98'] .ctrl-btn.play-btn-main {
+      background: #d4d0c8;
+      box-shadow: none;
+    }
+    html[data-accent='win98'] .ctrl-btn.play-btn-main::before {
+      display: none;   /* 现代外发光光斑摘掉 */
+    }
+    html[data-accent='win98'] .ctrl-btn.play-btn-main:hover {
+      transform: none;
+      box-shadow: none;
+    }
+    html[data-accent='crt'] .ctrl-btn {
+      background: transparent;
+      border-color: #1e351e;
+      color: #33ff66;
+    }
+    html[data-accent='crt'] .ctrl-btn:hover {
+      background: rgba(51, 255, 102, 0.12);
+      transform: none;
+      box-shadow: 0 0 8px rgba(51, 255, 102, 0.3);
+    }
+    html[data-accent='crt'] .ctrl-btn.play-btn-main {
+      box-shadow: 0 0 10px rgba(51, 255, 102, 0.35);
+    }
+    html[data-accent='crt'] .ctrl-btn.play-btn-main::before {
+      display: none;
+    }
+    html[data-accent='crt'] .ctrl-btn.play-btn-main:hover {
+      transform: none;
+      box-shadow: 0 0 14px rgba(51, 255, 102, 0.5);
+    }
+    html[data-accent='portal'] .ctrl-btn,
+    html[data-accent='oldbook'] .ctrl-btn {
+      background: var(--apple-card);
+    }
+    html[data-accent='portal'] .ctrl-btn:hover,
+    html[data-accent='oldbook'] .ctrl-btn:hover {
+      transform: none;
+      box-shadow: none;
+    }
+    html[data-accent='portal'] .ctrl-btn.play-btn-main::before,
+    html[data-accent='oldbook'] .ctrl-btn.play-btn-main::before {
+      display: none;
+    }
+    html[data-accent='portal'] .ctrl-btn.play-btn-main,
+    html[data-accent='oldbook'] .ctrl-btn.play-btn-main {
+      background: var(--apple-primary);
+      box-shadow: none;
+    }
+
+    /* ---- ④ AI 发送钮（12px 圆角反色钮）→ 方角；AI 会话 chip 方角化；
+       模型切换钮去圆角 ---- */
+    html[data-accent='win98'] .ai-send-btn,
+    html[data-accent='portal'] .ai-send-btn,
+    html[data-accent='crt'] .ai-send-btn,
+    html[data-accent='oldbook'] .ai-send-btn,
+    html[data-accent='win98'] .ai-chip,
+    html[data-accent='portal'] .ai-chip,
+    html[data-accent='crt'] .ai-chip,
+    html[data-accent='oldbook'] .ai-chip,
+    html[data-accent='win98'] .ai-chip .chip-tag,
+    html[data-accent='portal'] .ai-chip .chip-tag,
+    html[data-accent='crt'] .ai-chip .chip-tag,
+    html[data-accent='oldbook'] .ai-chip .chip-tag,
+    html[data-accent='win98'] .ai-chip .chip-x,
+    html[data-accent='portal'] .ai-chip .chip-x,
+    html[data-accent='crt'] .ai-chip .chip-x,
+    html[data-accent='oldbook'] .ai-chip .chip-x,
+    html[data-accent='win98'] .ai-model-btn,
+    html[data-accent='portal'] .ai-model-btn,
+    html[data-accent='crt'] .ai-model-btn,
+    html[data-accent='oldbook'] .ai-model-btn {
+      border-radius: 0;
+    }
+    html[data-accent='win98'] .ai-send-btn {
+      background: #d4d0c8;
+      color: #000000;
+      border: 1px solid;
+      border-color: #ffffff #404040 #404040 #ffffff;
+    }
+    html[data-accent='win98'] .ai-send-btn:hover {
+      transform: none;
+      opacity: 1;
+    }
+    html[data-accent='crt'] .ai-send-btn {
+      background: transparent;
+      border: 1px solid var(--brand-400);
+      color: var(--brand-400);
+      box-shadow: 0 0 8px rgba(51, 255, 102, 0.35);
+    }
+
+    /* ---- ⑤ 留言板输入框（10px 圆角+聚焦环）→ 方角实边+经典聚焦
+      （聚焦 = 边框变主题色 2px，不是现代发光环） ---- */
+    html[data-accent='win98'] .board-area,
+    html[data-accent='portal'] .board-area,
+    html[data-accent='crt'] .board-area,
+    html[data-accent='oldbook'] .board-area {
+      border-radius: 0;
+    }
+    html[data-accent='win98'] .board-area {
+      background: #ffffff;
+      color: #000000;
+      border: 1px solid;
+      border-color: #404040 #ffffff #ffffff #404040;
+    }
+    html[data-accent='win98'] .board-area:focus {
+      outline: 1px dotted #000000;
+      outline-offset: -4px;
+      box-shadow: none;
+      border-color: #404040 #ffffff #ffffff #404040;
+    }
+    html[data-accent='win98'].dark .board-area {
+      background: #1a1a1a;
+      color: #e8e8e8;
+      border-color: #101010 #6a6a6a #6a6a6a #101010;
+    }
+    html[data-accent='crt'] .board-area {
+      background: #0a120a;
+      border: 1px solid #1e351e;
+      color: #33ff66;
+    }
+    html[data-accent='crt'] .board-area:focus {
+      border-color: var(--brand-400);
+      box-shadow: none;
+    }
+
+    /* ---- ⑥ 全站搜索（Ctrl+K）：ESC 小键方角、结果项选中 = 反色（不是现代灰底） ---- */
+    html[data-accent='win98'] .cmdk-esc,
+    html[data-accent='portal'] .cmdk-esc,
+    html[data-accent='crt'] .cmdk-esc,
+    html[data-accent='oldbook'] .cmdk-esc {
+      border-radius: 0;
+    }
+    html[data-accent='win98'] .cmdk-item.active,
+    html[data-accent='portal'] .cmdk-item.active,
+    html[data-accent='oldbook'] .cmdk-item.active {
+      background: var(--apple-foreground);
+      color: var(--apple-background);
+    }
+    html[data-accent='crt'] .cmdk-item.active {
+      background: var(--brand-400);
+      color: #000000;
+    }
+    html[data-accent='crt'] .cmdk-item.active mark {
+      color: #000000;
+    }
+
+    /* ---- ⑦ 空态图标方块：主题色 10% 染底圆角块 → 2px 实线空框（老软件
+       「无内容」占位图的画法） ---- */
+    html[data-accent='win98'] .empty-state .es-icon,
+    html[data-accent='portal'] .empty-state .es-icon,
+    html[data-accent='crt'] .empty-state .es-icon,
+    html[data-accent='oldbook'] .empty-state .es-icon {
+      border-radius: 0;
+      background: none;
+      border: 2px dashed var(--apple-border);
+      color: var(--apple-muted-foreground);
+    }
+
+    /* ---- ⑧ 子页标题行关闭钮已含在 ②；寄语胶囊方角化补进 chip 族
+      （hero-quote 与 weather-chip 同款圆角，同批拉直） ---- */
+    html[data-accent='win98'] .hero-quote,
+    html[data-accent='portal'] .hero-quote,
+    html[data-accent='crt'] .hero-quote,
+    html[data-accent='oldbook'] .hero-quote {
+      border-radius: 2px;
+    }
+
     /* Dark mode */
     .dark {
       --background: var(--background-900);

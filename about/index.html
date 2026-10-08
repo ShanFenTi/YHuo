@@ -1035,7 +1035,7 @@
   /* ==================== 自动展示：匀速下滑走完四幕，用户意图即停 ==================== */
   var auto = { on: false, y: 0, lastT: 0, raf: 0 };
   var userIntent = false;
-  var AUTO_V = 420; // px/s：约 29s 走完全篇
+  var AUTO_V = 650; // px/s：约 15s 走完全篇（2026-10-08 深夜 420→650，站长要更快；嫌快嫌慢只改这一个数）
   function startAuto() {
     if (reduced || auto.on) return; // 点播制：仅按钮触发（滚轮/触摸仍随时打断）
     auto.on = true;
@@ -1057,9 +1057,9 @@
     if (!auto.on) return;
     var dt = Math.min(0.05, (t - auto.lastT) / 1000 || 0.016);
     auto.lastT = t;
-    // 起步缓入（1.4s 从 0 拉到全速），避免从静止猛冲
+    // 起步缓入（0.9s 从 0 拉到全速），避免从静止猛冲
     var run = (t - auto.startT) / 1000;
-    var v = AUTO_V * Math.min(1, run / 1.4);
+    var v = AUTO_V * Math.min(1, run / 0.9);
     auto.y += v * dt;
     var max = document.documentElement.scrollHeight - window.innerHeight;
     if (auto.y >= max) { auto.y = max; window.scrollTo(0, auto.y); stopAuto(); return; }

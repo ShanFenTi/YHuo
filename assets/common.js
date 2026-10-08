@@ -2112,12 +2112,21 @@ window.__siteCalendar = (function () {
     var bgInput = document.getElementById('bgInput');
     var bgDimSlider = document.getElementById('bgDim');
 
+    // 主题名显示（色板行下方「当前主题：×」）：点色板/应用存档时同步
+    var accentNames = {
+      terracotta: '陶土', purple: '紫色', pink: '粉色', green: '绿色', orange: '橙色',
+      qinghua: '青花', celadon: '青瓷', ink: '水墨', coffee: '焙茶',
+      win98: 'Win98 经典', portal: '早期门户', crt: 'CRT 终端', oldbook: '老书纸'
+    };
+    var accentNameEl = document.getElementById('accentName');
+
     function applyAccent(name) {
       if (name === 'blue') name = 'terracotta'; // 蓝色默认已退役：旧 localStorage/后台存档统一归一到新默认陶土色
       document.documentElement.setAttribute('data-accent', name);
       swatches.forEach(function (b) {
         b.classList.toggle('active', b.getAttribute('data-accent') === name);
       });
+      if (accentNameEl) accentNameEl.textContent = accentNames[name] || name;
     }
     var savedAccent = null;
     try { savedAccent = localStorage.getItem('accent'); } catch (e) {}

@@ -4530,30 +4530,57 @@
     .swatch-row {
       display: flex;
       flex-wrap: wrap;   /* 色板 9→13 枚（2026-10-08 复古主题）：窄面板自动换行兜底 */
-      gap: 12px;
+      gap: 10px;
     }
 
+    /* 主题色板 = 迷你主题预览卡（2026-10-08 重设计，替代纯色圆点）：
+       上条=主题色（accent）、下底=纸底色（--sw2），复古款直角、现代款圆角，
+       一眼能看出「点了之后页面长什么样」。双色值由八页外壳 inline style 下发（--sw/--sw2）。 */
     .swatch {
       position: relative;
-      width: 28px;
-      height: 28px;
-      border: none;
-      border-radius: 999px;
-      background: var(--sw);
+      width: 36px;
+      height: 30px;
+      border: 1px solid rgba(0, 0, 0, 0.18);
+      border-radius: 6px;
+      background:
+        linear-gradient(180deg,
+          var(--sw, #b0532b) 0%, var(--sw, #b0532b) 38%,
+          var(--sw2, #f8f7f4) 38%, var(--sw2, #f8f7f4) 100%);
       cursor: pointer;
-      transition: transform 150ms var(--ease-out);
+      padding: 0;
+      transition: transform 150ms var(--ease-out), box-shadow 150ms var(--ease-out);
     }
 
     .swatch:hover {
-      transform: scale(1.12);
+      transform: translateY(-2px);
+      box-shadow: 0 3px 8px rgba(0, 0, 0, 0.18);
     }
 
     .swatch.active::after {
       content: '';
       position: absolute;
-      inset: -5px;
-      border-radius: 999px;
+      inset: -4px;
+      border-radius: 8px;
       border: 2px solid var(--apple-foreground);
+    }
+
+    /* 复古四款直角（标题条感的卡型） */
+    .swatch.sw-retro {
+      border-radius: 2px;
+    }
+    .swatch.sw-retro.active::after {
+      border-radius: 4px;
+    }
+
+    /* 当前主题名（色板行下方一行小字） */
+    .swatch-name {
+      margin-top: 8px;
+      font-size: 12px;
+      color: var(--apple-muted-foreground);
+    }
+    .swatch-name b {
+      color: var(--apple-foreground);
+      font-weight: 600;
     }
 
     .bg-actions {

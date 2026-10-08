@@ -5803,10 +5803,68 @@ window.__siteCalendar = (function () {
       homeNotesEmptyEl = null;
     }
 
+    // 健康灯（2026-10-08，关于页）：/api/health 四行服务状态（原 /status/ 独立页同源同口径：
+    // 灰=未启用不算故障、备份偏旧=黄），60s 自刷随 pjax 生命周期（stopHealthPoll 在 docs destroy 清理）。
+    var healthTimer = null;
+    function healthSet(id, cls, text) {
+      var dot = document.getElementById(id);
+      if (dot) dot.className = 'dot ' + (cls || '');
+      var t = document.getElementById(id + 't');
+      if (t) { t.className = 'state hstate ' + (cls || ''); t.textContent = text; }
+    }
+    function healthBjToday() {
+      var d = new Date(Date.now() + 8 * 3600 * 1000);
+      return d.getUTCFullYear() + '-' + String(d.getUTCMonth() + 1).padStart(2, '0') + '-' + String(d.getUTCDate()).padStart(2, '0');
+    }
+    function healthDaysAgo(dateStr) {
+      var a = new Date(healthBjToday() + 'T00:00:00Z') - new Date(dateStr + 'T00:00:00Z');
+      return Math.round(a / 86400000);
+    }
+    function healthCheck() {
+      ['hDb', 'hKv', 'hMail', 'hBak'].forEach(function (id) { healthSet(id, '', '检查中…'); });
+      fetch('/api/health', { credentials: 'same-origin', cache: 'no-store' })
+        .then(function (r) { return r.json(); })
+        .then(function (d) {
+          if (d.db && d.dbReadable) healthSet('hDb', 'ok', d.tablesReady ? '正常' : '正常（待初始化）');
+          else if (d.db) healthSet('hDb', 'bad', '异常');
+          else healthSet('hDb', 'bad', '未绑定');
+          if (d.media && d.mediaOk) healthSet('hKv', 'ok', '正常');
+          else if (d.media) healthSet('hKv', 'bad', '异常');
+          else healthSet('hKv', 'bad', '未绑定');
+          if (d.mail) healthSet('hMail', 'ok', '已启用');
+          else healthSet('hMail', '', '未启用');
+          if (d.backupLastDate) {
+            var n = healthDaysAgo(d.backupLastDate);
+            if (n <= 1) healthSet('hBak', 'ok', d.backupLastDate);
+            else if (n <= 3) healthSet('hBak', 'warn', d.backupLastDate + '\uff08' + n + ' \u5929\u524d\uff09');
+            else healthSet('hBak', 'bad', d.backupLastDate + '\uff08' + n + ' \u5929\u524d\uff09');
+          } else healthSet('hBak', '', '\u672a\u751f\u6210');
+          var at = document.getElementById('healthCheckedAt');
+          if (at) at.textContent = '\u68c0\u67e5\u4e8e ' + new Date().toLocaleTimeString('zh-CN', { hour12: false });
+        })
+        .catch(function () {
+          ['hDb', 'hKv', 'hMail', 'hBak'].forEach(function (id) { healthSet(id, 'bad', '\u68c0\u6d4b\u5931\u8d25'); });
+          var at = document.getElementById('healthCheckedAt');
+          if (at) at.textContent = '\u7f51\u7edc\u5f02\u5e38\uff0c\u7a0d\u540e\u81ea\u52a8\u91cd\u8bd5';
+        });
+    }
+    function startHealthPoll() {
+      var wrap = document.getElementById('healthRows');
+      if (!wrap) return;
+      wrap.style.display = '';
+      healthCheck();
+      if (healthTimer) clearInterval(healthTimer);
+      healthTimer = setInterval(healthCheck, 60000);
+    }
+    function stopHealthPoll() {
+      if (healthTimer) { clearInterval(healthTimer); healthTimer = null; }
+    }
+
     // 站点数据卡（2026-09-10，关于页）：/api/summary 公开聚合接口 → 8 个统计位 600ms 计数上滚。
     // 失败/ok:false（坑 2：伪 200 也要判）/payload 不对 → 整卡隐藏（class 切换，坑 14 不用 [hidden]）。
     function initSiteDataCard() {
       var card = document.getElementById('siteDataCard');
+      startHealthPoll(); // 健康灯（2026-10-08）：数据卡在才拉，失败只藏 healthRows 不拖累统计位
       if (!card) return;
       // 隐藏规则走注入样式 + class（一次性；[hidden] 会被 Tailwind 基础层 display:none!important 永久压住，坑 14）
       if (!document.getElementById('sdHideStyle')) {
@@ -8675,7 +8733,7 @@ window.__siteCalendar = (function () {
         init: function () { startHomeClock(); startHomeQuote(); startHomeVideo(); startHomeWeather(); startHomeLower(); lyricRebind(); heroGlowFx.start(); },
         destroy: function () { stopHomeClock(); destroyHomeQuote(); homeLowerAbort(); clearInterval(lyricTypeTimer); lyricTypeTimer = null; heroGlowFx.stop(); }
       },
-      docs:  { init: function () { initDocsPage(); } },
+      docs:  { init: function () { initDocsPage(); }, destroy: stopHealthPoll },
       notes: { init: function () { initNotesPage(); }, onHash: function (h) { notesHandleHash(h); } },
       album: { init: function () { initAlbumPage(); }, destroy: destroyAlbumPage },
       ai:    { init: function () { initAiPage(); }, destroy: destroyAiPage },

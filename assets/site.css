@@ -1410,6 +1410,30 @@
       border-radius: 2px;
     }
 
+    /* ---- ⑨ 健康灯行（2026-10-08，关于页站点数据卡内；原 /status/ 独立页能力并入）。
+       语义与配色跟 /status/ 同源（灰=未启用不算故障，黄=备份偏旧，红=真异常）；
+       颜色全走语义变量，主题/深浅自动跟随；复古四款方灯（与 /status/ 页内联规则同形） */
+    .health-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 11px 2px;
+      border-top: 1px solid var(--apple-border);
+    }
+    .health-row:first-of-type { border-top: 0; }
+    .health-row .name { font-size: 13px; font-weight: 600; margin: 0; color: var(--apple-foreground); }
+    .health-row .desc { font-size: 11.5px; color: var(--apple-muted-foreground); margin: 2px 0 0; }
+    .hstate { margin-left: auto; font-size: 12.5px; color: var(--apple-muted-foreground); text-align: right; }
+    .hstate.ok { color: var(--success, #27814e); }
+    .hstate.warn { color: #a86f08; }
+    .hstate.bad { color: var(--destructive, #b93a3a); }
+    html[data-accent='win98'] .health-row .dot,
+    html[data-accent='portal'] .health-row .dot,
+    html[data-accent='crt'] .health-row .dot,
+    html[data-accent='oldbook'] .health-row .dot {
+      border-radius: 0;
+    }
+
     /* Dark mode */
     .dark {
       --background: var(--background-900);

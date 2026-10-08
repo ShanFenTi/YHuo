@@ -288,7 +288,18 @@
                 <p style="font-size:12px;color:var(--apple-muted-foreground);margin-top:4px;">累计签到</p>
               </div>
             </div>
-            <p style="font-size:12px;color:var(--apple-muted-foreground);margin-top:14px;">实时聚合计数，不含任何个人数据。服务可用性另见 <a href="/status/" style="color:var(--apple-accent,#b0532b);text-decoration:underline;">站点状态页</a>。</p>
+            <p style="font-size:12px;color:var(--apple-muted-foreground);margin-top:14px;">实时聚合计数，不含任何个人数据。服务可用性实时自检（60 秒一刷）：</p>
+            <!-- 服务状态区块（2026-10-08，原 /status/ 独立页能力并入关于页）：
+                 数据源 = 公开 /api/health，口径与 /status/ 一致（灰=未启用不算故障、备份偏旧=黄）；
+                 initSiteDataCard 驱动，60s 自刷随 pjax 生命周期（docs destroy 清定时器）；
+                 健康检查失败只藏本区块，不拖累上方统计位 -->
+            <div id="healthRows" style="margin-top:10px;display:none;">
+              <div class="health-row"><span class="dot" id="hDb"></span><div><p class="name">数据库</p><p class="desc">D1 · 存随笔 / 留言 / 签到 / 课表</p></div><span class="state hstate" id="hDbt">检查中…</span></div>
+              <div class="health-row"><span class="dot" id="hKv"></span><div><p class="name">对象存储</p><p class="desc">KV · 存媒体文件 / 头像 / 备份</p></div><span class="state hstate" id="hKvt">检查中…</span></div>
+              <div class="health-row"><span class="dot" id="hMail"></span><div><p class="name">邮件服务</p><p class="desc">验证码 / 课表提醒的发信通道</p></div><span class="state hstate" id="hMailt">检查中…</span></div>
+              <div class="health-row"><span class="dot" id="hBak"></span><div><p class="name">每日备份</p><p class="desc">四张业务表全量 JSON · 保留 7 份</p></div><span class="state hstate" id="hBakt">检查中…</span></div>
+              <p style="font-size:11px;color:var(--apple-muted-foreground);margin-top:10px;"><span id="healthCheckedAt"></span> · 极简公开页另见 <a href="/status/" style="color:var(--apple-primary);text-decoration:underline;">站点状态页</a></p>
+            </div>
           </div>
         </div>
       </div>

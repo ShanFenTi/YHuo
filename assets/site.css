@@ -956,6 +956,184 @@
       font-size: 16px;
     }
 
+    /* ============================================================
+       复古主题三次补刀（2026-10-08 晚二）：内容层小细节——把散落在
+       页面里的现代胶囊/浮层也拉回年代里。全部纯 CSS，零 JS。
+       ============================================================ */
+
+    /* ---- ① 胶囊 chip 全族 → 方角实边（老网页的小部件没有全圆胶囊） ----
+       天气胶囊/流星雨预告/课表周筛选/节次/随笔标签/今日课表 chip */
+    html[data-accent='win98'] .weather-chip,
+    html[data-accent='win98'] .shower-chip,
+    html[data-accent='win98'] .sched-pill,
+    html[data-accent='win98'] .note-tag,
+    html[data-accent='win98'] .sched-today-chip,
+    html[data-accent='portal'] .weather-chip,
+    html[data-accent='portal'] .shower-chip,
+    html[data-accent='portal'] .sched-pill,
+    html[data-accent='portal'] .note-tag,
+    html[data-accent='portal'] .sched-today-chip,
+    html[data-accent='crt'] .weather-chip,
+    html[data-accent='crt'] .shower-chip,
+    html[data-accent='crt'] .sched-pill,
+    html[data-accent='crt'] .note-tag,
+    html[data-accent='crt'] .sched-today-chip,
+    html[data-accent='oldbook'] .weather-chip,
+    html[data-accent='oldbook'] .shower-chip,
+    html[data-accent='oldbook'] .sched-pill,
+    html[data-accent='oldbook'] .note-tag,
+    html[data-accent='oldbook'] .sched-today-chip {
+      border-radius: 2px;
+    }
+    /* 课表周筛选选中态 = 实底反白（像老表单的选中按钮） */
+    html[data-accent='win98'] .sched-pill.on,
+    html[data-accent='portal'] .sched-pill.on,
+    html[data-accent='oldbook'] .sched-pill.on {
+      border-radius: 2px;
+    }
+    html[data-accent='win98'] .sched-pill:active {
+      transform: none;
+    }
+
+    /* ---- ② 迷你播放器：悬浮胶囊 → 通栏状态条（贴底、方角、实边） ----
+       悬浮样式与顶栏同语言：不浮不圆不投影。播放器内部结构零改动。 */
+    html[data-accent='win98'] .mini-player,
+    html[data-accent='portal'] .mini-player,
+    html[data-accent='crt'] .mini-player,
+    html[data-accent='oldbook'] .mini-player {
+      left: 0;
+      right: 0;
+      bottom: 0;
+      transform: translate(0, 12px);
+      width: auto;
+      max-width: none;
+      border-radius: 0;
+      border-width: 2px 0 0 0;
+      border-bottom-style: none;
+      box-shadow: none;
+      -webkit-backdrop-filter: none;
+      backdrop-filter: none;
+      background: var(--apple-card);
+    }
+    html[data-accent='win98'] .mini-player.show,
+    html[data-accent='portal'] .mini-player.show,
+    html[data-accent='crt'] .mini-player.show,
+    html[data-accent='oldbook'] .mini-player.show {
+      transform: translate(0, 0);
+    }
+    html[data-accent='win98'].dark .mini-player,
+    html[data-accent='portal'].dark .mini-player,
+    html[data-accent='crt'].dark .mini-player,
+    html[data-accent='oldbook'].dark .mini-player {
+      background: var(--apple-card);
+    }
+    /* Win98 播放条 = 任务条同款浮雕顶边；CRT = 荧光绿顶线 */
+    html[data-accent='win98'] .mini-player {
+      border-color: #ffffff;
+      box-shadow: inset 0 1px 0 #ffffff, inset 0 2px 0 #404040;
+      background: #d4d0c8;
+      color: #000000;
+    }
+    html[data-accent='win98'].dark .mini-player {
+      background: #2b2b2b;
+      color: #e8e8e8;
+      box-shadow: inset 0 1px 0 #6a6a6a;
+      border-color: #6a6a6a;
+    }
+    html[data-accent='crt'] .mini-player {
+      border-color: #1e351e;
+      box-shadow: 0 -2px 10px rgba(51, 255, 102, 0.18);
+    }
+
+    /* ---- ③ 歌词横条：圆角毛玻璃暗条 → 方角实色横幅（像老播放器的歌词屏） ---- */
+    html[data-accent='win98'] .lyric-bar,
+    html[data-accent='portal'] .lyric-bar,
+    html[data-accent='crt'] .lyric-bar,
+    html[data-accent='oldbook'] .lyric-bar {
+      border-radius: 0;
+      -webkit-backdrop-filter: none;
+      backdrop-filter: none;
+      box-shadow: none;
+    }
+    html[data-accent='win98'] .lyric-bar {
+      background: #000080;
+      color: #ffffff;
+      border: 1px solid;
+      border-color: #404040 #ffffff #ffffff #404040;
+    }
+    html[data-accent='portal'] .lyric-bar {
+      background: #1f3a60;
+      color: #ffffff;
+      border: 1px solid #16304f;
+    }
+    html[data-accent='crt'] .lyric-bar {
+      background: #0a120a;
+      color: #33ff66;
+      border: 1px solid #1e351e;
+      text-shadow: 0 0 4px rgba(51, 255, 102, 0.7);
+    }
+    html[data-accent='oldbook'] .lyric-bar {
+      background: #2b241a;
+      color: #f4ecd8;
+      border: 1px solid #d9cba9;
+    }
+
+    /* ---- ④ 节气印章：圆角章 → 传统方印（直角 + 双线印框） ----
+      （老书纸本身已是衬线，印文更挺） */
+    html[data-accent='win98'] .term-seal,
+    html[data-accent='portal'] .term-seal,
+    html[data-accent='crt'] .term-seal,
+    html[data-accent='oldbook'] .term-seal {
+      border-radius: 0;
+      border-width: 2px;
+      box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--seal-ink) 55%, transparent);
+    }
+
+    /* ---- ⑤ hud 角标（时钟四角的取景框角）——CRT 款换磷光绿，别家淡化成直角细线 ---- */
+    html[data-accent='crt'] .hud-corner {
+      border-color: rgba(51, 255, 102, 0.75);
+    }
+    html[data-accent='win98'] .hud-corner,
+    html[data-accent='portal'] .hud-corner,
+    html[data-accent='oldbook'] .hud-corner {
+      border-color: color-mix(in srgb, var(--apple-foreground) 35%, transparent);
+    }
+
+    /* ---- ⑥ 开关控件：圆润现代开关 → 方形滑块（Win98 复选框质感） ---- */
+    html[data-accent='win98'] .switch-ui,
+    html[data-accent='portal'] .switch-ui,
+    html[data-accent='crt'] .switch-ui,
+    html[data-accent='oldbook'] .switch-ui {
+      border: 1px solid var(--apple-border);
+    }
+    html[data-accent='win98'] .switch-ui::after,
+    html[data-accent='portal'] .switch-ui::after,
+    html[data-accent='crt'] .switch-ui::after,
+    html[data-accent='oldbook'] .switch-ui::after {
+      border-radius: 0;
+    }
+
+    /* ---- ⑦ 头像：老论坛的时代感 = 无圆角方头像（含留言板/个人中心） ----
+      （「方头像才是老论坛」——首字块与图片一起方化） */
+    html[data-accent='win98'] .board-avatar,
+    html[data-accent='win98'] .board-avatar-img,
+    html[data-accent='portal'] .board-avatar,
+    html[data-accent='portal'] .board-avatar-img,
+    html[data-accent='oldbook'] .board-avatar,
+    html[data-accent='oldbook'] .board-avatar-img,
+    html[data-accent='crt'] .board-avatar,
+    html[data-accent='crt'] .board-avatar-img {
+      border-radius: 0;
+    }
+
+    /* ---- ⑧ 快捷入口磁贴/首页数据行：already 窗格化走 .apple-card；磁贴内图标方块方角 ---- */
+    html[data-accent='win98'] .home-entry,
+    html[data-accent='portal'] .home-entry,
+    html[data-accent='crt'] .home-entry,
+    html[data-accent='oldbook'] .home-entry {
+      border-width: 2px;
+    }
+
     /* Dark mode */
     .dark {
       --background: var(--background-900);

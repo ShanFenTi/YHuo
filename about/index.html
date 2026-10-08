@@ -3,9 +3,9 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="description" content="YHuo 介绍页：一个圆，讲完一座站——滚动叙事带你把这个小站走一遍（随笔/相册/音乐/课表/搜索），末尾有真实站点数据。">
-<meta property="og:title" content="一个圆，讲完一座站 - YHuo">
-<meta property="og:description" content="滚动叙事介绍页：表盘→轨道→光圈→年轮→印章，五幕走完这座小站。">
+<meta name="description" content="YHuo 介绍页：滚动两分钟，把这个个人小站看一遍——随笔、相册、音乐、课表、搜索，末尾有真实站点数据。">
+<meta property="og:title" content="欢迎来到我的小站 - YHuo">
+<meta property="og:description" content="滚动两分钟，把这个个人小站看一遍：随笔、相册、音乐、课表、搜索，末尾有真实站点数据。">
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://190963.xyz/about/">
 <meta property="og:image" content="https://190963.xyz/images/og-banner.jpg">
@@ -203,7 +203,7 @@
     display: flex; flex-direction: column; align-items: center; gap: 8px; }
   #act1 .cue svg { width: 15px; height: 15px; }
 
-  /* ========= 幕二 · 轨道（功能巡礼，暖纸） ========= */
+  /* ========= 幕二 · 轨道（能做什么，暖纸） ========= */
   #act2 { height: 320vh; }
   #act2 .pin { background: var(--paper); }
   .fn-ch {
@@ -381,7 +381,7 @@
 <body>
 
   <div class="intro-stage" id="introStage" aria-hidden="true"></div>
-  <div class="intro-title" id="introTitle" aria-hidden="true">一个圆，讲完一座站</div>
+  <div class="intro-title" id="introTitle" aria-hidden="true">欢迎来到我的小站</div>
   <div class="amb" id="amb" aria-hidden="true"></div>
   <div class="rail" id="rail" aria-hidden="true"></div>
 
@@ -425,7 +425,7 @@
     <div class="pin">
       <div class="story-note" id="note1">
         <div class="eyebrow-n" id="narEyebrow"></div>
-        <div class="nb-title">一座没有算法的小站</div>
+        <div class="nb-title">先自我介绍一下</div>
         <div class="nb-body nar-lines" id="narLines"></div>
         <div class="nar-dim" id="narDim"></div>
       </div>
@@ -437,7 +437,7 @@
   <section class="act" id="act2">
     <div class="pin">
       <div class="story-note" id="note2">
-        <div class="eyebrow-n">TOUR · 功能巡礼</div>
+        <div class="eyebrow-n">TOUR · 能做什么</div>
         <div class="nb-title" id="featTitle"></div>
         <div class="nb-body" id="featBody"></div>
         <a id="featLink" href="/">去看看 →</a>
@@ -455,7 +455,7 @@
       <div class="ph-grid" id="phGrid"><div class="ph-empty" style="grid-column: 1 / -1">照片数据加载中…</div></div>
       <div class="story-note" id="note3">
         <div class="eyebrow-n">GALLERY · 相册</div>
-        <div class="nb-title">镜头里留下的</div>
+        <div class="nb-title">照片随便看看</div>
         <div class="nb-body">照片在后台「图片」页归入相册，前台自动按相册排列；点开任意一张就是灯箱，收藏后回到个人主页。</div>
         <div class="nb-album">ALBUM · <b id="note3Album">…</b></div>
         <a href="/album/">打开相册 →</a>
@@ -468,10 +468,10 @@
     <div class="pin">
       <div class="dat-mini" id="datMini"></div>
       <div class="story-note" id="note4">
-        <div class="eyebrow-n">STORY · 数据</div>
-        <div class="nb-title">它在慢慢长大</div>
+        <div class="eyebrow-n">DATA · 真实数据</div>
+        <div class="nb-title">一些真实数字</div>
         <div class="nb-body" id="statNote"></div>
-        <div class="dat-end" id="datEnd">它还在慢慢长大 —— 谢谢你滚到这里</div>
+        <div class="dat-end" id="datEnd">就这些了 —— 谢谢你看到这里</div>
       </div>
     </div>
   </section>
@@ -480,9 +480,9 @@
   <div class="auto-hint" id="autoHint" hidden>▶ 自动展示这段故事</div>
 
   <div class="tail">
-    <h2>—— 讲完了 ——</h2>
-    <p>它还在慢慢长大，谢谢你滚到这里。<br>
-    想开始用的话，顶栏或者下面的链接都能去到各个页面。</p>
+    <h2>—— 就这些 ——</h2>
+    <p>剩下的自己去逛吧，顶栏或者下面的链接都能去。<br>
+    有什么想说的，留言板一直开着。</p>
     <p style="margin-top:18px;"><a class="tail-link" href="/">← 回首页</a>&nbsp;&nbsp;<a class="tail-link" href="/docs/">看看更新日志 →</a></p>
   </div>
   <a class="exit-about" href="/" aria-label="返回首页">✕ 退出介绍</a>
@@ -502,29 +502,29 @@
 
   /* ==================== 文案集中地（站长改这里） ==================== */
   var STORY_COPY = {
-    eyebrow: '一个圆，讲完一座站',
+    eyebrow: 'ABOUT · 关于本站',
     narLines: [
-      '这里没有算法，',
-      '没有信息流，也没有推荐。',
-      '只有一个<em>站长</em>，和他愿意慢慢做的东西。',
+      '欢迎你来。',
+      '这是站长一个人的小站，',
+      '页面不多，都是<em>亲手</em>做的。',
     ],
-    narDim: '—— 往下滚，带你把这个小站走一遍',
+    narDim: '—— 往下滚，两分钟看完',
     features: [
-      { ch: '文', h: '随笔 · 时间树', p: '想到什么写什么，按年份长成一棵时间树；点开一篇就是干净的阅读页。', href: '/notes/', go: '去读随笔' },
-      { ch: '相', h: '相册 · 牌堆与灯箱', p: '照片堆成一摞牌，点开逐张翻看；收藏的照片会回到个人主页。', href: '/album/', go: '去看看' },
-      { ch: '乐', h: '音乐 · 跨页不断播', p: '迷你条与悬浮播放器双款式，站内换页音乐不中断，歌词逐字点亮。', href: '/', go: '回首页听' },
-      { ch: '课', h: '课表 · 邮件提醒', p: '按课表在上课前发邮件提醒，法定节假日自动停发。', href: '/schedule/', go: '看课表' },
-      { ch: '搜', h: '搜索 · Ctrl+K', p: '全站命令面板：文档、随笔、音乐、照片，一步直达；还藏着两个彩蛋。', href: '/', go: '任意页按 Ctrl+K' },
+      { ch: '文', h: '随笔 · 时间树', p: '想到什么写什么，按年份排好；点开一篇就是干净的阅读页。', href: '/notes/', go: '去读两篇' },
+      { ch: '相', h: '相册 · 灯箱', p: '照片按相册归好，点开逐张翻，喜欢的可以收藏。', href: '/album/', go: '去看看' },
+      { ch: '乐', h: '音乐 · 不断播', p: '站内切页歌不停，歌词逐字点亮，迷你条和悬浮款随你切。', href: '/', go: '回去听' },
+      { ch: '课', h: '课表 · 提醒', p: '上课前发邮件提醒，法定假期自动停发。', href: '/schedule/', go: '看看课表' },
+      { ch: '搜', h: '搜索 · Ctrl+K', p: '文档、随笔、音乐、照片一步直达；另藏两个彩蛋。', href: '/', go: '任意页按 Ctrl+K' },
     ],
     statsNotes: [
-      '从上线第一天累积到今天。',
-      '想到什么就写下的篇目。',
-      '镜头里存下来的瞬间。',
-      '站内曲库里的歌。',
-      '愿意留下账号的访客。',
-      '每一次敲门都被记住。',
+      '从上线那天起，一天没断。',
+      '想到什么写什么，攒下来的。',
+      '从相机和手机里挑出来的。',
+      '站内曲库的歌，都能听。',
+      '注册留下来的访客。',
+      '每次打开都有记录。',
     ],
-    endLine: '它还在慢慢长大 —— 谢谢你滚到这里',
+    endLine: '就这些了 —— 谢谢你看到这里',
   };
 
   /* ==================== 工具 ==================== */

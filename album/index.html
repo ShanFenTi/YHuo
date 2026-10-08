@@ -253,7 +253,11 @@
           <p class="card-eyebrow">图片 · IMAGES</p>
           <div class="data-skel ds-album" id="albumSkel" aria-hidden="true"><span class="skel"></span><span class="skel"></span><span class="skel"></span></div>
           <div class="album-list" id="albumList"></div>
-          <p class="empty-hint" id="albumEmpty" hidden>相册里还没有照片。在后台「图片」页上传（可分组到相册），这里就会展示。</p>
+          <div class="empty-state" id="albumEmpty" hidden>
+            <span class="es-icon" aria-hidden="true"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg></span>
+            <p class="es-title">相册还是空的</p>
+            <p class="es-hint">在后台「图片」页上传照片（可分组到相册），这里就会一张张摆出来。</p>
+          </div>
         </div>
       </div>
     </div>
@@ -287,6 +291,10 @@
           <button class="swatch" data-accent="pink" style="--sw: #ec4899" type="button" aria-label="粉色主题"></button>
           <button class="swatch" data-accent="green" style="--sw: #10b981" type="button" aria-label="绿色主题"></button>
           <button class="swatch" data-accent="orange" style="--sw: #f59e0b" type="button" aria-label="橙色主题"></button>
+          <button class="swatch" data-accent="qinghua" style="--sw: #2f5f96" type="button" aria-label="青花主题"></button>
+          <button class="swatch" data-accent="celadon" style="--sw: #5d8a72" type="button" aria-label="青瓷主题"></button>
+          <button class="swatch" data-accent="ink" style="--sw: #292524" type="button" aria-label="水墨主题"></button>
+          <button class="swatch" data-accent="coffee" style="--sw: #7c5e3d" type="button" aria-label="焙茶主题"></button>
         </div>
 
         <p class="appear-label">自定义背景</p>

@@ -257,8 +257,12 @@
       <!-- 未登录空态：/api/schedule 401 或接口失败时显示（原先整卡隐藏页面空白） -->
       <div class="apple-card" id="schedAnon" style="display:none">
         <div class="card-padding">
-          <p class="empty-hint" style="padding:4px 0 14px;">登录后查看自己的课表——支持 WakeUp 课表导入、每日早报与上课前邮件提醒。</p>
-          <button class="appear-btn" id="schedAnonLogin" type="button">登录 / 注册</button>
+          <div class="empty-state">
+            <span class="es-icon" aria-hidden="true"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></span>
+            <p class="es-title">登录后查看自己的课表</p>
+            <p class="es-hint">支持 WakeUp 课表导入、每日早报与上课前邮件提醒。</p>
+            <button class="appear-btn" id="schedAnonLogin" type="button">登录 / 注册</button>
+          </div>
         </div>
       </div>
 
@@ -266,8 +270,12 @@
       <div class="apple-card" id="schedCard" style="display:none">
         <div class="card-padding">
           <div id="schedEnable" hidden>
-            <button class="appear-btn" id="schedEnableBtn" type="button">＋ 启用课表</button>
-            <p class="profile-hint" style="margin-top:10px;">导入 WakeUp 课表或手动添加课程，配合邮箱获得每日早报和上课前提醒。</p>
+            <div class="empty-state">
+              <span class="es-icon" aria-hidden="true"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></span>
+              <p class="es-title">启用我的课表</p>
+              <p class="es-hint">导入 WakeUp 课表或手动添加课程，配合邮箱获得每日早报和上课前提醒。</p>
+              <button class="appear-btn" id="schedEnableBtn" type="button">＋ 启用课表</button>
+            </div>
           </div>
         </div>
       </div>
@@ -439,6 +447,10 @@
           <button class="swatch" data-accent="pink" style="--sw: #ec4899" type="button" aria-label="粉色主题"></button>
           <button class="swatch" data-accent="green" style="--sw: #10b981" type="button" aria-label="绿色主题"></button>
           <button class="swatch" data-accent="orange" style="--sw: #f59e0b" type="button" aria-label="橙色主题"></button>
+          <button class="swatch" data-accent="qinghua" style="--sw: #2f5f96" type="button" aria-label="青花主题"></button>
+          <button class="swatch" data-accent="celadon" style="--sw: #5d8a72" type="button" aria-label="青瓷主题"></button>
+          <button class="swatch" data-accent="ink" style="--sw: #292524" type="button" aria-label="水墨主题"></button>
+          <button class="swatch" data-accent="coffee" style="--sw: #7c5e3d" type="button" aria-label="焙茶主题"></button>
         </div>
 
         <p class="appear-label">自定义背景</p>

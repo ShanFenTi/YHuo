@@ -2195,7 +2195,11 @@
     { name: 'purple', label: '紫色', color: '#8b5cf6' },
     { name: 'pink', label: '粉色', color: '#ec4899' },
     { name: 'green', label: '绿色', color: '#10b981' },
-    { name: 'orange', label: '橙色', color: '#f59e0b' }
+    { name: 'orange', label: '橙色', color: '#f59e0b' },
+    { name: 'qinghua', label: '青花', color: '#2f5f96' },
+    { name: 'celadon', label: '青瓷', color: '#5d8a72' },
+    { name: 'ink', label: '水墨', color: '#292524' },
+    { name: 'coffee', label: '焙茶', color: '#7c5e3d' }
   ];
   var currentAccent = null;
 

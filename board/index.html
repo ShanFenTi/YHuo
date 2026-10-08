@@ -263,7 +263,11 @@
             </div>
             <div class="data-skel ds-stack" id="boardSkel" aria-hidden="true"><span class="skel" style="height:148px"></span><span class="skel" style="height:148px"></span><span class="skel" style="height:148px"></span></div>
           <div class="board-list" id="boardList"></div>
-            <p class="empty-hint" id="boardEmpty" hidden>还没有留言，来抢个沙发！</p>
+            <div class="empty-state" id="boardEmpty" hidden>
+              <span class="es-icon" aria-hidden="true"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></span>
+              <p class="es-title">还没有留言</p>
+              <p class="es-hint">来抢个沙发！写下第一句，这里就是你们的留言板。</p>
+            </div>
             <div style="text-align:center;margin-top:12px;">
               <button class="appear-btn" id="boardMore" type="button" hidden>加载更多</button>
             </div>
@@ -287,6 +291,10 @@
           <button class="swatch" data-accent="pink" style="--sw: #ec4899" type="button" aria-label="粉色主题"></button>
           <button class="swatch" data-accent="green" style="--sw: #10b981" type="button" aria-label="绿色主题"></button>
           <button class="swatch" data-accent="orange" style="--sw: #f59e0b" type="button" aria-label="橙色主题"></button>
+          <button class="swatch" data-accent="qinghua" style="--sw: #2f5f96" type="button" aria-label="青花主题"></button>
+          <button class="swatch" data-accent="celadon" style="--sw: #5d8a72" type="button" aria-label="青瓷主题"></button>
+          <button class="swatch" data-accent="ink" style="--sw: #292524" type="button" aria-label="水墨主题"></button>
+          <button class="swatch" data-accent="coffee" style="--sw: #7c5e3d" type="button" aria-label="焙茶主题"></button>
         </div>
 
         <p class="appear-label">自定义背景</p>

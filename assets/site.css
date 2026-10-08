@@ -36,6 +36,12 @@
       --brand-800: #562512;
       --brand-900: #3a180b;
 
+      /* 画布/hero 光斑双色（2026-10-07 从硬编码 rgba 抽出，随主题色联动）：
+         --glow-a 深色层 = 浅色画布顶部光晕 + 时钟后光斑；--glow-b 浅色层 = 深色画布 + 视频盒旁光斑。
+         各主题色在下方 data-accent 块里各自覆盖；默认值 = 陶土原值，默认主题观感零变化。 */
+      --glow-a: #cc7442;
+      --glow-b: #e7a37c;
+
       --background-50: #ffffff;
       --background-100: #f7f7fa;
       --background-200: #f2f2f7;
@@ -113,6 +119,109 @@
     html[data-accent='pink'] { --brand-400: #f472b6; --brand-500: #ec4899; }
     html[data-accent='green'] { --brand-400: #34d399; --brand-500: #10b981; }
     html[data-accent='orange'] { --brand-400: #fbbf24; --brand-500: #f59e0b; }
+
+    /* —— 完整主题（2026-10-07）：强调色之外连纸底/次级面/边框一起染，切换=换一套纸。
+       浅色块覆盖 light 语义变量；.dark 组合选择器（特异性高于 .dark 单类）覆盖深色色温。
+       深浅各给一套 --glow-a/b，画布光晕与 hero 光斑随之换色。默认陶土不在此列（原值即默认）。 —— */
+
+    /* 青花（墨水蓝）：青花瓷、钢笔水、书信——纸底微冷 */
+    html[data-accent='qinghua'] {
+      --brand-400: #4a7db3;
+      --brand-500: #2f5f96;
+      --background: #f6f7f9;
+      --secondary: #edf0f4;
+      --muted: #edf0f4;
+      --accent: #f0f3f6;
+      --border: #e2e6ec;
+      --input: #ccd4de;
+      --glow-a: #4a7db3;
+      --glow-b: #9dbbdd;
+    }
+    html[data-accent='qinghua'].dark {
+      --background: #0c1016;
+      --card: #141a22;
+      --popover: #182029;
+      --secondary: #161d26;
+      --muted: #161d26;
+      --accent: #1b242e;
+      --border: #263140;
+      --input: #263140;
+      --brand-400: #5b8cc0; /* 深色下提亮一档，黑底上才立得住 */
+    }
+
+    /* 青瓷（灰绿）：宋瓷、雨过天青——纸底带青，最安静的一款 */
+    html[data-accent='celadon'] {
+      --brand-400: #7fa78f;
+      --brand-500: #5d8a72;
+      --background: #f4f6f2;
+      --secondary: #e9eee7;
+      --muted: #e9eee7;
+      --accent: #edf1ec;
+      --border: #dfe5dc;
+      --input: #c7d1c6;
+      --glow-a: #74a186;
+      --glow-b: #a9c7b1;
+    }
+    html[data-accent='celadon'].dark {
+      --background: #0c110e;
+      --card: #141a16;
+      --popover: #19201b;
+      --secondary: #161d18;
+      --muted: #161d18;
+      --accent: #1b231d;
+      --border: #26302a;
+      --input: #26302a;
+    }
+
+    /* 水墨（墨黑）：铅字、版画——浅色纸上落墨，深色纸上反白（黑底白墨） */
+    html[data-accent='ink'] {
+      --brand-400: #44403c;
+      --brand-500: #292524;
+      --background: #f7f6f3;
+      --secondary: #edebe7;
+      --muted: #edebe7;
+      --accent: #f0eeea;
+      --border: #e3e0d9;
+      --input: #cfcbc3;
+      --glow-a: #78716c;
+      --glow-b: #b8b2aa;
+    }
+    html[data-accent='ink'].dark {
+      --background: #0e0d0c;
+      --card: #171614;
+      --popover: #1d1c1a;
+      --secondary: #1a1917;
+      --muted: #1a1917;
+      --accent: #201e1c;
+      --border: #2b2926;
+      --input: #2b2926;
+      --brand-400: #d6d3cf; /* 深色=白墨：brand-400 是深色的 --primary，反白才可读 */
+    }
+
+    /* 焙茶（焙棕）：牛皮纸、旧书页——纸底偏奶油，陶土的近亲但更沉 */
+    html[data-accent='coffee'] {
+      --brand-400: #a3815a;
+      --brand-500: #7c5e3d;
+      --background: #f9f5ee;
+      --secondary: #f1eadf;
+      --muted: #f1eadf;
+      --accent: #f4eee3;
+      --border: #e9e0d0;
+      --input: #d6c9b4;
+      --glow-a: #9a7748;
+      --glow-b: #cdb28a;
+    }
+    html[data-accent='coffee'].dark {
+      --background: #100e0b;
+      --card: #191612;
+      --popover: #201c17;
+      --secondary: #1d1915;
+      --muted: #1d1915;
+      --accent: #242019;
+      --border: #322c23;
+      --input: #322c23;
+      --brand-400: #b18d5f;
+    }
 
     /* Dark mode */
     .dark {
@@ -3373,6 +3482,41 @@
       padding: 24px 0 8px;
     }
 
+    /* 大空态组件（2026-10-07）：留言板/相册/课表启用前的整卡空态——
+       图标 + 标题 + 引导语（+可选操作钮）居中排版，替代孤零零一行灰字。
+       颜色全走语义变量，主题色/深浅自动跟随；.es-icon 用主题色 10% 染底。 */
+    .empty-state {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 5px;
+      text-align: center;
+      padding: 34px 18px 28px;
+    }
+    .empty-state .es-icon {
+      display: grid;
+      place-items: center;
+      width: 42px;
+      height: 42px;
+      margin-bottom: 5px;
+      border-radius: 13px;
+      color: var(--primary);
+      background: color-mix(in srgb, var(--primary) 10%, transparent);
+    }
+    .empty-state .es-title {
+      font-size: 14.5px;
+      font-weight: 650;
+    }
+    .empty-state .es-hint {
+      font-size: 12.5px;
+      line-height: 1.55;
+      color: var(--apple-muted-foreground);
+      max-width: 30em;
+    }
+    .empty-state .appear-btn {
+      margin-top: 10px;
+    }
+
     .album-bar {
       display: flex;
       align-items: center;
@@ -3807,7 +3951,7 @@
          原先底色在 body 上会盖住 z-index:-1 的流星/自定义背景层，见 body 处注释。
          自定义背景（.bg-layer，同为负 z）绘制在画布之上，自然盖住光晕 */
       background:
-        radial-gradient(62% 100% at 50% -8%, rgba(204, 116, 66, 0.16), rgba(204, 116, 66, 0) 62%) top center / 100% 540px no-repeat fixed,
+        radial-gradient(62% 100% at 50% -8%, color-mix(in srgb, var(--glow-a) 16%, transparent), transparent 62%) top center / 100% 540px no-repeat fixed,
         var(--apple-background);
       transition: background-color 300ms var(--ease-out);
       /* 滚动条槽位恒定（2026-10-06）：开场动画期间 html.intro-pending 用 overflow:hidden 锁滚动，
@@ -3818,7 +3962,7 @@
 
     html.dark {
       background:
-        radial-gradient(62% 100% at 50% -8%, rgba(231, 163, 124, 0.12), rgba(231, 163, 124, 0) 62%) top center / 100% 540px no-repeat fixed,
+        radial-gradient(62% 100% at 50% -8%, color-mix(in srgb, var(--glow-b) 12%, transparent), transparent 62%) top center / 100% 540px no-repeat fixed,
         var(--apple-background);
     }
 
@@ -6414,7 +6558,8 @@
     }
 
     /* ===== 首页 Hero 视差光斑（2026-09-09）=====
-       两枚陶土色柔光斑（时钟后 #cc7442 一层、视频盒旁 #e7a37c 一层），这里只是默认态：
+       两枚柔光斑（时钟后 --glow-a 一层、视频盒旁 --glow-b 一层；2026-10-07 起随主题色联动，
+       默认陶土观感不变）：
        绝对定位 + 模糊渐变圆 + 低透明度，z 压在全部内容之下，深浅主题都当"色斑"不抢戏。
        指针跟随在 common.js 首页模块（heroGlowFx）。坑 22/28 铁律：transform 只加在光斑自身
        （普通绝对定位、无 fixed 后代，安全），绝不给 .hero-section/.page-main 加 transform/animation——
@@ -6441,7 +6586,7 @@
       height: 420px;
       left: -8%;
       top: -12%;
-      background: radial-gradient(circle, rgba(204, 116, 66, 0.55), rgba(204, 116, 66, 0) 70%);
+      background: radial-gradient(circle, color-mix(in srgb, var(--glow-a) 55%, transparent), transparent 70%);
     }
 
     /* 视频盒附近一层：色浅一点、跟随幅度大（JS 里 2%），视差主层 */
@@ -6450,7 +6595,7 @@
       height: 360px;
       right: -6%;
       top: 10%;
-      background: radial-gradient(circle, rgba(231, 163, 124, 0.6), rgba(231, 163, 124, 0) 70%);
+      background: radial-gradient(circle, color-mix(in srgb, var(--glow-b) 60%, transparent), transparent 70%);
     }
 
     /* 暗色主题：透明度再压一档，避免暗底上泛灰发脏 */
@@ -6479,6 +6624,7 @@
        只存在于首页 main（不碰外壳，坑 23 免同步）；.apple-card 自动进滚动模糊揭示清单（site.css「滚动模糊揭示」段）。
        功能开关同口径：ff-* 关掉的页面，对应入口磁贴一并隐藏（对齐窄屏抽屉的 [data-target] 规则）。
        ========================= */
+    html.ff-album-off .home-entry[data-target="album"],
     html.ff-ai-off .home-entry[data-target="ai"],
     html.ff-boot-hide .home-entry[data-target="tools"],
     html.ff-ai-boot-hide .home-entry[data-target="ai"] { display: none !important; }
@@ -6599,6 +6745,15 @@
       gap: 10px;
     }
 
+    /* 五磁贴收尾（2026-10-07 快捷入口扩到 随笔/留言/相册/课表/AI 五块）：
+       最后一块为奇数 DOM 位时跨满两列，避免孤儿半格。AI 故意排末位：
+       全开时 2+2+宽 AI；AI 被 ff-ai-off 隐藏（display:none 不占格，但 :last-child 仍指它，
+       规则落空）→ 剩四块正好 2×2；相册被隐藏时 AI 顶到末位承接宽位 → 2+宽 AI。
+       仅「相册+AI 同时关」的罕见组合会剩三块出半格孤块（与旧版三磁贴行为一致，可接受）。 */
+    .home-entry:last-child:nth-child(odd) {
+      grid-column: 1 / -1;
+    }
+
     .home-entry {
       position: relative;
       display: flex;
@@ -6619,6 +6774,12 @@
       transform: translateY(-2px);
       border-color: color-mix(in srgb, var(--primary) 45%, var(--apple-border));
       box-shadow: var(--shadow-sm);
+    }
+
+    /* 深色下磁贴与承载卡同为 secondary 色会糊成一片（2026-10-07）：
+       掺入页面底色调成一档「凹槽」层次，浅色主题不受影响 */
+    .dark .home-entry {
+      background: color-mix(in srgb, var(--apple-secondary) 55%, var(--apple-background));
     }
 
     .home-entry:focus-visible {
@@ -7393,14 +7554,14 @@
       /* 纵深质感（2026-10-06）：陶土光晕 + 顶部白高光 + 底部极淡暗角三层叠在纸底上。
          ⚠️ 全是静态 background（只在插入/揭幕时绘制，不逐帧），零合成成本。 */
       background:
-        radial-gradient(62% 100% at 50% -8%, rgba(204, 116, 66, 0.16), rgba(204, 116, 66, 0) 62%) top center / 100% 540px no-repeat,
+        radial-gradient(62% 100% at 50% -8%, color-mix(in srgb, var(--glow-a) 16%, transparent), transparent 62%) top center / 100% 540px no-repeat,
         radial-gradient(120% 55% at 50% 0%, rgba(255, 255, 255, 0.55), rgba(255, 255, 255, 0) 70%) top center / 100% 60% no-repeat,
         radial-gradient(140% 60% at 50% 108%, rgba(27, 28, 30, 0.035), rgba(27, 28, 30, 0) 60%) bottom center / 100% 55% no-repeat,
         var(--background, #f8f7f4);
     }
     html.dark.intro-pending::after {
       background:
-        radial-gradient(62% 100% at 50% -8%, rgba(231, 163, 124, 0.12), rgba(231, 163, 124, 0) 62%) top center / 100% 540px no-repeat,
+        radial-gradient(62% 100% at 50% -8%, color-mix(in srgb, var(--glow-b) 12%, transparent), transparent 62%) top center / 100% 540px no-repeat,
         radial-gradient(120% 55% at 50% 0%, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0) 70%) top center / 100% 60% no-repeat,
         radial-gradient(140% 60% at 50% 108%, rgba(0, 0, 0, 0.28), rgba(0, 0, 0, 0) 60%) bottom center / 100% 55% no-repeat,
         var(--background, #000000);
@@ -7413,12 +7574,12 @@
        :has() 特异性取参数中最强者（body.has-custom-bg = 0,1,1），深色那条再加 .dark 抬高一档。 */
     html.intro-pending:has(body.has-custom-bg)::after {
       background:
-        radial-gradient(62% 100% at 50% -8%, rgba(204, 116, 66, 0.16), rgba(204, 116, 66, 0) 62%) top center / 100% 540px no-repeat,
+        radial-gradient(62% 100% at 50% -8%, color-mix(in srgb, var(--glow-a) 16%, transparent), transparent 62%) top center / 100% 540px no-repeat,
         transparent;
     }
     html.dark.intro-pending:has(body.has-custom-bg)::after {
       background:
-        radial-gradient(62% 100% at 50% -8%, rgba(231, 163, 124, 0.12), rgba(231, 163, 124, 0) 62%) top center / 100% 540px no-repeat,
+        radial-gradient(62% 100% at 50% -8%, color-mix(in srgb, var(--glow-b) 12%, transparent), transparent 62%) top center / 100% 540px no-repeat,
         transparent;
     }
     /* 淡出（2026-10-06 站长定「加载完直接淡出即可」）：封面整体透明度 1→0，无位移无裁剪。

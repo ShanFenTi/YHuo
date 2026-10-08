@@ -223,6 +223,443 @@
       --brand-400: #b18d5f;
     }
 
+    /* ============================================================
+       复古主题（2026-10-08 站长提出，「很多年前的网站」）：四款全做，
+       完整复古皮肤=不只换色，还连「形」一起换。实现拆两层：
+       ① 颜色层：照上面四款完整主题的套路写 data-accent 变量块（浅+深+glow），
+          画布/hero 光斑/开场封面自动跟随；
+       ② 结构层：按 html[data-accent='…'] 追加结构性覆盖段（站点首例），
+          四款共享的「形」用四连选择器下发（直角/宋体/经典链接色/实色标题条），
+          色温差异再按单款微调（win98 浮雕、crt 扫描线、portal 页头条、oldbook 纸感）。
+       零 JS 改动：applyAccent 对任何 accent 名都直接设 data-accent 属性，
+       CSS 认名即生效；后台默认主题色需 admin.js ACCENTS 与服务端白名单同步登记。
+       ⚠️ 本文件 border-radius 约 183 处硬编码（--radius 仅 19 处消费），直角化
+       按高频组件族逐个覆盖；头像/圆形元素刻意保留圆形。admin 后台不走本文件。
+       ============================================================ */
+
+    /* ---- ① 颜色层：Win98 经典（银灰桌面 + 海军蓝标题条 + 浮雕银灰按钮） ---- */
+    html[data-accent='win98'] {
+      --brand-400: #3a6ea5;
+      --brand-500: #000080;
+      --background: #c0c0c0;
+      --foreground: #000000;
+      --card: #ffffff;
+      --popover: #ffffff;
+      --secondary: #d4d0c8;
+      --muted: #d4d0c8;
+      --accent: #d4d0c8;
+      --border: #808080;
+      --input: #ffffff;
+      --glow-a: #000080;
+      --glow-b: #3a6ea5;
+    }
+    html[data-accent='win98'].dark {
+      --background: #3a3a3a;
+      --card: #2b2b2b;
+      --popover: #303030;
+      --secondary: #404040;
+      --muted: #404040;
+      --accent: #454545;
+      --border: #5a5a5a;
+      --input: #2b2b2b;
+      --brand-400: #7ba7d0;
+    }
+
+    /* ---- ① 颜色层：早期门户（淡蓝底 + 白卡 + 深蓝页头条，宋体大字报时代） ---- */
+    html[data-accent='portal'] {
+      --brand-400: #4a6f9e;
+      --brand-500: #1f3a60;
+      --background: #e8f0f8;
+      --foreground: #1a1a1a;
+      --card: #ffffff;
+      --popover: #ffffff;
+      --secondary: #dbe7f3;
+      --muted: #dbe7f3;
+      --accent: #e2ecf6;
+      --border: #b8c8d8;
+      --input: #ffffff;
+      --glow-a: #1f3a60;
+      --glow-b: #4a6f9e;
+    }
+    html[data-accent='portal'].dark {
+      --background: #0e1520;
+      --card: #16202e;
+      --popover: #1a2534;
+      --secondary: #1d2838;
+      --muted: #1d2838;
+      --accent: #223044;
+      --border: #2d3d52;
+      --input: #16202e;
+      --brand-400: #6f95c2;
+    }
+
+    /* ---- ① 颜色层：CRT 终端（磷光绿；浅档=白纸绿墨，深档=黑底荧光 + 扫描线） ---- */
+    html[data-accent='crt'] {
+      --brand-400: #0a8f3c;
+      --brand-500: #0a6b2e;
+      --background: #eef2ea;
+      --foreground: #10240f;
+      --card: #f7faf5;
+      --popover: #f7faf5;
+      --secondary: #e2e9dc;
+      --muted: #e2e9dc;
+      --accent: #e6eede;
+      --border: #b9c9b0;
+      --input: #f7faf5;
+      --glow-a: #33ff66;
+      --glow-b: #0a8f3c;
+    }
+    html[data-accent='crt'].dark {
+      --background: #050805;
+      --card: #0a120a;
+      --popover: #0d160d;
+      --secondary: #101a10;
+      --muted: #101a10;
+      --accent: #122012;
+      --border: #1e351e;
+      --input: #0a120a;
+      --brand-400: #33ff66;
+      --brand-500: #33ff66;
+      --glow-a: #33ff66;
+      --glow-b: #33ff66;
+    }
+
+    /* ---- ① 颜色层：老书纸（米黄 + 墨绿/砖红，衬线书卷气） ---- */
+    html[data-accent='oldbook'] {
+      --brand-400: #8a5a3c;
+      --brand-500: #6b3f2a;
+      --background: #f4ecd8;
+      --foreground: #2b241a;
+      --card: #faf5e9;
+      --popover: #faf5e9;
+      --secondary: #ece2cb;
+      --muted: #ece2cb;
+      --accent: #efe6d0;
+      --border: #d9cba9;
+      --input: #faf5e9;
+      --glow-a: #6b3f2a;
+      --glow-b: #8a6a4a;
+    }
+    html[data-accent='oldbook'].dark {
+      --background: #14100a;
+      --card: #1c1710;
+      --popover: #221c13;
+      --secondary: #241e14;
+      --muted: #241e14;
+      --accent: #2a2317;
+      --border: #3a2f1e;
+      --input: #1c1710;
+      --brand-400: #c08a5e;
+    }
+
+    /* ---- ② 结构层：四款共享的「形」（四连选择器；变量覆写 + 组件直角化） ---- */
+    /* 变量覆写：--radius 清零（16 处消费位直角化）、抹掉现代柔和投影、字体总闸。
+       字体按款给：win98/portal/oldbook 宋体/衬线，crt 全等宽（终端本无衬线） */
+    html[data-accent='win98'],
+    html[data-accent='portal'],
+    html[data-accent='crt'],
+    html[data-accent='oldbook'] {
+      --radius: 0;                                 /* --radius 消费面（16 处）直角化 */
+      --shadow-2xs: none; --shadow-xs: none;       /* 抹掉现代柔和投影，浮雕语言另行下发 */
+      --shadow-sm: none; --shadow: none;
+      --shadow-md: none; --shadow-lg: none; --shadow-2xl: none;
+    }
+    html[data-accent='win98'],
+    html[data-accent='portal'] {
+      --font-sans: 'SimSun', 'NSimSun', 'Songti SC', 'STSong', serif;   /* 宋体正文总闸（body/控件全部继承） */
+      --font-mono: 'Courier New', 'Courier', monospace;                 /* 老等宽（时钟/代码/计数器） */
+    }
+    html[data-accent='crt'] {
+      --font-sans: 'Courier New', 'Courier', monospace;   /* 终端一切等宽 */
+      --font-mono: 'Courier New', 'Courier', monospace;
+    }
+    html[data-accent='oldbook'] {
+      --font-sans: 'Songti SC', 'STSong', 'SimSun', 'Georgia', serif;   /* 书卷衬线，比 Win98 宋体软一档 */
+      --font-mono: 'Courier New', 'Courier', monospace;
+    }
+
+    /* 直角化：容器/卡/浮层/输入/按钮族（高频硬编码圆角的主体） */
+    html[data-accent='win98'] .apple-card, html[data-accent='portal'] .apple-card,
+    html[data-accent='crt'] .apple-card, html[data-accent='oldbook'] .apple-card,
+    html[data-accent='win98'] .login-card, html[data-accent='portal'] .login-card,
+    html[data-accent='crt'] .login-card, html[data-accent='oldbook'] .login-card,
+    html[data-accent='win98'] .doc-card, html[data-accent='portal'] .doc-card,
+    html[data-accent='crt'] .doc-card, html[data-accent='oldbook'] .doc-card,
+    html[data-accent='win98'] .note-card, html[data-accent='portal'] .note-card,
+    html[data-accent='crt'] .note-card, html[data-accent='oldbook'] .note-card,
+    html[data-accent='win98'] .board-item, html[data-accent='portal'] .board-item,
+    html[data-accent='crt'] .board-item, html[data-accent='oldbook'] .board-item,
+    html[data-accent='win98'] .cl-entry, html[data-accent='portal'] .cl-entry,
+    html[data-accent='crt'] .cl-entry, html[data-accent='oldbook'] .cl-entry,
+    html[data-accent='win98'] .sched-day-card, html[data-accent='portal'] .sched-day-card,
+    html[data-accent='crt'] .sched-day-card, html[data-accent='oldbook'] .sched-day-card,
+    html[data-accent='win98'] .sched-editor-panel, html[data-accent='portal'] .sched-editor-panel,
+    html[data-accent='crt'] .sched-editor-panel, html[data-accent='oldbook'] .sched-editor-panel,
+    html[data-accent='win98'] .weather-picker-panel, html[data-accent='portal'] .weather-picker-panel,
+    html[data-accent='crt'] .weather-picker-panel, html[data-accent='oldbook'] .weather-picker-panel,
+    html[data-accent='win98'] .bg-picker-panel, html[data-accent='portal'] .bg-picker-panel,
+    html[data-accent='crt'] .bg-picker-panel, html[data-accent='oldbook'] .bg-picker-panel,
+    html[data-accent='win98'] .cmdk-panel, html[data-accent='portal'] .cmdk-panel,
+    html[data-accent='crt'] .cmdk-panel, html[data-accent='oldbook'] .cmdk-panel,
+    html[data-accent='win98'] .ai-model-menu, html[data-accent='portal'] .ai-model-menu,
+    html[data-accent='crt'] .ai-model-menu, html[data-accent='oldbook'] .ai-model-menu,
+    html[data-accent='win98'] .vis-panel, html[data-accent='portal'] .vis-panel,
+    html[data-accent='crt'] .vis-panel, html[data-accent='oldbook'] .vis-panel,
+    html[data-accent='win98'] .mini-playlist, html[data-accent='portal'] .mini-playlist,
+    html[data-accent='crt'] .mini-playlist, html[data-accent='oldbook'] .mini-playlist,
+    html[data-accent='win98'] .lightbox, html[data-accent='portal'] .lightbox,
+    html[data-accent='crt'] .lightbox, html[data-accent='oldbook'] .lightbox,
+    html[data-accent='win98'] .video-box, html[data-accent='portal'] .video-box,
+    html[data-accent='crt'] .video-box, html[data-accent='oldbook'] .video-box,
+    html[data-accent='win98'] .home-entry, html[data-accent='portal'] .home-entry,
+    html[data-accent='crt'] .home-entry, html[data-accent='oldbook'] .home-entry,
+    html[data-accent='win98'] .album-entry, html[data-accent='portal'] .album-entry,
+    html[data-accent='crt'] .album-entry, html[data-accent='oldbook'] .album-entry,
+    html[data-accent='win98'] .profile-view, html[data-accent='portal'] .profile-view,
+    html[data-accent='crt'] .profile-view, html[data-accent='oldbook'] .profile-view,
+    html[data-accent='win98'] #pjaxSkel .ps-card, html[data-accent='portal'] #pjaxSkel .ps-card,
+    html[data-accent='crt'] #pjaxSkel .ps-card, html[data-accent='oldbook'] #pjaxSkel .ps-card,
+    html[data-accent='win98'] #pjaxSkel .ps-ai, html[data-accent='portal'] #pjaxSkel .ps-ai,
+    html[data-accent='crt'] #pjaxSkel .ps-ai, html[data-accent='oldbook'] #pjaxSkel .ps-ai,
+    html[data-accent='win98'] .login-btn, html[data-accent='portal'] .login-btn,
+    html[data-accent='crt'] .login-btn, html[data-accent='oldbook'] .login-btn,
+    html[data-accent='win98'] .login-field input, html[data-accent='portal'] .login-field input,
+    html[data-accent='crt'] .login-field input, html[data-accent='oldbook'] .login-field input,
+    html[data-accent='win98'] .sched-inline-input, html[data-accent='portal'] .sched-inline-input,
+    html[data-accent='crt'] .sched-inline-input, html[data-accent='oldbook'] .sched-inline-input,
+    html[data-accent='win98'] .profilev-input, html[data-accent='portal'] .profilev-input,
+    html[data-accent='crt'] .profilev-input, html[data-accent='oldbook'] .profilev-input,
+    html[data-accent='win98'] .ai-input-bar, html[data-accent='portal'] .ai-input-bar,
+    html[data-accent='crt'] .ai-input-bar, html[data-accent='oldbook'] .ai-input-bar,
+    html[data-accent='win98'] .nav-link, html[data-accent='portal'] .nav-link,
+    html[data-accent='crt'] .nav-link, html[data-accent='oldbook'] .nav-link,
+    html[data-accent='win98'] .board-btn, html[data-accent='portal'] .board-btn,
+    html[data-accent='crt'] .board-btn, html[data-accent='oldbook'] .board-btn,
+    html[data-accent='win98'] .switch-ui, html[data-accent='portal'] .switch-ui,
+    html[data-accent='crt'] .switch-ui, html[data-accent='oldbook'] .switch-ui,
+    html[data-accent='win98'] .theme-toggle, html[data-accent='portal'] .theme-toggle,
+    html[data-accent='crt'] .theme-toggle, html[data-accent='oldbook'] .theme-toggle,
+    html[data-accent='win98'] .login-toggle, html[data-accent='portal'] .login-toggle,
+    html[data-accent='crt'] .login-toggle, html[data-accent='oldbook'] .login-toggle,
+    html[data-accent='win98'] .search-toggle, html[data-accent='portal'] .search-toggle,
+    html[data-accent='crt'] .search-toggle, html[data-accent='oldbook'] .search-toggle {
+      border-radius: 0;
+    }
+    /* 头像/圆点类（board-avatar/profile-avatar 的 50%）刻意不覆盖：方头像是「坏掉的复古」 */
+    /* 悬浮播放器作用域内自带一套 --radius 重定义，需同位清零（否则播放器独圆） */
+    html[data-accent='win98'] .music-player, html[data-accent='win98'] .music-player__morph-shell,
+    html[data-accent='portal'] .music-player, html[data-accent='portal'] .music-player__morph-shell,
+    html[data-accent='crt'] .music-player, html[data-accent='crt'] .music-player__morph-shell,
+    html[data-accent='oldbook'] .music-player, html[data-accent='oldbook'] .music-player__morph-shell {
+      --radius: 0; --radius-sm: 0; --radius-lg: 0;
+    }
+
+    /* 4 处硬编码 code 字体（--font-mono 改动管不到）补齐老等宽 */
+    html[data-accent='win98'] .cl-entry-body code, html[data-accent='win98'] .doc-article code,
+    html[data-accent='win98'] .ai-msg.bot code, html[data-accent='win98'] .notes-year,
+    html[data-accent='portal'] .cl-entry-body code, html[data-accent='portal'] .doc-article code,
+    html[data-accent='portal'] .ai-msg.bot code, html[data-accent='portal'] .notes-year,
+    html[data-accent='crt'] .cl-entry-body code, html[data-accent='crt'] .doc-article code,
+    html[data-accent='crt'] .ai-msg.bot code, html[data-accent='crt'] .notes-year,
+    html[data-accent='oldbook'] .cl-entry-body code, html[data-accent='oldbook'] .doc-article code,
+    html[data-accent='oldbook'] .ai-msg.bot code, html[data-accent='oldbook'] .notes-year {
+      font-family: 'Courier New', 'Courier', monospace;
+    }
+
+    /* 经典链接色：正文区未访问 #0000ee / 已访问 #551a8b（压掉 3 处 accent 定点规则；
+       crt 不在此列——终端链接用荧光绿，见下方 crt 段） */
+    html[data-accent='win98'] .doc-article a,
+    html[data-accent='win98'] .note-body a,
+    html[data-accent='win98'] .ai-msg.bot a,
+    html[data-accent='portal'] .doc-article a,
+    html[data-accent='portal'] .note-body a,
+    html[data-accent='portal'] .ai-msg.bot a,
+    html[data-accent='oldbook'] .doc-article a,
+    html[data-accent='oldbook'] .note-body a,
+    html[data-accent='oldbook'] .ai-msg.bot a {
+      color: #0000ee;
+      text-decoration: underline;
+    }
+    html[data-accent='win98'] .doc-article a:visited,
+    html[data-accent='win98'] .note-body a:visited,
+    html[data-accent='win98'] .ai-msg.bot a:visited,
+    html[data-accent='portal'] .doc-article a:visited,
+    html[data-accent='portal'] .note-body a:visited,
+    html[data-accent='portal'] .ai-msg.bot a:visited,
+    html[data-accent='oldbook'] .doc-article a:visited,
+    html[data-accent='oldbook'] .note-body a:visited,
+    html[data-accent='oldbook'] .ai-msg.bot a:visited {
+      color: #551a8b;
+    }
+    /* 深色档：经典 #0000ee/#551a8b 在深底不可读，换亮色变体（2026-10-08 目验修正） */
+    html[data-accent='win98'].dark .doc-article a,
+    html[data-accent='win98'].dark .note-body a,
+    html[data-accent='win98'].dark .ai-msg.bot a,
+    html[data-accent='portal'].dark .doc-article a,
+    html[data-accent='portal'].dark .note-body a,
+    html[data-accent='portal'].dark .ai-msg.bot a,
+    html[data-accent='oldbook'].dark .doc-article a,
+    html[data-accent='oldbook'].dark .note-body a,
+    html[data-accent='oldbook'].dark .ai-msg.bot a {
+      color: #7aa5ff;
+    }
+    html[data-accent='win98'].dark .doc-article a:visited,
+    html[data-accent='win98'].dark .note-body a:visited,
+    html[data-accent='win98'].dark .ai-msg.bot a:visited,
+    html[data-accent='portal'].dark .doc-article a:visited,
+    html[data-accent='portal'].dark .note-body a:visited,
+    html[data-accent='portal'].dark .ai-msg.bot a:visited,
+    html[data-accent='oldbook'].dark .doc-article a:visited,
+    html[data-accent='oldbook'].dark .note-body a:visited,
+    html[data-accent='oldbook'].dark .ai-msg.bot a:visited {
+      color: #b39ddb;
+    }
+
+    /* 顶栏毛玻璃胶囊 → 实色标题条：backdrop-filter 显式清掉、实底、直角、1px 实线边 */
+    html[data-accent='win98'] .header-pill,
+    html[data-accent='portal'] .header-pill,
+    html[data-accent='crt'] .header-pill,
+    html[data-accent='oldbook'] .header-pill,
+    html[data-accent='win98'] .nav-drawer,
+    html[data-accent='portal'] .nav-drawer,
+    html[data-accent='crt'] .nav-drawer,
+    html[data-accent='oldbook'] .nav-drawer {
+      -webkit-backdrop-filter: none;
+      backdrop-filter: none;
+      border-radius: 0;
+      background: var(--apple-card);
+      border: 1px solid var(--apple-border);
+      box-shadow: none;
+    }
+    html[data-accent='win98'] .nav-drawer-mask,
+    html[data-accent='portal'] .nav-drawer-mask,
+    html[data-accent='crt'] .nav-drawer-mask,
+    html[data-accent='oldbook'] .nav-drawer-mask,
+    html[data-accent='win98'] .cmdk-backdrop,
+    html[data-accent='portal'] .cmdk-backdrop,
+    html[data-accent='crt'] .cmdk-backdrop,
+    html[data-accent='oldbook'] .cmdk-backdrop,
+    html[data-accent='win98'] .login-gate,
+    html[data-accent='portal'] .login-gate,
+    html[data-accent='crt'] .login-gate,
+    html[data-accent='oldbook'] .login-gate {
+      -webkit-backdrop-filter: none;
+      backdrop-filter: none;
+    }
+    html[data-accent='win98'] .apple-card.appear-panel,
+    html[data-accent='portal'] .apple-card.appear-panel,
+    html[data-accent='crt'] .apple-card.appear-panel,
+    html[data-accent='oldbook'] .apple-card.appear-panel {
+      border-top-right-radius: 0;
+      border-bottom-right-radius: 0;
+      border-bottom-left-radius: 0;
+    }
+
+    /* Win98 浮雕语言：银灰双线 outset（上左亮/下右暗=凸），按下翻 inset（98 按压本体） */
+    html[data-accent='win98'] .header-pill,
+    html[data-accent='win98'] .nav-drawer {
+      background: #d4d0c8;
+      border: 1px solid;
+      border-color: #ffffff #404040 #404040 #ffffff;
+    }
+    html[data-accent='win98'] .login-btn,
+    html[data-accent='win98'] .board-btn {
+      background: #d4d0c8;
+      color: #000000;
+      border: 1px solid;
+      border-color: #ffffff #404040 #404040 #ffffff;
+      box-shadow: none;
+    }
+    html[data-accent='win98'] .login-btn:active,
+    html[data-accent='win98'] .board-btn:active {
+      border-color: #404040 #ffffff #ffffff #404040;
+    }
+    html[data-accent='win98'] .login-field input,
+    html[data-accent='win98'] .sched-inline-input,
+    html[data-accent='win98'] .profilev-input {
+      background: #ffffff;
+      border: 1px solid;
+      border-color: #404040 #ffffff #ffffff #404040;
+      color: #000000;
+    }
+    /* 深色档：凹陷改暗色变体，白底太刺眼（2026-10-08 目验修正） */
+    html[data-accent='win98'].dark .login-field input,
+    html[data-accent='win98'].dark .sched-inline-input,
+    html[data-accent='win98'].dark .profilev-input {
+      background: #1a1a1a;
+      border-color: #101010 #6a6a6a #6a6a6a #101010;
+      color: #e8e8e8;
+    }
+    /* 98 标题条语言：当前导航项=海军蓝实底白字（替代现代反色胶囊） */
+    html[data-accent='win98'] .nav-link.active {
+      background: #000080;
+      color: #ffffff;
+    }
+
+    /* 早期门户：顶栏=深蓝页头条白字，白底反白选中项 */
+    html[data-accent='portal'] .header-pill {
+      background: #1f3a60;
+      border-color: #16304f;
+      color: #ffffff;
+    }
+    html[data-accent='portal'] .nav-link {
+      color: #e8f0f8;
+    }
+    html[data-accent='portal'] .nav-link:hover {
+      background: #2f4d78;
+    }
+    html[data-accent='portal'] .nav-link.active {
+      background: #ffffff;
+      color: #1f3a60;
+    }
+    html[data-accent='portal'] .header-actions button,
+    html[data-accent='portal'] .nav-toggle {
+      color: #e8f0f8;
+    }
+
+    /* CRT：扫描线（body::after 满屏 fixed 横纹，pointer-events:none、无动画无闪烁）
+       + 磷光辉光（text-shadow 微光 + 选中/主按钮辉光）；链接不用蓝紫用荧光绿 */
+    html[data-accent='crt'] body::after {
+      content: '';
+      position: fixed;
+      inset: 0;
+      z-index: 1;
+      pointer-events: none;
+      background: repeating-linear-gradient(
+        0deg,
+        rgba(0, 0, 0, 0.10) 0px, rgba(0, 0, 0, 0.10) 1px,
+        transparent 1px, transparent 3px
+      );
+    }
+    html[data-accent='crt'] body {
+      text-shadow: 0 0 2px currentColor;
+    }
+    html[data-accent='crt'] .nav-link.active,
+    html[data-accent='crt'] .login-btn {
+      background: transparent;
+      border: 1px solid var(--brand-400);
+      box-shadow: 0 0 8px rgba(51, 255, 102, 0.45);
+      color: var(--brand-400);
+    }
+    html[data-accent='crt'] .doc-article a,
+    html[data-accent='crt'] .note-body a,
+    html[data-accent='crt'] .ai-msg.bot a {
+      color: var(--brand-400);
+    }
+    html[data-accent='crt'] .doc-article a:visited,
+    html[data-accent='crt'] .note-body a:visited,
+    html[data-accent='crt'] .ai-msg.bot a:visited {
+      color: #22cc55;
+    }
+
+    /* 老书纸：衬线已由 --font-sans 下发，补「纸感」——做旧边框 + 老印刷硬偏移影 */
+    html[data-accent='oldbook'] .apple-card,
+    html[data-accent='oldbook'] .doc-card,
+    html[data-accent='oldbook'] .note-card {
+      border: 1px solid #d9cba9;
+      box-shadow: 2px 2px 0 rgba(107, 63, 42, 0.08);
+    }
+
     /* Dark mode */
     .dark {
       --background: var(--background-900);
@@ -4092,7 +4529,8 @@
 
     .swatch-row {
       display: flex;
-      gap: 14px;
+      flex-wrap: wrap;   /* 色板 9→13 枚（2026-10-08 复古主题）：窄面板自动换行兜底 */
+      gap: 12px;
     }
 
     .swatch {

@@ -2199,7 +2199,11 @@
     { name: 'qinghua', label: '青花', color: '#2f5f96' },
     { name: 'celadon', label: '青瓷', color: '#5d8a72' },
     { name: 'ink', label: '水墨', color: '#292524' },
-    { name: 'coffee', label: '焙茶', color: '#7c5e3d' }
+    { name: 'coffee', label: '焙茶', color: '#7c5e3d' },
+    { name: 'win98', label: 'Win98', color: '#000080' },
+    { name: 'portal', label: '早期门户', color: '#1f3a60' },
+    { name: 'crt', label: 'CRT终端', color: '#33ff66' },
+    { name: 'oldbook', label: '老书纸', color: '#6b3f2a' }
   ];
   var currentAccent = null;
 

@@ -10,6 +10,9 @@
 import { json } from '../lib/util.js';
 import { ensureSchema } from '../lib/migrate.js';
 
+// 公开聚合数据（无鉴权无个体记录）：允许任意来源跨域读取（2026-10-10 /about/ 数据三级链依赖此头）
+const CORS = { 'Access-Control-Allow-Origin': '*' };
+
 export async function onRequestGet({ env }) {
   try {
     await ensureSchema(env);
@@ -39,9 +42,9 @@ export async function onRequestGet({ env }) {
         checkins: checkins ? Number(checkins.n) || 0 : 0,
         days,
       },
-    });
+    }, 200, CORS);
   } catch {
     // 建表失败/库未绑定/任一条 SQL 挂：不 500 不泄细节，前台按失败隐藏数据卡
-    return json({ ok: false });
+    return json({ ok: false }, 200, CORS);
   }
 }

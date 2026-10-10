@@ -2,6 +2,10 @@
 // 数据库还没建好或没绑定时返回 ok:false，前端自动走原有的静态文件兜底
 import { json } from '../lib/util.js';
 
+// 公开只读清单：允许任意来源跨域读取（2026-10-10 /about/ 数据三级链的「借线上真数据」依赖此头）。
+// 只读、无个体记录、无凭据参与，ACAO:* 无安全面扩大；失败响应同样要带，客户端才能读到 ok:false 继续回退
+const CORS = { 'Access-Control-Allow-Origin': '*' };
+
 export async function onRequestGet({ env }) {
   try {
     const { results } = await env.DB
@@ -28,8 +32,8 @@ export async function onRequestGet({ env }) {
     const { results: albumRows } = await env.DB
       .prepare('SELECT name FROM albums ORDER BY sort_order, name')
       .all();
-    return json({ ok: true, music, video: pick('video'), images, albums: albumRows.map((r) => r.name) });
+    return json({ ok: true, music, video: pick('video'), images, albums: albumRows.map((r) => r.name) }, 200, CORS);
   } catch {
-    return json({ ok: false });
+    return json({ ok: false }, 200, CORS);
   }
 }

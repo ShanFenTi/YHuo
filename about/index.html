@@ -290,6 +290,19 @@
   var reduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   var PHOTOS = [];
   var PROD = 'https://yhuo.pages.dev'; // 本地库为空时借线上真数据（CORS ACAO:*；媒体 URL 加此前缀）
+  // 快照兜底（2026-10-10 取自线上）：线上 CORS 未生效（旧部署缓存）或离线时仍显示真照片真数字。
+  // 线上部署后第一级永远命中，快照仅本地预览消费，允许过期；照片 URL 为线上相对路径，消费时拼 PROD
+  var SNAPSHOT = {
+    stats: { days: 42, notes: 6, tracks: 2, users: 2, totalVisits: 817, photos: 11 },
+    photos: [
+      { url: '/media/image/04f100aa-07af-4c53-a6cb-be0c623c671d.jpg', cap: '图片' },
+      { url: '/media/image/2fa333f2-7c3c-4898-b2d3-cc61bb605384.jpg', cap: '图片' },
+      { url: '/media/image/8cd4c47e-226f-49ed-8ae7-88af2cd5365a.webp', cap: '图片' },
+      { url: '/media/image/a738adcf-30ea-4d92-a9f5-f959900d9589.webp', cap: '图片' },
+      { url: '/media/image/1b058277-81e8-4765-b518-747258d1dec8.webp', cap: '图片' },
+      { url: '/media/image/72567ce8-9d30-4420-afe6-81cc950c52e2.webp', cap: '图片' },
+    ],
+  };
   function clamp(v, a, b) { return v < a ? a : (v > b ? b : v); }
   function ease(t) { return t * t * (3 - 2 * t); }
   function fmt(n) { return String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ','); }
@@ -346,8 +359,7 @@
     });
   }
   withProdFallback('/api/summary').then(function (r) {
-    if (!r.d) return;
-    var m = r.d.data || {};
+    var m = r.d ? (r.d.data || {}) : SNAPSHOT.stats;
     countUp('stDays', m.days); countUp('stNotes', m.notes); countUp('stTracks', m.tracks);
     countUp('stUsers', m.users); countUp('stVisits', m.totalVisits);
   });
@@ -390,13 +402,16 @@
       var picked = [], seen = {}, rest = [];
       (r.d.images || []).forEach(function (im) {
         var a = (im.album || '').trim();
-        var item = { url: base + im.url, cap: a };
+        var u = im.url.indexOf('http') === 0 ? im.url : base + im.url; // 已是绝对 URL 不重复加前缀
+        var item = { url: u, cap: a };
         if (a && !seen[a]) { seen[a] = true; picked.push(item); }
-        else rest.push({ url: base + im.url, cap: a || '随手拍' });
+        else rest.push({ url: u, cap: a || '随手拍' });
       });
       var i = 0;
       while (picked.length < 6 && i < rest.length) picked.push(rest[i++]);
       PHOTOS = picked.slice(0, 6);
+    } else {
+      PHOTOS = SNAPSHOT.photos.map(function (p) { return { url: PROD + p.url, cap: p.cap }; });
     }
     if (!PHOTOS.length) {
       for (var k = 1; k <= 6; k++) PHOTOS.push({ url: '', cap: '占位 0' + k });

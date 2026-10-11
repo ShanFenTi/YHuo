@@ -2324,25 +2324,25 @@ window.__siteCalendar = (function () {
           }
           field = document.createElement('div');
           field.className = 'denia-bubbles';
-          for (var i = 0; i < 9; i++) {
+          for (var i = 0; i < 20; i++) {
             var b = document.createElement('i');
             b.style.setProperty('--x', bubbleX(0) + 'px');
-            b.style.setProperty('--s', Math.round(Math.random() * 24 + 10) + 'px');
-            b.style.setProperty('--d', (Math.random() * 9 + 9).toFixed(1) + 's');
-            b.style.setProperty('--dl', '-' + (Math.random() * 16).toFixed(1) + 's');
+            b.style.setProperty('--s', Math.round(Math.random() * 34 + 8) + 'px');
+            b.style.setProperty('--d', (Math.random() * 13 + 8).toFixed(1) + 's');
+            b.style.setProperty('--dl', '-' + (Math.random() * 21).toFixed(1) + 's');
             b.style.setProperty('--sway', Math.round(Math.random() * 90 - 45) + 'px');
             field.appendChild(b);
           }
           fg = document.createElement('div');
           fg.className = 'denia-bubbles-fg';
-          for (var j = 0; j < 3; j++) {
+          for (var j = 0; j < 6; j++) {
             var f = document.createElement('i');
             f.style.setProperty('--x', bubbleX(60) + 'px');
-            f.style.setProperty('--s', Math.round(Math.random() * 70 + 90) + 'px');
-            f.style.setProperty('--d', (Math.random() * 14 + 26).toFixed(1) + 's');
-            f.style.setProperty('--dl', '-' + (Math.random() * 30).toFixed(1) + 's');
+            f.style.setProperty('--s', Math.round(Math.random() * 80 + 90) + 'px');
+            f.style.setProperty('--d', (Math.random() * 20 + 24).toFixed(1) + 's');
+            f.style.setProperty('--dl', '-' + (Math.random() * 44).toFixed(1) + 's');
             f.style.setProperty('--sway', Math.round(Math.random() * 160 - 80) + 'px');
-            f.style.setProperty('--o', (Math.random() * 0.06 + 0.13).toFixed(2));
+            f.style.setProperty('--o', (Math.random() * 0.1 + 0.12).toFixed(2));
             fg.appendChild(f);
           }
         }

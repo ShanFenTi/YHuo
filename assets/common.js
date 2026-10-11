@@ -2258,16 +2258,17 @@ window.__siteCalendar = (function () {
       });
     });
 
-    /* ---------- 看板娘 · 达妮娅（2026-10-11，角色主题 denia 专属彩蛋；v2 真 Q版表情包） ----------
+    /* ---------- 看板娘 · 达妮娅（2026-10-11，角色主题 denia 专属彩蛋） ----------
        仅当前主题为 denia 时显示（applyAccent 每次换色都会调 __chibiSync 门控）；
        左下角固定挂件（右下角已被音乐球/外观钮/回顶钮占用），body 直挂不进任何
-       transform 容器（坑 22/28），点击轮换 Q版表情（Tenor 社区 GIF，自托管，署名见
-       denia/chibi-credits.md）+ 冒台词气泡；空闲时她偶尔自己说话；某张 GIF 加载失败
-       自动回落官方全身立绘；reduced-motion 下不注入泡泡群、CSS 全关动画。
+       transform 容器（坑 22/28）；画面=静态官方立绘 denia-full.webp（站长定稿：
+       七款 GIF 姿态与贴纸轮换先不显示，贴纸只在相册「达妮娅 · 表情包」组），
+       交互只剩台词气泡——点击冒一句、空闲 18~32 秒自己冒一句；
+       reduced-motion 下不注入泡泡群、CSS 全关动画。
        pjax 只换 main，本挂件与泡泡层都在 body 上跨换页常驻。 */
     (function () {
       var el = null, pose = null, img = null, bubble = null;
-      var exprIdx = 0, bubbleTimer = 0, idleTimer = 0, fellBack = false;
+      var bubbleTimer = 0, idleTimer = 0;
       var field = null, fg = null, spriteWall = null;
       var reducedMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
       var LINES = [
@@ -2280,18 +2281,9 @@ window.__siteCalendar = (function () {
         '找到你了。',
         '下次再见——До свидания！'
       ];
-      // 表情轮换：只用她自己的 7 款单人 Q版姿态（Tenor 社区，署名 denia/chibi-credits.md）。
-      // 站长收集的 12 款表情包按定稿只进相册「达妮娅 · 表情包」组（assets/dania-chibi/denia-sticker-*），
-      // 不在看板娘身上轮换——左下角只有她（2026-10-11 晚九定稿）
-      var EXPRS = [
-        { src: '/assets/dania-chibi/denia-chibi-01-idle.gif', line: '嘘——这是我们之间的秘密哦？' },
-        { src: '/assets/dania-chibi/denia-chibi-02-sleepy.gif', line: '就再睡五分钟……泡泡帮我看着点。' },
-        { src: '/assets/dania-chibi/denia-chibi-03-pout.gif', line: '哼，就不告诉你。' },
-        { src: '/assets/dania-chibi/denia-chibi-04-search.gif', line: '让我看看你藏了什么好东西。' },
-        { src: '/assets/dania-chibi/denia-chibi-05-nod.gif', line: '嗯嗯，你说得都对。' },
-        { src: '/assets/dania-chibi/denia-chibi-06-heart.gif', line: '夺目甜蜜——比心！' },
-        { src: '/assets/dania-chibi/denia-chibi-08-loading.gif', line: '终幕加载中……稍等哦。' }
-      ];
+      // 表情姿态 GIF（七款 Tenor 单人 Q版 + 站长 12 款贴纸）按站长定稿 2026-10-11 晚十**先不显示**，
+      // 看板娘回归静态官方立绘（denia-full.webp），交互只保留台词气泡；轮换机制可从
+      // git 历史（e87cb98/08c1ef1）随时找回。贴纸图仍供相册「达妮娅 · 表情包」组引用。
       var FALLBACK = '/assets/dania-chibi/denia-full.webp';
       function say(line) {
         bubble.textContent = line;
@@ -2307,25 +2299,17 @@ window.__siteCalendar = (function () {
         pose = document.createElement('div');
         pose.className = 'chibi-pose';
         img = document.createElement('img');
-        img.src = EXPRS[0].src;
+        img.src = FALLBACK; // 静态官方立绘：七款 GIF 姿态先不显示（站长定稿）
         img.alt = '达妮娅';
         img.draggable = false;
-        img.addEventListener('error', function () {
-          // GIF 缺失/加载失败回落官方全身立绘，只回落一次防循环
-          if (fellBack || img.src.indexOf(FALLBACK) !== -1) return;
-          fellBack = true;
-          img.src = FALLBACK;
-        });
         pose.appendChild(img);
         bubble = document.createElement('div');
         bubble.className = 'chibi-bubble';
         el.appendChild(pose);
         el.appendChild(bubble);
       el.addEventListener('click', function () {
-        stepExpr(true);
+        say(LINES[Math.floor(Math.random() * LINES.length)]);
       });
-      el.addEventListener('mouseenter', function () { hoverHold = true; });  // 悬停暂停自动轮换
-      el.addEventListener('mouseleave', function () { hoverHold = false; });
         document.body.appendChild(el);
         // 泡泡上升群（泡泡与饵）：denia 下流星退场（CSS），这里补两群泡泡——
         // .denia-bubbles 在内容层后面（细密小泡泡），.denia-bubbles-fg 飘在内容之上（大而淡）
@@ -2373,20 +2357,14 @@ window.__siteCalendar = (function () {
       // （站长 12 款表情包在前 + Tenor 7 款殿后，19 款转一圈），悬停在她身上时暂停轮换，
       // 免得正看着被切走；台词只在轮到带专属句的款或三成概率时冒，免得隔几秒就唠叨。
       // 点击仍是立即手动换下一张并必冒台词。
-      var ROT_MIN = 9000, ROT_VAR = 3000, hoverHold = false;
-      function stepExpr(manual) {
-        exprIdx = (exprIdx + 1) % EXPRS.length;
-        img.src = EXPRS[exprIdx].src;
-        var line = EXPRS[exprIdx].line;
-        if (manual || line || Math.random() < 0.3) say(line || LINES[Math.floor(Math.random() * LINES.length)]);
-      }
-      function armRotate() {
+      // 交互只剩台词：空闲 18~32 秒自己冒一句，图片不切换
+      function idleChat() {
         clearTimeout(idleTimer);
         idleTimer = setTimeout(function () {
           if (!el || el.hidden) return;
-          if (!hoverHold) stepExpr(false);
-          armRotate();
-        }, ROT_MIN + Math.random() * ROT_VAR);
+          say(LINES[Math.floor(Math.random() * LINES.length)]);
+          idleChat();
+        }, 18000 + Math.random() * 14000);
       }
       window.__chibiSync = function (accent) {
         if (!document.body) return;
@@ -2406,7 +2384,7 @@ window.__siteCalendar = (function () {
           if (mount && !spriteWall.parentNode) document.body.appendChild(spriteWall);
           else if (!mount && spriteWall.parentNode) spriteWall.parentNode.removeChild(spriteWall);
         }
-        if (on) armRotate();
+        if (on) idleChat();
         else {
           clearTimeout(idleTimer);
           bubble.classList.remove('show');

@@ -164,6 +164,7 @@
     .act .pin { position: static; height: auto; overflow: visible; padding: 40px 0 20px; }
     .pcard { opacity: 1 !important; transform: none !important; }
     .cnr { display: none; }
+    .arc-svg, .arc-lbl { display: none; } /* 点亮进度环是钉屏 scrub 的伴随指示，堆叠态照片一次全可见，环只剩莫名的空圈（2026-10-11 站长实报「这又是什么」） */
   }
   @media (prefers-reduced-motion: reduce) {
     .rv { opacity: 1; transform: none; transition: none; }

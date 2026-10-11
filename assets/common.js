@@ -1013,8 +1013,32 @@ window.__siteCalendar = (function () {
       }
       playVideoAt(0);
     }
+    // 角色主题专属视频：denia 主题下轮播只播 denia-* 视频（以后加新主题视频照此前缀命名即自动归组）；
+    // 其他主题播完整清单；过滤后为空则回退全量，保证轮播永不空
+    function videoNameOf(item) {
+      return typeof item === 'string' ? item : (item.name || item.title || '');
+    }
+    function themeFilterVideos(list, accent) {
+      if (accent !== 'denia') return list;
+      var hit = list.filter(function (item) { return /^denia[-_.]/i.test(videoNameOf(item)); });
+      return hit.length ? hit : list;
+    }
+    // 全量清单留底；主题切换时经 applyAccent 钩子重滤（不在首页/没数据时不动）
+    var videoListAll = [];
+    function syncVideoTheme(accent) {
+      if (!homeVideo || !homeVideo.isConnected || FLAGS_OFF.video || !videoListAll.length) return;
+      var next = themeFilterVideos(videoListAll, accent || document.documentElement.getAttribute('data-accent') || 'terracotta');
+      var cur = videoList.length ? videoSrcOf(videoList[videoIndex]) : '';
+      videoList = next;
+      for (var i = 0; i < next.length; i++) {
+        if (videoSrcOf(next[i]) === cur) { videoIndex = i; return; } // 当前视频仍在列表：校正下标接着播，不重载不打断
+      }
+      applyVideoModeStart(); // 当前视频被滤掉（如正播旧短片时切进 denia）：按播放模式重选
+    }
+    window.__homeVideoSync = syncVideoTheme;
     function playVideoList(list) {
-      videoList = list;
+      videoListAll = list;
+      videoList = themeFilterVideos(list, document.documentElement.getAttribute('data-accent') || 'terracotta');
       applyVideoModeStart();
     }
     // 后台清单 + 静态文件夹合并显示：后台的排前面，同名去重
@@ -2132,6 +2156,7 @@ window.__siteCalendar = (function () {
       });
       if (accentNameEl) accentNameEl.textContent = accentNames[name] || name;
       if (window.__chibiSync) window.__chibiSync(name); // 看板娘随主题进出（denia 专属）
+      if (window.__homeVideoSync) window.__homeVideoSync(name); // 首页轮播随主题重滤（denia 下只播 denia-* 视频）
     }
     var savedAccent = null;
     try { savedAccent = localStorage.getItem('accent'); } catch (e) {}

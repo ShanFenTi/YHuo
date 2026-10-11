@@ -4,8 +4,9 @@ import { json } from '../../lib/util.js';
 import { ensureSchema } from '../../lib/migrate.js';
 
 // 2026-10-07 四款完整主题（连纸底一起染）此前漏登——后台设为青花等会被 400 拒，本批补上；
-// 2026-10-08 四款复古主题（win98/portal/crt/oldbook，前台 site.css 同名 data-accent 变量块）同批登记
-const ACCENTS = ['terracotta', 'purple', 'pink', 'green', 'orange', 'qinghua', 'celadon', 'ink', 'coffee', 'win98', 'portal', 'crt', 'oldbook'];
+// 2026-10-08 四款复古主题（win98/portal/crt/oldbook，前台 site.css 同名 data-accent 变量块）同批登记；
+// 2026-10-11 角色主题「达妮娅 · 粉焰剧场」（denia，鸣潮角色，前台 site.css 同名变量块）登记
+const ACCENTS = ['terracotta', 'purple', 'pink', 'green', 'orange', 'qinghua', 'celadon', 'ink', 'coffee', 'win98', 'portal', 'crt', 'oldbook', 'denia'];
 
 // 功能开关白名单（true=显示，缺省开）。ai 不在此列——跟随 AI 页全局开关（site_settings.ai_enabled）
 // album（相册界面）2026-10-01 随 /album/ 第九页恢复重新入列（2026-09-05 曾移除）；misc（杂项界面）已随功能移除：旧库存量里的同名键会被忽略

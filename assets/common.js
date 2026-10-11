@@ -2119,7 +2119,8 @@ window.__siteCalendar = (function () {
     var accentNames = {
       terracotta: '陶土', purple: '紫色', pink: '粉色', green: '绿色', orange: '橙色',
       qinghua: '青花', celadon: '青瓷', ink: '水墨', coffee: '焙茶',
-      win98: 'Win98 经典', portal: '早期门户', crt: 'CRT 终端', oldbook: '老书纸'
+      win98: 'Win98 经典', portal: '早期门户', crt: 'CRT 终端', oldbook: '老书纸',
+      denia: '达妮娅'
     };
     var accentNameEl = document.getElementById('accentName');
 
@@ -2130,6 +2131,7 @@ window.__siteCalendar = (function () {
         b.classList.toggle('active', b.getAttribute('data-accent') === name);
       });
       if (accentNameEl) accentNameEl.textContent = accentNames[name] || name;
+      if (window.__chibiSync) window.__chibiSync(name); // 看板娘随主题进出（denia 专属）
     }
     var savedAccent = null;
     try { savedAccent = localStorage.getItem('accent'); } catch (e) {}
@@ -2162,6 +2164,152 @@ window.__siteCalendar = (function () {
         try { localStorage.setItem('accent', name); } catch (e) {}
       });
     });
+
+    /* ---------- 看板娘 · 达妮娅（2026-10-11，角色主题 denia 专属彩蛋；v2 真 Q版表情包） ----------
+       仅当前主题为 denia 时显示（applyAccent 每次换色都会调 __chibiSync 门控）；
+       左下角固定挂件（右下角已被音乐球/外观钮/回顶钮占用），body 直挂不进任何
+       transform 容器（坑 22/28），点击轮换 Q版表情（Tenor 社区 GIF，自托管，署名见
+       denia/chibi-credits.md）+ 冒台词气泡；空闲时她偶尔自己说话；某张 GIF 加载失败
+       自动回落官方全身立绘；reduced-motion 下不注入泡泡群、CSS 全关动画。
+       pjax 只换 main，本挂件与泡泡层都在 body 上跨换页常驻。 */
+    (function () {
+      var el = null, pose = null, img = null, bubble = null;
+      var exprIdx = 0, bubbleTimer = 0, idleTimer = 0, fellBack = false;
+      var field = null, fg = null, spriteWall = null;
+      var reducedMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      var LINES = [
+        '嘘——这是我们之间的秘密哦？',
+        '终幕之后，就随便逛逛吧。',
+        '夺目甜蜜，今天也要甜一点。',
+        '泡泡与饵——你会上钩吗？',
+        '相册里留了我的写真，去看呀。',
+        '今天也在偷偷学习哦。',
+        '找到你了。',
+        '下次再见——До свидания！'
+      ];
+      // 表情轮换：站长收集的表情包 12 款优先（denia-sticker-*），Tenor 社区 7 款殿后（署名 denia/chibi-credits.md）
+      var EXPRS = [];
+      (function () {
+        for (var s = 1; s <= 12; s++) {
+          EXPRS.push({ src: '/assets/dania-chibi/denia-sticker-' + (s < 10 ? '0' : '') + s + '.gif', line: '' });
+        }
+        EXPRS.push(
+          { src: '/assets/dania-chibi/denia-chibi-01-idle.gif', line: '嘘——这是我们之间的秘密哦？' },
+          { src: '/assets/dania-chibi/denia-chibi-02-sleepy.gif', line: '就再睡五分钟……泡泡帮我看着点。' },
+          { src: '/assets/dania-chibi/denia-chibi-03-pout.gif', line: '哼，就不告诉你。' },
+          { src: '/assets/dania-chibi/denia-chibi-04-search.gif', line: '让我看看你藏了什么好东西。' },
+          { src: '/assets/dania-chibi/denia-chibi-05-nod.gif', line: '嗯嗯，你说得都对。' },
+          { src: '/assets/dania-chibi/denia-chibi-06-heart.gif', line: '夺目甜蜜——比心！' },
+          { src: '/assets/dania-chibi/denia-chibi-08-loading.gif', line: '终幕加载中……稍等哦。' }
+        );
+      })();
+      var FALLBACK = '/assets/dania-chibi/denia-full.webp';
+      function say(line) {
+        bubble.textContent = line;
+        bubble.classList.add('show');
+        clearTimeout(bubbleTimer);
+        bubbleTimer = setTimeout(function () { bubble.classList.remove('show'); }, 2800);
+      }
+      function build() {
+        el = document.createElement('div');
+        el.id = 'chibiMascot';
+        el.className = 'chibi-mascot';
+        el.hidden = true;
+        pose = document.createElement('div');
+        pose.className = 'chibi-pose';
+        img = document.createElement('img');
+        img.src = EXPRS[0].src;
+        img.alt = '达妮娅';
+        img.draggable = false;
+        img.addEventListener('error', function () {
+          // GIF 缺失/加载失败回落官方全身立绘，只回落一次防循环
+          if (fellBack || img.src.indexOf(FALLBACK) !== -1) return;
+          fellBack = true;
+          img.src = FALLBACK;
+        });
+        pose.appendChild(img);
+        bubble = document.createElement('div');
+        bubble.className = 'chibi-bubble';
+        el.appendChild(pose);
+        el.appendChild(bubble);
+        el.addEventListener('click', function () {
+          exprIdx = (exprIdx + 1) % EXPRS.length;
+          img.src = EXPRS[exprIdx].src;
+          say(EXPRS[exprIdx].line || LINES[Math.floor(Math.random() * LINES.length)]);
+        });
+        document.body.appendChild(el);
+        // 泡泡上升群（泡泡与饵）：denia 下流星退场（CSS），这里补两群泡泡——
+        // .denia-bubbles 在内容层后面（细密小泡泡），.denia-bubbles-fg 飘在内容之上（大而淡）
+        if (!reducedMotion) {
+          field = document.createElement('div');
+          field.className = 'denia-bubbles';
+          for (var i = 0; i < 9; i++) {
+            var b = document.createElement('i');
+            b.style.setProperty('--x', (Math.random() * 96 + 2).toFixed(1) + '%');
+            b.style.setProperty('--s', Math.round(Math.random() * 24 + 10) + 'px');
+            b.style.setProperty('--d', (Math.random() * 9 + 9).toFixed(1) + 's');
+            b.style.setProperty('--dl', '-' + (Math.random() * 16).toFixed(1) + 's');
+            b.style.setProperty('--sway', Math.round(Math.random() * 90 - 45) + 'px');
+            field.appendChild(b);
+          }
+          fg = document.createElement('div');
+          fg.className = 'denia-bubbles-fg';
+          for (var j = 0; j < 3; j++) {
+            var f = document.createElement('i');
+            f.style.setProperty('--x', (18 + Math.random() * 64).toFixed(1) + '%');
+            f.style.setProperty('--s', Math.round(Math.random() * 70 + 90) + 'px');
+            f.style.setProperty('--d', (Math.random() * 14 + 26).toFixed(1) + 's');
+            f.style.setProperty('--dl', '-' + (Math.random() * 30).toFixed(1) + 's');
+            f.style.setProperty('--sway', Math.round(Math.random() * 160 - 80) + 'px');
+            f.style.setProperty('--o', (Math.random() * 0.06 + 0.13).toFixed(2));
+            fg.appendChild(f);
+          }
+        }
+        // 右缘大幅立绘水印（静态图不受 reduced-motion 约束）
+        spriteWall = document.createElement('img');
+        spriteWall.className = 'denia-sprite-wall';
+        spriteWall.src = FALLBACK;
+        spriteWall.alt = '';
+        spriteWall.draggable = false;
+      }
+      function idleChat() {
+        clearTimeout(idleTimer);
+        idleTimer = setTimeout(function () {
+          if (el && !el.hidden) {
+            var e = EXPRS[Math.floor(Math.random() * EXPRS.length)];
+            img.src = e.src;
+            say(e.line || LINES[Math.floor(Math.random() * LINES.length)]);
+            idleChat();
+          }
+        }, 18000 + Math.random() * 14000);
+      }
+      window.__chibiSync = function (accent) {
+        if (!document.body) return;
+        if (!el) build();
+        var on = accent === 'denia';
+        el.hidden = !on;
+        var mount = on;
+        if (field) {
+          if (mount && !field.parentNode) document.body.appendChild(field);
+          else if (!mount && field.parentNode) field.parentNode.removeChild(field);
+        }
+        if (fg) {
+          if (mount && !fg.parentNode) document.body.appendChild(fg);
+          else if (!mount && fg.parentNode) fg.parentNode.removeChild(fg);
+        }
+        if (spriteWall) {
+          if (mount && !spriteWall.parentNode) document.body.appendChild(spriteWall);
+          else if (!mount && spriteWall.parentNode) spriteWall.parentNode.removeChild(spriteWall);
+        }
+        if (on) idleChat();
+        else {
+          clearTimeout(idleTimer);
+          bubble.classList.remove('show');
+        }
+      };
+      // 启动时 applyAccent 可能先于本段执行（那时 __chibiSync 还不存在），这里按当前属性补一次初态
+      window.__chibiSync(document.documentElement.getAttribute('data-accent') || 'terracotta');
+    })();
 
     function applyDim(v) {
       if (bgDimLayer) bgDimLayer.style.opacity = v / 100;

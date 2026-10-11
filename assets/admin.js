@@ -2203,7 +2203,8 @@
     { name: 'win98', label: 'Win98', color: '#000080' },
     { name: 'portal', label: '早期门户', color: '#1f3a60' },
     { name: 'crt', label: 'CRT终端', color: '#33ff66' },
-    { name: 'oldbook', label: '老书纸', color: '#6b3f2a' }
+    { name: 'oldbook', label: '老书纸', color: '#6b3f2a' },
+    { name: 'denia', label: '达妮娅', color: '#c25571' }
   ];
   var currentAccent = null;
 
@@ -2212,7 +2213,7 @@
   var ACCENT_SW2 = {
     terracotta: '#f8f7f4', purple: '#f8f7f4', pink: '#f8f7f4', green: '#f8f7f4', orange: '#f8f7f4',
     qinghua: '#f6f7f9', celadon: '#f4f6f2', ink: '#f7f6f3', coffee: '#f9f5ee',
-    win98: '#c0c0c0', portal: '#e8f0f8', crt: '#0a120a', oldbook: '#f4ecd8'
+    win98: '#c0c0c0', portal: '#e8f0f8', crt: '#0a120a', oldbook: '#f4ecd8', denia: '#faf4f2'
   };
   var ACCENT_RETRO = { win98: true, portal: true, crt: true, oldbook: true };
 
@@ -4521,6 +4522,9 @@
     var jobs = [
       { type: 'image', url: '/images/manifest.json', pick: function (m) { return m && m.files ? m.files : []; } },
       {
+        type: 'image', url: '/denia/manifest.json', pick: function (m) { return m && m.files ? m.files : []; } // 角色素材包（带 album 字段，2026-10-11）
+      },
+      {
         type: 'music', url: '/music/playlist.json',
         pick: function (m) { return (m || []).map(function (n) { return { title: n, url: 'music/' + n }; }); }
       },
@@ -4538,7 +4542,7 @@
         var existing = {};
         (items[job.type] || []).forEach(function (it) { existing[it.title] = true; });
         job.pick(m).forEach(function (f) {
-          if (f && f.title && !existing[f.title]) pending.push({ type: job.type, title: f.title, url: f.url });
+          if (f && f.title && !existing[f.title]) pending.push({ type: job.type, title: f.title, url: f.url, album: f.album || '' });
         });
       }).catch(function () {}).then(function () {
         done++;

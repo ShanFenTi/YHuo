@@ -67,10 +67,15 @@ export async function onRequestPost({ request, env }) {
     await env.MEDIA.put(key, buf, { metadata: { mime: mime || 'application/octet-stream' } });
 
     sortOrder += 1;
+    const album = String((f && f.album) || '').trim().slice(0, 60);
     await env.DB
-      .prepare('INSERT INTO media (type, title, r2_key, mime, size, sort_order) VALUES (?, ?, ?, ?, ?, ?)')
-      .bind(type, title, key, mime, buf.byteLength, sortOrder)
+      .prepare('INSERT INTO media (type, title, r2_key, mime, size, sort_order, album) VALUES (?, ?, ?, ?, ?, ?, ?)')
+      .bind(type, title, key, mime, buf.byteLength, sortOrder, album)
       .run();
+    // 清单里带了相册就保证 albums 表有对应行（同 upload.js；2026-10-11 达妮娅主题素材批量导入用）
+    if (album) {
+      await env.DB.prepare('INSERT OR IGNORE INTO albums (name) VALUES (?)').bind(album).run();
+    }
     existing.add(title);
     imported += 1;
   }

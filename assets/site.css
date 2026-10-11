@@ -223,6 +223,158 @@
       --brand-400: #b18d5f;
     }
 
+    /* 达妮娅 · 粉焰剧场（2026-10-11，鸣潮 Denia）：角色专属主题。
+       粉发（玫瑰粉）× 热熔（焰金）× 终幕剧场（暗夜李紫深色）——
+       浅色=暖白透粉纸底玫瑰红主色，深色=剧场幕布紫黑提亮粉；
+       光斑=玫瑰粉×焰金（呼应技能「织梦盛宴 / 泡泡与饵 / 终幕」意象）。 */
+    html[data-accent='denia'] {
+      --brand-400: #e07a92;
+      --brand-500: #c25571;
+      --background: #faf4f2;
+      --card: #fffcfd;
+      --popover: #fffbfd;
+      --secondary: #f3e9e8;
+      --muted: #f3e9e8;
+      --accent: #f6edeb;
+      --border: #ecd9da;
+      --input: #dcc3c5;
+      --glow-a: #e88ba3;
+      --glow-b: #f2a878;
+    }
+    html[data-accent='denia'].dark {
+      --background: #17111a;
+      --card: #221a24;
+      --popover: #281f2a;
+      --secondary: #241b26;
+      --muted: #241b26;
+      --accent: #2b202c;
+      --border: #3a2d3c;
+      --input: #3a2d3c;
+      --brand-400: #ec93a8;
+    }
+
+    /* 达妮娅专属细节（仅 denia 挂载）：选中色 / 正文链接渐变下划线 / 泡泡光斑。
+       泡泡层照 crt body::after 先例（fixed 满屏装饰、pointer-events:none、零 JS），
+       纯静态径向渐变无动画，reduced-motion 天然合规；
+       z-index:-1 与画布层同档，内容之下、体背景之上。 */
+    html[data-accent='denia'] ::selection {
+      background: #e88ba3;
+      color: #fff;
+    }
+    html[data-accent='denia'].dark ::selection {
+      background: #ec93a8;
+      color: #17111a;
+    }
+    html[data-accent='denia'] .page-main p a:not(.btn):hover {
+      text-decoration: none;
+      background-image: linear-gradient(90deg, #c25571, #f2a878);
+      background-repeat: no-repeat;
+      background-size: 100% 2px;
+      background-position: 0 100%;
+    }
+    /* —— 达妮娅加量细节（2026-10-11 晚，站长反馈「主题还不够足」）——
+       流星→泡泡：泡泡与饵是她的技能签名，denia 下流星层整体退场、
+       一群泡泡从页底缓缓升起（common.js 仅 denia+非 reduced-motion 时注入 .denia-bubbles，
+       负 animation-delay 预填充，进页即有泡泡在场）；顶栏胶囊/滚动条染粉；
+       深色档泡泡层顶部加一道舞台聚光。 */
+    html[data-accent='denia'] .fx-meteors { display: none; }
+    html[data-accent='denia'] .header-pill {
+      background: color-mix(in srgb, var(--brand-400) 10%, var(--card));
+      border-color: color-mix(in srgb, var(--brand-400) 32%, var(--border));
+    }
+    /* 导航激活胶囊从墨黑换玫瑰——顶栏一眼可辨的主题元素 */
+    html[data-accent='denia'] .nav-link.active {
+      background: var(--brand-500);
+      color: #fff;
+    }
+    /* 首页时钟的毫秒与冒号染玫瑰（大标题区最显眼的点缀） */
+    html[data-accent='denia'] .clock-ms,
+    html[data-accent='denia'] .clock-colon {
+      color: color-mix(in srgb, var(--brand-500) 72%, var(--foreground));
+    }
+    html[data-accent='denia'] ::-webkit-scrollbar-thumb {
+      background: color-mix(in srgb, var(--brand-400) 45%, transparent);
+    }
+    html[data-accent='denia'] ::-webkit-scrollbar-thumb:hover {
+      background: color-mix(in srgb, var(--brand-400) 70%, transparent);
+    }
+    /* 右缘大幅立绘水印（common.js 随主题注入，官方全身透明立绘） */
+    .denia-sprite-wall {
+      position: fixed;
+      right: 1.5vw;
+      bottom: 4vh;
+      z-index: -1;
+      width: min(23vw, 360px);
+      pointer-events: none;
+      user-select: none;
+      -webkit-user-select: none;
+      opacity: .18;
+      filter: drop-shadow(0 10px 30px rgba(194, 85, 113, .12));
+    }
+    html[data-accent='denia'].dark .denia-sprite-wall { opacity: .26; }
+    /* 前景缓升大泡泡：飘在内容之上（z 30，低于顶栏 50/挂件 40），大而淡不遮字 */
+    .denia-bubbles-fg {
+      position: fixed;
+      inset: 0;
+      z-index: 30;
+      pointer-events: none;
+      overflow: hidden;
+    }
+    .denia-bubbles-fg i {
+      position: absolute;
+      bottom: -160px;
+      left: var(--x);
+      width: var(--s);
+      height: var(--s);
+      border-radius: 50%;
+      border: 1px solid rgba(232, 139, 163, .30);
+      background: radial-gradient(circle at 32% 30%, rgba(255, 255, 255, .30), rgba(232, 139, 163, .03) 60%);
+      filter: blur(1px);
+      opacity: 0;
+      animation: denia-rise-fg var(--d) linear infinite;
+      animation-delay: var(--dl);
+    }
+    @keyframes denia-rise-fg {
+      0% { transform: translate(0, 0); opacity: 0; }
+      12% { opacity: var(--o, .16); }
+      85% { opacity: var(--o, .16); }
+      100% { transform: translate(var(--sway), -112vh); opacity: 0; }
+    }
+    .denia-bubbles {
+      position: fixed;
+      inset: 0;
+      z-index: -1;
+      pointer-events: none;
+      overflow: hidden;
+    }
+    html[data-accent='denia'].dark .denia-bubbles {
+      background: radial-gradient(ellipse 90% 46% at 50% -8%, rgba(236, 147, 168, .12), transparent 72%);
+    }
+    .denia-bubbles i {
+      position: absolute;
+      bottom: -48px;
+      left: var(--x);
+      width: var(--s);
+      height: var(--s);
+      border-radius: 50%;
+      border: 1px solid rgba(232, 139, 163, .38);
+      background: radial-gradient(circle at 32% 30%, rgba(255, 255, 255, .55), rgba(232, 139, 163, .05) 62%);
+      opacity: 0;
+      animation: denia-rise var(--d) linear infinite;
+      animation-delay: var(--dl);
+    }
+    @keyframes denia-rise {
+      0% { transform: translate(0, 0); opacity: 0; }
+      10% { opacity: .85; }
+      88% { opacity: .45; }
+      100% { transform: translate(var(--sway), -108vh); opacity: 0; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      html[data-accent='denia'] body::after { animation: none; }
+      .denia-bubbles, .denia-bubbles-fg { display: none; }
+      .denia-bubbles i, .denia-bubbles-fg i { animation: none; }
+    }
+
     /* ============================================================
        复古主题（2026-10-08 站长提出，「很多年前的网站」）：四款全做，
        完整复古皮肤=不只换色，还连「形」一起换。实现拆两层：
@@ -8987,4 +9139,67 @@
       #introRoot, #introRoot .intro-brand, #introRoot .intro-dot, #introRoot .intro-sub,
       #introRoot .intro-progress, #introRoot .intro-progress > i,
       #introRoot .intro-progress.is-real::after { animation-duration: 1ms !important; }
+    }
+
+    /* —— 看板娘 · 达妮娅（2026-10-11，角色主题 denia 专属彩蛋）——
+       仅当前主题为 denia 时由 common.js 注入显示（window.__chibiSync 门控，随主题切换进出）。
+       位置=左下角（右下角已被音乐球/外观圆钮/回顶钮占用）；fixed 直挂 body、不进任何
+       transform 容器（坑 22/28），动画只落在 img 叶子节点上；reduced-motion 全关。 */
+    .chibi-mascot {
+      position: fixed;
+      left: 14px;
+      bottom: calc(14px + env(safe-area-inset-bottom));
+      z-index: 40;
+      cursor: pointer;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+    .chibi-pose { transform-origin: 50% 100%; transition: transform .25s ease; }
+    .chibi-mascot:hover .chibi-pose { transform: scale(1.05); }
+    .chibi-pose.chibi-tilt-l { transform: rotate(-5deg); }
+    .chibi-pose.chibi-tilt-r { transform: rotate(5deg); }
+    .chibi-pose.chibi-bounce { transform: translateY(-10px) scale(1.03); }
+    .chibi-mascot img {
+      display: block;
+      height: 150px;
+      width: auto;
+      filter: drop-shadow(0 6px 14px rgba(0, 0, 0, .16));
+      animation: chibi-bob 3.4s ease-in-out infinite;
+    }
+    @keyframes chibi-bob {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-7px); }
+    }
+    .chibi-bubble {
+      position: absolute;
+      left: 6px;
+      bottom: calc(100% + 10px);
+      white-space: nowrap;
+      max-width: 250px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      background: color-mix(in srgb, var(--card) 93%, transparent);
+      color: var(--foreground, #1f1b18);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 8px 12px;
+      font-size: 12.5px;
+      line-height: 1.6;
+      box-shadow: 0 8px 20px rgba(0, 0, 0, .10);
+      opacity: 0;
+      translate: 0 6px;
+      transition: opacity .3s ease, translate .3s ease;
+      pointer-events: none;
+    }
+    .chibi-bubble.show { opacity: 1; translate: 0 0; }
+    .chibi-mascot[hidden] { display: none; }
+    @media (max-width: 640px) {
+      .chibi-mascot { left: 8px; bottom: calc(8px + env(safe-area-inset-bottom)); }
+      .chibi-mascot img { height: 88px; }
+      .chibi-bubble { max-width: 190px; font-size: 12px; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .chibi-mascot img { animation: none; }
+      .chibi-pose { transition: none; }
+      .chibi-bubble { transition: none; }
     }

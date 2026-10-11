@@ -1235,6 +1235,36 @@
     });
   }
 
+  // ---------- QQ 音乐批量匹配封面（2026-10-11）：按歌名搜 QQ 音乐取专辑图，下载进 KV 存本站不热链 ----------
+  // 服务端单次处理 ≤10 条并返回 remaining，前端循环到零；一轮全失败（如接口被墙）即停轮防死循环。
+  function qqCoverBatch() {
+    ask({
+      title: '匹配封面（QQ 音乐）',
+      msg: '按歌名搜索 QQ 音乐，把首个匹配结果的专辑封面下载存到本站（不热链）；已有封面的歌自动跳过，可在封面编辑里重做单曲。开始匹配？',
+      okText: '开始匹配',
+      cb: function (yes) {
+        if (!yes) return;
+        var matched = 0, failed = [];
+        var round = function () {
+          api('/api/admin/qq-cover', { method: 'POST' }).then(function (d) {
+            if (!d.ok) { toast(d.error || '匹配失败', 'err'); return; }
+            matched += d.matched;
+            failed = failed.concat(d.failed || []);
+            if (d.matched > 0 && d.remaining > 0) {
+              toast('匹配中… 已匹配 ' + matched + ' 张，剩余 ' + d.remaining + ' 首', '', true);
+              setTimeout(round, 500);
+              return;
+            }
+            if (matched) loadList();
+            toast(matched ? '匹配完成：' + matched + ' 张封面已存入' + (failed.length ? '，' + failed.length + ' 首无匹配' : '') : '没有匹配到任何封面' + (failed.length ? '（' + failed.length + ' 首）' : ''), matched ? 'ok' : 'err');
+          }).catch(function () { toast('网络错误，匹配中断', 'err'); });
+        };
+        round();
+      },
+    });
+  }
+  if ($('qqCoverBtn')) $('qqCoverBtn').addEventListener('click', qqCoverBatch);
+
   function renderList() {
     var list = $('list');
     var arr = items[currentType] || [];
@@ -4153,6 +4183,8 @@
     // 首页视频播放模式栏：仅视频页显示，进入时加载设置
     var vbar = $('videoModeBar');
     if (vbar) vbar.hidden = type !== 'video';
+    var qcb = $('qqCoverBtn');
+    if (qcb) qcb.hidden = type !== 'music'; // QQ 音乐封面批量匹配钮只在音乐页出现
     if (type === 'video') loadVideoMode();
     // 功能界面切换动效：给新显示的面板挂一次进入动画（与上一次不是同一面板时才播）
     var targetPanel = isOverview ? $('overviewPanel') :

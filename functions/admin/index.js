@@ -176,6 +176,7 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
       <div id="mediaPanel" hidden>
     <div class="page-head">
       <div><h2 id="mediaPhTitle">音乐管理</h2><p class="ph-desc" id="mediaPhDesc">站内曲库：前台迷你播放条与悬浮播放器的数据源。</p></div>
+      <button type="button" class="ghost" id="qqCoverBtn" hidden>匹配封面（QQ 音乐）</button>
     </div>
     <div class="upload-row" id="uploadRow">
       <input type="file" id="fileInput" multiple>

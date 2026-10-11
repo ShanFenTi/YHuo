@@ -1,20 +1,20 @@
-  /* 语义变量对齐前台 site.css 暖白纸感（浅色）/ 纯黑纸面（深色）；改色值要两块同步 */
+  /* 语义变量对齐前台 site.css denia 粉焰剧场（浅=暖白透粉纸底 / 深=暗夜李紫剧场幕布）；改色值要两块同步 */
   :root, [data-theme="light"] {
-    --bg: #f8f7f4; --card: #ffffff; --fg: #1b1c1e; --bg-fg: #f8f7f4;
-    --muted: #5f6166; --border: #e6e3da; --chip: #f0ede6; --chip-hover: #e7e3d8;
-    --input-bg: #ffffff; --hover: #f0ede6; --row-line: #eceae1;
+    --bg: #faf4f2; --card: #fffcfd; --fg: #1b1c1e; --bg-fg: #faf4f2;
+    --muted: #5f6166; --border: #ecd9da; --chip: #f3e9e8; --chip-hover: #f6edeb;
+    --input-bg: #fffbfd; --hover: #f6edeb; --row-line: #f3e7e7;
     --shadow: 0 1px 3px rgba(28,25,20,.06), 0 12px 32px rgba(28,25,20,.07);
     --ok: #16a34a; --warn: #d97706; --danger: #dc2626;
-    /* 陶土主题色（对齐前台 terracotta #b0532b）：主按钮/焦点环/进度条/图表强调/开关选中走这里 */
-    --brand: #b0532b; --on-brand: #ffffff;
+    /* 达妮娅主题色（对齐前台 denia brand-500 #c25571）：主按钮/焦点环/进度条/图表强调/开关选中走这里 */
+    --brand: #c25571; --on-brand: #ffffff;
   }
   [data-theme="dark"] {
-    --bg: #000000; --card: #1c1c1e; --fg: #f5f5f7; --bg-fg: #000000;
-    --muted: #8e8e93; --border: #2c2c2e; --chip: #2c2c2e; --chip-hover: #3a3a3c;
-    --input-bg: #232325; --hover: #2c2c2e; --row-line: #2c2c2e;
+    --bg: #17111a; --card: #221a24; --fg: #f5f0f2; --bg-fg: #17111a;
+    --muted: #a59aa0; --border: #3a2d3c; --chip: #241b26; --chip-hover: #2b202c;
+    --input-bg: #281f2a; --hover: #2b202c; --row-line: #2c222e;
     --shadow: 0 1px 3px rgba(0,0,0,.5);
     --ok: #4ade80; --warn: #fbbf24; --danger: #f87171;
-    --brand: #c96a42; --on-brand: #ffffff;
+    --brand: #ec93a8; --on-brand: #17111a;
   }
   /* ---------- 动效令牌（对齐参考博客站的缓动体系：长缓出 + 轻回弹） ---------- */
   :root {

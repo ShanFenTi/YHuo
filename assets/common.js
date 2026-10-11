@@ -2334,11 +2334,19 @@ window.__siteCalendar = (function () {
         // 泡泡上升群（泡泡与饵）：denia 下流星退场（CSS），这里补两群泡泡——
         // .denia-bubbles 在内容层后面（细密小泡泡），.denia-bubbles-fg 飘在内容之上（大而淡）
         if (!reducedMotion) {
+          // 左下角只留看板娘（站长定稿）：泡泡生成时避开她的角落——桌面 x<210 / 手机 x<140
+          // 视为禁区（她的宽度+悬停放大+安全边距），像素定位按生成当期视口宽取点
+          var edgeSafe = (window.innerWidth <= 640) ? 140 : 210;
+          function bubbleX(extra) {
+            var wpx = window.innerWidth || 1280;
+            var lo = Math.min(edgeSafe + (extra || 0), wpx - 60);
+            return Math.round(lo + Math.random() * Math.max(4, wpx - 40 - lo));
+          }
           field = document.createElement('div');
           field.className = 'denia-bubbles';
           for (var i = 0; i < 9; i++) {
             var b = document.createElement('i');
-            b.style.setProperty('--x', (Math.random() * 96 + 2).toFixed(1) + '%');
+            b.style.setProperty('--x', bubbleX(0) + 'px');
             b.style.setProperty('--s', Math.round(Math.random() * 24 + 10) + 'px');
             b.style.setProperty('--d', (Math.random() * 9 + 9).toFixed(1) + 's');
             b.style.setProperty('--dl', '-' + (Math.random() * 16).toFixed(1) + 's');
@@ -2349,7 +2357,7 @@ window.__siteCalendar = (function () {
           fg.className = 'denia-bubbles-fg';
           for (var j = 0; j < 3; j++) {
             var f = document.createElement('i');
-            f.style.setProperty('--x', (18 + Math.random() * 64).toFixed(1) + '%');
+            f.style.setProperty('--x', bubbleX(60) + 'px');
             f.style.setProperty('--s', Math.round(Math.random() * 70 + 90) + 'px');
             f.style.setProperty('--d', (Math.random() * 14 + 26).toFixed(1) + 's');
             f.style.setProperty('--dl', '-' + (Math.random() * 30).toFixed(1) + 's');

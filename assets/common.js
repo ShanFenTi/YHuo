@@ -2280,22 +2280,18 @@ window.__siteCalendar = (function () {
         '找到你了。',
         '下次再见——До свидания！'
       ];
-      // 表情轮换：站长收集的表情包 12 款优先（denia-sticker-*），Tenor 社区 7 款殿后（署名 denia/chibi-credits.md）
-      var EXPRS = [];
-      (function () {
-        for (var s = 1; s <= 12; s++) {
-          EXPRS.push({ src: '/assets/dania-chibi/denia-sticker-' + (s < 10 ? '0' : '') + s + '.gif', line: '' });
-        }
-        EXPRS.push(
-          { src: '/assets/dania-chibi/denia-chibi-01-idle.gif', line: '嘘——这是我们之间的秘密哦？' },
-          { src: '/assets/dania-chibi/denia-chibi-02-sleepy.gif', line: '就再睡五分钟……泡泡帮我看着点。' },
-          { src: '/assets/dania-chibi/denia-chibi-03-pout.gif', line: '哼，就不告诉你。' },
-          { src: '/assets/dania-chibi/denia-chibi-04-search.gif', line: '让我看看你藏了什么好东西。' },
-          { src: '/assets/dania-chibi/denia-chibi-05-nod.gif', line: '嗯嗯，你说得都对。' },
-          { src: '/assets/dania-chibi/denia-chibi-06-heart.gif', line: '夺目甜蜜——比心！' },
-          { src: '/assets/dania-chibi/denia-chibi-08-loading.gif', line: '终幕加载中……稍等哦。' }
-        );
-      })();
+      // 表情轮换：只用她自己的 7 款单人 Q版姿态（Tenor 社区，署名 denia/chibi-credits.md）。
+      // 站长收集的 12 款表情包按定稿只进相册「达妮娅 · 表情包」组（assets/dania-chibi/denia-sticker-*），
+      // 不在看板娘身上轮换——左下角只有她（2026-10-11 晚九定稿）
+      var EXPRS = [
+        { src: '/assets/dania-chibi/denia-chibi-01-idle.gif', line: '嘘——这是我们之间的秘密哦？' },
+        { src: '/assets/dania-chibi/denia-chibi-02-sleepy.gif', line: '就再睡五分钟……泡泡帮我看着点。' },
+        { src: '/assets/dania-chibi/denia-chibi-03-pout.gif', line: '哼，就不告诉你。' },
+        { src: '/assets/dania-chibi/denia-chibi-04-search.gif', line: '让我看看你藏了什么好东西。' },
+        { src: '/assets/dania-chibi/denia-chibi-05-nod.gif', line: '嗯嗯，你说得都对。' },
+        { src: '/assets/dania-chibi/denia-chibi-06-heart.gif', line: '夺目甜蜜——比心！' },
+        { src: '/assets/dania-chibi/denia-chibi-08-loading.gif', line: '终幕加载中……稍等哦。' }
+      ];
       var FALLBACK = '/assets/dania-chibi/denia-full.webp';
       function say(line) {
         bubble.textContent = line;

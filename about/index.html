@@ -162,14 +162,15 @@
     .anote { position: static; transform: none; width: auto; margin: 18px 5vw 0; }
     .act { height: auto; }
     .act .pin { position: static; height: auto; overflow: visible; padding: 40px 0 20px; }
-    .pcard { opacity: 1 !important; transform: none !important; }
+    .pcard { transition: opacity .55s ease, transform .55s ease; }
+    .pcard.in { opacity: 1 !important; transform: none !important; } /* 堆叠态入场：IO 观察到进视口后加 .in，错峰淡入上浮（替代桌面钉屏 scrub） */
     .cnr { display: none; }
     .arc-svg, .arc-lbl { display: none; } /* 点亮进度环是钉屏 scrub 的伴随指示，堆叠态照片一次全可见，环只剩莫名的空圈（2026-10-11 站长实报「这又是什么」） */
   }
   @media (prefers-reduced-motion: reduce) {
     .rv { opacity: 1; transform: none; transition: none; }
     .intro { display: none; }
-    .pcard { opacity: 1 !important; transform: none !important; }
+    .pcard { opacity: 1 !important; transform: none !important; transition: none; }
   }
 </style>
 <link rel="stylesheet" href="/assets/site.css">
@@ -399,6 +400,7 @@
     if (!cards.length) {
       grid.innerHTML = '<div class="p-label" style="grid-column:1/-1;color:var(--muted);font-size:13px;">还没有照片——上传后这一幕自动亮起来。</div>';
     }
+    applyAlbumMode(); // 照片卡是异步构建的，建好后按当前模式接线（堆叠=IO 揭示 / 桌面=scrub）
   }
   withProdFallback('/api/playlist').then(function (r) {
     if (r.d) {
@@ -436,18 +438,20 @@
     var total = act.offsetHeight - window.innerHeight;
     var p = total <= 0 ? 1 : clamp(-act.getBoundingClientRect().top / total, 0, 1);
     corners.forEach(function (c) { c.style.opacity = clamp(p * 8, 0, 1).toFixed(2); });
-    var n = cards.length, lit = 0;
-    cards.forEach(function (card, i) {
-      var s = 0.1 + (i / Math.max(1, n)) * 0.72;
-      var o = ease(clamp((p - s) / 0.07, 0, 1));
-      card.style.opacity = o.toFixed(2);
-      card.style.transform = 'translateY(' + ((1 - o) * 26).toFixed(1) + 'px) scale(' + (0.94 + 0.06 * o).toFixed(3) + ')';
-      if (o > 0.6) lit++;
-    });
-    if (n) {
-      arcFg.style.strokeDashoffset = (ARC * (1 - lit / n)).toFixed(1);
-      arcLbl.textContent = '已点亮 ' + lit + ' / ' + n;
-      albName.textContent = PHOTOS[Math.max(0, lit - 1)].cap;
+    if (!stackedMq.matches) {
+      var n = cards.length, lit = 0;
+      cards.forEach(function (card, i) {
+        var s = 0.1 + (i / Math.max(1, n)) * 0.72;
+        var o = ease(clamp((p - s) / 0.07, 0, 1));
+        card.style.opacity = o.toFixed(2);
+        card.style.transform = 'translateY(' + ((1 - o) * 26).toFixed(1) + 'px) scale(' + (0.94 + 0.06 * o).toFixed(3) + ')';
+        if (o > 0.6) lit++;
+      });
+      if (n) {
+        arcFg.style.strokeDashoffset = (ARC * (1 - lit / n)).toFixed(1);
+        arcLbl.textContent = '已点亮 ' + lit + ' / ' + n;
+        albName.textContent = PHOTOS[Math.max(0, lit - 1)].cap;
+      }
     }
     autoVis(activeSection() === 'top' && !auto.on);
   }
@@ -464,7 +468,38 @@
     if (cards.length) cards.forEach(function (c) { c.style.opacity = 1; c.style.transform = 'none'; });
     arcFg.style.strokeDashoffset = '0';
   }
+
+  /* 堆叠态（≤860，钉屏退化为普通流）入场揭示：照片卡错峰淡入上浮。
+     桌面 scrub 在堆叠下不存在，帧驱动也不再写内联样式（frame() 按 stackedMq 分流），两种模式经 applyAlbumMode 互切互斥 */
+  var stackedMq = window.matchMedia('(max-width: 860px)');
+  var sio = null, ioSeq = 0; // sio：堆叠态照片专用观察器——勿用 io，那是上方 .rv 章节揭示的（var 同作用域重声明会覆盖它）
+  function stackedReveal() {
+    cards.forEach(function (c) { c.style.opacity = ''; c.style.transform = ''; });
+    if (reduced) return; // reduced-motion：CSS !important 直出，无动效
+    if (!('IntersectionObserver' in window)) { cards.forEach(function (c) { c.classList.add('in'); }); return; }
+    if (sio) sio.disconnect();
+    ioSeq = 0;
+    sio = new IntersectionObserver(function (entries) {
+      entries.forEach(function (en) {
+        if (!en.isIntersecting) return;
+        sio.unobserve(en.target);
+        en.target.style.transitionDelay = Math.floor(ioSeq++ / 2) * 90 + 'ms'; // 两列网格逐行错峰（0/0/90/90/180…）
+        en.target.classList.add('in');
+      });
+    }, { rootMargin: '0px 0px -10% 0px' });
+    cards.forEach(function (c) { sio.observe(c); });
+    if (cards.length && PHOTOS.length) albName.textContent = PHOTOS[0].cap; // 「点亮读出」在堆叠下没有过程，直接给首图归属
+  }
+  function applyAlbumMode() {
+    if (stackedMq.matches) { stackedReveal(); return; }
+    if (sio) { sio.disconnect(); sio = null; }
+    cards.forEach(function (c) { c.classList.remove('in'); c.style.transitionDelay = ''; });
+  }
+
   frame();
+  applyAlbumMode();
+  if (stackedMq.addEventListener) stackedMq.addEventListener('change', applyAlbumMode);
+  else if (stackedMq.addListener) stackedMq.addListener(applyAlbumMode);
 
   /* 自动展示（点播） */
   function autoVis(show) { if (!reduced) hint.hidden = !show; }

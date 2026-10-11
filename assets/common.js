@@ -485,9 +485,9 @@ window.__siteCalendar = (function () {
       themeRevealStyle.id = 'theme-reveal-style';
       document.head.appendChild(themeRevealStyle);
     }
-    // ⚠️ /about/（滚动叙事介绍页）没有站点外壳：顶栏/播放器/浮层元素一概不存在，
+    // ⚠️ 无外壳页面（如已移除的 /about/，2026-10-08 白屏死表盘根因）没有站点外壳：顶栏/播放器/浮层元素一概不存在，
     // 启动期凡直接绑外壳元素的必须先判空，否则一个 TypeError 会打断整个 IIFE、
-    // 连尾部 runPageHook(currentPage,'init') 都到不了（2026-10-08 /about/ 白屏死表盘根因）
+    // 连尾部 runPageHook(currentPage,'init') 都到不了
     if (themeBtn) themeBtn.addEventListener('click', function () {
       if (themeSwitching) return;
       var isDark = document.documentElement.classList.contains('dark');
@@ -573,8 +573,8 @@ window.__siteCalendar = (function () {
     var PAGE_KEY = document.documentElement.getAttribute('data-page') || 'home'; // 当前页面（各页 <html> 上标死）
     var onGatePassedPageHook = null; // 游客门通过后的页面回调（课表页等需登录页面注册；passGate 触发）
     var schedPageCleanup = null;     // 课表页 document 级监听的清理函数（离页摘除防叠加）
-    var PAGE_ROUTE = { home: '/', docs: '/docs/', ai: '/ai/', board: '/board/', schedule: '/schedule/', blog: '/blog/', notes: '/notes/', album: '/album/', about: '/about/' };
-    var PAGE_TITLES = { home: document.title, docs: '关于 - YHuo', ai: 'AI 助手 - YHuo', board: '留言板 - YHuo', schedule: '课表 - YHuo', blog: '预览 - YHuo', notes: '随笔 - YHuo', album: '相册 - YHuo', about: '关于本站 - YHuo' };
+    var PAGE_ROUTE = { home: '/', docs: '/docs/', ai: '/ai/', board: '/board/', schedule: '/schedule/', blog: '/blog/', notes: '/notes/', album: '/album/' };
+    var PAGE_TITLES = { home: document.title, docs: '关于 - YHuo', ai: 'AI 助手 - YHuo', board: '留言板 - YHuo', schedule: '课表 - YHuo', blog: '预览 - YHuo', notes: '随笔 - YHuo', album: '相册 - YHuo' };
 
     // 应用功能开关：给 <html> 打/摘 ff-* 类（CSS 负责隐藏；head 内联脚本已按 localStorage 缓存提前打过，这里按最新配置校正）
     // 并刷新缓存供下次访问首屏预隐藏；天气/歌词条由各自渲染入口判 FLAGS_OFF
@@ -621,7 +621,7 @@ window.__siteCalendar = (function () {
       });
     });
 
-    // 回到顶部按钮（/about/ 无外壳无此钮，判空同 themeBtn）
+    // 回到顶部按钮（无外壳页面无此钮，判空同 themeBtn）
     if (backTopBtn) backTopBtn.addEventListener('click', function () {
       window.scrollTo({ top: 0, behavior: 'smooth' });
     });
@@ -8737,7 +8737,6 @@ window.__siteCalendar = (function () {
         destroy: function () { stopHomeClock(); destroyHomeQuote(); homeLowerAbort(); clearInterval(lyricTypeTimer); lyricTypeTimer = null; heroGlowFx.stop(); }
       },
       docs:  { init: function () { initDocsPage(); }, destroy: stopHealthPoll },
-      about: { init: function () { if (window.__aboutStory) window.__aboutStory.start(); }, destroy: function () { if (window.__aboutStory) window.__aboutStory.stop(); } },
       notes: { init: function () { initNotesPage(); }, onHash: function (h) { notesHandleHash(h); } },
       album: { init: function () { initAlbumPage(); }, destroy: destroyAlbumPage },
       ai:    { init: function () { initAiPage(); }, destroy: destroyAiPage },

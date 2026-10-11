@@ -10,7 +10,7 @@
 import { json } from '../lib/util.js';
 import { ensureSchema } from '../lib/migrate.js';
 
-// 公开聚合数据（无鉴权无个体记录）：允许任意来源跨域读取（2026-10-10 /about/ 数据三级链依赖此头）
+// 公开聚合数据（无鉴权无个体记录）：允许任意来源跨域读取（公开数据无凭据，2026-10-10 起开放）
 const CORS = { 'Access-Control-Allow-Origin': '*' };
 
 export async function onRequestGet({ env }) {

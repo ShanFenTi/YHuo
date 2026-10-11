@@ -2325,11 +2325,11 @@ window.__siteCalendar = (function () {
         bubble.className = 'chibi-bubble';
         el.appendChild(pose);
         el.appendChild(bubble);
-        el.addEventListener('click', function () {
-          exprIdx = (exprIdx + 1) % EXPRS.length;
-          img.src = EXPRS[exprIdx].src;
-          say(EXPRS[exprIdx].line || LINES[Math.floor(Math.random() * LINES.length)]);
-        });
+      el.addEventListener('click', function () {
+        stepExpr(true);
+      });
+      el.addEventListener('mouseenter', function () { hoverHold = true; });  // 悬停暂停自动轮换
+      el.addEventListener('mouseleave', function () { hoverHold = false; });
         document.body.appendChild(el);
         // 泡泡上升群（泡泡与饵）：denia 下流星退场（CSS），这里补两群泡泡——
         // .denia-bubbles 在内容层后面（细密小泡泡），.denia-bubbles-fg 飘在内容之上（大而淡）
@@ -2365,16 +2365,24 @@ window.__siteCalendar = (function () {
         spriteWall.alt = '';
         spriteWall.draggable = false;
       }
-      function idleChat() {
+      // 表情自动轮换（站长要看板娘自己动起来，2026-10-11）：9~12 秒按顺序自己换下一张
+      // （站长 12 款表情包在前 + Tenor 7 款殿后，19 款转一圈），悬停在她身上时暂停轮换，
+      // 免得正看着被切走；台词只在轮到带专属句的款或三成概率时冒，免得隔几秒就唠叨。
+      // 点击仍是立即手动换下一张并必冒台词。
+      var ROT_MIN = 9000, ROT_VAR = 3000, hoverHold = false;
+      function stepExpr(manual) {
+        exprIdx = (exprIdx + 1) % EXPRS.length;
+        img.src = EXPRS[exprIdx].src;
+        var line = EXPRS[exprIdx].line;
+        if (manual || line || Math.random() < 0.3) say(line || LINES[Math.floor(Math.random() * LINES.length)]);
+      }
+      function armRotate() {
         clearTimeout(idleTimer);
         idleTimer = setTimeout(function () {
-          if (el && !el.hidden) {
-            var e = EXPRS[Math.floor(Math.random() * EXPRS.length)];
-            img.src = e.src;
-            say(e.line || LINES[Math.floor(Math.random() * LINES.length)]);
-            idleChat();
-          }
-        }, 18000 + Math.random() * 14000);
+          if (!el || el.hidden) return;
+          if (!hoverHold) stepExpr(false);
+          armRotate();
+        }, ROT_MIN + Math.random() * ROT_VAR);
       }
       window.__chibiSync = function (accent) {
         if (!document.body) return;
@@ -2394,7 +2402,7 @@ window.__siteCalendar = (function () {
           if (mount && !spriteWall.parentNode) document.body.appendChild(spriteWall);
           else if (!mount && spriteWall.parentNode) spriteWall.parentNode.removeChild(spriteWall);
         }
-        if (on) idleChat();
+        if (on) armRotate();
         else {
           clearTimeout(idleTimer);
           bubble.classList.remove('show');

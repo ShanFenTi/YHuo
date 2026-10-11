@@ -156,8 +156,9 @@
   .rv { opacity: 0; transform: translateY(18px); transition: opacity 0.7s ease, transform 0.7s ease; }
   .rv.in { opacity: 1; transform: none; }
 
-  @media (max-width: 760px) {
-    .pgrid { width: 88vw; left: 5vw; grid-template-columns: repeat(2, 1fr); }
+  /* 860 而非 760：并排排版在 760~800px 视口会窄撞（pgrid 右缘 0.55W 越过 anote 左缘 0.95W−320 最多约 8px），提前改上下堆叠 */
+  @media (max-width: 860px) {
+    .pgrid { position: static; width: 88vw; margin: 0 auto; transform: none; grid-template-columns: repeat(2, 1fr); }
     .anote { position: static; transform: none; width: auto; margin: 18px 5vw 0; }
     .act { height: auto; }
     .act .pin { position: static; height: auto; overflow: visible; padding: 40px 0 20px; }
@@ -212,29 +213,32 @@
         <a href="/"><span class="t-no">02.5</span><span class="t-name">搜索 · Ctrl+K</span><span class="t-desc">全站一步直达，藏两个彩蛋</span><span class="t-lead"></span><span class="t-go">任意页按 Ctrl+K</span></a>
       </div>
     </section>
+  </div>
 
-    <section class="ch" style="border-top:none; padding-left:0; padding-right:0; max-width:none;">
-      <div class="act" id="albumAct">
-        <div class="pin">
-          <div class="cnr tl"><i class="h"></i><i class="v"></i></div>
-          <div class="cnr tr"><i class="h"></i><i class="v"></i></div>
-          <div class="cnr bl"><i class="h"></i><i class="v"></i></div>
-          <div class="cnr br"><i class="h"></i><i class="v"></i></div>
-          <div class="pgrid" id="pgrid"><div class="p-label" style="grid-column:1/-1;color:var(--muted);font-size:13px;">照片装载中…</div></div>
-          <div class="anote">
-            <div class="eyebrow">03 · 相册</div>
-            <div class="nb-t">随手看看</div>
-            <div class="nb-b">点开任意一张就是灯箱，喜欢的可以收藏。</div>
-            <div class="alb">ALBUM · <b id="albName">…</b></div>
-            <svg class="arc-svg" width="104" height="104" viewBox="0 0 104 104">
-              <circle class="bg" cx="52" cy="52" r="48"></circle>
-              <circle class="fg" id="arcFg" cx="52" cy="52" r="48" transform="rotate(-90 52 52)"></circle>
-            </svg>
-            <div class="arc-lbl" id="arcLbl">已点亮 0 / 0</div>
-          </div>
+  <!-- 相册幕必须在 .wrap 之外：本幕内部定位全按视口 vw 计（left/right 5vw、取景框 ±15vw、pgrid 宽 min(50vw,720px)），
+       嵌进 980px 容器后锚点变容器而单位仍是视口——屏越宽文字块越往照片上压（2026-10-11 站长实报，预览件同病只是窗口窄没暴露） -->
+  <section class="ch" style="border-top:none; padding-left:0; padding-right:0; max-width:none;">
+    <div class="act" id="albumAct">
+      <div class="pin">
+        <div class="cnr tl"><i class="h"></i><i class="v"></i></div>
+        <div class="cnr tr"><i class="h"></i><i class="v"></i></div>
+        <div class="cnr bl"><i class="h"></i><i class="v"></i></div>
+        <div class="cnr br"><i class="h"></i><i class="v"></i></div>
+        <div class="pgrid" id="pgrid"><div class="p-label" style="grid-column:1/-1;color:var(--muted);font-size:13px;">照片装载中…</div></div>
+        <div class="anote">
+          <div class="eyebrow">03 · 相册</div>
+          <div class="nb-t">随手看看</div>
+          <div class="nb-b">点开任意一张就是灯箱，喜欢的可以收藏。</div>
+          <div class="alb">ALBUM · <b id="albName">…</b></div>
+          <svg class="arc-svg" width="104" height="104" viewBox="0 0 104 104">
+            <circle class="bg" cx="52" cy="52" r="48"></circle>
+            <circle class="fg" id="arcFg" cx="52" cy="52" r="48" transform="rotate(-90 52 52)"></circle>
+          </svg>
+          <div class="arc-lbl" id="arcLbl">已点亮 0 / 0</div>
         </div>
       </div>
-    </section>
+    </div>
+  </section>
 
     <div class="wrap">
       <section class="ch">
@@ -280,7 +284,6 @@
 
       <footer class="foot">YHuo · 由站长手写，慢慢长 · <a href="/docs/" style="text-decoration:underline;text-underline-offset:3px;">更新日志</a></footer>
     </div>
-  </div>
 
   <div class="auto-hint" id="autoHint" hidden>▶ 自动展示</div>
 

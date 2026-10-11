@@ -1247,11 +1247,13 @@ window.__siteCalendar = (function () {
       updatePlayIcon(true);
       lyricTimeSource = null; // 迷你条开播即收回歌词时间源（此前悬浮播放器在播的话交还给迷你条）
       saveMeta();
+      miniArmIdle(); // 播放状态切换给 5 秒看到新状态再收纳
     });
     audio.addEventListener('pause', function () {
       updatePlayIcon(false);
       lyricFinishTyping(); // 歌词横条：暂停时当前句立即补完
       saveMeta();
+      miniArmIdle();
     });
     audio.addEventListener('ended', function () {
       if (!tracks.length) return;
@@ -1513,6 +1515,64 @@ window.__siteCalendar = (function () {
       var show = tracks.length > 0;
       miniPlayer.classList.toggle('show', show);
       document.body.classList.toggle('mini-active', show);
+      if (show) miniArmIdle(); // 条出现（含曲库重扫）即重新开始闲置计时
+    }
+
+    // ---------- 闲置自动收纳（2026-10-11）----------
+    // 曲库非空条常驻太占地：无交互 5 秒整条下沉藏起（.away），鼠标/触点移到屏幕底部
+    // 边缘即浮出（全局被动监听，不新增 DOM 不挡任何点击），键盘 Tab 聚焦进条内同样唤出。
+    // 悬停在条上/底部唤出区停住不收；曲库面板或频谱面板开着不收（计时器到点自动顺延）。
+    // blog 悬浮款式下迷你条本就 display:none，整套逻辑跳过。换页经 closeAllTransientOverlays 重新计时。
+    var MINI_IDLE_MS = 5000;
+    var miniIdleTimer = null;
+    var miniHover = false; // 指针悬在条上（mouseenter/mouseleave 维护）
+    var miniHold = false;  // 指针停在底部唤出区内（mousemove 维护；触屏点按唤出不置位，靠计时至下次触点自然收回）
+    function miniCanDock() {
+      if (!miniPlayer || !miniPlayer.classList.contains('show')) return false;
+      if (document.documentElement.classList.contains('using-blog-player')) return false;
+      if (miniPlaylist && !miniPlaylist.hidden) return false; // 曲库列表面板开着
+      if (document.querySelector('.vis-panel.show')) return false; // 频谱面板开着（尾部 IIFE 注入的独立面板）
+      return true;
+    }
+    function miniDock() {
+      miniPlayer.classList.add('away');
+      document.body.classList.add('mini-idle'); // 回顶按钮回位（避让只为条可见时让路）
+      togglePlaylist(false); // 曲库面板兜底收（面板开着时本不会走到这）
+      try { if (window.__visClosePanel) window.__visClosePanel(); } catch (e) {} // 频谱面板连带收
+    }
+    function miniFire() {
+      miniIdleTimer = null;
+      if (!miniCanDock() || miniHover || miniHold) { miniArmIdle(); return; } // 暂不可收：顺延到下一轮
+      miniDock();
+    }
+    function miniArmIdle() {
+      if (miniIdleTimer) clearTimeout(miniIdleTimer);
+      miniIdleTimer = setTimeout(miniFire, MINI_IDLE_MS);
+    }
+    function miniWake() {
+      if (miniIdleTimer) clearTimeout(miniIdleTimer);
+      miniIdleTimer = null;
+      if (miniPlayer && miniPlayer.classList.contains('show')) {
+        miniPlayer.classList.remove('away');
+        document.body.classList.remove('mini-idle');
+      }
+      miniArmIdle();
+    }
+    document.addEventListener('mousemove', function (e) {
+      miniHold = e.clientY > document.documentElement.clientHeight - 72; // 坑 30：布局视口口径
+      if (miniHold) miniWake();
+      else miniArmIdle();
+    }, { passive: true });
+    document.addEventListener('touchstart', function (e) {
+      var t = e.touches && e.touches[0];
+      if (t && t.clientY > document.documentElement.clientHeight - 64) miniWake();
+      else miniArmIdle();
+    }, { passive: true });
+    if (miniPlayer) {
+      miniPlayer.addEventListener('mouseenter', function () { miniHover = true; miniWake(); });
+      miniPlayer.addEventListener('mouseleave', function () { miniHover = false; miniArmIdle(); });
+      miniPlayer.addEventListener('focusin', miniWake);
+      miniPlayer.addEventListener('focusout', miniArmIdle);
     }
 
     // 曲库扫描结束的统一收口：刷新列表、接续上次进度、补上加载期间点击的播放
@@ -1673,6 +1733,7 @@ window.__siteCalendar = (function () {
         miniPlaylist.classList.add('show');
         var act = miniPlaylistList.querySelector('li.active');
         if (act) act.scrollIntoView({ block: 'nearest' });
+        miniWake(); // 面板开着期间条保持显形（miniCanDock 也会拦，这里把计时重置语义做足）
       } else {
         miniPlaylist.classList.remove('show');
         plCloseTimer = setTimeout(function () {
@@ -2168,6 +2229,13 @@ window.__siteCalendar = (function () {
     function applyPlayerMode(mode) {
       var blog = mode === 'blog';
       document.documentElement.classList.toggle('using-blog-player', blog);
+      // 闲置收纳状态机随款式复位：blog 下迷你条 display:none 不参与；切回迷你条重新计时
+      if (miniIdleTimer) { clearTimeout(miniIdleTimer); miniIdleTimer = null; }
+      if (miniPlayer) {
+        miniPlayer.classList.remove('away');
+        document.body.classList.remove('mini-idle');
+      }
+      if (!blog) miniArmIdle();
       try { localStorage.setItem('yhuoPlayerMode', blog ? 'blog' : 'mini'); } catch (e) {}
       // 款式切换时停掉另一款的 audio：被藏起的播放器继续出声=「看不见的歌」，两边都点会双声
       try {
@@ -8964,6 +9032,7 @@ window.__siteCalendar = (function () {
       try { closeBgPicker(); } catch (e) {}
       try { setAppearOpen(false); } catch (e) {}
       try { setProfileOpen(false); } catch (e) {}
+      miniArmIdle(); // 换页后重新开始闲置计时（外壳播放器跨页常驻）
     }
     function postVisit(path) {
       // 访问计数：pjax 换页也按真实路径上报（每个浏览器会话的首次进入由顶部访问计数块负责）

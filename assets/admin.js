@@ -4893,3 +4893,90 @@
 
   loadStatus();
 })();
+
+  // ---------- 达妮娅氛围（2026-10-11：后台对齐前台 denia——右缘立绘水印/两层泡泡/左下角看板娘） ----------
+  // body 级注入一次（后台是单页应用不重挂）；reduced-motion 不注入泡泡；看板娘=静态立绘+台词气泡。
+  (function () {
+    if (document.getElementById('chibiMascot')) return;
+    var reducedMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    var SPRITE = '/assets/dania-chibi/denia-full.webp';
+    var LINES = [
+      '嘘——这是我们之间的秘密哦？',
+      '终幕之后，就随便逛逛吧。',
+      '夺目甜蜜，今天也要甜一点。',
+      '泡泡与饵——你会上钩吗？',
+      '后台也要好好打理哦。',
+      '今天也在偷偷干活呢。',
+      '找到你了。',
+      '辛苦啦——До свидания！'
+    ];
+    // 右缘大幅立绘水印
+    var wall = document.createElement('img');
+    wall.className = 'denia-sprite-wall';
+    wall.src = SPRITE;
+    wall.alt = '';
+    wall.draggable = false;
+    document.body.appendChild(wall);
+    // 看板娘
+    var bubbleTimer = 0, idleTimer = 0, bubble;
+    function say(line) {
+      bubble.textContent = line;
+      bubble.classList.add('show');
+      clearTimeout(bubbleTimer);
+      bubbleTimer = setTimeout(function () { bubble.classList.remove('show'); }, 2800);
+    }
+    var el = document.createElement('div');
+    el.id = 'chibiMascot';
+    el.className = 'chibi-mascot';
+    var pose = document.createElement('div');
+    pose.className = 'chibi-pose';
+    var img = document.createElement('img');
+    img.src = SPRITE;
+    img.alt = '达妮娅';
+    img.draggable = false;
+    pose.appendChild(img);
+    bubble = document.createElement('div');
+    bubble.className = 'chibi-bubble';
+    el.appendChild(pose);
+    el.appendChild(bubble);
+    el.addEventListener('click', function () {
+      say(LINES[Math.floor(Math.random() * LINES.length)]);
+    });
+    document.body.appendChild(el);
+    function idleChat() {
+      clearTimeout(idleTimer);
+      idleTimer = setTimeout(function () {
+        say(LINES[Math.floor(Math.random() * LINES.length)]);
+        idleChat();
+      }, 18000 + Math.random() * 14000);
+    }
+    idleChat();
+    // 泡泡两层（背景 20 细泡 z0 + 前景 6 大泡 z2，参数=前台加量批口径）
+    if (!reducedMotion) {
+      var field = document.createElement('div');
+      field.className = 'denia-bubbles';
+      for (var i = 0; i < 20; i++) {
+        var b = document.createElement('i');
+        b.style.setProperty('--x', (Math.random() * 96 + 2).toFixed(1) + '%');
+        b.style.setProperty('--s', Math.round(Math.random() * 34 + 8) + 'px');
+        b.style.setProperty('--d', (Math.random() * 13 + 8).toFixed(1) + 's');
+        b.style.setProperty('--dl', '-' + (Math.random() * 21).toFixed(1) + 's');
+        b.style.setProperty('--sway', Math.round(Math.random() * 90 - 45) + 'px');
+        field.appendChild(b);
+      }
+      var fg = document.createElement('div');
+      fg.className = 'denia-bubbles-fg';
+      for (var j = 0; j < 6; j++) {
+        var f = document.createElement('i');
+        f.style.setProperty('--x', (18 + Math.random() * 64).toFixed(1) + '%');
+        f.style.setProperty('--s', Math.round(Math.random() * 80 + 90) + 'px');
+        f.style.setProperty('--d', (Math.random() * 20 + 24).toFixed(1) + 's');
+        f.style.setProperty('--dl', '-' + (Math.random() * 44).toFixed(1) + 's');
+        f.style.setProperty('--sway', Math.round(Math.random() * 160 - 80) + 'px');
+        f.style.setProperty('--o', (Math.random() * 0.1 + 0.12).toFixed(2));
+        fg.appendChild(f);
+      }
+      document.body.appendChild(field);
+      document.body.appendChild(fg);
+    }
+  })();

@@ -33,9 +33,20 @@
   * { box-sizing: border-box; margin: 0; }
   body {
     min-height: 100vh;
-    background: var(--bg); color: var(--fg);
+    /* 达妮娅画布光晕（2026-10-11 对齐前台 denia）：玫瑰粉主晕+焰金副晕钉在视口顶部，多层背景直接叠在底色上 */
+    background:
+      radial-gradient(62% 100% at 50% -8%, rgba(232, 139, 163, .16), transparent 62%) top center / 100% 540px no-repeat fixed,
+      radial-gradient(45% 60% at 82% -4%, rgba(242, 168, 120, .10), transparent 65%) top right / 100% 420px no-repeat fixed,
+      var(--bg);
+    color: var(--fg);
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
     transition: background .25s, color .25s;
+  }
+  [data-theme="dark"] body {
+    background:
+      radial-gradient(62% 100% at 50% -8%, rgba(236, 147, 168, .10), transparent 62%) top center / 100% 540px no-repeat fixed,
+      radial-gradient(45% 60% at 82% -4%, rgba(242, 168, 120, .06), transparent 65%) top right / 100% 420px no-repeat fixed,
+      var(--bg);
   }
   /* ---------- 顶栏胶囊（复刻前台 site-header/header-pill）+ 窄屏抽屉侧栏 ---------- */
   .shell { min-height: 100vh; }
@@ -1182,4 +1193,135 @@
     .nb-title { white-space: normal; flex: 1 1 100%; }
     .nb-row .row-actions { margin-left: 0; }
     .nb-foot #noteSaveBtn { margin-left: auto; } /* msg 换行后保存仍靠右 */
+  }
+  /* ---------- 达妮娅氛围（2026-10-11：后台对齐前台 denia——右缘立绘水印/两层泡泡/左下角看板娘） ----------
+     泡泡与挂件由 admin.js 注入 body 级元素；.shell/.gate-wrap 抬 z1 让内容压过背景泡泡层。
+     仅 position+z 不造 fixed 包含块（坑 22/28 只防 transform/filter），注入元素全部 body 直挂。 */
+  .shell, .gate-wrap { position: relative; z-index: 1; }
+  /* 右缘大幅立绘水印（官方全身透明立绘，浅 .18 / 深 .26） */
+  .denia-sprite-wall {
+    position: fixed;
+    right: 1.5vw;
+    bottom: 4vh;
+    z-index: -1;
+    width: min(23vw, 360px);
+    pointer-events: none;
+    user-select: none;
+    -webkit-user-select: none;
+    opacity: .18;
+    filter: drop-shadow(0 10px 30px rgba(194, 85, 113, .12));
+  }
+  [data-theme="dark"] .denia-sprite-wall { opacity: .26; }
+  /* 背景泡泡层：细泡从页底升起（z 0，压在 .shell(z1) 内容之下） */
+  .denia-bubbles {
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    overflow: hidden;
+  }
+  [data-theme="dark"] .denia-bubbles {
+    background: radial-gradient(ellipse 90% 46% at 50% -8%, rgba(236, 147, 168, .12), transparent 72%);
+  }
+  .denia-bubbles i {
+    position: absolute;
+    bottom: -48px;
+    left: var(--x);
+    width: var(--s);
+    height: var(--s);
+    border-radius: 50%;
+    border: 1px solid rgba(232, 139, 163, .38);
+    background: radial-gradient(circle at 32% 30%, rgba(255, 255, 255, .55), rgba(232, 139, 163, .05) 62%);
+    opacity: 0;
+    animation: denia-rise var(--d) linear infinite;
+    animation-delay: var(--dl);
+  }
+  @keyframes denia-rise {
+    0% { transform: translate(0, 0); opacity: 0; }
+    10% { opacity: .85; }
+    88% { opacity: .45; }
+    100% { transform: translate(var(--sway), -108vh); opacity: 0; }
+  }
+  /* 前景大泡：飘在内容之上（z 2，高于 .shell 的 z1），大而淡不遮字 */
+  .denia-bubbles-fg {
+    position: fixed;
+    inset: 0;
+    z-index: 2;
+    pointer-events: none;
+    overflow: hidden;
+  }
+  .denia-bubbles-fg i {
+    position: absolute;
+    bottom: -160px;
+    left: var(--x);
+    width: var(--s);
+    height: var(--s);
+    border-radius: 50%;
+    border: 1px solid rgba(232, 139, 163, .30);
+    background: radial-gradient(circle at 32% 30%, rgba(255, 255, 255, .30), rgba(232, 139, 163, .03) 62%);
+    filter: blur(1px);
+    opacity: 0;
+    animation: denia-rise-fg var(--d) linear infinite;
+    animation-delay: var(--dl);
+  }
+  @keyframes denia-rise-fg {
+    0% { transform: translate(0, 0); opacity: 0; }
+    12% { opacity: var(--o, .16); }
+    85% { opacity: var(--o, .16); }
+    100% { transform: translate(var(--sway), -112vh); opacity: 0; }
+  }
+  /* 看板娘 · 左下角静态官方立绘 + 台词气泡（点击/空闲冒一句，图片不切换） */
+  .chibi-mascot {
+    position: fixed;
+    left: 14px;
+    bottom: calc(14px + env(safe-area-inset-bottom));
+    z-index: 40;
+    cursor: pointer;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+  .chibi-pose { transform-origin: 50% 100%; transition: transform .25s ease; }
+  .chibi-mascot:hover .chibi-pose { transform: scale(1.05); }
+  .chibi-mascot img {
+    display: block;
+    height: 150px;
+    width: auto;
+    filter: drop-shadow(0 6px 14px rgba(0, 0, 0, .16));
+    animation: chibi-bob 3.4s ease-in-out infinite;
+  }
+  @keyframes chibi-bob {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-7px); }
+  }
+  .chibi-bubble {
+    position: absolute;
+    left: 6px;
+    bottom: calc(100% + 10px);
+    white-space: nowrap;
+    max-width: 250px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    background: color-mix(in srgb, var(--card) 93%, transparent);
+    color: var(--fg);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 8px 12px;
+    font-size: 12.5px;
+    line-height: 1.6;
+    box-shadow: 0 8px 20px rgba(0, 0, 0, .10);
+    opacity: 0;
+    translate: 0 6px;
+    transition: opacity .3s ease, translate .3s ease;
+    pointer-events: none;
+  }
+  .chibi-bubble.show { opacity: 1; translate: 0 0; }
+  @media (max-width: 640px) {
+    .chibi-mascot { left: 8px; bottom: calc(8px + env(safe-area-inset-bottom)); }
+    .chibi-mascot img { height: 88px; }
+    .chibi-bubble { max-width: 190px; font-size: 12px; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .denia-bubbles, .denia-bubbles-fg { display: none; }
+    .chibi-mascot img { animation: none; }
+    .chibi-bubble { transition: none; }
   }

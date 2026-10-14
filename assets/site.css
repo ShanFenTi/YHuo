@@ -350,6 +350,12 @@
     html[data-accent='denia'].dark .denia-bubbles {
       background: radial-gradient(ellipse 90% 46% at 50% -8%, rgba(236, 147, 168, .12), transparent 72%);
     }
+    /* 暗色模式不显示泡泡（2026-10-14 站长要求）：CSS 门控切暗色即时收场、切回亮色自动恢复，
+       不动 JS 挂载（View Transitions 切换瞬间也生效）；聚光背景一并隐掉 */
+    html[data-accent='denia'].dark .denia-bubbles,
+    html[data-accent='denia'].dark .denia-bubbles-fg {
+      display: none;
+    }
     .denia-bubbles i {
       position: absolute;
       bottom: -48px;
@@ -373,6 +379,162 @@
       html[data-accent='denia'] body::after { animation: none; }
       .denia-bubbles, .denia-bubbles-fg { display: none; }
       .denia-bubbles i, .denia-bubbles-fg i { animation: none; }
+    }
+
+    /* 爱弥斯 · 星海轻歌（2026-10-14，鸣潮 Aemeath）：角色专属主题，与达妮娅同款全链路。
+       电子幽灵×星海轻歌×长航的星辉——
+       浅色=冷白透丁香纸底电光粉主色（粉发+驾驶服电子扰动），深色=星海夜空紫黑提亮星辉粉；
+       光斑=电光粉×星辉金（呼应机兵化作星辉穿梭夜空意象）。
+       与达妮娅（暖色焰金系）区分：爱弥斯走冷色电光系。 */
+    html[data-accent='aemeath'] {
+      --brand-400: #c77dbb;
+      --brand-500: #a4529b;
+      --background: #f9f4f9;
+      --card: #fefbfe;
+      --popover: #fefcfe;
+      --secondary: #f2eaf4;
+      --muted: #f2eaf4;
+      --accent: #f5edf6;
+      --border: #e8d8ea;
+      --input: #d9c2dc;
+      --glow-a: #d186c4;
+      --glow-b: #8d7bd6;
+    }
+    html[data-accent='aemeath'].dark {
+      --background: #14101d;
+      --card: #1e1829;
+      --popover: #241c30;
+      --secondary: #201930;
+      --muted: #201930;
+      --accent: #271e35;
+      --border: #372c48;
+      --input: #372c48;
+      --brand-400: #d795cb;
+    }
+
+    /* 爱弥斯专属细节（仅 aemeath 挂载）：选中色 / 正文链接渐变下划线。
+       达妮娅=玫瑰粉→焰金（暖），爱弥斯=电光粉→星辉蓝紫（冷）。 */
+    html[data-accent='aemeath'] ::selection {
+      background: #d186c4;
+      color: #fff;
+    }
+    html[data-accent='aemeath'].dark ::selection {
+      background: #d795cb;
+      color: #14101d;
+    }
+    html[data-accent='aemeath'] .page-main p a:not(.btn):hover {
+      text-decoration: none;
+      background-image: linear-gradient(90deg, #a4529b, #8d7bd6);
+      background-repeat: no-repeat;
+      background-size: 100% 2px;
+      background-position: 0 100%;
+    }
+    /* 星屑升腾群（泡泡同款机制）：电子幽灵的星辉签名，aemeath 下流星退场、
+       一群星屑从页底缓缓升起（common.js 对 aemeath+非 reduced-motion 注入 .aemeath-motes，
+       负 animation-delay 预填充，进页即有星屑在场）；顶栏胶囊/滚动条染电光粉；
+       深色档星屑层顶部加一道星海聚光；暗色不显示（2026-10-14 站长口径，与达妮娅同款） */
+    html[data-accent='aemeath'] .fx-meteors { display: none; }
+    html[data-accent='aemeath'] .header-pill {
+      background: color-mix(in srgb, var(--brand-400) 10%, var(--card));
+      border-color: color-mix(in srgb, var(--brand-400) 32%, var(--border));
+    }
+    /* 导航激活胶囊从墨黑换电光粉——顶栏一眼可辨的主题元素 */
+    html[data-accent='aemeath'] .nav-link.active {
+      background: var(--brand-500);
+      color: #fff;
+    }
+    /* 首页时钟的毫秒与冒号染电光粉（大标题区最显眼的点缀） */
+    html[data-accent='aemeath'] .clock-ms,
+    html[data-accent='aemeath'] .clock-colon {
+      color: color-mix(in srgb, var(--brand-500) 72%, var(--foreground));
+    }
+    html[data-accent='aemeath'] ::-webkit-scrollbar-thumb {
+      background: color-mix(in srgb, var(--brand-400) 45%, transparent);
+    }
+    html[data-accent='aemeath'] ::-webkit-scrollbar-thumb:hover {
+      background: color-mix(in srgb, var(--brand-400) 70%, transparent);
+    }
+    /* 右缘大幅立绘水印（common.js 随主题注入，官方全身透明立绘） */
+    .aemeath-sprite-wall {
+      position: fixed;
+      right: 1.5vw;
+      bottom: 4vh;
+      z-index: -1;
+      width: min(23vw, 360px);
+      pointer-events: none;
+      user-select: none;
+      -webkit-user-select: none;
+      opacity: .18;
+      filter: drop-shadow(0 10px 30px rgba(164, 82, 155, .12));
+    }
+    html[data-accent='aemeath'].dark .aemeath-sprite-wall { opacity: .26; }
+    /* 前景缓升大星屑：飘在内容之上（z 30，低于顶栏 50/挂件 40），大而淡不遮字 */
+    .aemeath-motes-fg {
+      position: fixed;
+      inset: 0;
+      z-index: 30;
+      pointer-events: none;
+      overflow: hidden;
+    }
+    .aemeath-motes-fg i {
+      position: absolute;
+      bottom: -160px;
+      left: var(--x);
+      width: var(--s);
+      height: var(--s);
+      border-radius: 50%;
+      border: 1px solid rgba(209, 134, 196, .30);
+      background: radial-gradient(circle at 32% 30%, rgba(255, 255, 255, .30), rgba(141, 123, 214, .04) 60%);
+      filter: blur(1px);
+      opacity: 0;
+      animation: aemeath-rise-fg var(--d) linear infinite;
+      animation-delay: var(--dl);
+    }
+    @keyframes aemeath-rise-fg {
+      0% { transform: translate(0, 0); opacity: 0; }
+      12% { opacity: var(--o, .16); }
+      85% { opacity: var(--o, .16); }
+      100% { transform: translate(var(--sway), -112vh); opacity: 0; }
+    }
+    .aemeath-motes {
+      position: fixed;
+      inset: 0;
+      z-index: -1;
+      pointer-events: none;
+      overflow: hidden;
+    }
+    html[data-accent='aemeath'].dark .aemeath-motes {
+      background: radial-gradient(ellipse 90% 46% at 50% -8%, rgba(215, 149, 203, .12), transparent 72%);
+    }
+    /* 暗色模式不显示星屑（2026-10-14 站长要求，与达妮娅暗色泡泡同口径）：CSS 门控切暗色即时
+       收场、切回亮色自动恢复，不动 JS 挂载；聚光背景一并隐掉 */
+    html[data-accent='aemeath'].dark .aemeath-motes,
+    html[data-accent='aemeath'].dark .aemeath-motes-fg {
+      display: none;
+    }
+    .aemeath-motes i {
+      position: absolute;
+      bottom: -48px;
+      left: var(--x);
+      width: var(--s);
+      height: var(--s);
+      border-radius: 50%;
+      border: 1px solid rgba(209, 134, 196, .38);
+      background: radial-gradient(circle at 32% 30%, rgba(255, 255, 255, .55), rgba(141, 123, 214, .06) 62%);
+      opacity: 0;
+      animation: aemeath-rise var(--d) linear infinite;
+      animation-delay: var(--dl);
+    }
+    @keyframes aemeath-rise {
+      0% { transform: translate(0, 0); opacity: 0; }
+      10% { opacity: .85; }
+      88% { opacity: .45; }
+      100% { transform: translate(var(--sway), -108vh); opacity: 0; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      html[data-accent='aemeath'] body::after { animation: none; }
+      .aemeath-motes, .aemeath-motes-fg { display: none; }
+      .aemeath-motes i, .aemeath-motes-fg i { animation: none; }
     }
 
     /* ============================================================
@@ -4223,13 +4385,6 @@
       letter-spacing: -0.01em;
       margin: 0 0 8px;
     }
-    .sched-page-lead {
-      font-size: 13px;
-      line-height: 1.6;
-      color: var(--apple-muted-foreground);
-      max-width: 560px;
-      margin: 0;
-    }
     .sched-viewbar {
       display: flex;
       align-items: center;
@@ -7148,12 +7303,6 @@
        随笔页 /notes/（2026-09-07）：notes/notes.json 时间线（与参考博客站 /notes/ 同思路）
        按年份分组；.note 单条 = 日期/天气时段 + 正文（common.js mdToHtml 输出，先转义防注入）
        ========================= */
-    .notes-lead {
-      font-size: 13.5px;
-      color: var(--apple-muted-foreground);
-      margin: -6px 0 12px;
-    }
-
     /* 时间树容器（2026-10-03，参考博客站同款排布）：左主轴竖线 + 年份实心节点 + 每卡空心挂点；
        主轴中心在 padding 盒 x=6px（left 5px + 宽 2px 的一半），年份点 12px 挂 -24px（中心 6 对齐）、
        卡片环 8px 挂 -22px（中心 6 对齐，别改回 -24px 会偏 2px） */
@@ -7416,16 +7565,16 @@
        目标限定 .page-main 内：外壳浮层（外观抽屉/个人主页/登录卡都是 .apple-card）绝不参与揭示。
        用动画不用过渡：过渡规则会常驻压过卡片自身的 hover 过渡；动画 fill 只用 backwards
        （both 会把 transform 残留在已揭示元素上，改掉 fixed 后代的包含块——坑 22 同源）。
-       与 JS 的选择器清单保持同步：album-bar/apple-card/doc-card/note/notes-year/notes-lead
+       与 JS 的选择器清单保持同步：album-bar/apple-card/doc-card/note/notes-year
        ========================= */
     @media (prefers-reduced-motion: no-preference) {
-      html.fx-reveal .page-main :is(.album-bar, .apple-card, .doc-card, .note, .notes-year, .notes-lead):not(.is-revealed) {
+      html.fx-reveal .page-main :is(.album-bar, .apple-card, .doc-card, .note, .notes-year):not(.is-revealed) {
         opacity: 0;
         transform: translateY(1.25rem);
         filter: blur(10px);
       }
 
-      html.fx-reveal .page-main :is(.album-bar, .apple-card, .doc-card, .note, .notes-year, .notes-lead).is-revealed {
+      html.fx-reveal .page-main :is(.album-bar, .apple-card, .doc-card, .note, .notes-year).is-revealed {
         animation: fx-reveal-in 0.6s var(--ease-out) var(--reveal-delay, 0s) backwards;
       }
     }
@@ -9274,11 +9423,36 @@
       .chibi-mascot img { height: 88px; }
       .chibi-bubble { max-width: 190px; font-size: 12px; }
       /* 手机端给立绘+气泡让出底部空间：页面最后一块内容能完整滚到看板娘上方，不被盖住。
-         特异度须压过 html[data-page]:not([data-page=home]) main.page-main 的 padding-bottom:24px */
-      html[data-page][data-accent='denia'] main.page-main { padding-bottom: calc(112px + env(safe-area-inset-bottom)); }
+         特异度须压过 html[data-page]:not([data-page=home]) main.page-main 的 padding-bottom:24px；
+         达妮娅/爱弥斯两角色同款（2026-10-14） */
+      html[data-page][data-accent='denia'] main.page-main,
+      html[data-page][data-accent='aemeath'] main.page-main { padding-bottom: calc(112px + env(safe-area-inset-bottom)); }
     }
     @media (prefers-reduced-motion: reduce) {
       .chibi-mascot img { animation: none; }
       .chibi-pose { transition: none; }
       .chibi-bubble { transition: none; }
+    }
+
+    /* ===== 手机版信息密度批（2026-10-14 站长实报「手机版 UI 缩放有点大，可显示的内容太少」）=====
+       实测字号本身已合理（正文 16px、课程卡 11~14.5px），吃屏的是留白：子页顶部 96px + 课表页头
+       135px + 今日卡 131px，390×844 首屏只能见到一张课程卡的一半。全批仅手机断点生效，桌面零改动。 */
+    @media (max-width: 640px) {
+      /* 子页顶部留白 96→68px：与 AI 页 2026-09-06 同口径（68 = 胶囊下沿 ~58px + 余量），其余子页跟进。
+         特异度与 6815 行子页通用规则同为 0-3-2，靠文件位置更后取胜；AI 页本就 68px，值相同无变化 */
+      html[data-page]:not([data-page="home"]) main.page-main { padding-top: 68px; }
+      /* 卡片内边距 16→12px：全部子页卡片密度整体提升（外观抽屉/个人中心等浮层卡同步收紧，观感一致） */
+      .card-padding { padding: 12px; }
+      .sched-page-head { margin-bottom: 12px; }
+    }
+    @media (max-width: 560px) {
+      /* 课表页头：装饰性眉题隐藏、标题 26→22px，省出约一行课程卡高度 */
+      .sched-page-eyebrow { display: none; }
+      .sched-page-title { font-size: 22px; margin-bottom: 6px; }
+      /* 今日卡/筛选行/视图条/卡间距收紧：14→10px，今日卡上下内边距 16→12px */
+      .sched-today { margin-bottom: 10px; }
+      .sched-today-in { padding: 12px 14px; }
+      .sched-filter-row { margin-bottom: 10px; }
+      .sched-viewbar { margin-bottom: 10px; }
+      .sched-day-list { gap: 10px; }
     }

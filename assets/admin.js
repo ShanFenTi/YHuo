@@ -2234,7 +2234,8 @@
     { name: 'portal', label: '早期门户', color: '#1f3a60' },
     { name: 'crt', label: 'CRT终端', color: '#33ff66' },
     { name: 'oldbook', label: '老书纸', color: '#6b3f2a' },
-    { name: 'denia', label: '达妮娅', color: '#c25571' }
+    { name: 'denia', label: '达妮娅', color: '#c25571' },
+    { name: 'aemeath', label: '爱弥斯', color: '#a4529b' }
   ];
   var currentAccent = null;
 
@@ -2243,7 +2244,7 @@
   var ACCENT_SW2 = {
     terracotta: '#f8f7f4', purple: '#f8f7f4', pink: '#f8f7f4', green: '#f8f7f4', orange: '#f8f7f4',
     qinghua: '#f6f7f9', celadon: '#f4f6f2', ink: '#f7f6f3', coffee: '#f9f5ee',
-    win98: '#c0c0c0', portal: '#e8f0f8', crt: '#0a120a', oldbook: '#f4ecd8', denia: '#faf4f2'
+    win98: '#c0c0c0', portal: '#e8f0f8', crt: '#0a120a', oldbook: '#f4ecd8', denia: '#faf4f2', aemeath: '#f9f4f9'
   };
   var ACCENT_RETRO = { win98: true, portal: true, crt: true, oldbook: true };
 
@@ -2263,7 +2264,7 @@
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ accent: a.name })
         }).then(function (d) {
-          if (d.ok) { currentAccent = d.accent; renderAccents(); toast('默认主题色已保存，前台即刻生效', 'ok'); }
+          if (d.ok) { currentAccent = d.accent; renderAccents(); if (window.__adminChibiSync) window.__adminChibiSync(currentAccent); toast('默认主题色已保存，前台即刻生效', 'ok'); }
           else toast(d.error || '保存失败', 'err');
         }).catch(function () { toast('网络错误', 'err'); });
       });
@@ -2293,6 +2294,7 @@
       if (d.ok) {
         currentAccent = d.accent;
         renderAccents();
+        if (window.__adminChibiSync) window.__adminChibiSync(currentAccent); // 后台氛围随站点默认主题切角色（2026-10-14 爱弥斯加入）
         renderBgPreview(d.bg);
         quoteRows = Array.isArray(d.quotes) ? d.quotes.slice() : [];
         renderQuoteRows();
@@ -4557,6 +4559,9 @@
         type: 'image', url: '/denia/manifest.json', pick: function (m) { return m && m.files ? m.files : []; } // 角色素材包（带 album 字段，2026-10-11）
       },
       {
+        type: 'image', url: '/aemeath/manifest.json', pick: function (m) { return m && m.files ? m.files : []; } // 角色素材包·爱弥斯（带 album 字段，2026-10-14）
+      },
+      {
         type: 'music', url: '/music/playlist.json',
         pick: function (m) { return (m || []).map(function (n) { return { title: n, url: 'music/' + n }; }); }
       },
@@ -4894,26 +4899,47 @@
   loadStatus();
 })();
 
-  // ---------- 达妮娅氛围（2026-10-11：后台对齐前台 denia——右缘立绘水印/两层泡泡/左下角看板娘） ----------
-  // body 级注入一次（后台是单页应用不重挂）；reduced-motion 不注入泡泡；看板娘=静态立绘+台词气泡。
+  // ---------- 角色氛围（2026-10-11 达妮娅首发，2026-10-14 爱弥斯加入：后台对齐前台——右缘立绘水印/两层粒子/左下角看板娘） ----------
+  // body 级注入一次（后台是单页应用不重挂）；reduced-motion 不注入粒子；看板娘=静态立绘+台词气泡。
+  // 后台无前台那种外观抽屉，氛围跟站点默认主题走：loadAppearance/保存默认主题时经 __adminChibiSync 切角色。
   (function () {
     if (document.getElementById('chibiMascot')) return;
     var reducedMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    var SPRITE = '/assets/dania-chibi/denia-full.webp';
-    var LINES = [
-      '嘘——这是我们之间的秘密哦？',
-      '终幕之后，就随便逛逛吧。',
-      '夺目甜蜜，今天也要甜一点。',
-      '泡泡与饵——你会上钩吗？',
-      '后台也要好好打理哦。',
-      '今天也在偷偷干活呢。',
-      '找到你了。',
-      '辛苦啦——До свидания！'
-    ];
+    var ADMIN_THEMES = {
+      denia: {
+        sprite: '/assets/dania-chibi/denia-full.webp',
+        alt: '达妮娅',
+        wall: 'denia-sprite-wall', bubbles: 'denia-bubbles', bubblesFg: 'denia-bubbles-fg',
+        LINES: [
+          '嘘——这是我们之间的秘密哦？',
+          '终幕之后，就随便逛逛吧。',
+          '夺目甜蜜，今天也要甜一点。',
+          '泡泡与饵——你会上钩吗？',
+          '后台也要好好打理哦。',
+          '今天也在偷偷干活呢。',
+          '找到你了。',
+          '辛苦啦——До свидания！'
+        ]
+      },
+      aemeath: {
+        sprite: '/assets/aemeath-chibi/aemeath-full.webp',
+        alt: '爱弥斯',
+        wall: 'aemeath-sprite-wall', bubbles: 'aemeath-motes', bubblesFg: 'aemeath-motes-fg',
+        LINES: [
+          '你，看见我了？',
+          '我是星炬学院的电子幽灵哦。',
+          '长航的星辉——要一起飞吗？',
+          '后台也要好好打理哦。',
+          '今天也在偷偷干活呢。',
+          '飞行雪绒，起飞！',
+          '嘘——幽灵的悄悄话只说给你听。',
+          '辛苦啦——祝你今晚星光满载！'
+        ]
+      }
+    };
+    var cur = null;
     // 右缘大幅立绘水印
     var wall = document.createElement('img');
-    wall.className = 'denia-sprite-wall';
-    wall.src = SPRITE;
     wall.alt = '';
     wall.draggable = false;
     document.body.appendChild(wall);
@@ -4931,8 +4957,6 @@
     var pose = document.createElement('div');
     pose.className = 'chibi-pose';
     var img = document.createElement('img');
-    img.src = SPRITE;
-    img.alt = '达妮娅';
     img.draggable = false;
     pose.appendChild(img);
     bubble = document.createElement('div');
@@ -4940,21 +4964,22 @@
     el.appendChild(pose);
     el.appendChild(bubble);
     el.addEventListener('click', function () {
-      say(LINES[Math.floor(Math.random() * LINES.length)]);
+      var t = ADMIN_THEMES[cur];
+      if (t) say(t.LINES[Math.floor(Math.random() * t.LINES.length)]);
     });
     document.body.appendChild(el);
+    var curLines = ADMIN_THEMES.denia.LINES; // 空闲台词随角色更新
     function idleChat() {
       clearTimeout(idleTimer);
       idleTimer = setTimeout(function () {
-        say(LINES[Math.floor(Math.random() * LINES.length)]);
+        say(curLines[Math.floor(Math.random() * curLines.length)]);
         idleChat();
       }, 18000 + Math.random() * 14000);
     }
-    idleChat();
-    // 泡泡两层（背景 20 细泡 z0 + 前景 6 大泡 z2，参数=前台加量批口径）
+    // 粒子两层（背景 20 细粒 z0 + 前景 6 大粒 z2，参数=前台加量批口径）；类名随角色挂
+    var field = null, fg = null;
     if (!reducedMotion) {
-      var field = document.createElement('div');
-      field.className = 'denia-bubbles';
+      field = document.createElement('div');
       for (var i = 0; i < 20; i++) {
         var b = document.createElement('i');
         b.style.setProperty('--x', (Math.random() * 96 + 2).toFixed(1) + '%');
@@ -4964,8 +4989,7 @@
         b.style.setProperty('--sway', Math.round(Math.random() * 90 - 45) + 'px');
         field.appendChild(b);
       }
-      var fg = document.createElement('div');
-      fg.className = 'denia-bubbles-fg';
+      fg = document.createElement('div');
       for (var j = 0; j < 6; j++) {
         var f = document.createElement('i');
         f.style.setProperty('--x', (18 + Math.random() * 64).toFixed(1) + '%');
@@ -4979,4 +5003,19 @@
       document.body.appendChild(field);
       document.body.appendChild(fg);
     }
+    window.__adminChibiSync = function (accent) {
+      var t = ADMIN_THEMES[accent] || ADMIN_THEMES.denia; // 无角色主题（陶土等）回落达妮娅——后台氛围常驻不空场
+      if (t === ADMIN_THEMES[cur] && wall.src.indexOf(t.sprite) !== -1) return;
+      cur = accent in ADMIN_THEMES ? accent : 'denia';
+      curLines = t.LINES;
+      img.src = t.sprite;
+      img.alt = t.alt;
+      wall.src = t.sprite;
+      wall.className = t.wall;
+      if (field) field.className = t.bubbles;
+      if (fg) fg.className = t.bubblesFg;
+    };
+    // 首屏先挂达妮娅（loadAppearance 到货后按站点默认主题校正）
+    window.__adminChibiSync('denia');
+    idleChat();
   })();

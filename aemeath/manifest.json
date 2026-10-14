@@ -1,0 +1,11 @@
+{
+  "type": "image",
+  "files": [
+    { "title": "爱弥斯 · 全身立绘", "url": "aemeath/official/aemeath-official-01-splash.webp", "album": "爱弥斯 · 官方" },
+    { "title": "爱弥斯 · 珍贵之物 01", "url": "aemeath/official/aemeath-official-02-treasure1.webp", "album": "爱弥斯 · 官方" },
+    { "title": "爱弥斯 · 珍贵之物 02", "url": "aemeath/official/aemeath-official-03-treasure2.webp", "album": "爱弥斯 · 官方" },
+    { "title": "爱弥斯 · 珍贵之物 03", "url": "aemeath/official/aemeath-official-04-treasure3.webp", "album": "爱弥斯 · 官方" },
+    { "title": "爱弥斯 · 角色头像", "url": "aemeath/official/aemeath-official-05-avatar.webp", "album": "爱弥斯 · 官方" },
+    { "title": "爱弥斯 · 首页立绘", "url": "aemeath/official/aemeath-official-06-home.webp", "album": "爱弥斯 · 官方" }
+  ]
+}

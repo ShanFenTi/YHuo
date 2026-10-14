@@ -489,6 +489,16 @@
 
       window.addEventListener('resize', () => {
         settleInterruptedMorph();
+        // 切到手机 sheet 布局时清掉球（root）的历史内联 left/top：桌面拖过的球在窄屏会
+        // 悬在屏幕中部，且内联 left/top 优先于 CSS 的 right/bottom，右下 68px 避让同失效。
+        // 面板侧的 resetPanelPosition 只管 panel，球要在这里自己清（清一次即可，CSS 接管）
+        if (sheetLayout() && (root.style.left || root.style.top)) {
+          root.style.removeProperty('left');
+          root.style.removeProperty('top');
+          root.style.removeProperty('right');
+          root.style.removeProperty('bottom');
+          panelWasDragged = false;
+        }
         constrainDockToViewport();
         if (root.classList.contains('is-open')) schedulePanelPosition(!panelWasDragged);
       });

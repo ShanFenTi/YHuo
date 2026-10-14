@@ -2142,8 +2142,10 @@ window.__siteCalendar = (function () {
         var pos = null;
         try { pos = JSON.parse(localStorage.getItem(KEY) || 'null'); } catch (e) {}
         if (!pos) return;
+        // 窄屏 bottom 下限提到 96px：存档是绝对像素，宽屏拖到上部的钮在手机上会贴到顶栏动作钮位——强制留在其下方
+        var bMin = vw() <= 600 ? 96 : 40;
         appearTab.style.right = Math.max(40, Math.min(pos.right, vw() - 40)) + 'px';
-        appearTab.style.bottom = Math.max(40, Math.min(pos.bottom, vh() - 40)) + 'px';
+        appearTab.style.bottom = Math.max(bMin, Math.min(pos.bottom, vh() - 40)) + 'px';
       }
 
       appearTab.addEventListener('pointerdown', function (e) {
@@ -2160,8 +2162,10 @@ window.__siteCalendar = (function () {
         if (!dragging) return;
         var dx = e.clientX - startPX, dy = e.clientY - startPY;
         if (!moved) { if (Math.abs(dx) + Math.abs(dy) < 5) return; moved = true; }
+        // 窄屏同 applyStored：bottom 不低于 96px，拖不到顶栏区
+        var bMin = vw() <= 600 ? 96 : 40;
         appearTab.style.right = Math.max(40, Math.min(startR - dx, vw() - 40)) + 'px';
-        appearTab.style.bottom = Math.max(40, Math.min(startB - dy, vh() - 40)) + 'px';
+        appearTab.style.bottom = Math.max(bMin, Math.min(startB - dy, vh() - 40)) + 'px';
       });
       document.addEventListener('pointerup', function (e) {
         if (!dragging) return;
@@ -2170,9 +2174,10 @@ window.__siteCalendar = (function () {
         appearTab._dragMoved = true;
         var kb = appearTab.getBoundingClientRect();
         try {
+          // 存档与钳制同口径：窄屏下不落 96px 以下的值，下次读取不跳变
           localStorage.setItem(KEY, JSON.stringify({
             right: Math.max(0, Math.round(vw() - kb.right)),
-            bottom: Math.max(0, Math.round(vh() - kb.bottom)),
+            bottom: Math.max(vw() <= 600 ? 96 : 0, Math.round(vh() - kb.bottom)),
           }));
         } catch (err) {}
       });
@@ -2328,13 +2333,15 @@ window.__siteCalendar = (function () {
           }
           fg = document.createElement('div');
           fg.className = 'denia-bubbles-fg';
-          for (var j = 0; j < 6; j++) {
+          // 窄屏缩放：390px 上 90~170px 单泡占近半屏、飘在内容之上（z30）有雾感——收到 60~110px、摆幅减半、6→4 枚
+          var fgSmall = document.documentElement.clientWidth <= 600;
+          for (var j = 0; j < (fgSmall ? 4 : 6); j++) {
             var f = document.createElement('i');
             f.style.setProperty('--x', (18 + Math.random() * 64).toFixed(1) + '%');
-            f.style.setProperty('--s', Math.round(Math.random() * 80 + 90) + 'px');
+            f.style.setProperty('--s', Math.round(Math.random() * (fgSmall ? 50 : 80) + (fgSmall ? 60 : 90)) + 'px');
             f.style.setProperty('--d', (Math.random() * 20 + 24).toFixed(1) + 's');
             f.style.setProperty('--dl', '-' + (Math.random() * 44).toFixed(1) + 's');
-            f.style.setProperty('--sway', Math.round(Math.random() * 160 - 80) + 'px');
+            f.style.setProperty('--sway', Math.round(Math.random() * (fgSmall ? 80 : 160) - (fgSmall ? 40 : 80)) + 'px');
             f.style.setProperty('--o', (Math.random() * 0.1 + 0.12).toFixed(2));
             fg.appendChild(f);
           }
@@ -4264,6 +4271,7 @@ window.__siteCalendar = (function () {
         var dragStart = null; // {day, node}
         var dragCells = [];
         var cellIndex = {};   // 'day,node' → 空白格元素（拖选高亮用）
+        var cellMeta = new Map(); // 空白格元素 → {day,node}（触屏划选 elementFromPoint 反查）
         var markDrag = function (on) {
           dragCells.forEach(function (el) { el.classList.toggle('drag-on', on); });
         };
@@ -4315,6 +4323,7 @@ window.__siteCalendar = (function () {
               el.addEventListener('mousedown', function (e) { onCellDown(day, node, e); });
               el.addEventListener('mouseenter', function () { onCellEnter(day, node); });
               cellIndex[day + ',' + node] = el;
+              cellMeta.set(el, { day: day, node: node }); // 触屏划选反查用（elementFromPoint→el→day/node）
             })(dd, n, empty);
             cell(dd + 1, n + 1, empty);
           }
@@ -4324,6 +4333,52 @@ window.__siteCalendar = (function () {
         if (schedDocMouseUp) document.removeEventListener('mouseup', schedDocMouseUp);
         schedDocMouseUp = docMouseUp;
         document.addEventListener('mouseup', docMouseUp);
+        // 触屏划选（与鼠标共用 dragStart/onCellEnter/onCellUp 状态机）：起格 touchstart 落子，
+        // 手指滑动靠 grid 容器 touchmove + elementFromPoint 反查当前格（触屏没有 mouseenter），
+        // 松手 touchend 走同一收尾。格上 touch-action:none（窄屏 CSS）保证起手不滚页面；
+        // 收尾后 350ms 内屏蔽 click——touchend 后浏览器会对起格补发合成 click，会双开编辑弹窗
+        var suppressClickUntil = 0;
+        grid.addEventListener('touchstart', function (e) {
+          var t = e.target.closest ? e.target.closest('.sched-empty-cell') : null;
+          if (!t) return;
+          var m = cellMeta.get(t);
+          if (!m) return;
+          dragStart = { day: m.day, node: m.node };
+          cellDay = m.day; cellNode = m.node;
+          onCellEnter(m.day, m.node);
+          e.preventDefault(); // 起手不滚页面/不长按出菜单（拖选意图明确）
+        }, { passive: false });
+        grid.addEventListener('touchmove', function (e) {
+          if (!dragStart) return;
+          e.preventDefault(); // 划选中不滚页面
+          var t = e.touches[0];
+          var hit = document.elementFromPoint(t.clientX, t.clientY);
+          // 触点可能落在叠在空格上的课程块/课程名文本上——向上找到所在格（列+行 → day/node 反查）
+          var cellEl = hit && hit.closest ? hit.closest('.sched-empty-cell, .sched-course') : null;
+          if (!cellEl) return;
+          var m = cellMeta.get(cellEl);
+          if (!m && cellEl.classList.contains('sched-course')) {
+            // 课程块占格 = gridColumn(day+1) / gridRow(startNode+1)，跨节块覆盖 startNode..endNode
+            var d2 = parseInt(cellEl.style.gridColumn, 10) - 1;
+            var parts = (cellEl.style.gridRow || '').match(/^(\d+)/);
+            var n1 = parts ? parseInt(parts[1], 10) - 1 : 0;
+            var n2 = n1;
+            var spanM = (cellEl.style.gridRow || '').match(/span (\d+)/);
+            if (spanM) n2 = n1 + parseInt(spanM[1], 10) - 1;
+            if (d2 >= 1 && d2 <= 7 && n1 >= 1) onCellEnter(d2, Math.max(n1, Math.min(n2, n1)));
+            return;
+          }
+          if (m) onCellEnter(m.day, m.node);
+        }, { passive: false });
+        grid.addEventListener('touchend', function (e) {
+          if (!dragStart) return;
+          suppressClickUntil = Date.now() + 350;
+          onCellUp();
+          e.preventDefault(); // 阻止合成 click（弹窗已由 onCellUp 打开）
+        }, { passive: false });
+        grid.addEventListener('click', function (e) {
+          if (Date.now() < suppressClickUntil) { e.stopPropagation(); e.preventDefault(); }
+        }, true); // 捕获段拦截：比格子各自的 click 早一步
         grid._cleanupDrag = function () { document.removeEventListener('mouseup', docMouseUp); };
         // 课程块（叠在空底格上）；正在编辑的那门课跳过原块——由预览块顶替
         schedData.courses.forEach(function (c, i) {
@@ -8721,6 +8776,21 @@ window.__siteCalendar = (function () {
       albumHeightTimer = setTimeout(clear, 380);
     }
 
+    // 展开态视口变化（手机竖↔横旋转）：CSS 的 .has-expanded 满屏 min-height 挡在「布局高不足」时由
+    // 下一项相册行高撑着，真正要跟手的是收回瞬间锁 inline min-height 的时机——旋转后立即收回会用
+    // 旧视口高锁多/锁少。展开期间不预锁（收回时现量现锁，8840 行），仅清展开残留的旧 inline 值；
+    // （albumCollapsing 中不插手——收尾自会量自然高回落）
+    var albumResizeTimer = null;
+    function albumHandleResize() {
+      clearTimeout(albumResizeTimer);
+      albumResizeTimer = setTimeout(function () {
+        albumResizeTimer = null;
+        if (albumCollapsing) return;
+        var list = document.querySelector('.album-list.has-expanded');
+        if (list && list.style.minHeight) list.style.removeProperty('min-height');
+      }, 200);
+    }
+
     function albumToggleEntry(entry, wall) {
       var list = document.getElementById('albumList');
       if (!list) return;
@@ -8948,6 +9018,8 @@ window.__siteCalendar = (function () {
       // 收藏在播放列表/别处增删时，灯箱心形同步（refreshHearts 派发）
       albumLbFavsChanged = function () { albumLbUpdate(); };
       document.addEventListener('yhuo:favs-changed', albumLbFavsChanged);
+      // 展开态旋转屏幕：重算收回锁高（albumHandleResize 内部自带防抖与展开态判定）
+      window.addEventListener('resize', albumHandleResize);
     }
 
     function destroyAlbumPage() {
@@ -8955,6 +9027,8 @@ window.__siteCalendar = (function () {
       if (albumAbort) { try { albumAbort.abort(); } catch (e) {} albumAbort = null; }
       if (albumLbKeydown) { document.removeEventListener('keydown', albumLbKeydown); albumLbKeydown = null; }
       if (albumLbFavsChanged) { document.removeEventListener('yhuo:favs-changed', albumLbFavsChanged); albumLbFavsChanged = null; }
+      window.removeEventListener('resize', albumHandleResize);
+      clearTimeout(albumResizeTimer); albumResizeTimer = null;
       clearTimeout(albumGoneTimer); albumGoneTimer = null;
       clearTimeout(albumCollapseTimer); albumCollapseTimer = null;
       clearTimeout(albumHeightTimer); albumHeightTimer = null;

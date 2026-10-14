@@ -4496,6 +4496,19 @@
       }
       .sched-day-pills::-webkit-scrollbar { display: none; }
       .sched-day-pills .sched-pill { flex: none; }
+      /* 编辑视图工具区：date 输入框收窄 + 按钮字距收紧，工具行折行不超过 2 行（默认约 3~4 行） */
+      .sched-toolbar { gap: 8px; margin-bottom: 10px; }
+      .sched-week-label { min-width: 56px; font-size: 12px; }
+      .sched-toolbar-right { gap: 5px 10px; }
+      .sched-inline { font-size: 11px; gap: 4px; }
+      .sched-inline-input { font-size: 11px; padding: 0 6px; }
+      .sched-inline-input[type='date'] { width: 108px; }
+      .sched-toolbar-right .appear-btn { font-size: 12px; padding-bottom: 1px; }
+      .sched-inline .sched-mini-btn { font-size: 11px; padding: 0 8px; height: 28px; }
+      /* 周视图：390px 下 minmax(0,1fr) 每列仅约 39px 字挤成一列，给课程块最低可用宽、保持横向滚动 */
+      .sched-grid { grid-template-columns: 24px repeat(7, minmax(86px, 1fr)); gap: 3px; }
+      /* 触屏拖选排课：格上起始滑动交给拖选手势，不滚页面（周视图整体仍在 overflow-x 外框里滚） */
+      .sched-empty-cell { touch-action: none; }
     }
     @media (prefers-reduced-motion: reduce) {
       .sdc-live::before { animation: none; }
@@ -5477,6 +5490,21 @@
     /* 迷你播放器收纳中（.mini-idle）时回顶按钮回位：避让只为条可见时让路 */
     body.mini-active.mini-idle .back-top {
       bottom: 92px;
+    }
+
+    /* 窄屏右下角让位：回顶钮（right28/bottom92/48px 大）与外观圆钮（right12/bottom84/40px 大，z165）
+       在 390px 上圆心距仅约 20px 必然叠住——回顶钮让位（圆钮有拖动记忆不能动），左移+上抬一整个身位 */
+    @media (max-width: 560px) {
+      .back-top {
+        right: 16px;
+        bottom: calc(136px + env(safe-area-inset-bottom, 0px));
+      }
+      body.mini-active .back-top {
+        bottom: calc(136px + env(safe-area-inset-bottom, 0px));
+      }
+      body.mini-active.mini-idle .back-top {
+        bottom: calc(136px + env(safe-area-inset-bottom, 0px));
+      }
     }
 
     /* ===== 自定义背景层 ===== */
@@ -7281,6 +7309,9 @@
       font-weight: 700;
       letter-spacing: -0.01em;
       margin: 2px 0 6px;
+      /* 无标题随笔的标题=正文前 24 字，正文开头是超长连续英文/URL 时靠它断词，别让卡片横向撑破 */
+      word-break: break-word;
+      overflow-wrap: anywhere;
     }
     .note-tags {
       display: flex;

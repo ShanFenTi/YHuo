@@ -4163,11 +4163,22 @@ window.__siteCalendar = (function () {
         });
         return out.sort(function (a, b) { return a - b; });
       }
-      // 周数组 → 紧凑文本（连续周压缩成区间："1,2,3,5" → "1-3,5"）
+      // 周数组 → 紧凑文本（连续周压缩成区间："1,2,3,5" → "1-3,5"；纯奇/纯偶满序列再压一档："2,4,6…18" → "2-18双"）
       function schedWeeksText(arr) {
         if (!arr || !arr.length) return '';
         var sorted = arr.slice().sort(function (a, b) { return a - b; });
-        var parts = [], start = sorted[0], prev = sorted[0];
+        var lo = sorted[0], hi = sorted[sorted.length - 1];
+        var allOdd = sorted.every(function (w) { return w % 2 === 1; });
+        var allEven = sorted.every(function (w) { return w % 2 === 0; });
+        // 单双周满序列（首尾间同奇偶每周都在）才合并成「lo-hi双/单」；中间真缺周的保持逐段
+        if (hi - lo >= 6 && (allOdd || allEven)) {
+          var present = {};
+          sorted.forEach(function (w) { present[w] = 1; });
+          var dense = true;
+          for (var w = lo; w <= hi; w += 2) { if (!present[w]) { dense = false; break; } }
+          if (dense) return lo + '-' + hi + (allEven ? '双' : '单');
+        }
+        var parts = [], start = lo, prev = lo;
         for (var i = 1; i <= sorted.length; i++) {
           var cur = sorted[i];
           if (cur === prev + 1) { prev = cur; continue; }
@@ -4504,15 +4515,14 @@ window.__siteCalendar = (function () {
           nameRow.appendChild(hol);
         }
         mainBox.appendChild(nameRow);
-        var meta = [];
-        if (c.teacher) meta.push('教师：' + c.teacher);
-        if (c.place) meta.push('地点：' + c.place);
-        if (c.note) meta.push(c.note);
-        if (c.remind) meta.push('⏰ 课前提醒');
-        if (meta.length) {
+        // 教师/地点/提醒各自成整项 span（CSS 里 nowrap）——换行只发生在项与项之间，不再「地/点：526」半句折断
+        if (c.teacher || c.place || c.note || c.remind) {
           var mt = document.createElement('p');
           mt.className = 'sdc-meta';
-          mt.textContent = meta.join('　');
+          if (c.teacher) { var s1 = document.createElement('span'); s1.textContent = '教师：' + c.teacher; mt.appendChild(s1); }
+          if (c.place) { var s2 = document.createElement('span'); s2.textContent = '地点：' + c.place; mt.appendChild(s2); }
+          if (c.note) { var s3 = document.createElement('span'); s3.textContent = c.note; mt.appendChild(s3); }
+          if (c.remind) { var s4 = document.createElement('span'); s4.textContent = '⏰ 课前提醒'; mt.appendChild(s4); }
           mainBox.appendChild(mt);
         }
         // 卡片不带编辑/删除钮（2026-10-02 站长定稿：看课纯浏览，修改课程去「编辑」视图）

@@ -4402,12 +4402,15 @@
       gap: 8px;
       flex-wrap: wrap;
     }
+    /* 课程信息行：教师/地点/提醒拆成整项 span——换行只发生在项与项之间，不再出现「地/点：526」半句折断 */
     .sdc-meta {
       margin: 5px 0 0;
       font-size: 12.5px;
-      line-height: 1.5;
+      line-height: 1.55;
       color: var(--apple-muted-foreground);
     }
+    .sdc-meta span { white-space: nowrap; }
+    .sdc-meta span + span { margin-left: 12px; }
     .sdc-live {
       flex: none;
       display: inline-flex;
@@ -4461,14 +4464,38 @@
       border-radius: 999px;
       padding: 2px 8px;
     }
-    /* 窄屏课程卡：时间+周几合并一行，课名/备注整行铺开 */
+    /* 窄屏课程卡：改上下堆叠——首行=时间+周次+徽标（周次可截断），课名/信息整行铺开。
+       别回到「时间列+内容列」左右两栏：长周次文本会把课名挤成两三个字一行的窄竖条（2026-10-14 站长实报） */
     @media (max-width: 560px) {
       .sched-page-title { font-size: 26px; }
       .sched-today-info { flex: 1 1 100%; } /* 日期独占一行，胶囊换行排下方（flex:1 会把日期挤到卡底） */
-      .sched-day-card { gap: 4px 12px; padding: 14px; }
-      .sdc-when { min-width: 0; display: flex; align-items: baseline; gap: 8px; }
-      .sdc-day { margin: 0; }
+      .sched-day-card { display: block; padding: 12px 14px 13px; }
+      .sdc-when { display: flex; align-items: baseline; gap: 8px; min-width: 0; }
+      .sdc-time { font-size: 14.5px; }
+      .sdc-day {
+        flex: 1;
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        font-size: 11px;
+      }
+      .sdc-main { margin-top: 6px; }
+      .sdc-name { font-size: 16px; }
+      .sdc-meta { line-height: 1.55; }
+      .sdc-live, .sdc-off, .sdc-hol { vertical-align: 2px; }
       .sched-today-chips { justify-content: flex-start; }
+      /* 星期筛选胶囊：单行横滑（滑动条隐藏但有惯性，日期一目七行变一行） */
+      .sched-day-pills {
+        flex-wrap: nowrap;
+        overflow-x: auto;
+        scrollbar-width: none;
+        -webkit-overflow-scrolling: touch;
+        margin-right: calc(var(--spacing) * -4); /* 呼吸感延伸到今日卡内边距右缘，胶囊贴边滑出 */
+        padding-right: calc(var(--spacing) * 4);
+      }
+      .sched-day-pills::-webkit-scrollbar { display: none; }
+      .sched-day-pills .sched-pill { flex: none; }
     }
     @media (prefers-reduced-motion: reduce) {
       .sdc-live::before { animation: none; }
@@ -9215,6 +9242,9 @@
       .chibi-mascot { left: 8px; bottom: calc(8px + env(safe-area-inset-bottom)); }
       .chibi-mascot img { height: 88px; }
       .chibi-bubble { max-width: 190px; font-size: 12px; }
+      /* 手机端给立绘+气泡让出底部空间：页面最后一块内容能完整滚到看板娘上方，不被盖住。
+         特异度须压过 html[data-page]:not([data-page=home]) main.page-main 的 padding-bottom:24px */
+      html[data-page][data-accent='denia'] main.page-main { padding-bottom: calc(112px + env(safe-area-inset-bottom)); }
     }
     @media (prefers-reduced-motion: reduce) {
       .chibi-mascot img { animation: none; }

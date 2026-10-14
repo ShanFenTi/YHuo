@@ -20,4 +20,8 @@
 二创组 14 张已收录（2026-10-14 追）：safebooru `aemeath_(wuthering_waves)` 790 帖筛得，
 逐张画师署名与来源帖见 aemeath/fanart-credits.md；**注意 yande.re 的 `aemeath` 标签是同名单
 纯画师（tag type=4），不是角色标签**。
-官方 PV 视频本轮未收录：视频体积大（25MiB 上限），待站长选定源后再入 video/ 目录。
+官方 PV 已收录（2026-10-14 追）：B 站鸣潮官方账号（mid 1955897084，官方认证 role=3）
+《鸣潮》共鸣者「爱弥斯」PV | 祝福 合集 P1【中】版（BV1EAFTzeEfY，aid 116001630852241，
+cid 35777743234，270s），非登录最高清晰度 360P h264+aac 单文件 17MB（<25MiB 上限免压缩），
+直取 CDN MP4 入 video/aemeath-pv.mp4 并同步 video/playlist.json；aemeath 前缀经
+THEME_VIDEO_RE 自动归组首页轮播。形象与 PV 版权归库洛游戏（Kuro Games），个人粉丝站自用。

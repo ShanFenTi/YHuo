@@ -17,6 +17,7 @@
 
 看板娘立绘 `assets/aemeath-chibi/aemeath-full.webp`（1800×1785）同源自官方全身立绘。
 
-二创组（画师署名）本轮未收录：BWIKI 无爱弥斯二创区，yande.re/safebooru 的新角色标签
-存量需另行确认（达妮娅抓取方法论见 denia/fanart-credits.md，可直接复用）。
+二创组 14 张已收录（2026-10-14 追）：safebooru `aemeath_(wuthering_waves)` 790 帖筛得，
+逐张画师署名与来源帖见 aemeath/fanart-credits.md；**注意 yande.re 的 `aemeath` 标签是同名单
+纯画师（tag type=4），不是角色标签**。
 官方 PV 视频本轮未收录：视频体积大（25MiB 上限），待站长选定源后再入 video/ 目录。

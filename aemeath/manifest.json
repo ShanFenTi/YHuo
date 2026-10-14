@@ -1,11 +1,105 @@
 {
   "type": "image",
   "files": [
-    { "title": "爱弥斯 · 全身立绘", "url": "aemeath/official/aemeath-official-01-splash.webp", "album": "爱弥斯 · 官方" },
-    { "title": "爱弥斯 · 珍贵之物 01", "url": "aemeath/official/aemeath-official-02-treasure1.webp", "album": "爱弥斯 · 官方" },
-    { "title": "爱弥斯 · 珍贵之物 02", "url": "aemeath/official/aemeath-official-03-treasure2.webp", "album": "爱弥斯 · 官方" },
-    { "title": "爱弥斯 · 珍贵之物 03", "url": "aemeath/official/aemeath-official-04-treasure3.webp", "album": "爱弥斯 · 官方" },
-    { "title": "爱弥斯 · 角色头像", "url": "aemeath/official/aemeath-official-05-avatar.webp", "album": "爱弥斯 · 官方" },
-    { "title": "爱弥斯 · 首页立绘", "url": "aemeath/official/aemeath-official-06-home.webp", "album": "爱弥斯 · 官方" }
+    {
+      "title": "爱弥斯 · 全身立绘",
+      "url": "aemeath/official/aemeath-official-01-splash.webp",
+      "album": "爱弥斯 · 官方"
+    },
+    {
+      "title": "爱弥斯 · 珍贵之物 01",
+      "url": "aemeath/official/aemeath-official-02-treasure1.webp",
+      "album": "爱弥斯 · 官方"
+    },
+    {
+      "title": "爱弥斯 · 珍贵之物 02",
+      "url": "aemeath/official/aemeath-official-03-treasure2.webp",
+      "album": "爱弥斯 · 官方"
+    },
+    {
+      "title": "爱弥斯 · 珍贵之物 03",
+      "url": "aemeath/official/aemeath-official-04-treasure3.webp",
+      "album": "爱弥斯 · 官方"
+    },
+    {
+      "title": "爱弥斯 · 角色头像",
+      "url": "aemeath/official/aemeath-official-05-avatar.webp",
+      "album": "爱弥斯 · 官方"
+    },
+    {
+      "title": "爱弥斯 · 首页立绘",
+      "url": "aemeath/official/aemeath-official-06-home.webp",
+      "album": "爱弥斯 · 官方"
+    },
+    {
+      "title": "爱弥斯 · 二创 01 蜡笔画·抱玩偶猫（画师：Synthia0001）",
+      "url": "aemeath/fanart/aemeath-fanart-01-crayon-hug.webp",
+      "album": "爱弥斯 · 二创"
+    },
+    {
+      "title": "爱弥斯 · 二创 02 云端白裙·持珠闭目（画师：Pong2）",
+      "url": "aemeath/fanart/aemeath-fanart-02-border-dress.webp",
+      "album": "爱弥斯 · 二创"
+    },
+    {
+      "title": "爱弥斯 · 二创 03 黑伞下的挂偶（画师：auui）",
+      "url": "aemeath/fanart/aemeath-fanart-03-doll.webp",
+      "album": "爱弥斯 · 二创"
+    },
+    {
+      "title": "爱弥斯 · 二创 04 幼年爱弥斯·抱雪绒（画师：星願）",
+      "url": "aemeath/fanart/aemeath-fanart-04-young-plush.webp",
+      "album": "爱弥斯 · 二创"
+    },
+    {
+      "title": "爱弥斯 · 二创 05 书包帽装·幼年全身（画师：smodo）",
+      "url": "aemeath/fanart/aemeath-fanart-05-backpack.webp",
+      "album": "爱弥斯 · 二创"
+    },
+    {
+      "title": "爱弥斯 · 二创 06 棕色连衣裙·衬衫领带（画师：Do）",
+      "url": "aemeath/fanart/aemeath-fanart-06-brown-dress.webp",
+      "album": "爱弥斯 · 二创"
+    },
+    {
+      "title": "爱弥斯 · 二创 07 学院学生·黑外套（画师：Fuyuhrs_530）",
+      "url": "aemeath/fanart/aemeath-fanart-07-student.webp",
+      "album": "爱弥斯 · 二创"
+    },
+    {
+      "title": "爱弥斯 · 二创 08 蓝领带制服·背包（画师：smodo）",
+      "url": "aemeath/fanart/aemeath-fanart-08-necktie.webp",
+      "album": "爱弥斯 · 二创"
+    },
+    {
+      "title": "爱弥斯 · 二创 09 小狗拟人·比心（画师：gouhou_dog）",
+      "url": "aemeath/fanart/aemeath-fanart-09-dog.webp",
+      "album": "爱弥斯 · 二创"
+    },
+    {
+      "title": "爱弥斯 · 二创 10 黑靴白裙·闭眼舒展（画师：ねむヰ）",
+      "url": "aemeath/fanart/aemeath-fanart-10-boots.webp",
+      "album": "爱弥斯 · 二创"
+    },
+    {
+      "title": "爱弥斯 · 二创 11 棕毛衣·拿手机（画师：Reihaz_sj）",
+      "url": "aemeath/fanart/aemeath-fanart-11-sweater.webp",
+      "album": "爱弥斯 · 二创"
+    },
+    {
+      "title": "爱弥斯 · 二创 12 白裙长手套·望向画外（画师：Hikaku）",
+      "url": "aemeath/fanart/aemeath-fanart-12-gloves.webp",
+      "album": "爱弥斯 · 二创"
+    },
+    {
+      "title": "爱弥斯 · 二创 13 焰火与浴衣（画师：Retsu_3）",
+      "url": "aemeath/fanart/aemeath-fanart-13-fireworks.webp",
+      "album": "爱弥斯 · 二创"
+    },
+    {
+      "title": "爱弥斯 · 二创 14 红晕·抱玩偶（画师：saki___0116）",
+      "url": "aemeath/fanart/aemeath-fanart-14-blush-dress.webp",
+      "album": "爱弥斯 · 二创"
+    }
   ]
 }

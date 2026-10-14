@@ -3009,6 +3009,9 @@ window.__siteCalendar = (function () {
     // ---------- 验证码格子输入（2026-10-14，参考 reactbits.dev Code Slots 微交互，原生复刻） ----------
     // 把既有单个验证码输入包进 6 格镜像容器：真输入透明铺满继续承担键入/粘贴/短信自动填充，
     // 格子只显示字符；焦点高亮当前位，单字弹入（scale 过冲回弹），清空整组下沉示意。
+    // 2026-10-14 追（站长问「验证码正确格子合并显示对勾」）：补齐原版成功/错误两态——
+    // success(): 主题色洗条从中间铺开把整排连成一块（视觉「六格合并」）+数字逐格下沉+对勾延迟弹入；
+    // error(): 整排染红+有字格从右往左逐个蒸掉再清空。时序常量对齐原版（见 site.css 同段注释）。
     // 提交逻辑仍读原输入框 value，上游零改动。CSS 见 site.css「验证码格子输入」段。
     // 注意：本 IIFE 严格模式，工厂必须放块外——登录卡与资料卡两处接线共用（块内声明不外提）。
     var MOTION_OK = !(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
@@ -3018,14 +3021,26 @@ window.__siteCalendar = (function () {
       var LEN = 6;
       var wrap = document.createElement('div');
       wrap.className = 'code-slots';
-      var slots = [];
+      var slots = [], inks = [];
       for (var i = 0; i < LEN; i++) {
         var c = document.createElement('span');
         c.className = 'code-slot';
         c.setAttribute('aria-hidden', 'true'); // 纯装饰镜像：读屏读真输入即可，别把数字读两遍
+        c.style.setProperty('--i', i); // 成功下沉/错误蒸掉的逐格步进延迟用
+        var ink = document.createElement('span');
+        ink.className = 'code-slot-ink'; // 数字墨层：状态动画只动它，格子底不受影响（对齐原版 fill/ink 分离）
+        c.appendChild(ink);
         wrap.appendChild(c);
         slots.push(c);
+        inks.push(ink);
       }
+      // 洗条+对勾：成功态主题色从中间铺开把整排连成一块、对勾延迟升起（z1 只盖格子，输入层 z4 仍可聚焦）
+      var wash = document.createElement('span');
+      wash.className = 'code-slots-wash';
+      wash.setAttribute('aria-hidden', 'true');
+      wash.innerHTML = '<svg class="code-slots-check" viewBox="0 0 24 24" fill="none" aria-hidden="true">' +
+        '<path d="M5 12.6 10 17.6 19 7.2" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+      wrap.appendChild(wash);
       input.parentNode.insertBefore(wrap, input);
       wrap.appendChild(input); // CSS: .code-slots > input 绝对定位铺满透明
       function paint(animFrom) {
@@ -3033,7 +3048,7 @@ window.__siteCalendar = (function () {
         for (var i = 0; i < LEN; i++) {
           var ch = v[i] || '';
           var s = slots[i];
-          if (s.textContent !== ch) s.textContent = ch;
+          if (inks[i].textContent !== ch) inks[i].textContent = ch;
           var active = i === Math.min(v.length, LEN - 1);
           s.classList.toggle('is-active', active);
         }
@@ -3049,13 +3064,21 @@ window.__siteCalendar = (function () {
           }
         }
       }
+      function resetState() { // 摘成功/错误两态（防残留影响下一次输入）
+        wrap.classList.remove('is-success', 'is-error');
+        input.readOnly = false;
+        input._draining = false;
+        for (var i = 0; i < LEN; i++) slots[i].style.removeProperty('--evap-delay');
+      }
       input.addEventListener('focus', function () { wrap.classList.add('is-focus'); paint(-1); });
       input.addEventListener('blur', function () { wrap.classList.remove('is-focus'); paint(-1); });
       input.addEventListener('input', function () {
+        if (input._draining) return; // 错误排空动画期间忽略键入（原版 busy 同口径）
         // 只收数字：粘贴「123 456」/带非数字字符时先清洗再镜像（三处校验都是 /^\d{6}$/，前置过滤不改变语义）
         var raw = input.value;
         var clean = raw.replace(/\D/g, '').slice(0, LEN);
         if (clean !== raw) input.value = clean;
+        if (wrap.classList.contains('is-error')) resetState(); // 输错后用户重新输入：先摘红态
         var from = input._lastLen <= clean.length ? input._lastLen : -1; // 增才弹；删除不弹
         input._lastLen = clean.length;
         paint(from);
@@ -3064,6 +3087,7 @@ window.__siteCalendar = (function () {
       input._lastLen = input.value.length;
       var inst = {
         clear: function () { // 清空 + 整组下沉示意（模式切换/提交后清码用，直改 value 不触发 input）
+          resetState();
           input.value = '';
           input._lastLen = 0;
           paint(-1);
@@ -3074,10 +3098,58 @@ window.__siteCalendar = (function () {
             wrap.addEventListener('animationend', function h() { wrap.classList.remove('code-slots-clear'); wrap.removeEventListener('animationend', h); });
           }
         },
+        finish: function (after, lockBtns) {
+          // 校验通过：亮确认态（洗条铺开连成一块+数字逐格下沉+对勾延迟升起，时序对齐原版）→
+          // 保持约 0.76s（减动效 0.42s，状态仍需可感知）→清码复位→执行 after()。
+          // lockBtns 在确认期间保持禁用（authJson 收尾会把按钮重新启用，这里再压回去防重复提交）
+          resetState();
+          wrap.classList.add('is-success');
+          input.readOnly = true;
+          var lock = lockBtns || [];
+          // 延到宏任务再锁：authJson 链尾的 busyBtns 重用发生在微任务里，同步锁会被盖掉（防双提交）
+          setTimeout(function () { for (var b = 0; b < lock.length; b++) if (lock[b]) lock[b].disabled = true; }, 0);
+          setTimeout(function () {
+            resetState();
+            input.value = '';
+            input._lastLen = 0;
+            paint(-1);
+            for (var b2 = 0; b2 < lock.length; b2++) if (lock[b2]) lock[b2].disabled = false;
+            if (after) after();
+          }, MOTION_OK ? 760 : 420);
+        },
+        error: function () {
+          // 校验失败：整排染红+有字格从右往左逐个蒸掉（20ms 步进），动画完再统一清空（原版 error drain 同口径）
+          resetState();
+          wrap.classList.add('is-error');
+          var filled = [];
+          for (var i = 0; i < LEN; i++) if (inks[i].textContent) filled.push(i);
+          if (MOTION_OK && filled.length) {
+            filled.reverse(); // 最右先蒸
+            for (var k = 0; k < filled.length; k++) slots[filled[k]].style.setProperty('--evap-delay', (k * 20) + 'ms');
+            input._draining = true;
+          }
+          var drainMs = (MOTION_OK && filled.length) ? (filled.length - 1) * 20 + 340 : 0;
+          setTimeout(function () {
+            input._draining = false;
+            resetState();
+            input.value = '';
+            input._lastLen = 0;
+            paint(-1);
+          }, drainMs);
+        },
         input: input
       };
       input._codeSlots = inst;
       return inst;
+    }
+
+    // 验证码错误判定：verifyCode 的四类文案（不正确/已过期/不存在已失效/尝试次数过多）+ catch 兜底
+    // 「验证码校验失败」。其余失败（用户名占用/邮箱已被绑定等）不触发染红排空——那种情况服务端刻意
+    // 未消费验证码，排空反而逼用户重新取码（register.js 前置用户名检查的口径同源）。
+    function __codeSlotsIsCodeError(msg) {
+      msg = String(msg || '');
+      return msg.indexOf('验证码') >= 0 && (msg.indexOf('不正确') >= 0 || msg.indexOf('过期') >= 0 ||
+        msg.indexOf('失效') >= 0 || msg.indexOf('次数过多') >= 0 || msg.indexOf('校验失败') >= 0);
     }
 
     if (loginGate) {
@@ -3393,11 +3465,20 @@ window.__siteCalendar = (function () {
               code: useEmail ? code : undefined,
             }, function (d) {
               if (d.ok) {
-                setLoginAvatar(null); // 新注册没有头像
-                passGate(d.nickname || u);
-                favLoad(); // 新账号收藏为空，同时清掉内存里的残留
-                setGateMode('login');
-              } else showLoginMsg(d.error);
+                // 邮箱验证码走成功确认态；纯用户名注册无码可确认，直接通行
+                var done = function () {
+                  setLoginAvatar(null); // 新注册没有头像
+                  passGate(d.nickname || u);
+                  favLoad(); // 新账号收藏为空，同时清掉内存里的残留
+                  setGateMode('login');
+                };
+                if (useEmail && gateCodeSlots) gateCodeSlots.finish(done, loginButtons);
+                else done();
+              } else {
+                // 仅「验证码本身不可用」类失败染红排空（用户名占用等失败不消费验证码，排空反逼用户重取）
+                if (useEmail && gateCodeSlots && __codeSlotsIsCodeError(d.error)) gateCodeSlots.error();
+                showLoginMsg(d.error);
+              }
             }, loginButtons);
             return;
           }
@@ -3408,9 +3489,17 @@ window.__siteCalendar = (function () {
             showLoginMsg('重置中…');
             authJson('/api/user/password', { email: email, code: code, newPassword: np }, function (d) {
               if (d.ok) {
-                setGateMode('login');
-                showLoginMsg('密码已重置，请用新密码登录');
-              } else showLoginMsg(d.error);
+                // 重置成功走确认态（对勾），展示后回登录模式并提示
+                var done = function () {
+                  setGateMode('login');
+                  showLoginMsg('密码已重置，请用新密码登录');
+                };
+                if (gateCodeSlots) gateCodeSlots.finish(done, loginButtons);
+                else done();
+              } else {
+                if (gateCodeSlots && __codeSlotsIsCodeError(d.error)) gateCodeSlots.error();
+                showLoginMsg(d.error);
+              }
             }, loginButtons);
             return;
           }
@@ -3419,9 +3508,16 @@ window.__siteCalendar = (function () {
             if (!/^\d{6}$/.test(code)) { showLoginMsg('请填写 6 位验证码'); return; }
             showLoginMsg('验证中…');
             authJson('/api/user/login', { username: gateUser, ticket: gateTicket, code: code }, function (d) {
-              if (d.ok) gateLoginDone(d, gateUser);
+              if (d.ok) {
+                // 二次验证通过走确认态（对勾），展示后通行
+                if (gateCodeSlots) gateCodeSlots.finish(function () { gateLoginDone(d, gateUser); }, loginButtons);
+                else gateLoginDone(d, gateUser);
+              }
               else if (d.needCode) { gateTicket = d.ticket; showLoginMsg(d.error); } // 极少：重新触发了发码
-              else showLoginMsg(d.error);
+              else {
+                if (gateCodeSlots && __codeSlotsIsCodeError(d.error)) gateCodeSlots.error();
+                showLoginMsg(d.error);
+              }
             }, loginButtons);
             return;
           }
@@ -3833,11 +3929,20 @@ window.__siteCalendar = (function () {
           .then(function (r) { return r.json().catch(function () { return { ok: false, error: '响应异常' }; }); })
           .then(function (d) {
             if (d.ok) {
-              emailBoundEmail = d.email || email;
-              emailTwofa = false; // 换绑后 2FA 保持关闭，避免旧邮箱验证状态误开
-              renderEmailCard();
-              showPEmailMsg('邮箱绑定成功');
-            } else showPEmailMsg(d.error || '绑定失败', true);
+              // 绑定成功走确认态（对勾），展示后再刷新卡片
+              var done = function () {
+                emailBoundEmail = d.email || email;
+                emailTwofa = false; // 换绑后 2FA 保持关闭，避免旧邮箱验证状态误开
+                renderEmailCard();
+                showPEmailMsg('邮箱绑定成功');
+              };
+              if (pemailCodeSlots) pemailCodeSlots.finish(done, [pemailVerifyBtn]);
+              else done();
+            } else {
+              // 仅验证码本身不可用才染红排空（邮箱格式/占用等失败不消费验证码）
+              if (pemailCodeSlots && __codeSlotsIsCodeError(d.error)) pemailCodeSlots.error();
+              showPEmailMsg(d.error || '绑定失败', true);
+            }
           })
           .catch(function () { showPEmailMsg('网络错误', true); });
       });

@@ -9458,12 +9458,13 @@
     }
 
     /* =========================
-       验证码格子输入（2026-10-14，参考 reactbits.dev Code Slots 的「数字弹进格子」微交互，
-       原生 CSS 复刻）：JS 工厂 __initCodeSlots 把既有单个验证码输入包进 .code-slots 容器——
-       真输入原地保留（视觉透明+绝对定位铺满容器）继续承担键入/粘贴/短信自动填充
-       （autocomplete="one-time-code"），六个 .code-slot 只镜像显示字符；焦点态/复古主题/
-       暗色全走容器镜像规则。提交逻辑读的仍是原输入框 value，上游零改动。
-       弹入动效：单字输入触发 .code-slot-pop（scale 过冲回弹）；减动效偏好下整段动画关停。
+       验证码格子输入（2026-10-14，参考 reactbits.dev Code Slots，原生 CSS 复刻）：
+       ①输入段——真输入透明铺满承担键入/粘贴/自动填充，6 格只镜像显示，单字弹入（scale 过冲）、
+       焦点高亮当前位、清空整组下沉；②确认段（2026-10-14 追，站长问「验证码正确格子合并显示对勾」）——
+       校验通过时主题色洗条从中间铺开把整排连成一块（视觉上「六格合并」）、数字逐格下沉隐去、
+       对勾延迟 280ms 弹入；③错误段——整排染红 + 有字格从右往左逐个蒸掉再清空
+       （确认/错误两态时序均对齐原版 status=success/error 源码常量）。
+       提交逻辑读的仍是原输入框 value，上游零改动。
        ========================= */
     .code-slots {
       position: relative;
@@ -9471,11 +9472,14 @@
       gap: 8px;
       height: 40px;
       cursor: text;
+      --cs-wash-radius: 10px; /* 洗条/对勾圆角：四复古主题清零（与格子直角同口径） */
     }
-    /* 真输入：铺满容器透明接管键入；opacity 0 而非 display:none（保持可聚焦/自动填充） */
+    /* 真输入：铺满容器透明接管键入；opacity 0 而非 display:none（保持可聚焦/自动填充）；
+       z-index 4 = 最上层（对齐原版层序：洗条 z1 只盖格子、输入永远可聚焦） */
     .code-slots > input {
       position: absolute;
       inset: 0;
+      z-index: 4;
       width: 100%;
       height: 100%;
       opacity: 0;
@@ -9507,6 +9511,8 @@
         background-color 180ms var(--ease-out);
       user-select: none;
     }
+    /* 数字墨层：下沉/蒸掉动画只动这层，不动格子底（同原版 Slot 的 fill 与 ink 分离口径） */
+    .code-slot-ink { display: block; }
     /* 焦点跟随：真输入聚焦时当前位（=已填格数）亮起 */
     .code-slots.is-focus .code-slot.is-active {
       border-color: var(--apple-primary);
@@ -9528,8 +9534,67 @@
       45% { transform: scale(0.86); opacity: 0.25; }
       100% { transform: scale(1); opacity: 1; }
     }
+    /* ---- 成功确认态（对齐原版：WASH 0.3s 从中间铺开 → 数字逐格下沉 60ms+i*30ms → 对勾延迟 0.28s 升起） ---- */
+    .code-slots-wash {
+      position: absolute;
+      inset: 0;
+      z-index: 1;
+      display: grid;
+      place-items: center;
+      border-radius: var(--cs-wash-radius);
+      background: var(--apple-primary);
+      color: var(--apple-primary-foreground);
+      clip-path: inset(0px 50% round var(--cs-wash-radius)); /* 左右各裁一半=完全不可见 */
+      pointer-events: none;
+      transition: clip-path 200ms var(--ease-out); /* 收回走 WASH_OUT 200ms */
+    }
+    .code-slots.is-success .code-slots-wash {
+      clip-path: inset(0px 0px round var(--cs-wash-radius));
+      transition-duration: 300ms; /* 铺开走 WASH_IN 300ms */
+    }
+    .code-slots-check {
+      width: 24px;
+      height: 24px;
+      opacity: 0;
+      transform: translateY(8px) scale(0.85);
+    }
+    .code-slots.is-success .code-slots-check {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+      transition: transform 350ms cubic-bezier(0.34, 1.4, 0.64, 1), opacity 150ms var(--ease-out);
+      transition-delay: 280ms;
+    }
+    /* 成功态数字下沉隐去（原版 SINK_DELAY/SINK_STEP 同口径） */
+    .code-slots.is-success .code-slot-ink {
+      animation: code-slot-sink 300ms var(--ease-out) both;
+      animation-delay: calc(60ms + var(--i, 0) * 30ms);
+    }
+    @keyframes code-slot-sink {
+      to { transform: translateY(0.9em); opacity: 0; }
+    }
+    /* ---- 错误态：整排染红，有字格从右往左逐个蒸掉（20ms 步进，原版 error drain 同口径） ---- */
+    .code-slots.is-error .code-slot {
+      border-color: #ff3b30;
+      background: color-mix(in srgb, #ff3b30 18%, var(--apple-secondary));
+    }
+    .code-slots.is-error .code-slot-ink {
+      animation: code-slot-evaporate 300ms var(--ease-out) both;
+      animation-delay: calc((5 - var(--i, 0)) * 20ms);
+    }
+    @keyframes code-slot-evaporate {
+      to { transform: scale(0.4); opacity: 0; }
+    }
     @media (prefers-reduced-motion: reduce) {
-      .code-slot-pop, .code-slots-clear .code-slot { animation: none; }
+      .code-slot-pop, .code-slots-clear .code-slot,
+      .code-slots.is-success .code-slot-ink, .code-slots.is-error .code-slot-ink {
+        animation: none;
+      }
+      .code-slots-wash, .code-slots.is-success .code-slots-wash,
+      .code-slots-check, .code-slots.is-success .code-slots-check { transition: none; }
+      /* 动效关停时状态直达：成功数字立即让位、对勾立即出现；错误数字立即隐去 */
+      .code-slots.is-success .code-slot-ink { opacity: 0; }
+      .code-slots.is-success .code-slots-check { opacity: 1; transform: none; }
+      .code-slots.is-error .code-slot-ink { opacity: 0; }
     }
     /* 复古四主题：格子直角（并入既有「圆角清零」语言；Win98 凹陷下面单独给） */
     html[data-accent='win98'] .code-slot, html[data-accent='portal'] .code-slot,
@@ -9546,6 +9611,16 @@
       background: #1a1a1a;
       border-color: #101010 #6a6a6a #6a6a6a #101010;
       color: #e8e8e8;
+    }
+    /* win98 深色档的格子背景是 (0,3,1) 特异性，错误染红要再压一层，否则暗色下看不见红 */
+    html[data-accent='win98'].dark .code-slots.is-error .code-slot {
+      border-color: #ff3b30;
+      background: color-mix(in srgb, #ff3b30 18%, #1a1a1a);
+    }
+    /* 复古主题洗条圆角清零（与格子直角同口径） */
+    html[data-accent='win98'] .code-slots, html[data-accent='portal'] .code-slots,
+    html[data-accent='crt'] .code-slots, html[data-accent='oldbook'] .code-slots {
+      --cs-wash-radius: 0px;
     }
     /* 资料卡绑定邮箱行（flex 横排）：格子容器占满剩余宽度，高度对齐原输入框 */
     .pwd-out-row .code-slots { flex: 1 1 auto; min-width: 0; height: 36px; }

@@ -182,7 +182,7 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
       <input type="file" id="fileInput" multiple>
       <div class="ur-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M17 8l-5-5-5 5M12 3v12"/></svg></div>
       <button type="button" class="ghost file-pick-btn" id="filePickBtn">点击选择文件</button>
-      <p class="upload-hint" id="uploadHint">支持一次选多个文件，也可以把文件或整个文件夹拖进来；与已有内容同名的自动跳过；单文件上限 24MB。</p>
+      <p class="upload-hint" id="uploadHint">支持一次选多个文件，也可以把文件或整个文件夹拖进来；确认后滑动「滑动上传」到最右端开始上传；与已有内容同名的自动跳过；单文件上限 24MB。</p>
     </div>
     <p class="file-pick-info" id="filePickInfo"></p>
     <div class="upload-actions">

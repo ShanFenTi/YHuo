@@ -1116,10 +1116,10 @@
     makeItem('__none__', '未分组', countOf('__none__'), false);
     names.forEach(function (nm) { makeItem(nm, nm, countOf(nm), true); });
 
-    // 上传提示：说明当前视图的自动归入规则
+    // 上传提示：说明当前视图的自动归入规则 + 滑动确认
     var hint = $('uploadHint');
     if (hint) {
-      var base = '支持一次选多个文件，也可以把文件或整个文件夹拖进来；与已有内容同名的自动跳过；单文件上限 24MB。';
+      var base = '支持一次选多个文件，也可以把文件或整个文件夹拖进来；确认后滑动「滑动上传」到最右端开始上传；与已有内容同名的自动跳过；单文件上限 24MB。';
       if (albumFilter && albumFilter !== '__none__') {
         hint.textContent = base + ' 当前在相册「' + albumFilter + '」视图，新上传将自动归入该相册。';
       } else if (albumFilter === '__none__') {
@@ -4613,6 +4613,333 @@
 
   // ---------- 外观设置（站点默认主题色 / 默认背景图） ----------
 
+  // ---------- 上传滑动确认（Slide Commit 原生复刻，2026-10-14） ----------
+  // 站长指定 reactbits.dev/c/micro/slide-commit 动效用在后台「上传」：拖到最右才确认开始上传——
+  // 上传中把手变转圈（最短 300ms 防闪）；成功整条展开成绿色药丸（对勾+「已上传」）；
+  // 失败染红抖一下弹回原位，失败原因就地显示。原版是 React+motion+hugeicons 组件，
+  // 这里按原版几何/时序常量做零依赖原生复刻（与前台 Code Slots 同口径：常量对齐、行为逐项复现）：
+  //   几何：PAD 4 / 拖拽收缩 8%·110px / 悬停膨胀 1.03；胶囊=左手把窗，clip-path 逐帧裁出并向右展开；
+  //   时序：转圈最短 300ms / 完成后停留 1500ms / 抖动 [0,-5,5,-3,3,-1,0] 450ms / 成功落地脉冲 2.6% 460ms；
+  //   交互：指针捕获 + 窗口级 move/up（带速度回弹；只叠左向甩动惯性，对齐原版 Math.min(0, v)）；
+  //        键盘 role=slider：ArrowRight/Up 步进 10%、End 直接提交、ArrowLeft/Down 回退、Home/Esc 归零；
+  //        prefers-reduced-motion：无抖动/脉冲/膨胀，收尾改 200ms 直补间；
+  //        aria-valuenow/valuetext 随拖拽百分比更新，状态变化 aria-live 播报（对齐原版可访问性口径）。
+  function makeSlideCommit(opts) {
+    opts = opts || {};
+    var PAD = 4, SQUASH_MAX = 0.08, SQUASH_DIV = 110, SWELL = 1.03;
+    var MIN_PENDING = 300, HOLD_MS = opts.holdMs || 1500;
+    var K = 260 + 0.5 * 640;            // 刚度：原版 speed=50 → 260 + 50/100*640 = 580
+    var MASS = 0.9;                     // 原版质量
+    var CRIT = 2 * Math.sqrt(K * MASS); // 临界阻尼（提交用）；回弹取 0.62 倍（对应原版 returnBounce=.38）
+    var REDUCE = false, FINE = false;
+    try { REDUCE = window.matchMedia('(prefers-reduced-motion: reduce)').matches; } catch (e) {}
+    try { FINE = window.matchMedia('(hover: hover) and (pointer: fine)').matches; } catch (e) {}
+
+    var root = document.createElement('div');
+    root.className = 'slide-commit';
+    root.setAttribute('data-phase', 'idle');
+    root.innerHTML =
+      '<div class="sc-track">' +
+        '<span class="sc-say" aria-hidden="true"><span class="sc-say-idle"></span><span class="sc-say-err"></span></span>' +
+        '<div class="sc-capsule" role="slider" tabindex="0" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">' +
+          '<div class="sc-content">' +
+            '<span class="sc-arrow" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12h14"/><path d="m13 6 6 6-6 6"/></svg></span>' +
+            '<span class="sc-spinwrap" aria-hidden="true"><svg class="sc-spinner" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2.4" stroke-opacity=".25"/><path d="M12 3a9 9 0 0 1 9 9" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg></span>' +
+            '<span class="sc-done" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.6 10 17.6 19 7.2"/></svg><span class="sc-done-label"></span></span>' +
+          '</div>' +
+        '</div>' +
+        '<span class="sc-live" aria-live="polite"></span>' +
+      '</div>';
+    var track = root.querySelector('.sc-track');
+    var capsule = root.querySelector('.sc-capsule');
+    var content = root.querySelector('.sc-content');
+    var say = root.querySelector('.sc-say');
+    var sayIdle = root.querySelector('.sc-say-idle');
+    var sayErr = root.querySelector('.sc-say-err');
+    var arrow = root.querySelector('.sc-arrow');
+    var spinwrap = root.querySelector('.sc-spinwrap');
+    var doneLabel = root.querySelector('.sc-done-label');
+    var live = root.querySelector('.sc-live');
+    var label = opts.label || '滑动确认';
+    sayIdle.textContent = label;
+    sayErr.textContent = opts.errorLabel || '操作失败';
+    doneLabel.textContent = opts.doneLabel || '已完成';
+    capsule.setAttribute('aria-label', opts.ariaLabel || label);
+    capsule.setAttribute('aria-valuetext', label);
+
+    var INNER = 0, GRIP = 0, GRIP_R = 0, TRAVEL = 1;
+    function measure() {
+      var r = track.getBoundingClientRect();
+      if (!r.width || !r.height) return false;
+      INNER = r.width - PAD * 2;
+      GRIP = r.height - PAD * 2;
+      GRIP_R = Math.max(0, r.height / 2 - PAD);
+      TRAVEL = Math.max(1, INNER - GRIP);
+      return true;
+    }
+
+    // 动画值（对齐原版 motion values：x=把手行程 / anchor=提交后冻结的展端点 / shown=箭头总开关 / spin=转圈透明度）
+    var st = { x: 0, anchor: 0, shown: 1, spin: 0, phase: 'idle', held: false, hot: false };
+    var running = {}, grip = null, settleTimer = null, homeTimer = null, runId = 0, lastPct = -1;
+    var trackAnim = null;
+    function stopAnim(name) { if (running[name]) { running[name](); running[name] = null; } }
+
+    // 直补间（easeOutCubic；shown/spin 与减动效收尾用）
+    function tween(name, to, ms, delay) {
+      stopAnim(name);
+      var from = st[name], t0 = null, dead = false, raf = 0;
+      function frame(now) {
+        if (dead) return;
+        if (t0 === null) t0 = now;
+        var el = now - t0 - (delay || 0);
+        if (el < 0) { raf = requestAnimationFrame(frame); return; }
+        var p = Math.min(1, el / ms);
+        st[name] = from + (to - from) * (1 - Math.pow(1 - p, 3));
+        render();
+        if (p < 1) raf = requestAnimationFrame(frame);
+        else running[name] = null;
+      }
+      raf = requestAnimationFrame(frame);
+      running[name] = function () { dead = true; if (raf) cancelAnimationFrame(raf); };
+    }
+
+    // 弹簧积分（半隐式欧拉 + 8ms 子步；提交=临界阻尼、回弹=欠阻尼，对齐原版 motion 弹簧参数）
+    function spring(name, to, velocity, stiff, damp) {
+      stopAnim(name);
+      var x = st[name], v = velocity || 0, last = null, t0s = null, dead = false, raf = 0;
+      function frame(now) {
+        if (dead) return;
+        if (last === null) { last = now; t0s = now; }
+        if (now - t0s > 6000) { st[name] = to; render(); running[name] = null; return; } // 兜底：数值异常也不永远转
+        var dt = Math.min(0.064, (now - last) / 1000);
+        last = now;
+        var n = Math.max(1, Math.ceil(dt / 0.008)), h = dt / n;
+        for (var i = 0; i < n; i++) {
+          var a = (-stiff * (x - to) - damp * v) / MASS;
+          v += a * h;
+          x += v * h;
+        }
+        st[name] = x;
+        render();
+        if (Math.abs(v) < 2 && Math.abs(x - to) < 0.1) { st[name] = to; render(); running[name] = null; return; }
+        raf = requestAnimationFrame(frame);
+      }
+      raf = requestAnimationFrame(frame);
+      running[name] = function () { dead = true; if (raf) cancelAnimationFrame(raf); };
+    }
+
+    // 逐帧合成原版全部 useTransform：胶囊裁切（clip）+ 收缩/膨胀 + 内容随动 + 文案/箭头/转圈淡出
+    function render() {
+      if (!INNER) return;
+      var seen = Math.max(0, Math.min(st.x, TRAVEL));
+      var edge = seen + GRIP + Math.max(0, Math.min(st.anchor - seen, TRAVEL));
+      var q = 1 - Math.min(SQUASH_MAX, Math.max(0, -st.x) / SQUASH_DIV);
+      var swell = (st.hot && !st.held && st.phase === 'idle' && !REDUCE) ? SWELL : 1;
+      capsule.style.clipPath = 'inset(0 ' + (INNER - edge).toFixed(2) + 'px 0 0 round ' + GRIP_R + 'px)';
+      capsule.style.transform = 'scale(' + (q * swell).toFixed(4) + ',' + (swell / q).toFixed(4) + ')';
+      capsule.style.transformOrigin = seen.toFixed(2) + 'px 50%';
+      content.style.transform = 'translateX(' + ((seen + edge) / 2 - INNER / 2).toFixed(2) + 'px)';
+      say.style.opacity = String(1 - Math.min(1, seen / (TRAVEL * 0.55)));
+      arrow.style.opacity = String(st.shown * Math.min(1, Math.max(0, 1 - (seen - TRAVEL * 0.55) / (TRAVEL * 0.4))));
+      spinwrap.style.opacity = String(st.spin);
+      var pct = Math.round((seen / TRAVEL) * 100);
+      if (pct !== lastPct) {
+        lastPct = pct;
+        capsule.setAttribute('aria-valuenow', String(pct));
+        capsule.setAttribute('aria-valuetext', label + '，' + pct + '%');
+      }
+    }
+
+    function setPhase(p) {
+      st.phase = p;
+      root.setAttribute('data-phase', p);
+      if (p === 'pending') capsule.setAttribute('aria-busy', 'true');
+      else capsule.removeAttribute('aria-busy');
+      live.textContent = p === 'pending' ? '正在上传' : p === 'done' ? doneLabel.textContent : p === 'error' ? sayErr.textContent : '';
+      render();
+    }
+
+    // 轨道级键帧（失败抖动 / 成功落地脉冲），跑完自动还原、不占最终态
+    function trackAnimRun(kf, dur, delay, ease) {
+      if (trackAnim) { try { trackAnim.cancel(); } catch (e) {} trackAnim = null; }
+      try { trackAnim = track.animate(kf, { duration: dur, delay: delay || 0, easing: ease }); } catch (e) { trackAnim = null; }
+    }
+
+    function velocityOf(hist) {
+      if (!hist || hist.length < 2) return 0;
+      var a = hist[0], b = hist[hist.length - 1];
+      return ((b[1] - a[1]) / Math.max(1, b[0] - a[0])) * 1000;
+    }
+
+    function goHome(velocity) {
+      if (REDUCE) { tween('x', 0, 200, 0); return; }
+      spring('x', 0, Math.min(0, velocity), K, CRIT * 0.62);
+    }
+
+    function settle() {
+      settleTimer = null;
+      setPhase('idle');
+      tween('shown', 1, 200, 120);
+      if (REDUCE) { st.anchor = 0; render(); }
+      else spring('anchor', 0, 0, 260, 2 * Math.sqrt(260 * MASS));
+    }
+
+    function resolve(viaKey) {
+      setPhase('done');
+      st.anchor = st.x;
+      tween('spin', 0, 120, 0);
+      if (REDUCE) { st.x = 0; render(); }
+      else {
+        spring('x', 0, 0, K, CRIT);
+        if (!viaKey) trackAnimRun([
+          { transform: 'scale(1)' },
+          { transform: 'scale(' + (1 - 0.026) + ')', offset: 0.62 },
+          { transform: 'scale(1)' }
+        ], 460, 100, 'cubic-bezier(0.23, 1, 0.32, 1)');
+      }
+      if (HOLD_MS > 0) settleTimer = setTimeout(settle, HOLD_MS);
+    }
+
+    function reject(reason) {
+      sayErr.textContent = String((reason && (reason.msg || reason.error)) || opts.errorLabel || '操作失败');
+      setPhase('error');
+      tween('spin', 0, 120, 0);
+      tween('shown', 1, 200, 120);
+      if (REDUCE) goHome(0);
+      else {
+        trackAnimRun([
+          { transform: 'translateX(0px)' }, { transform: 'translateX(-5px)' }, { transform: 'translateX(5px)' },
+          { transform: 'translateX(-3px)' }, { transform: 'translateX(3px)' }, { transform: 'translateX(-1px)' },
+          { transform: 'translateX(0px)' }
+        ], 450, 0, 'cubic-bezier(0.23, 1, 0.32, 1)');
+        homeTimer = setTimeout(function () { if (!grip) goHome(0); }, 300);
+      }
+      if (settleTimer) clearTimeout(settleTimer);
+      settleTimer = setTimeout(function () { settleTimer = null; setPhase('idle'); }, Math.max(HOLD_MS, 1500));
+    }
+
+    function commit(viaKey) {
+      if (st.phase === 'pending' || st.phase === 'done') return;
+      if (!INNER && !measure()) return;
+      if (settleTimer) { clearTimeout(settleTimer); settleTimer = null; }
+      if (homeTimer) { clearTimeout(homeTimer); homeTimer = null; }
+      var id = ++runId;
+      stopAnim('x');
+      stopAnim('anchor');
+      st.anchor = 0; // 提交瞬间清掉旧展端点：失败时胶囊能干净收回（成功由 resolve 重新冻结）
+      st.x = TRAVEL;
+      render();
+      var out;
+      try { out = opts.onConfirm ? opts.onConfirm() : null; } catch (e) { reject(e); return; }
+      var pending = out && typeof out.then === 'function' ? out : null;
+      if (!pending) { tween('shown', 0, 120, 0); resolve(viaKey); return; }
+      setPhase('pending');
+      tween('shown', 0, 200, 0);
+      tween('spin', 1, 200, 0);
+      var t0 = performance.now();
+      var later = function (fn) {
+        setTimeout(function () {
+          if (id !== runId) return; // 上一轮已作废（提交期间又发起了新提交）
+          fn();
+        }, Math.max(0, MIN_PENDING - (performance.now() - t0)));
+      };
+      pending.then(
+        function (v) {
+          later(function () {
+            if (v && v.doneLabel) doneLabel.textContent = v.doneLabel; // 完成文案随「已上传 N 个」更新
+            resolve(viaKey);
+          });
+        },
+        function (reason) { later(function () { reject(reason); }); }
+      );
+    }
+
+    function onPointerMove(e) {
+      if (!grip || e.pointerId !== grip.id) return;
+      var rect = track.getBoundingClientRect();
+      var at = e.clientX - rect.left;
+      if (grip.grab === null) { grip.grab = at - st.x; return; }
+      var next = Math.max(0, Math.min(TRAVEL, at - grip.grab));
+      if (Math.abs(next - st.x) > 0.5) grip.moved = true;
+      grip.hist.push([e.timeStamp, next]);
+      if (grip.hist.length > 4) grip.hist.shift();
+      st.x = next;
+      render();
+    }
+
+    function onPointerUp(e) {
+      if (!grip || e.pointerId !== grip.id) return;
+      var g = grip;
+      grip = null;
+      window.removeEventListener('pointermove', onPointerMove);
+      window.removeEventListener('pointerup', onPointerUp);
+      window.removeEventListener('pointercancel', onPointerUp);
+      try { track.releasePointerCapture(e.pointerId); } catch (e2) {}
+      st.held = false;
+      root.removeAttribute('data-held');
+      if (st.x >= TRAVEL) commit(false);
+      else if (g.moved) goHome(velocityOf(g.hist));
+      else render();
+    }
+
+    function onPointerDown(e) {
+      if (e.button !== 0 || grip) return;
+      if (st.phase === 'pending' || st.phase === 'done') return;
+      if (!measure()) return;
+      stopAnim('x');
+      grip = { id: e.pointerId, grab: null, moved: false, hist: [] };
+      st.held = true;
+      root.setAttribute('data-held', '');
+      try { track.setPointerCapture(e.pointerId); } catch (e2) {}
+      window.addEventListener('pointermove', onPointerMove);
+      window.addEventListener('pointerup', onPointerUp);
+      window.addEventListener('pointercancel', onPointerUp);
+      render();
+    }
+
+    function onKeyDown(e) {
+      if (st.phase === 'pending' || st.phase === 'done') return;
+      if (!measure()) return;
+      var step = TRAVEL / 10;
+      if (e.key === 'End') {
+        e.preventDefault();
+        commit(true);
+      } else if (e.key === 'ArrowRight' || e.key === 'ArrowUp') {
+        e.preventDefault();
+        stopAnim('x');
+        st.x = Math.min(TRAVEL, st.x + step);
+        render();
+        if (st.x >= TRAVEL) commit(true);
+      } else if (e.key === 'ArrowLeft' || e.key === 'ArrowDown') {
+        e.preventDefault();
+        stopAnim('x');
+        st.x = Math.max(0, st.x - step);
+        render();
+      } else if (e.key === 'Home' || e.key === 'Escape') {
+        e.preventDefault();
+        if (grip) onPointerUp({ pointerId: grip.id });
+        else { stopAnim('x'); st.x = 0; render(); }
+      }
+    }
+
+    track.addEventListener('pointerdown', onPointerDown);
+    capsule.addEventListener('keydown', onKeyDown);
+    capsule.addEventListener('pointerenter', function (e) {
+      if (e.pointerType === 'mouse' && FINE) { st.hot = true; render(); }
+    });
+    capsule.addEventListener('pointerleave', function () { st.hot = false; render(); });
+
+    // 面板从 hidden 切到可见（或视口变化）时重新量取几何并重绘（初始 CSS 用等值默认裁切兜底）
+    if (window.ResizeObserver) {
+      try { new ResizeObserver(function () { if (measure()) render(); }).observe(track); } catch (e) {}
+    }
+
+    return {
+      root: root,
+      busy: function () { return st.phase === 'pending'; }
+    };
+  }
+
   // ---------- 上传：多选 + 拖拽（含文件夹），队列逐个传，同名/超大/格式不符自动过滤 ----------
   function extAllowed(f) {
     var name = (f.name || '').toLowerCase();
@@ -4668,9 +4995,11 @@
     try { localStorage.setItem('adminImgCompress', this.checked ? '1' : '0'); } catch (e) {}
   });
 
-  function uploadFiles(files) {
+  // 上传队列：resolve/reject 由滑动确认包出的 Promise 提供（完成汇总照旧走 toast；
+  // 全失败/无可传文件时 reject({msg}) 让滑动条进失败态）
+  function uploadFiles(files, resolve, reject) {
     var all = Array.prototype.slice.call(files || []);
-    if (!all.length) return;
+    if (!all.length) { reject({ msg: '请先选择文件' }); return; }
     var MAX_SIZE = 24 * 1024 * 1024;
     var existing = {};
     (items[currentType] || []).forEach(function (it) {
@@ -4713,17 +5042,15 @@
       if (wrongType) m += '（' + wrongType + ' 个格式不符）';
       if (lrcUnmatched.length) m += '；歌词 ' + lrcUnmatched.join('、') + ' 没有同名歌曲（可用歌曲行的「歌词」按钮补传）';
       toast(m, 'err');
+      reject({ msg: '没有可上传的文件' });
       return;
     }
 
-    var btn = $('uploadBtn');
-    var i = 0, okCount = 0, failCount = 0;
-    btn.disabled = true;
+    var i = 0, okCount = 0, failCount = 0, failErr = '';
     $('progress').style.display = 'block';
 
     function next() {
       if (i >= queue.length) {
-        btn.disabled = false;
         $('progress').style.display = 'none';
         $('progressBar').style.width = '0';
         $('queueInfo').textContent = '';
@@ -4741,6 +5068,9 @@
         if (lrcUnmatched.length) msg += '；歌词 ' + lrcUnmatched.join('、') + ' 未配对到歌曲（可用歌曲行的「歌词」按钮补传）';
         toast(msg, failCount ? 'err' : 'ok');
         loadList();
+        // 滑动条三态收口：有成功=完成态；全失败=失败态；成功数随「N 个」换文案
+        if (okCount) resolve({ total: queue.length, ok: okCount, fail: failCount, doneLabel: '已上传 ' + okCount + ' 个' });
+        else reject({ msg: failErr || '上传失败' });
         return;
       }
       var f = queue[i++];
@@ -4771,11 +5101,13 @@
           if (xhr.status === 200) {
             try {
               var data = JSON.parse(xhr.responseText);
-              if (data.ok) okCount++; else failCount++;
+              if (data.ok) okCount++;
+              else { failCount++; if (!failErr && data.error) failErr = data.error; }
             } catch (e) { failCount++; }
           } else if (xhr.status === 401) {
             show('login');
-            return; // 会话失效，终止队列
+            reject({ msg: '会话已过期，请重新登录' }); // 终止队列并让滑动条进失败态，不悬在 pending
+            return;
           } else {
             failCount++;
           }
@@ -4822,19 +5154,33 @@
     entries.forEach(walk);
   }
 
-  $('uploadBtn').addEventListener('click', function () {
-    var fileEl = $('fileInput');
-    if (!fileEl.files || !fileEl.files.length) {
-      toast('请先选择文件', 'err'); return;
+  // 上传入口：按钮换成「滑动上传」确认条（Slide Commit）——滑到底才真正开始上传，防误点；
+  // 点按钮/拖入只进「待上传」选区，统一由滑动条确认开传（原按钮保留为兜底节点，创建成功后隐藏）
+  var uploadCommit = makeSlideCommit({
+    label: '滑动上传',
+    doneLabel: '已上传',
+    errorLabel: '上传失败',
+    ariaLabel: '滑动上传（滑到最右端确认）',
+    onConfirm: function () {
+      var fileEl = $('fileInput');
+      // 同步校验直接 throw（不进 pending 转圈）；真正开传才走 Promise
+      if (!fileEl.files || !fileEl.files.length) throw { msg: '请先选择文件' };
+      return new Promise(function (resolve, reject) { uploadFiles(fileEl.files, resolve, reject); });
     }
-    uploadFiles(fileEl.files);
   });
+  (function () {
+    var oldBtn = $('uploadBtn');
+    if (!oldBtn) return;
+    oldBtn.parentNode.insertBefore(uploadCommit.root, oldBtn);
+    oldBtn._slideCommit = uploadCommit; // 隐藏后仍留个句柄（测试/将来的快捷入口用）
+    oldBtn.style.display = 'none';
+  })();
 
   // 自定义"选择文件"按钮：触发原生 input（功能完全等价：多选/文件夹/accept 限制）
   $('filePickBtn').addEventListener('click', function () { $('fileInput').click(); });
-  // 拖放区整块可点：点空白处等同「选择文件」（按钮/输入框上的点击直接返回，防重复弹文件框）
+  // 拖放区整块可点：点空白处等同「选择文件」（按钮/输入框/滑动条上的点击直接返回，防重复弹文件框）
   $('uploadRow').addEventListener('click', function (e) {
-    if (e.target.closest('button') || e.target.closest('input')) return;
+    if (e.target.closest('button') || e.target.closest('input') || e.target.closest('.slide-commit')) return;
     $('fileInput').click();
   });
   // 选中文件确认条：每个文件一枚胶囊，点 ✕ 单独移除（经 DataTransfer 重建 input.files，全部移完自动收起）
@@ -4879,6 +5225,24 @@
   }
   $('fileInput').addEventListener('change', renderPickInfo);
 
+  // 拖入的文件先填进「待上传」选区（不直接开传）：所有上传统一走滑动确认
+  // input.files 只读，只能用 DataTransfer 重建（与 pick-chip 的 ✕ 移除同套路）
+  function fillUploadSelection(files) {
+    var list = Array.prototype.slice.call(files || []).filter(function (f) { return f && f.name; });
+    if (!list.length) return;
+    var input = $('fileInput');
+    try {
+      var dt = new DataTransfer();
+      list.forEach(function (f) { dt.items.add(f); });
+      input.files = dt.files;
+    } catch (e) {
+      toast('这个浏览器不支持拖入填充，请用「点击选择文件」', 'err');
+      return;
+    }
+    renderPickInfo();
+    toast('已填入 ' + list.length + ' 个文件，向右滑动「滑动上传」确认开始', 'ok');
+  }
+
   // 拖拽上传：绑在整个媒体面板上；内部拖拽排序（dragFrom 有值）不抢
   var mediaPanel = $('mediaPanel');
   var uploadRow = $('uploadRow');
@@ -4893,7 +5257,7 @@
     uploadRow.classList.remove('dragover');
     if (dragFrom) return; // 列表内部排序
     e.preventDefault();
-    filesFromDataTransfer(e.dataTransfer, uploadFiles);
+    filesFromDataTransfer(e.dataTransfer, fillUploadSelection);
   });
 
   loadStatus();

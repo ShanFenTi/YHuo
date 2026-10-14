@@ -432,6 +432,83 @@
   }
   .upload-actions { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-top: 12px; }
   .upload-actions input[type=text] { flex: 1 1 220px; margin: 0; }
+  /* ---------- 上传滑动确认（Slide Commit 原生复刻，2026-10-14）：结构/常量见 admin.js 同名注释段 ----------
+     高度按原版 56→这里收窄到 44（后台密排）；宽 260 起、窄容器收缩。配色接本站令牌：
+     轨道 --input-bg、把手 --brand（与原「上传」主钮同色）、成功 --ok、失败 --danger，深浅主题自动跟随。 */
+  .slide-commit {
+    flex: none; width: min(260px, 100%); height: 44px;
+    --sc-pad: 4px; --sc-radius: 22px; --sc-grip-r: 18px; --sc-grip: 36px;
+    --sc-on-ok: #fff; --sc-on-no: #fff;
+    user-select: none; -webkit-user-select: none; -webkit-tap-highlight-color: transparent;
+  }
+  /* 深色主题的成功/失败色是浅色调，文字改深色保证对比度（等价原版 YIQ 自动取反色） */
+  [data-theme="dark"] .slide-commit { --sc-on-ok: #17111a; --sc-on-no: #17111a; }
+  .slide-commit .sc-track {
+    position: relative; width: 100%; height: 100%;
+    border-radius: var(--sc-radius); background: var(--input-bg);
+    /* 描边用 inset 阴影不用 border：border 会挤小 padding box，让 JS 量出的几何与胶囊盒错 2px */
+    box-shadow: inset 0 0 0 1px var(--border);
+    cursor: grab; touch-action: none;
+    transition: box-shadow .2s ease;
+  }
+  .slide-commit[data-held] .sc-track { cursor: grabbing; }
+  .slide-commit[data-phase="pending"] .sc-track,
+  .slide-commit[data-phase="done"] .sc-track,
+  .slide-commit[data-phase="error"] .sc-track { cursor: default; }
+  .slide-commit .sc-say {
+    position: absolute; inset: 0; display: grid; place-items: center;
+    font-size: 13px; font-weight: 600; line-height: 1; pointer-events: none;
+    opacity: 1;
+  }
+  .slide-commit .sc-say > span {
+    grid-area: 1 / 1; white-space: nowrap;
+    transition: opacity .2s ease, filter .2s ease;
+  }
+  .slide-commit .sc-say-idle { color: color-mix(in srgb, var(--fg) 45%, transparent); }
+  .slide-commit .sc-say-err { color: var(--danger); opacity: 0; filter: blur(2px); }
+  .slide-commit[data-phase="error"] .sc-say-idle { opacity: 0; filter: blur(2px); }
+  .slide-commit[data-phase="error"] .sc-say-err { opacity: 1; filter: none; }
+  /* 胶囊：同一元素裁窗成把手；clip-path/transform/transform-origin 由 JS 逐帧写入（与 React 版 motion 值同口径） */
+  .slide-commit .sc-capsule {
+    position: absolute; top: var(--sc-pad); left: var(--sc-pad);
+    width: calc(100% - var(--sc-pad) * 2); height: calc(100% - var(--sc-pad) * 2);
+    border-radius: var(--sc-grip-r); background: var(--brand); color: var(--on-brand);
+    outline: none; cursor: inherit;
+    /* 首帧（未及 JS 量取）的兜底裁窗：与 JS measure 的 GRIP 等值；渲染后会被 inline clip 接管 */
+    clip-path: inset(0 calc(100% - var(--sc-grip, 36px)) 0 0 round var(--sc-grip-r));
+    will-change: clip-path, transform;
+    transition: background-color .2s ease, color .2s ease;
+  }
+  .slide-commit[data-phase="done"] .sc-capsule { background: var(--ok); color: var(--sc-on-ok); }
+  .slide-commit[data-phase="error"] .sc-capsule { background: var(--danger); color: var(--sc-on-no); }
+  .slide-commit .sc-capsule:focus-visible { box-shadow: inset 0 0 0 2px var(--input-bg); }
+  .slide-commit .sc-content { position: absolute; inset: 0; will-change: transform; }
+  .slide-commit .sc-content > span {
+    position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; gap: 6px;
+    font-size: 13px; font-weight: 700; line-height: 1; pointer-events: none; white-space: nowrap;
+  }
+  .slide-commit .sc-content svg { width: 17px; height: 17px; display: block; }
+  .slide-commit .sc-spinwrap { opacity: 0; }
+  .slide-commit .sc-spinner { animation: sc-spin 1s linear infinite; animation-play-state: paused; }
+  .slide-commit[data-phase="pending"] .sc-spinner { animation-play-state: running; }
+  .slide-commit .sc-done { opacity: 0; transform: scale(.95); transition: opacity .2s ease, transform .2s cubic-bezier(.23, 1, .32, 1); }
+  .slide-commit[data-phase="done"] .sc-done { opacity: 1; transform: scale(1); }
+  .slide-commit .sc-live {
+    position: absolute; width: 1px; height: 1px; overflow: hidden;
+    clip: rect(0 0 0 0); clip-path: inset(50%); white-space: nowrap;
+  }
+  @keyframes sc-spin { to { transform: rotate(360deg); } }
+  @media (max-width: 640px) {
+    /* 手机端收窄：高度 44→40（圆角/把手随动，量取的几何由 JS 按真实尺寸算） */
+    .slide-commit { height: 40px; --sc-radius: 20px; --sc-grip-r: 16px; --sc-grip: 32px; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    /* 对齐原版：转圈改呼吸、没有抖动/脉冲；位置类改直补间（JS 内同样降级） */
+    .slide-commit .sc-spinner { animation: none; }
+    .slide-commit[data-phase="pending"] .sc-spinner { animation: sc-breathe 1.4s ease-in-out infinite; }
+    @keyframes sc-breathe { 0%, 100% { opacity: 1; } 50% { opacity: .4; } }
+    .slide-commit .sc-capsule { transition: none; }
+  }
   .upload-actions button { flex: none; }
   /* 原生 file input 视觉隐藏（保留多选/文件夹/accept 能力），由自定义"选择文件"按钮触发 */
   #fileInput { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }

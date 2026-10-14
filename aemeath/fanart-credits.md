@@ -1,31 +1,33 @@
 # 爱弥斯 · 二创图 署名与来源清单
 
-> 收录 14 张同人二创图（`aemeath/fanart/`），随素材包自动同步进相册「爱弥斯 · 二创」（2026-10-14）。
+> 收录 14 张同人二创图（`aemeath/fanart/`），随素材包自动同步进相册「爱弥斯 · 二创」（2026-10-14 全量替换为库街区版）。
 > 版权归各画师所有；本站为个人粉丝站自用、非商用、不篡改署名。若画师不希望作品被转载，请联系站长删除，会在收到反馈后尽快下架。
-> 来源帖均为公开图站 safebooru.org（danbooru 转载镜像）；「原链」为能追溯到的画师原始发布地址（X/Twitter 或 Pixiv）。
+> 来源帖均为库街区（kurobbs.com，库洛游戏官方社区）公开帖子；「原帖」直达帖子页，含完整图文与作者主页入口。
 
-| # | 文件 | 画师 | 来源帖 | 原链 |
-|---|------|------|--------|------|
-| 01 | aemeath-fanart-01-crayon-hug.webp | Synthia0001 | <https://safebooru.org/index.php?page=post&s=view&id=7227731> | <https://x.com/Synthia0001/status/2109762695457308682> |
-| 02 | aemeath-fanart-02-border-dress.webp | Pong2 | <https://safebooru.org/index.php?page=post&s=view&id=7220520> | <https://www.pixiv.net/artworks/150264379> |
-| 03 | aemeath-fanart-03-doll.webp | auui | <https://safebooru.org/index.php?page=post&s=view&id=7216599> | <https://x.com/Auu_i1225/status/2108482612104667467> |
-| 04 | aemeath-fanart-04-young-plush.webp | 星願 | <https://safebooru.org/index.php?page=post&s=view&id=7191068> | <https://www.pixiv.net/artworks/150310188> |
-| 05 | aemeath-fanart-05-backpack.webp | smodo | <https://safebooru.org/index.php?page=post&s=view&id=7177728> | <https://www.pixiv.net/artworks/150138967> |
-| 06 | aemeath-fanart-06-brown-dress.webp | Do | <https://safebooru.org/index.php?page=post&s=view&id=7157677> | <https://www.pixiv.net/artworks/149839144> |
-| 07 | aemeath-fanart-07-student.webp | Fuyuhrs_530 | <https://safebooru.org/index.php?page=post&s=view&id=7150429> | <https://www.pixiv.net/artworks/149749367> |
-| 08 | aemeath-fanart-08-necktie.webp | smodo | <https://safebooru.org/index.php?page=post&s=view&id=7130173> | <https://www.pixiv.net/artworks/149471849> |
-| 09 | aemeath-fanart-09-dog.webp | gouhou_dog | <https://safebooru.org/index.php?page=post&s=view&id=7091875> | <https://x.com/gouhou_dog/status/2092916083334500650> |
-| 10 | aemeath-fanart-10-boots.webp | ねむヰ | <https://safebooru.org/index.php?page=post&s=view&id=7087179> | <https://www.pixiv.net/artworks/148880681> |
-| 11 | aemeath-fanart-11-sweater.webp | Reihaz_sj | <https://safebooru.org/index.php?page=post&s=view&id=7086390> | <https://x.com/Reihaz_sj/status/2092090502720151991> |
-| 12 | aemeath-fanart-12-gloves.webp | Hikaku | <https://safebooru.org/index.php?page=post&s=view&id=7066837> | <https://www.pixiv.net/artworks/148597099> |
-| 13 | aemeath-fanart-13-fireworks.webp | Retsu_3 | <https://safebooru.org/index.php?page=post&s=view&id=7058669> | <https://x.com/Retsu_3/status/2088806591126778147> |
-| 14 | aemeath-fanart-14-blush-dress.webp | saki___0116 | <https://safebooru.org/index.php?page=post&s=view&id=7035796> | <https://x.com/saki___0116/status/2084513236620394760> |
+| # | 文件 | 画师 | 帖子标题 | 原帖 |
+|---|------|------|----------|------|
+| 01 | aemeath-fanart-01-roadtrip-21.webp | 寻不到的折翼枯叶蝶 | 启程！公路片续集（二十一） | <https://www.kurobbs.com/mc/post/1514032797927718912> |
+| 02 | aemeath-fanart-02-starglow-return.webp | 水悦镜华 | 星炬余温，归来的第一天（女漂同人文） | <https://www.kurobbs.com/mc/post/1534926904867778560> |
+| 03 | aemeath-fanart-03-sea-of-stars.webp | 是立恒啊 | 星海无垠 | <https://www.kurobbs.com/mc/post/1534333761906819072> |
+| 04 | aemeath-fanart-04-spring-song.webp | 一只小青鱼呀 | 跨越时光的春歌 | <https://www.kurobbs.com/mc/post/1556791813135826944> |
+| 05 | aemeath-fanart-05-sweet-pairing.webp | 百梓 | 被偏爱时，风都很甜（爱弥斯x女漂小甜文） | <https://www.kurobbs.com/mc/post/1473180551702487040> |
+| 06 | aemeath-fanart-06-refusal.webp | 叶洛曦 | 不要…… | <https://www.kurobbs.com/mc/post/1471597843742302208> |
+| 07 | aemeath-fanart-07-no-regrets.webp | 叶洛曦 | 不许反悔哦 | <https://www.kurobbs.com/mc/post/1485377065582014464> |
+| 08 | aemeath-fanart-08-roadtrip-09.webp | 寻不到的折翼枯叶蝶 | 启程！公路片续集（九） | <https://www.kurobbs.com/mc/post/1504545975749255168> |
+| 09 | aemeath-fanart-09-ai-fanfic.webp | 卷柏哦 | 小爱同人文喵 | <https://www.kurobbs.com/mc/post/1530322456799440896> |
+| 10 | aemeath-fanart-10-ghost-diary.webp | 沐之啊 | 爱弥斯同人甜文（微病娇重力向）《电子幽灵的观察日记》 | <https://www.kurobbs.com/mc/post/1471630504414257152> |
+| 11 | aemeath-fanart-11-dont-be-sad.webp | 皮卡皮卡金皮卡 | “别·难过~”爱弥斯正片纯享版 | <https://www.kurobbs.com/mc/post/1531455138063585280> |
+| 12 | aemeath-fanart-12-little-miracle.webp | bilibili创翼WoW | 【爱弥斯/Aemeath】成为你的小小奇迹✨ | <https://www.kurobbs.com/mc/post/1478396369957588992> |
+| 13 | aemeath-fanart-13-wait-for-me.webp | 百梓 | 我不要你在我身后，我要你等我（女漂x爱弥斯） | <https://www.kurobbs.com/mc/post/1501056136071729152> |
+| 14 | aemeath-fanart-14-qingxiao-pair.webp | 解兰舟 | 清宵&爱弥斯 | <https://www.kurobbs.com/mc/post/1540121787056594944> |
 
-## 抓取与筛选取舍记录（2026-10-14）
+## 抓取与筛选取舍记录（2026-10-14，替换 safebooru 旧批）
 
-- 渠道：与达妮娅批（2026-10-11）同口径——danbooru/konachan 仍被 Cloudflare 拦，**safebooru.org 开放 dapi 接口 + 图片 CDN 走系统代理直取成功**；yande.re 本次仅作辅助。
-- 标签核实：**yande.re 上 `aemeath` 标签经 tag.json 查证 type=4（社团/社区），并非角色**，角色内容走 safebooru 的 `aemeath_(wuthering_waves)`（790 帖）；safebooru dapi 标签接口仅能区分版权（type=3）/角色（type=4），画师标一律 type=0，故署名改用「source 原链 + 画师样式标签」交叉：x.com 源直接取 @handle，pixiv 源经 pixiv 官方 ajax 接口查画师名（pong2/auui/do_brando/hikaku 四个标签与 pixiv 名互相印证；auui 另经 yande.re tag.json type=1 确证）。
-- 入选标准：无 AI 标签、分辨率 ≥1400px、单人 solo 优先、有原链可署名；**剔除 2 张**——female_rover 标签混入双人构图、4girls 标签群像（保证单人组图纯度）；safebooru 的 rating 字段恒为 q 不可信，改用硬排除标签清单（涉色情向关键词）自筛。
-- 抓取范围：790 帖全量（pid 0~7、limit=100；dapi pid≥8 返回空）→ 649 过滤 → 227 有源 solo 池 → 16 张缩略图目验 → 终选 14 张。
-- 转换：原图（PNG/JPG，单张最大 12.7MB）经 PIL 统一缩放（长边 ≤1800）转 webp q82，单张 55~521KB，共约 2.1MB。
-- 后续加图：站长可在后台「图片」页拖拽上传并选「爱弥斯 · 二创」相册（相册行已随素材包创建），与包内 14 张共存；也可直接扩 `aemeath/manifest.json`（同名 title 去重，重开后台自动同步）。
+- 渠道：站长指定库街区——Kuro Games 官方社区，二创帖自带画师署名与点赞数据，溯源比图站镜像可靠；safebooru 旧批 14 张同日全量下线（文件、manifest、本地库三处同步替换）。
+- 接口：搜索走 POST `api.kurobbs.com/forum/search/v2/join`（keyword=爱弥斯，gameId=3，pageIndex 翻页，匿名 token 留空可用）；图片 CDN `prod-alicdn-community.kurobbs.com` 必须带 `Referer: https://www.kurobbs.com/` 才放行。
+- 抓取范围：搜索 586 帖全量 → 357 帖有图 → 按点赞排序人工复筛 24 帖候选 → 缩略拼图 + 存疑图放大目验 → 终选 14 张（点赞 14349~1011）。
+- 剔除 10 张：攻略帖 2、表情包帖 1（站长明确不要表情包）、游戏截图感帖 3、点赞垫底帖 4（她是猫 997 / 新春特别篇 910 / 画了爱弥斯 614 / 别哭啦 495）。
+- 多图帖一律取首图（与目验缩略图一致）；01 与 08 为同系列漫画《启程！公路片续集》两章，均高赞故双收。
+- 转换：原图（最大 3840×2160）经 PIL 统一缩放（长边 ≤1800）转 webp q82，单张 41~357KB，共约 2.7MB。
+- 替换：本地 D1 `media` 表「爱弥斯 · 二创」组整组删除后经后台导入接口重灌（≤12/批）。
+- 后续加图：站长可在后台「图片」页拖拽上传并选「爱弥斯 · 二创」相册，与包内 14 张共存；也可直接扩 `aemeath/manifest.json`（同名 title 去重，重开后台自动同步）。

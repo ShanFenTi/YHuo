@@ -17,9 +17,8 @@
 
 看板娘立绘 `assets/aemeath-chibi/aemeath-full.webp`（1800×1785）同源自官方全身立绘。
 
-二创组 14 张已收录（2026-10-14 追）：safebooru `aemeath_(wuthering_waves)` 790 帖筛得，
-逐张画师署名与来源帖见 aemeath/fanart-credits.md；**注意 yande.re 的 `aemeath` 标签是同名单
-纯画师（tag type=4），不是角色标签**。
+二创组 14 张已全量替换为库街区版（2026-10-14 追）：kurobbs.com 搜索接口 586 帖筛得，
+逐张画师署名与原帖链接见 aemeath/fanart-credits.md（safebooru 旧批同日下线）。
 官方 PV 已收录（2026-10-14 追）：B 站鸣潮官方账号（mid 1955897084，官方认证 role=3）
 《鸣潮》共鸣者「爱弥斯」PV | 祝福 合集 P1【中】版（BV1EAFTzeEfY，aid 116001630852241，
 cid 35777743234，270s），非登录最高清晰度 360P h264+aac 单文件 17MB（<25MiB 上限免压缩），

@@ -9456,3 +9456,101 @@
       .sched-viewbar { margin-bottom: 10px; }
       .sched-day-list { gap: 10px; }
     }
+
+    /* =========================
+       验证码格子输入（2026-10-14，参考 reactbits.dev Code Slots 的「数字弹进格子」微交互，
+       原生 CSS 复刻）：JS 工厂 __initCodeSlots 把既有单个验证码输入包进 .code-slots 容器——
+       真输入原地保留（视觉透明+绝对定位铺满容器）继续承担键入/粘贴/短信自动填充
+       （autocomplete="one-time-code"），六个 .code-slot 只镜像显示字符；焦点态/复古主题/
+       暗色全走容器镜像规则。提交逻辑读的仍是原输入框 value，上游零改动。
+       弹入动效：单字输入触发 .code-slot-pop（scale 过冲回弹）；减动效偏好下整段动画关停。
+       ========================= */
+    .code-slots {
+      position: relative;
+      display: flex;
+      gap: 8px;
+      height: 40px;
+      cursor: text;
+    }
+    /* 真输入：铺满容器透明接管键入；opacity 0 而非 display:none（保持可聚焦/自动填充） */
+    .code-slots > input {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      opacity: 0;
+      border: none;
+      padding: 0;
+      margin: 0;
+      background: transparent;
+      font-size: 16px; /* iOS 聚焦自动放大阈值以下（站内既有口径） */
+      cursor: text;
+    }
+    .code-slots > input:focus { outline: none; }
+    /* 选择器带 .code-slots 前缀提特异性：登录卡里既有 .login-field span（12px/600/灰）会压 .code-slot */
+    .code-slots .code-slot {
+      flex: 1 1 0;
+      min-width: 0;
+      height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      font-weight: 700;
+      font-family: inherit;
+      font-variant-numeric: tabular-nums;
+      color: var(--apple-foreground);
+      background: var(--apple-secondary);
+      border: 1px solid var(--apple-border);
+      border-radius: 10px;
+      transition: border-color 180ms var(--ease-out), box-shadow 180ms var(--ease-out),
+        background-color 180ms var(--ease-out);
+      user-select: none;
+    }
+    /* 焦点跟随：真输入聚焦时当前位（=已填格数）亮起 */
+    .code-slots.is-focus .code-slot.is-active {
+      border-color: var(--apple-primary);
+      box-shadow: 0 0 0 3px color-mix(in srgb, var(--apple-primary) 22%, transparent);
+      background: var(--apple-card);
+    }
+    /* 数字弹入：scale 0.4 起跳过冲到 1.12 再回落（cubic-bezier 双段模拟弹簧），
+       加轻微透明度入场；一次性类，animationend 摘除可重播 */
+    .code-slot-pop { animation: code-slot-pop 260ms var(--ease-out); }
+    @keyframes code-slot-pop {
+      0% { transform: scale(0.4); opacity: 0.2; }
+      60% { transform: scale(1.12); opacity: 1; }
+      100% { transform: scale(1); opacity: 1; }
+    }
+    /* 清空（退格到空/模式切换/提交后清码）：整组快速下沉淡出再回位，示意「已清空」 */
+    .code-slots-clear .code-slot { animation: code-slot-clear 180ms var(--ease-out); }
+    @keyframes code-slot-clear {
+      0% { transform: scale(1); opacity: 1; }
+      45% { transform: scale(0.86); opacity: 0.25; }
+      100% { transform: scale(1); opacity: 1; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .code-slot-pop, .code-slots-clear .code-slot { animation: none; }
+    }
+    /* 复古四主题：格子直角（并入既有「圆角清零」语言；Win98 凹陷下面单独给） */
+    html[data-accent='win98'] .code-slot, html[data-accent='portal'] .code-slot,
+    html[data-accent='crt'] .code-slot, html[data-accent='oldbook'] .code-slot {
+      border-radius: 0;
+    }
+    html[data-accent='win98'] .code-slot {
+      background: #ffffff;
+      border: 1px solid;
+      border-color: #404040 #ffffff #ffffff #404040;
+      color: #000000;
+    }
+    html[data-accent='win98'].dark .code-slot {
+      background: #1a1a1a;
+      border-color: #101010 #6a6a6a #6a6a6a #101010;
+      color: #e8e8e8;
+    }
+    /* 资料卡绑定邮箱行（flex 横排）：格子容器占满剩余宽度，高度对齐原输入框 */
+    .pwd-out-row .code-slots { flex: 1 1 auto; min-width: 0; height: 36px; }
+    /* 手机端：格高 40→36px、间距 8→6px，390px 下 6 格不挤 */
+    @media (max-width: 560px) {
+      .code-slots { height: 36px; gap: 6px; }
+      .code-slots .code-slot { font-size: 16px; }
+    }

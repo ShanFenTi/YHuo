@@ -3005,6 +3005,81 @@ window.__siteCalendar = (function () {
       // 静态页 markup 里抽屉项没写死 active——启动按 <html data-page> 补一次
       applyNavActive(document.documentElement.getAttribute('data-page') || 'home');
     }
+
+    // ---------- 验证码格子输入（2026-10-14，参考 reactbits.dev Code Slots 微交互，原生复刻） ----------
+    // 把既有单个验证码输入包进 6 格镜像容器：真输入透明铺满继续承担键入/粘贴/短信自动填充，
+    // 格子只显示字符；焦点高亮当前位，单字弹入（scale 过冲回弹），清空整组下沉示意。
+    // 提交逻辑仍读原输入框 value，上游零改动。CSS 见 site.css「验证码格子输入」段。
+    // 注意：本 IIFE 严格模式，工厂必须放块外——登录卡与资料卡两处接线共用（块内声明不外提）。
+    var MOTION_OK = !(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+    function __initCodeSlots(input) {
+      if (!input) return null;
+      if (input._codeSlots) return input._codeSlots; // 重复接线返回既有实例
+      var LEN = 6;
+      var wrap = document.createElement('div');
+      wrap.className = 'code-slots';
+      var slots = [];
+      for (var i = 0; i < LEN; i++) {
+        var c = document.createElement('span');
+        c.className = 'code-slot';
+        c.setAttribute('aria-hidden', 'true'); // 纯装饰镜像：读屏读真输入即可，别把数字读两遍
+        wrap.appendChild(c);
+        slots.push(c);
+      }
+      input.parentNode.insertBefore(wrap, input);
+      wrap.appendChild(input); // CSS: .code-slots > input 绝对定位铺满透明
+      function paint(animFrom) {
+        var v = input.value.slice(0, LEN);
+        for (var i = 0; i < LEN; i++) {
+          var ch = v[i] || '';
+          var s = slots[i];
+          if (s.textContent !== ch) s.textContent = ch;
+          var active = i === Math.min(v.length, LEN - 1);
+          s.classList.toggle('is-active', active);
+        }
+        // 单字弹入：只弹本次新落格的字符（粘贴/自动填充多字时弹成小浪，空格子不弹）
+        if (MOTION_OK && animFrom >= 0) {
+          for (var j = animFrom; j < Math.min(v.length, LEN); j++) {
+            (function (el) {
+              el.classList.remove('code-slot-pop');
+              void el.offsetWidth; // 重启动画
+              el.classList.add('code-slot-pop');
+              el.addEventListener('animationend', function h() { el.classList.remove('code-slot-pop'); el.removeEventListener('animationend', h); });
+            })(slots[j]);
+          }
+        }
+      }
+      input.addEventListener('focus', function () { wrap.classList.add('is-focus'); paint(-1); });
+      input.addEventListener('blur', function () { wrap.classList.remove('is-focus'); paint(-1); });
+      input.addEventListener('input', function () {
+        // 只收数字：粘贴「123 456」/带非数字字符时先清洗再镜像（三处校验都是 /^\d{6}$/，前置过滤不改变语义）
+        var raw = input.value;
+        var clean = raw.replace(/\D/g, '').slice(0, LEN);
+        if (clean !== raw) input.value = clean;
+        var from = input._lastLen <= clean.length ? input._lastLen : -1; // 增才弹；删除不弹
+        input._lastLen = clean.length;
+        paint(from);
+      });
+      paint(-1);
+      input._lastLen = input.value.length;
+      var inst = {
+        clear: function () { // 清空 + 整组下沉示意（模式切换/提交后清码用，直改 value 不触发 input）
+          input.value = '';
+          input._lastLen = 0;
+          paint(-1);
+          if (MOTION_OK) {
+            wrap.classList.remove('code-slots-clear');
+            void wrap.offsetWidth;
+            wrap.classList.add('code-slots-clear');
+            wrap.addEventListener('animationend', function h() { wrap.classList.remove('code-slots-clear'); wrap.removeEventListener('animationend', h); });
+          }
+        },
+        input: input
+      };
+      input._codeSlots = inst;
+      return inst;
+    }
+
     if (loginGate) {
       if (gatePassed()) {
         loginGate.classList.add('hide');
@@ -3048,6 +3123,7 @@ window.__siteCalendar = (function () {
       var backLoginBtn = document.getElementById('backLoginBtn');
       var loginSubEl = document.getElementById('loginSub');
       var loginSubmitBtn = document.getElementById('loginSubmitBtn');
+      var gateCodeSlots = __initCodeSlots(gateCodeInput); // 登录卡验证码行（注册/找回/二次验证共用）
 
       // ---------- 模式切换的平滑动画（登录/注册/找回/验证码互相过渡不生硬） ----------
       var gateMotionOK = !(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
@@ -3359,7 +3435,7 @@ window.__siteCalendar = (function () {
               // 开了二次验证：验证码已由服务器发送到邮箱，进入验证码步骤
               gateTicket = d.ticket;
               gateUser = u;
-              if (gateCodeInput) gateCodeInput.value = '';
+              if (gateCodeSlots) gateCodeSlots.clear(); // 清码 + 格子整组下沉示意
               setGateMode('code');
               showLoginMsg(d.error);
             }
@@ -3652,6 +3728,7 @@ window.__siteCalendar = (function () {
     var emailBindView = document.getElementById('emailBindView');
     var pemailInput = document.getElementById('pemailInput');
     var pemailCode = document.getElementById('pemailCode');
+    var pemailCodeSlots = __initCodeSlots(pemailCode); // 绑定邮箱验证码也用格子（同一工厂）
     var pemailSendBtn = document.getElementById('pemailSendBtn');
     var pemailVerifyBtn = document.getElementById('pemailVerifyBtn');
     var pemailMsg = document.getElementById('pemailMsg');
@@ -3703,7 +3780,7 @@ window.__siteCalendar = (function () {
       emailRebindBtn.addEventListener('click', function () {
         emailBoundEmail = null; // 临时进入绑定视图（不影响已存数据）
         if (pemailInput) pemailInput.value = '';
-        if (pemailCode) pemailCode.value = '';
+        if (pemailCodeSlots) pemailCodeSlots.clear(); // 格子清空 + 下沉示意
         showPEmailMsg('');
         renderEmailCard();
       });

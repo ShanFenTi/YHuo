@@ -7025,6 +7025,10 @@ window.__siteCalendar = (function () {
     function aiEffortCur() {
       return AI_EFFORTS.filter(function (p) { return p.key === aiEffort; })[0] || AI_EFFORTS[0];
     }
+    function aiEffortLabelText() {
+      var p = aiEffortCur();
+      return (p.icon ? p.icon + ' ' : '') + p.name;
+    }
     function aiEffortLoad() {
       if (aiInPreviewFrame()) return;
       try {
@@ -7033,6 +7037,676 @@ window.__siteCalendar = (function () {
       } catch (e) {}
     }
     aiEffortLoad();
+
+    // ---------- 输入条 Prompt Bar 化（reactbits.dev Prompt Bar 原生复刻，2026-10-15） ----------
+    // 站长指定「完整复刻」。复刻范围：发送键形变（↑⇄■：生成中点击=停止，补上了此前缺失的中断入口）/
+    // @ 站内来源菜单（音乐/相册/随笔/留言板/课表——发送时抓数据作为上下文注入；「上传文件」沿用既有附件
+    // 链路）/ / 指令菜单（选中插入，发送时展开为提示词模板）/ 思考强度滑杆面板（原列表菜单升级：拖动+键盘，
+    // 拉到最右触发星光+面板光晕）/ 语音听写（SpeechRecognition 可用才显示）/ 文本框自动增高（≤5 行）/
+    // 打字星火粒子（canvas）/ 点条身聚焦 / 键盘全通路（菜单 ↑↓+Enter/Tab/Esc，Enter 发送、Shift+Enter 换行）/
+    // prefers-reduced-motion 全降级。原版常量对齐：形变 240ms + cubic-bezier(0.77,0,0.175,1)、挤压 0.12、
+    // 倾斜 8°、滑杆边距 11px、星火 0.14s 间隔/上限 30 枚/能量 0.8s 衰减。配色接 --apple-* 主题变量。
+    var PB_PLACEHOLDER = '给 AI 发消息…（@ 引用站内内容，/ 选用指令）';
+    var PB_REDUCE = false;
+    try { PB_REDUCE = window.matchMedia('(prefers-reduced-motion: reduce)').matches; } catch (e) {}
+    var PB_ARROW = [12, 4.5, 18.5, 11, 14.25, 11, 14.25, 19.5, 9.75, 19.5, 9.75, 11, 5.5, 11];
+    var PB_SQUARE = [12, 6, 18, 6, 18, 12, 18, 18, 6, 18, 6, 12, 6, 6];
+    var PB_LINE = 22, PB_MAX_ROWS = 5, PB_EDGE = 11, PB_SQUASH = 0.12, PB_TILT = 8, PB_MORPH_MS = 240;
+    var pbRoot = null, pbInput = null, pbMenu = null, pbGlow = null, pbMenuFresh = false;
+    var pbSparkCv = null, pbSparkCtx = null, pbSparkRO = null, pbSparks = null;
+    var pbDims = { w: 0, h: 0 };
+    var pbType = { energy: 0, strokes: 0 };
+    var pbMenuKind = null, pbMenuList = [], pbRows = [], pbMenuIdx = 0;
+    var pbPlusOpen = false, pbDismissed = false;
+    var pbGlyphT = 0, pbGlyphRaf = 0, pbGlyphDir = 1;
+    var pbEffortIdx = 0;
+    var pbMicRec = null, pbMicOn = false;
+
+    // 行图标（内联 SVG；同原版 hugeicons 的 1.8 描边线性风格）
+    var PB_ICONS = {
+      file: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21.44 11.05 12.25 20.24a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>',
+      music: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>',
+      album: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m21 15-5-5L5 21"/></svg>',
+      notes: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>',
+      board: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>',
+      schedule: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>'
+    };
+
+    // @ 来源：站内数据速引（attach=true 的走附件链路，其余发送时抓数据注入上下文）
+    var PB_SOURCES = [
+      { key: 'files', name: '上传文件', desc: '图片或文本附件', icon: 'file', attach: true },
+      { key: 'music', name: '音乐', desc: '引用曲库歌单', icon: 'music' },
+      { key: 'album', name: '相册', desc: '引用相册与图片数', icon: 'album' },
+      { key: 'notes', name: '随笔', desc: '引用最近的随笔', icon: 'notes' },
+      { key: 'board', name: '留言板', desc: '引用最近的留言', icon: 'board' },
+      { key: 'schedule', name: '课表', desc: '引用我的课表（需登录）', icon: 'schedule' }
+    ];
+    // / 指令：选中即插入 token，发送时展开为提示词模板
+    var PB_COMMANDS = [
+      { key: 'summary', name: '/总结', desc: '总结上面的对话', expand: '请总结一下我们刚才聊的内容，抓重点。' },
+      { key: 'outline', name: '/提要点', desc: '把内容整理成要点', expand: '请把下面的内容整理成条理清晰的要点列表：' },
+      { key: 'polish', name: '/润色', desc: '润色下面这段话', expand: '请把下面这段话润色一遍（保持原意与语气）：' },
+      { key: 'translate', name: '/翻译', desc: '翻译成英文', expand: '请把下面的内容翻译成地道的英文：' },
+      { key: 'explain', name: '/解释', desc: '通俗解释一下', expand: '请用通俗易懂的语言解释下面这个概念：' }
+    ];
+
+    // 三次贝塞尔缓动求值（原版 EASE_IN_OUT = cubic-bezier(0.77, 0, 0.175, 1)）
+    function pbEase(x1, y1, x2, y2) {
+      function ca(a, b) { return 1 - 3 * b + 3 * a; }
+      function cb(a, b) { return 3 * b - 6 * a; }
+      function cc(a) { return 3 * a; }
+      function calc(t, a, b) { return ((ca(a, b) * t + cb(a, b)) * t + cc(a)) * t; }
+      function slope(t, a, b) { return 3 * ca(a, b) * t * t + 2 * cb(a, b) * t + cc(a); }
+      return function (x) {
+        if (x <= 0) return 0;
+        if (x >= 1) return 1;
+        var t = x;
+        for (var i = 0; i < 8; i++) {
+          var s = slope(t, x1, x2);
+          if (Math.abs(s) < 1e-6) break;
+          t -= (calc(t, x1, x2) - x) / s;
+        }
+        return calc(t, y1, y2);
+      };
+    }
+    var PB_EASE = pbEase(0.77, 0, 0.175, 1);
+
+    // 两个 7 点路径逐点插值（对齐原版 pathAt：M/L…Z）
+    function pbPathAt(a, b, t) {
+      var d = '';
+      for (var i = 0; i < a.length; i += 2) {
+        var x = a[i] + (b[i] - a[i]) * t;
+        var y = a[i + 1] + (b[i + 1] - a[i + 1]) * t;
+        d += (i ? 'L' : 'M') + x.toFixed(2) + ' ' + y.toFixed(2);
+      }
+      return d + 'Z';
+    }
+
+    // ---------- 发送键形变（↑⇄■；按压缩放由 CSS data-pressed 管） ----------
+    function pbGlyphTo(busy) {
+      var el = document.getElementById('aiSendGlyphPath');
+      if (!el) return;
+      if (PB_REDUCE || PB_MORPH_MS <= 0) { pbGlyphT = busy ? 1 : 0; el.setAttribute('d', pbPathAt(PB_ARROW, PB_SQUARE, pbGlyphT)); return; }
+      var to = busy ? 1 : 0;
+      if (Math.abs(pbGlyphT - to) < 0.001 && !pbGlyphRaf) { pbGlyphT = to; el.setAttribute('d', pbPathAt(PB_ARROW, PB_SQUARE, to)); return; }
+      var from = pbGlyphT;
+      pbGlyphDir = busy ? 1 : -1;
+      if (pbGlyphRaf) cancelAnimationFrame(pbGlyphRaf);
+      var svg = el.ownerSVGElement;
+      var t0 = null;
+      function frame(now) {
+        if (t0 === null) t0 = now;
+        var p = Math.min(1, (now - t0) / PB_MORPH_MS);
+        pbGlyphT = from + (to - from) * PB_EASE(p);
+        el.setAttribute('d', pbPathAt(PB_ARROW, PB_SQUARE, pbGlyphT));
+        var goo = Math.sin(pbGlyphT * Math.PI);
+        if (svg) {
+          if (goo > 0.001) {
+            var sx = 1 - PB_SQUASH * goo;
+            svg.style.transform = 'rotate(' + (pbGlyphDir * PB_TILT * goo).toFixed(2) + 'deg) scale(' + sx.toFixed(4) + ',' + (1 / sx).toFixed(4) + ')';
+          } else svg.style.transform = '';
+        }
+        if (p < 1) pbGlyphRaf = requestAnimationFrame(frame);
+        else { pbGlyphRaf = 0; pbGlyphT = to; el.setAttribute('d', pbPathAt(PB_ARROW, PB_SQUARE, to)); if (svg) svg.style.transform = ''; }
+      }
+      pbGlyphRaf = requestAnimationFrame(frame);
+    }
+
+    // ---------- 发送键 armed 态（原来只有空输入置灰；busy 时保持可点=停止） ----------
+    function pbCanSend() {
+      var inp = pbInput || aiInput;
+      return !!(inp && (inp.value.trim() || aiAttach.length));
+    }
+    function pbSyncSend() {
+      var b = document.getElementById('aiSendBtn');
+      if (!b) return;
+      var armed = aiBusy || pbCanSend();
+      b.disabled = !armed;
+      if (armed) b.setAttribute('data-armed', ''); else b.removeAttribute('data-armed');
+      if (aiBusy) b.setAttribute('data-busy', ''); else b.removeAttribute('data-busy');
+      b.setAttribute('aria-label', aiBusy ? '停止生成' : '发送');
+    }
+    function pbSetBusy(b) {
+      aiBusy = !!b;
+      pbGlyphTo(aiBusy);
+      pbSyncSend();
+    }
+
+    // ---------- 文本框自动增高（≤5 行） ----------
+    function pbAutoGrow() {
+      var t = pbInput;
+      if (!t) return;
+      t.style.height = '0px';
+      var max = PB_LINE * PB_MAX_ROWS;
+      var h = Math.min(t.scrollHeight, max);
+      t.style.height = h + 'px';
+      t.style.overflowY = t.scrollHeight > max ? 'auto' : 'hidden';
+    }
+
+    // ---------- @ 来源 / / 指令菜单 ----------
+    // token 解析：行尾的 @xxx 或 /xxx（中文查询字符一并纳入）
+    function pbToken() {
+      if (pbDismissed || !pbInput) return null;
+      var m = /(^|\s)([@/])([\w\u4e00-\u9fa5-]*)$/.exec(pbInput.value);
+      if (!m) return null;
+      return { kind: m[2] === '@' ? 'at' : 'slash', query: m[3].toLowerCase(), start: m.index + m[1].length };
+    }
+    function pbSyncMenu() {
+      if (!pbMenu || !pbInput) return;
+      var token = pbToken();
+      var kind = pbPlusOpen ? 'at' : (token ? token.kind : null);
+      if (!kind) { pbHideMenu(); return; }
+      var query = pbPlusOpen ? '' : token.query;
+      pbMenuKind = kind;
+      if (kind === 'at') {
+        pbMenuList = PB_SOURCES.filter(function (s) {
+          return !query || s.name.toLowerCase().indexOf(query) >= 0 || s.key.indexOf(query) >= 0;
+        });
+      } else {
+        pbMenuList = PB_COMMANDS.filter(function (c) {
+          return !query || c.name.replace(/^\//, '').toLowerCase().indexOf(query) === 0 || c.key.indexOf(query) === 0;
+        });
+      }
+      pbRenderMenu();
+    }
+    function pbShowMenu() {
+      if (!pbMenu) return;
+      if (pbMenu.hidden) { pbMenu.classList.remove('closing'); pbMenu.hidden = false; pbMenuFresh = true; }
+      var fb = document.getElementById('aiFileBtn');
+      if (fb) fb.setAttribute('aria-expanded', pbPlusOpen ? 'true' : 'false');
+    }
+    function pbHideMenu() {
+      var fb = document.getElementById('aiFileBtn');
+      if (fb) fb.setAttribute('aria-expanded', 'false');
+      if (pbMenu && !pbMenu.hidden) aiCloseMenu(pbMenu);
+    }
+    function pbRenderMenu() {
+      if (!pbMenu) return;
+      // 保留 glow 元素只重建行：新插入的元素当帧设样式不会走过渡，glow 复用才能有「跟着高亮行滑动」的动画
+      var glow = pbMenu.querySelector('.pb-menu-glow');
+      if (!glow) {
+        glow = document.createElement('span');
+        glow.className = 'pb-menu-glow';
+        pbMenu.appendChild(glow);
+      }
+      Array.prototype.slice.call(pbMenu.children).forEach(function (c) { if (c !== glow) pbMenu.removeChild(c); });
+      pbGlow = glow;
+      pbRows = [];
+      if (!pbMenuList.length) {
+        var none = document.createElement('div');
+        none.className = 'pb-menu-none';
+        none.textContent = '没有匹配的内容';
+        pbMenu.appendChild(none);
+      }
+      pbMenuList.forEach(function (row, i) {
+        var b = document.createElement('button');
+        b.type = 'button';
+        b.className = 'ai-model-item';
+        b.setAttribute('role', 'option');
+        b.setAttribute('aria-selected', i === pbMenuIdx ? 'true' : 'false');
+        if (pbMenuKind === 'at') {
+          var ic = document.createElement('span');
+          ic.className = 'pb-row-ico';
+          ic.innerHTML = PB_ICONS[row.icon] || '';
+          b.appendChild(ic);
+        } else {
+          var sl = document.createElement('span');
+          sl.className = 'pb-row-ico pb-row-slash';
+          sl.textContent = '/';
+          b.appendChild(sl);
+        }
+        var nm = document.createElement('span');
+        nm.className = 'pb-row-name';
+        nm.textContent = row.name;
+        b.appendChild(nm);
+        var ds = document.createElement('span');
+        ds.className = 'pb-row-desc';
+        ds.textContent = row.desc || '';
+        b.appendChild(ds);
+        b.addEventListener('mousedown', function (e) { e.preventDefault(); });
+        b.addEventListener('pointerenter', function () { pbMenuIdx = i; pbRenderMenuHi(); });
+        b.addEventListener('click', function () { pbPick(row); });
+        pbMenu.appendChild(b);
+        pbRows.push(b);
+      });
+      pbShowMenu();
+      pbRenderMenuHi();
+    }
+    function pbRenderMenuHi() {
+      if (!pbRows.length || !pbGlow) return;
+      var cur = Math.min(pbMenuIdx, pbRows.length - 1);
+      pbRows.forEach(function (r, i) { r.setAttribute('aria-selected', i === cur ? 'true' : 'false'); });
+      var row = pbRows[cur];
+      if (!row) { pbGlow.style.opacity = '0'; return; }
+      var fresh = pbMenuFresh;
+      pbMenuFresh = false;
+      if (fresh) {
+        pbGlow.style.transition = 'none';
+        pbGlow.style.top = row.offsetTop + 'px';
+        pbGlow.style.height = row.offsetHeight + 'px';
+        pbGlow.style.opacity = '1';
+        void pbGlow.offsetHeight; // 强制回流，让后续位移走过渡
+        pbGlow.style.transition = '';
+      } else {
+        pbGlow.style.top = row.offsetTop + 'px';
+        pbGlow.style.height = row.offsetHeight + 'px';
+        pbGlow.style.opacity = '1';
+      }
+    }
+    function pbPick(row) {
+      if (!pbInput || !row) return;
+      var token = pbToken();
+      var head = token ? pbInput.value.slice(0, token.start) : pbInput.value;
+      if (row.attach) {
+        pbInput.value = head;
+        pbPlusOpen = false;
+        pbDismissed = false;
+        pbHideMenu();
+        pbAutoGrow();
+        pbSyncSend();
+        var fi = document.getElementById('aiFileInput');
+        if (fi) fi.click();
+        pbInput.focus();
+        return;
+      }
+      pbInput.value = head + (pbMenuKind === 'at' ? '@' + row.name + ' ' : row.name + ' ');
+      pbPlusOpen = false;
+      pbDismissed = false;
+      pbHideMenu();
+      pbAutoGrow();
+      pbSyncSend();
+      pbInput.focus();
+    }
+
+    // ---------- 输入/键盘 ----------
+    function pbOnInput() {
+      pbDismissed = false;
+      pbPlusOpen = false;
+      pbMenuIdx = 0;
+      pbType.energy = Math.min(1.6, pbType.energy + 0.22);
+      pbType.strokes = Math.min(4, pbType.strokes + 1);
+      pbAutoGrow();
+      pbSyncSend();
+      pbSyncMenu();
+    }
+    function pbOnKey(e) {
+      if (pbMenu && !pbMenu.hidden && pbMenuList.length) {
+        if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+          e.preventDefault();
+          pbMenuIdx = (pbMenuIdx + (e.key === 'ArrowDown' ? 1 : pbMenuList.length - 1)) % pbMenuList.length;
+          pbRenderMenuHi();
+          return;
+        }
+        if ((e.key === 'Enter' && !e.shiftKey) || e.key === 'Tab') {
+          e.preventDefault();
+          pbPick(pbMenuList[Math.min(pbMenuIdx, pbMenuList.length - 1)]);
+          return;
+        }
+      }
+      if (e.key === 'Escape') {
+        if (pbMenu && !pbMenu.hidden) { e.preventDefault(); pbPlusOpen = false; pbDismissed = true; pbHideMenu(); }
+        return;
+      }
+      if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) {
+        e.preventDefault();
+        if (aiForm) {
+          if (typeof aiForm.requestSubmit === 'function') aiForm.requestSubmit();
+          else aiForm.dispatchEvent(new Event('submit', { cancelable: true }));
+        }
+      }
+    }
+
+    // ---------- 思考强度滑杆面板（原列表菜单升级） ----------
+    function pbEffortIdxFromKey() {
+      for (var i = 0; i < AI_EFFORTS.length; i++) { if (AI_EFFORTS[i].key === aiEffort) return i; }
+      return 0;
+    }
+    function pbBuildEffortPanel() {
+      var menu = document.getElementById('aiEffortMenu');
+      if (!menu || menu._pbBuilt) return;
+      menu._pbBuilt = true;
+      menu.innerHTML =
+        '<div class="pb-effort-head"><span class="pb-effort-cap">思考强度</span><span class="pb-effort-name" id="pbEffortName"></span>' +
+        '<span class="pb-effort-help" title="强度越高，思考越久、回答越细">?</span></div>' +
+        '<div class="pb-effort-ends"><span>更快</span><span>更聪明</span></div>' +
+        '<div class="pb-effort-track" id="pbEffortTrack" role="slider" tabindex="0" aria-label="思考强度" aria-valuemin="0" aria-valuemax="' + (AI_EFFORTS.length - 1) + '" aria-valuenow="0"></div>' +
+        '<div class="ai-model-foot"><div class="ai-effort-note">仅部分模型支持，只影响之后的回复；拉到最右触发星光</div></div>';
+      var track = menu.querySelector('#pbEffortTrack');
+      if (!track) return;
+      var n = AI_EFFORTS.length;
+      var fill = document.createElement('span');
+      fill.className = 'pb-effort-fill';
+      fill.id = 'pbEffortFill';
+      track.appendChild(fill);
+      for (var i = 0; i < n; i++) {
+        var dot = document.createElement('i');
+        dot.className = 'pb-effort-dot';
+        dot.style.left = 'calc(' + PB_EDGE + 'px + (100% - ' + (PB_EDGE * 2) + 'px) * ' + (i / Math.max(1, n - 1)) + ')';
+        track.appendChild(dot);
+      }
+      var thumb = document.createElement('span');
+      thumb.className = 'pb-effort-thumb';
+      thumb.id = 'pbEffortThumb';
+      track.appendChild(thumb);
+      function fromPointer(e) {
+        var r = track.getBoundingClientRect();
+        var k = (e.clientX - r.left - PB_EDGE) / Math.max(1, r.width - 2 * PB_EDGE);
+        pbSetEffortIdx(Math.round(k * (n - 1)));
+      }
+      track.addEventListener('pointerdown', function (e) {
+        if (e.button !== 0) return;
+        try { track.setPointerCapture(e.pointerId); } catch (err) {}
+        track.focus({ preventScroll: true });
+        fromPointer(e);
+      });
+      track.addEventListener('pointermove', function (e) { if (e.buttons & 1) fromPointer(e); });
+      track.addEventListener('keydown', function (e) {
+        var step = (e.key === 'ArrowRight' || e.key === 'ArrowUp') ? 1 : (e.key === 'ArrowLeft' || e.key === 'ArrowDown') ? -1 : 0;
+        if (step) { e.preventDefault(); pbSetEffortIdx(pbEffortIdx + step); }
+        else if (e.key === 'Home') { e.preventDefault(); pbSetEffortIdx(0); }
+        else if (e.key === 'End') { e.preventDefault(); pbSetEffortIdx(n - 1); }
+        else if (e.key === 'Escape') { e.preventDefault(); aiCloseMenu(menu); if (pbInput) pbInput.focus(); }
+      });
+    }
+    function pbSyncEffortPanel() {
+      var label = document.getElementById('aiEffortLabel');
+      if (label) label.textContent = aiEffortLabelText();
+      var menu = document.getElementById('aiEffortMenu');
+      if (!menu) return;
+      pbBuildEffortPanel();
+      var name = document.getElementById('pbEffortName');
+      var track = document.getElementById('pbEffortTrack');
+      var fill = document.getElementById('pbEffortFill');
+      var thumb = document.getElementById('pbEffortThumb');
+      if (!track || !fill || !thumb) return;
+      var n = AI_EFFORTS.length, i = pbEffortIdx;
+      var den = Math.max(1, n - 1);
+      var step = 'calc(' + PB_EDGE + 'px + (100% - ' + (PB_EDGE * 2) + 'px) * ' + (i / den) + ')';
+      if (name) name.textContent = AI_EFFORTS[i].name;
+      fill.style.width = i === n - 1 ? '100%' : 'calc(' + step + ' + 7px)';
+      thumb.style.left = step;
+      track.setAttribute('aria-valuenow', String(i));
+      track.setAttribute('aria-valuetext', AI_EFFORTS[i].name);
+      if (i === n - 1) track.setAttribute('data-max', ''); else track.removeAttribute('data-max');
+      var btn = document.getElementById('aiEffortBtn');
+      if (btn) { if (i === n - 1) btn.setAttribute('data-max', ''); else btn.removeAttribute('data-max'); }
+    }
+    function pbSetEffortIdx(i) {
+      var n = AI_EFFORTS.length;
+      i = Math.max(0, Math.min(n - 1, i));
+      if (i !== pbEffortIdx) {
+        pbEffortIdx = i;
+        aiEffort = AI_EFFORTS[i].key;
+        try { if (!aiInPreviewFrame()) localStorage.setItem(AI_EFFORT_LS, aiEffort); } catch (e) {}
+      }
+      pbSyncEffortPanel();
+      pbSyncSparkMax();
+    }
+
+    // ---------- 打字星火粒子（拉满档触发；算法对齐原版：0.14s 间隔/上限 30 枚/能量 0.8s 衰减） ----------
+    function pbSparkColor() {
+      try {
+        var v = getComputedStyle(document.documentElement).getPropertyValue('--apple-primary').trim();
+        return v || '#b39dff';
+      } catch (e) { return '#b39dff'; }
+    }
+    function pbSizeSpark() {
+      if (!pbSparkCv || !pbSparkCtx) return;
+      var r = pbSparkCv.getBoundingClientRect();
+      var dpr = Math.min(2, window.devicePixelRatio || 1);
+      pbSparkCv.width = Math.round(r.width * dpr);
+      pbSparkCv.height = Math.round(r.height * dpr);
+      pbSparkCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      pbDims.w = r.width;
+      pbDims.h = r.height;
+    }
+    function pbSpawn(obj, burst) {
+      if (!pbDims.w || !pbDims.h || obj.parts.length >= 30) return;
+      obj.parts.push({
+        x: Math.random() * pbDims.w,
+        y: burst ? pbDims.h * (0.2 + Math.random() * 0.8) : pbDims.h + 3,
+        r: 0.9 + Math.random() * 1.1,
+        vy: -(7 + Math.random() * 9),
+        sway: (Math.random() - 0.5) * 10,
+        phase: Math.random() * Math.PI * 2,
+        life: burst ? Math.random() * 1.2 : 0,
+        span: 2.4 + Math.random() * 2.4
+      });
+    }
+    function pbSyncSparkMax() {
+      var maxed = pbEffortIdx === AI_EFFORTS.length - 1;
+      if (aiForm) { if (maxed) aiForm.setAttribute('data-max', ''); else aiForm.removeAttribute('data-max'); }
+      var want = maxed && !PB_REDUCE && !!pbSparkCv && !!pbSparkCtx;
+      if (want && !pbSparks) pbSparksStart();
+      else if (!want && pbSparks) pbSparksStop();
+    }
+    function pbSparksStart() {
+      if (!pbSparkCv || !pbSparkCtx) return;
+      pbSizeSpark();
+      if (!pbSparkRO && window.ResizeObserver) {
+        pbSparkRO = new ResizeObserver(function () { if (pbSparks) pbSizeSpark(); });
+        try { pbSparkRO.observe(pbSparkCv); } catch (e) {}
+      }
+      var color = pbSparkColor();
+      var ctx = pbSparkCtx;
+      var obj = { raf: 0, parts: [], last: performance.now(), due: 0, speed: 1, pulse: 0 };
+      pbSparks = obj;
+      for (var i = 0; i < 26; i++) pbSpawn(obj, true);
+      function tick(now) {
+        if (pbSparks !== obj) return;
+        var dt = Math.min(0.05, (now - obj.last) / 1000);
+        obj.last = now;
+        pbType.energy *= Math.exp(-dt / 0.8);
+        obj.pulse *= Math.exp(-dt / 0.16);
+        if (pbType.strokes > 0) { pbType.strokes = 0; obj.pulse = 1; }
+        var energy = pbType.energy;
+        obj.speed += (1 + energy * 6 - obj.speed) * (1 - Math.exp(-dt / 0.15));
+        obj.due += dt;
+        while (obj.due > 0.14) { obj.due -= 0.14; pbSpawn(obj, false); }
+        ctx.clearRect(0, 0, pbDims.w, pbDims.h);
+        ctx.fillStyle = color;
+        ctx.shadowColor = color;
+        ctx.shadowBlur = 6 + energy * 10 + obj.pulse * 6;
+        for (var j = obj.parts.length - 1; j >= 0; j--) {
+          var p = obj.parts[j];
+          p.life += dt;
+          if (p.life > p.span) { obj.parts.splice(j, 1); continue; }
+          var k = p.life / p.span;
+          var tw = 0.7 + 0.3 * Math.sin((now / 160) * (1 + energy) + p.phase);
+          p.y += p.vy * dt * obj.speed;
+          if (p.y < -4) { p.y = pbDims.h + 3; p.x = Math.random() * pbDims.w; }
+          var edge = Math.min(1, Math.max(0, p.y / 14), Math.max(0, (pbDims.h - p.y) / 14));
+          ctx.globalAlpha = Math.min(1, Math.sin(k * Math.PI) * (0.9 + energy * 0.25) * tw) * edge;
+          ctx.beginPath();
+          ctx.arc(p.x + Math.sin((now / 900) * (1 + energy * 0.8) + p.phase) * p.sway, p.y, p.r * tw * (1 + energy * 0.35), 0, Math.PI * 2);
+          ctx.fill();
+        }
+        ctx.globalAlpha = 1;
+        obj.raf = requestAnimationFrame(tick);
+      }
+      obj.raf = requestAnimationFrame(tick);
+    }
+    function pbSparksStop() {
+      var obj = pbSparks;
+      pbSparks = null;
+      if (obj && obj.raf) cancelAnimationFrame(obj.raf);
+      if (pbSparkCtx && pbSparkCv) { try { pbSparkCtx.clearRect(0, 0, pbSparkCv.width, pbSparkCv.height); } catch (e) {} }
+    }
+
+    // ---------- 语音听写（SpeechRecognition 可用才显示按钮） ----------
+    function pbMicStop(manual) {
+      var btn = document.getElementById('aiMicBtn');
+      var rec = pbMicRec;
+      pbMicRec = null;
+      var was = pbMicOn;
+      pbMicOn = false;
+      if (rec) { try { if (manual) rec.stop(); } catch (e) {} }
+      if (btn) { btn.removeAttribute('data-on'); btn.setAttribute('aria-pressed', 'false'); }
+      if (pbInput) pbInput.placeholder = PB_PLACEHOLDER;
+      if (was && pbInput && manual) pbInput.focus();
+    }
+    function pbInitMic() {
+      var btn = document.getElementById('aiMicBtn');
+      if (!btn) return;
+      var SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+      if (!SR) { btn.hidden = true; return; }
+      btn.hidden = false;
+      btn.addEventListener('click', function () {
+        if (pbMicOn) { pbMicStop(true); return; }
+        var rec;
+        try { rec = new SR(); } catch (e) { return; }
+        rec.lang = 'zh-CN';
+        rec.interimResults = false;
+        rec.continuous = false;
+        pbMicRec = rec;
+        pbMicOn = true;
+        btn.setAttribute('data-on', '');
+        btn.setAttribute('aria-pressed', 'true');
+        if (pbInput) pbInput.placeholder = '听写中…';
+        rec.onresult = function (ev) {
+          var t = '';
+          for (var i = 0; i < ev.results.length; i++) t += ev.results[i][0].transcript;
+          if (t && pbInput) {
+            pbInput.value = (pbInput.value.replace(/\s+$/, '') ? pbInput.value.replace(/\s+$/, '') + ' ' : '') + t;
+            pbDismissed = false;
+            pbAutoGrow();
+            pbSyncSend();
+          }
+        };
+        rec.onend = function () { pbMicStop(false); };
+        rec.onerror = function () { pbMicStop(false); };
+        try { rec.start(); } catch (e) { pbMicStop(false); }
+      });
+    }
+
+    // ---------- @ 来源数据注入（发送时抓取；失败静默跳过） ----------
+    function pbFetchJson(url) {
+      return fetch(url, { credentials: 'same-origin' })
+        .then(function (r) { return r.ok ? r.json() : null; })
+        .catch(function () { return null; });
+    }
+    function pbClip(s, n) {
+      s = String(s == null ? '' : s).replace(/\s+/g, ' ').trim();
+      return s.length > n ? s.slice(0, n) + '…' : s;
+    }
+    function pbSourceFetch(src) {
+      if (src.key === 'music') return pbFetchJson('/api/playlist').then(function (d) {
+        var m = (d && d.music) || [];
+        return m.length ? m.slice(0, 40).map(function (x) { return '· ' + pbClip(x.title || x.name, 60); }).join('\n') : '（曲库为空）';
+      });
+      if (src.key === 'album') return pbFetchJson('/api/playlist').then(function (d) {
+        var imgs = (d && d.images) || [];
+        var albums = (d && d.albums) || [];
+        var cnt = {};
+        imgs.forEach(function (i) { var a = i.album || '未分组'; cnt[a] = (cnt[a] || 0) + 1; });
+        var lines = albums.map(function (a) { return '· ' + a + '（' + (cnt[a] || 0) + ' 张）'; });
+        var un = Object.keys(cnt).filter(function (a) { return albums.indexOf(a) < 0; });
+        un.forEach(function (a) { lines.push('· ' + a + '（' + cnt[a] + ' 张）'); });
+        return lines.length ? lines.join('\n') : '（相册为空）';
+      });
+      if (src.key === 'notes') return pbFetchJson('/api/notes').then(function (d) {
+        var l = (d && d.list) || [];
+        return l.length ? l.slice(0, 8).map(function (n) { return '· ' + n.date + '：' + pbClip(n.title || n.text, 80); }).join('\n') : '（还没有随笔）';
+      });
+      if (src.key === 'board') return pbFetchJson('/api/messages').then(function (d) {
+        var l = (d && d.list) || [];
+        return l.length ? l.slice(0, 8).map(function (m) { return '· ' + (m.username || '路人') + '：' + pbClip(m.content, 80); }).join('\n') : '（还没有留言）';
+      });
+      if (src.key === 'schedule') return pbFetchJson('/api/schedule').then(function (d) {
+        var c = d && d.ok && d.schedule && d.schedule.courses;
+        if (!c || !c.length) return '（未登录或课表为空）';
+        var WD = ['一', '二', '三', '四', '五', '六', '日'];
+        return c.map(function (x) {
+          return '· 周' + (WD[x.day - 1] || x.day) + ' 第' + x.startNode + '-' + x.endNode + ' 节 ' + x.name + (x.place ? ' @' + x.place : '');
+        }).join('\n');
+      });
+      return Promise.resolve('');
+    }
+    // 发送前整备：/ 指令展开为提示词模板；@ 来源抓数据拼上下文
+    function pbExpandDraft(raw) {
+      var text = raw;
+      PB_COMMANDS.forEach(function (c) {
+        if (text.indexOf(c.name) >= 0) text = text.split(c.name).join(c.expand);
+      });
+      var used = [];
+      PB_SOURCES.forEach(function (s) {
+        if (!s.attach && raw.indexOf('@' + s.name) >= 0) used.push(s);
+      });
+      if (!used.length) return Promise.resolve({ text: text, context: '', note: '' });
+      return Promise.all(used.map(pbSourceFetch)).then(function (blocks) {
+        var ctx = [], note = '';
+        blocks.forEach(function (b, i) {
+          if (!b) return;
+          ctx.push('【站内数据 · ' + used[i].name + '】\n' + b);
+          note += ' @' + used[i].name;
+        });
+        return { text: text, context: ctx.join('\n\n'), note: note };
+      });
+    }
+
+    // ---------- 页面初始化 / 清理 ----------
+    function pbInitPage() {
+      pbRoot = document.getElementById('aiForm');
+      pbInput = document.getElementById('aiInput');
+      pbMenu = document.getElementById('pbMentionMenu');
+      pbSparkCv = document.getElementById('pbSpark');
+      if (!pbRoot || !pbInput) return;
+      aiInput = pbInput;
+      pbSparkCtx = pbSparkCv ? pbSparkCv.getContext('2d') : null;
+      if (pbSparkCtx) pbSizeSpark();
+      pbEffortIdx = pbEffortIdxFromKey();
+      pbGlyphT = aiBusy ? 1 : 0;
+      var gp = document.getElementById('aiSendGlyphPath');
+      if (gp) gp.setAttribute('d', pbPathAt(PB_ARROW, PB_SQUARE, pbGlyphT));
+      pbAutoGrow();
+      pbSyncSend();
+      pbSyncEffortPanel();
+      pbSyncSparkMax();
+      pbInitMic();
+      pbInput.addEventListener('input', pbOnInput);
+      pbInput.addEventListener('keydown', pbOnKey);
+      pbInput.addEventListener('focus', function () { pbPlusOpen = false; pbHideMenu(); });
+      pbRoot.addEventListener('click', function (e) {
+        if (e.target === pbRoot || e.target === pbSparkCv) { pbPlusOpen = false; pbHideMenu(); pbInput.focus(); }
+      });
+      var fileBtn = document.getElementById('aiFileBtn');
+      if (fileBtn) {
+        fileBtn.addEventListener('click', function (e) {
+          e.stopPropagation();
+          pbDismissed = false;
+          pbPlusOpen = !pbPlusOpen;
+          pbMenuIdx = 0;
+          if (pbPlusOpen) {
+            var mm = document.getElementById('aiModelMenu');
+            var em = document.getElementById('aiEffortMenu');
+            if (mm) aiCloseMenu(mm);
+            if (em) aiCloseMenu(em);
+          }
+          pbSyncMenu();
+        });
+      }
+      var sendBtn = document.getElementById('aiSendBtn');
+      if (sendBtn) {
+        sendBtn.addEventListener('click', function (e) {
+          if (!aiBusy) return; // 发送走 form submit
+          e.preventDefault();
+          e.stopPropagation();
+          if (aiAbort) { try { aiAbort.abort(); } catch (err) {} }
+        });
+        sendBtn.addEventListener('pointerdown', function (e) { if (e.button === 0) sendBtn.setAttribute('data-pressed', ''); });
+        ['pointerup', 'pointercancel', 'pointerleave'].forEach(function (ev) {
+          sendBtn.addEventListener(ev, function () { sendBtn.removeAttribute('data-pressed'); });
+        });
+      }
+    }
+    function pbTeardown() {
+      pbSparksStop();
+      if (pbGlyphRaf) { cancelAnimationFrame(pbGlyphRaf); pbGlyphRaf = 0; }
+      if (pbSparkRO) { try { pbSparkRO.disconnect(); } catch (e) {} pbSparkRO = null; }
+      if (pbMicOn || pbMicRec) pbMicStop(false);
+      pbRoot = null; pbInput = null; pbMenu = null; pbGlow = null; pbSparkCv = null; pbSparkCtx = null;
+      pbRows = []; pbMenuList = []; pbMenuKind = null; pbPlusOpen = false;
+    }
 
     function addAiMsg(role, text, pending) {
       if (!aiMessages) return null;
@@ -7166,56 +7840,21 @@ window.__siteCalendar = (function () {
       return m ? m.name : '';
     }
 
-    // 思考强度入口：照模型菜单的实现模式——「纯文字 + ⌄」向上弹小菜单（清单 + 当前项 ✓ + 底部说明一行）
-    function aiEffortLabelText() {
-      var p = aiEffortCur();
-      return (p.icon ? p.icon + ' ' : '') + p.name;
-    }
+    // 思考强度入口：面板由 pbBuildEffortPanel 构建（滑杆+星光），这里只负责显隐与状态同步
     function aiSyncEffortSwitcher() {
       var btn = document.getElementById('aiEffortBtn');
-      var label = document.getElementById('aiEffortLabel');
       var menu = document.getElementById('aiEffortMenu');
-      if (!btn || !label || !menu) return;
+      if (!btn || !menu) return;
       // AI 未启用时与模型钮一起隐藏（输入条本来就发不出去）
       if (!(aiConfig && aiConfig.enabled)) {
         btn.hidden = true;
-        menu.hidden = true;
+        if (!menu.hidden) menu.hidden = true;
         return;
       }
-      label.textContent = aiEffortLabelText();
       btn.hidden = false;
-      menu.innerHTML = '';
-      AI_EFFORTS.forEach(function (p) {
-        var it = document.createElement('button');
-        it.type = 'button';
-        it.className = 'ai-model-item' + (p.key === aiEffort ? ' active' : '');
-        it.setAttribute('role', 'option');
-        it.setAttribute('aria-selected', p.key === aiEffort ? 'true' : 'false');
-        var nm = document.createElement('span');
-        nm.textContent = (p.icon ? p.icon + ' ' : '') + p.name;
-        it.appendChild(nm);
-        var chk = document.createElement('span');
-        chk.className = 'chk';
-        chk.textContent = '✓';
-        it.appendChild(chk);
-        it.addEventListener('click', function () {
-          if (p.key !== aiEffort) {
-            aiEffort = p.key;
-            try { if (!aiInPreviewFrame()) localStorage.setItem(AI_EFFORT_LS, aiEffort); } catch (e) {}
-            label.textContent = aiEffortLabelText();
-          }
-          aiCloseMenu(menu);
-        });
-        menu.appendChild(it);
-      });
-      // 底部说明一行：强度只在发送时附带，且仅部分思考类模型支持
-      var foot = document.createElement('div');
-      foot.className = 'ai-model-foot';
-      var note = document.createElement('div');
-      note.className = 'ai-effort-note';
-      note.textContent = '仅部分模型支持，只影响之后的回复';
-      foot.appendChild(note);
-      menu.appendChild(foot);
+      pbEffortIdx = pbEffortIdxFromKey();
+      pbSyncEffortPanel();
+      pbSyncSparkMax();
     }
 
     function fetchAiConfig(force) {
@@ -7243,6 +7882,8 @@ window.__siteCalendar = (function () {
     fetchAiConfig(false); // 启动即拉一次配置：AI 被后台全局开关关掉时，顶栏入口直接消失（而不是打开后才看到"接入中"）
 
     function aiStopBusy() {
+      // Prompt Bar 化：busy 复位走 pbSetBusy——发送键形变回 ↑、armed 态按当前草稿同步
+      if (typeof pbSetBusy === 'function') { pbSetBusy(false); return; }
       aiBusy = false;
       var sendBtn = document.getElementById('aiSendBtn');
       if (sendBtn) sendBtn.disabled = false;
@@ -7689,7 +8330,13 @@ window.__siteCalendar = (function () {
       }).catch(function (e) {
         if (thinkTimer) clearInterval(thinkTimer); // 失败路径也停表（pending 随即被移除）
         if (e && e.aiAuth) { aiFail(messages, pending, '登录状态已过期，请重新登录后再聊'); openGate(); return; }
-        if (e && e.name === 'AbortError') { aiStopBusy(); return; } // 主动中断不提示，但必须复位 aiBusy，否则重进 AI 页发送被静默拦截
+        if (e && e.name === 'AbortError') {
+          aiStopBusy();
+          // Prompt Bar 停止键（2026-10-15）：主动中断要收掉「思考中」气泡，否则停在原地一直计时。
+          // 离页中断（destroyAiPage）时 DOM 即将被换掉，这步无副作用
+          if (pending && pending.isConnected) pending.remove();
+          return;
+        } // 主动中断不提示，但必须复位 aiBusy，否则重进 AI 页发送被静默拦截
         if (e && e.aiError) { aiFail(messages, pending, e.aiError); return; }
         if (!finished) aiFail(messages, pending, '网络错误，请稍后再试');
       });
@@ -7758,13 +8405,14 @@ window.__siteCalendar = (function () {
       // 顶栏切换模型：只影响之后的回复，当前对话历史延续（菜单逻辑见 aiSyncModelSwitcher）
       var aiModelBtn = document.getElementById('aiModelBtn');
       var aiModelMenu = document.getElementById('aiModelMenu');
-      // 思考强度切换：与模型菜单同款交互，两菜单互斥（清单见 AI_EFFORTS，选中存 localStorage）
+      // 思考强度：Prompt Bar 化后的滑杆面板（见 pbBuildEffortPanel），两菜单与 @ 来源菜单三方互斥
       var aiEffortBtn = document.getElementById('aiEffortBtn');
       var aiEffortMenu = document.getElementById('aiEffortMenu');
       if (aiModelBtn && aiModelMenu) {
         aiModelBtn.addEventListener('click', function (e) {
           e.stopPropagation();
           aiCloseMenu(aiEffortMenu);
+          if (pbMenu) { pbPlusOpen = false; pbHideMenu(); }
           aiToggleMenu(aiModelMenu);
         });
       }
@@ -7772,6 +8420,7 @@ window.__siteCalendar = (function () {
         aiEffortBtn.addEventListener('click', function (e) {
           e.stopPropagation();
           aiCloseMenu(aiModelMenu);
+          if (pbMenu) { pbPlusOpen = false; pbHideMenu(); }
           aiToggleMenu(aiEffortMenu);
         });
       }
@@ -7779,10 +8428,12 @@ window.__siteCalendar = (function () {
       var onDocClick = function (e) {
         if (aiModelMenu && !aiModelMenu.hidden && !e.target.closest('#aiModelSwitch')) aiCloseMenu(aiModelMenu);
         if (aiEffortMenu && !aiEffortMenu.hidden && !e.target.closest('#aiEffortSwitch')) aiCloseMenu(aiEffortMenu);
+        if (pbMenu && !pbMenu.hidden && !e.target.closest('#aiFileBtn') && e.target !== pbInput) { pbPlusOpen = false; pbHideMenu(); }
       };
-      // Esc：先收模型/强度菜单，再收历史抽屉（退出页面交给浏览器返回键，不再有"关界面"动作）
+      // Esc：先收输入条菜单（@来源/模型/强度），再收历史抽屉（退出页面交给浏览器返回键）
       var onDocKey = function (e) {
         if (e.key !== 'Escape') return;
+        if (pbMenu && !pbMenu.hidden) { pbPlusOpen = false; pbDismissed = true; pbHideMenu(); return; }
         if (aiModelMenu && !aiModelMenu.hidden) { aiCloseMenu(aiModelMenu); return; }
         if (aiEffortMenu && !aiEffortMenu.hidden) { aiCloseMenu(aiEffortMenu); return; }
         if (aiDrawerOpen()) aiCloseHistoryDrawer();
@@ -7793,12 +8444,17 @@ window.__siteCalendar = (function () {
         document.removeEventListener('click', onDocClick);
         document.removeEventListener('keydown', onDocKey);
       };
+      pbInitPage();
       aiBindPageControls();
     }
 
     function destroyAiPage() {
       if (aiDocCleanup) { aiDocCleanup(); aiDocCleanup = null; }
       if (aiAbort) { try { aiAbort.abort(); } catch (e) {} aiAbort = null; }
+      // 离页强制复位 busy：aiBusy 是模块级变量随 pjax 存活——正常路径由流中断的 catch 复位，
+      // 这里兜底一次，防上游响应异常使 catch 不触发时带着「停止中」状态回到本页
+      aiStopBusy();
+      pbTeardown();
     }
 
     // ---------- 附件：＋上传文件（图片→视觉模型 base64；文本文件→上下文注入，不存服务器） ----------
@@ -7875,11 +8531,10 @@ window.__siteCalendar = (function () {
     }
 
     function aiBindPageControls() {
-      // ---------- 附件：＋上传文件（图片→视觉模型 base64；文本文件→上下文注入，不存服务器） ----------
-      var aiFileBtn = document.getElementById('aiFileBtn');
+      // ---------- 附件：＋ 按钮由 pbInitPage 接「来源菜单」（菜单里「上传文件」一行触发文件选择器）；
+      // 这里只负责文件选择器的 change 收编（图片→视觉模型 base64；文本→上下文注入，不存服务器） ----------
       var aiFileInput = document.getElementById('aiFileInput');
-      if (aiFileBtn && aiFileInput) {
-        aiFileBtn.addEventListener('click', function () { aiFileInput.click(); });
+      if (aiFileInput) {
         aiFileInput.addEventListener('change', function () {
           aiAddFiles(this.files);
           this.value = '';
@@ -7895,18 +8550,18 @@ window.__siteCalendar = (function () {
             openGate();
             return;
           }
-          aiBusy = true;
-          var sendBtn = document.getElementById('aiSendBtn');
-          if (sendBtn) sendBtn.disabled = true;
+          pbSetBusy(true);
           fetchAiConfig(false).then(function (cfg) {
             if (!cfg.enabled) {
               addAiMsg('bot', 'AI 对话还没有配置好，请等站长在后台接入～');
-              aiStopBusy();
+              pbSetBusy(false);
               return;
             }
+            // Prompt Bar 整备：/ 指令展开为提示词模板；@ 来源抓站内数据拼上下文（失败静默跳过）
+            pbExpandDraft(text).then(function (prep) {
+            var content = prep.text + (prep.context ? '\n\n' + prep.context : '');
+            var attachNote = prep.note || '';
             // 组装消息：文本附件注入上下文；有图片时升级为多模态 parts（发给视觉模型）
-            var content = text;
-            var attachNote = '';
             aiAttach.forEach(function (f) {
               if (f.kind === 'text') {
                 content += (content ? '\n\n' : '') + '【附件 ' + f.name + '】\n' + f.data;
@@ -7927,11 +8582,13 @@ window.__siteCalendar = (function () {
             aiAttach = [];
             aiRenderAttach();
             if (aiInput) aiInput.value = '';
+            if (typeof pbAutoGrow === 'function') pbAutoGrow();
             var pending = addAiMsg('bot', '', true);
             // 等待指示：三点跳动（纯 CSS 动画）+ 耗时秒数；首 token 到达即被正文整体替换
             pending.innerHTML = '<span class="ai-thinking" aria-hidden="true"><i></i><i></i><i></i></span>' +
               '<span class="ai-thinking-txt">思考中</span><span class="ai-thinking-sec">0s</span>';
             streamAiReply(aiHistory, pending);
+            });
           });
         });
       }

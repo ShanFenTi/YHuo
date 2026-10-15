@@ -4839,40 +4839,105 @@
     .pl-fav svg { fill: none; }
     .pl-fav.faved svg { fill: #ff4d6a; }
 
-    /* ===== 管理员欢迎浮窗：顶部居中，滑入停留约 6 秒 ===== */
+    /* ===== 登录欢迎浮窗（Swipe Toast 形态，2026-10-14 升级——reactbits.dev/c/micro/swipe-toast 原生复刻）：
+       右下角；底部一根引线随 6 秒剩余时间烧完自动关；向下滑走 / Esc / 悬停暂停（卡内结构由 common.js 构建，
+       八页外壳 markup 零改动）。外层 .admin-toast 只做定位与显隐，内层 .swipe-toast-card 承担滑动与引线 ===== */
     .admin-toast {
       position: fixed;
-      top: 64px; /* 顶栏(52px)下方 */
-      left: 50%;
-      transform: translate(-50%, -16px);
+      right: 28px;
+      bottom: calc(28px + env(safe-area-inset-bottom, 0px));
       z-index: 300; /* 高于相册/主页(150)和灯箱(200)，低于登录卡片(400) */
-      display: flex;
-      align-items: center;
-      gap: 14px;
-      padding: 10px 12px 10px 18px;
-      background: var(--apple-card);
-      color: var(--apple-card-foreground);
-      border: 1px solid var(--apple-border);
-      border-radius: 14px;
-      box-shadow: 0 16px 48px rgba(0, 0, 0, 0.2), 0 4px 14px rgba(0, 0, 0, 0.1);
+      width: min(356px, calc(100vw - 32px));
       opacity: 0;
       visibility: hidden;
+      transform: translateY(14px);
       transition: opacity 250ms var(--ease-out), transform 300ms var(--ease-out), visibility 250ms;
-      max-width: calc(100vw - 24px);
     }
 
     .admin-toast.show {
       opacity: 1;
       visibility: visible;
-      transform: translate(-50%, 0);
+      transform: translateY(0);
     }
 
-    .admin-toast-text {
+    /* 迷你播放条出现时让位（条贴底 16px 高约 56px，右端可达窄屏整宽） */
+    body.mini-active .admin-toast {
+      bottom: calc(140px + env(safe-area-inset-bottom, 0px));
+    }
+
+    /* 悬浮播放球模式：右下角三级台阶占满角落（球 32~80 / 外观圆钮 84~124 / 回顶钮 92~140），
+       抬到台阶之上——148 = 回顶钮顶 140 + 8 缝隙（实测 96 会同时压住圆钮和回顶钮） */
+    html.using-blog-player .admin-toast {
+      bottom: calc(148px + env(safe-area-inset-bottom, 0px));
+    }
+
+    /* AI 页输入条占底部（条顶约 bottom 133 起，手机/桌面同高）：抬到输入条之上（否则压发送键） */
+    html[data-page="ai"] .admin-toast {
+      bottom: calc(140px + env(safe-area-inset-bottom, 0px));
+    }
+
+    .swipe-toast-card {
+      position: relative;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 14px 13px 16px;
+      border-radius: 14px;
+      background: var(--apple-card);
+      color: var(--apple-card-foreground);
+      border: 1px solid var(--apple-border);
+      box-shadow: 0 16px 48px rgba(0, 0, 0, 0.2), 0 4px 14px rgba(0, 0, 0, 0.1);
+      cursor: grab;
+      outline: none;
+      touch-action: none;
+      user-select: none;
+      -webkit-user-select: none;
+      -webkit-touch-callout: none;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .swipe-toast-card.dragging { cursor: grabbing; }
+
+    .swipe-toast-card:focus-visible {
+      outline: 2px solid var(--apple-ring);
+      outline-offset: 3px;
+    }
+
+    .swipe-toast-body {
+      display: flex;
+      flex: 1 1 auto;
+      flex-direction: column;
+      min-width: 0;
+    }
+
+    .swipe-toast-text {
       font-size: 13px;
       font-weight: 600;
-      white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    /* 引线：2px 渐变细线贴卡片底缘，scaleX 1→0 随剩余时间烧完（JS WAAPI 驱动） */
+    .swipe-toast-fuse {
+      position: absolute;
+      right: 0;
+      bottom: 0;
+      left: 0;
+      height: 2px;
+      background: linear-gradient(90deg,
+        transparent 0%,
+        color-mix(in srgb, var(--apple-primary) 18%, transparent) 9%,
+        color-mix(in srgb, var(--apple-primary) 50%, transparent) 18%,
+        color-mix(in srgb, var(--apple-primary) 84%, transparent) 28%,
+        var(--apple-primary) 38%, var(--apple-primary) 62%,
+        color-mix(in srgb, var(--apple-primary) 84%, transparent) 72%,
+        color-mix(in srgb, var(--apple-primary) 50%, transparent) 82%,
+        color-mix(in srgb, var(--apple-primary) 18%, transparent) 91%,
+        transparent 100%);
+      transform-origin: left center;
+      pointer-events: none;
     }
 
     .admin-toast-btn { flex: none; }
@@ -4896,6 +4961,31 @@
     .admin-toast-close:hover {
       background: var(--apple-chip, var(--apple-secondary, rgba(128, 128, 128, 0.14)));
       color: var(--apple-foreground);
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .admin-toast { transition: opacity 200ms ease; transform: none; }
+      .admin-toast.show { transform: none; }
+    }
+
+    @media (max-width: 560px) {
+      .admin-toast {
+        right: 16px;
+        bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+      }
+      /* 窄屏右侧控件堆叠高（圆钮 96~136、回顶钮 136~176），迷你条出现时让到最上层 */
+      body.mini-active .admin-toast {
+        bottom: calc(184px + env(safe-area-inset-bottom, 0px));
+      }
+      /* AI 页输入条之上（该页迷你条/圆钮都不显示，无需 184 高位）；写在 mini-active 之后压过它 */
+      html[data-page="ai"] .admin-toast {
+        bottom: calc(140px + env(safe-area-inset-bottom, 0px));
+      }
+      /* 博客款悬浮播放器：窄屏右侧三级台阶更高（圆钮 720~760 / 回顶钮 680~720），
+         148 的桌面口径会压住回顶钮——与迷你条同高让到最上层 */
+      html.using-blog-player .admin-toast {
+        bottom: calc(184px + env(safe-area-inset-bottom, 0px));
+      }
     }
 
     /* 外观入口：圆形毛玻璃小钮（2026-09-08 用户嫌白色耳朵突兀，选定圆钮方案；同日追加自由拖动）。

@@ -903,20 +903,58 @@
     border: 1px solid var(--fg); border-radius: 8px;
     background: var(--input-bg); color: var(--fg); font-size: 14px;
   }
-  /* 全局 toast 轻提示（底部浮现，自动消失） */
+  /* 全局 toast 轻提示（Swipe Toast 形态，2026-10-14 升级——reactbits.dev/c/micro/swipe-toast 原生复刻）
+     位置保持原样（底部居中）；卡片底部一根引线（fuse）随剩余时间烧完自动关；向下滑走 / Esc 手动关；
+     悬停暂停燃烧。外层 #toast 只做定位与显隐（保留旧类名，模板零改动），内层 .toast-card 承担滑动与引线。 */
   .toast {
     position: fixed; left: 50%; bottom: 30px; z-index: 1001;
-    transform: translate(-50%, 16px);
-    background: var(--fg); color: var(--bg);
-    padding: 10px 20px; border-radius: 12px; font-size: 14px;
-    box-shadow: 0 6px 24px rgba(0,0,0,.22);
-    opacity: 0; pointer-events: none; max-width: 86vw;
-    transition: opacity .25s var(--ease-outc), transform .32s var(--ease-spring);
+    width: min(356px, calc(100vw - 32px));
+    pointer-events: none; opacity: 0; visibility: hidden;
+    transform: translate(-50%, 14px);
+    transition: opacity .25s var(--ease-outc), transform .32s var(--ease-spring), visibility .25s;
   }
-  .toast.show { opacity: 1; transform: translate(-50%, 0); }
-  .toast.err { font-weight: 700; }
-  .toast.err::before { content: "✕ "; }
-  .toast.ok::before { content: "✓ "; }
+  .toast.show { opacity: 1; visibility: visible; transform: translate(-50%, 0); pointer-events: auto; }
+  .toast-card {
+    position: relative; overflow: hidden;
+    display: flex; align-items: center; gap: 8px;
+    padding: 12px 16px 13px; border-radius: 12px;
+    background: var(--fg); color: var(--bg);
+    font-size: 13px; line-height: 1.5;
+    box-shadow: 0 1px 2px rgba(0,0,0,.05), 0 4px 12px rgba(0,0,0,.1);
+    cursor: grab; outline: none;
+    touch-action: none;
+    user-select: none; -webkit-user-select: none;
+    -webkit-touch-callout: none; -webkit-tap-highlight-color: transparent;
+  }
+  .toast-card.dragging { cursor: grabbing; transition: none; }
+  .toast-card:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
+  .toast-text { flex: 1 1 auto; min-width: 0; }
+  .toast.err .toast-text { font-weight: 700; }
+  .toast.err .toast-text::before { content: "✕ "; }
+  .toast.ok .toast-text::before { content: "✓ "; }
+  /* 引线：2px 渐变细线贴卡片底缘，scaleX 1→0 随剩余时间烧完（JS WAAPI 驱动；sticky 隐藏） */
+  .toast-fuse {
+    position: absolute; right: 0; bottom: 0; left: 0; height: 2px;
+    background: linear-gradient(90deg,
+      transparent 0%,
+      color-mix(in srgb, var(--brand) 18%, transparent) 9%,
+      color-mix(in srgb, var(--brand) 50%, transparent) 18%,
+      color-mix(in srgb, var(--brand) 84%, transparent) 28%,
+      var(--brand) 38%, var(--brand) 62%,
+      color-mix(in srgb, var(--brand) 84%, transparent) 72%,
+      color-mix(in srgb, var(--brand) 50%, transparent) 82%,
+      color-mix(in srgb, var(--brand) 18%, transparent) 91%,
+      transparent 100%);
+    transform-origin: left center;
+    pointer-events: none;
+  }
+  .toast.sticky .toast-fuse { display: none; }
+  @media (prefers-reduced-motion: reduce) {
+    .toast { transition: opacity .2s ease; transform: none; }
+  }
+  @media (max-width: 640px) {
+    .toast { bottom: calc(16px + env(safe-area-inset-bottom, 0px)); } /* 仍底部居中，只抬高度 */
+  }
   /* 询问弹窗（替代原生 prompt/confirm） */
   .ask-modal-body { width: min(420px, 92vw); }
   .ask-msg { font-size: 14px; line-height: 1.65; margin-bottom: 16px; }

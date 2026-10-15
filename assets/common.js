@@ -5605,20 +5605,208 @@ window.__siteCalendar = (function () {
     // 页面加载时只认 sessionStorage 里的标记（刷新不重复弹）。
     // 注意：绝不能用 /api/auth/status 做"是不是管理员"的判断——它只反映
     // 浏览器有无管理员会话 Cookie，分不清当前登录的是谁（坑 11）
+    // 2026-10-14 升级 Swipe Toast 形态（站长拍板，reactbits.dev/c/micro/swipe-toast 原生复刻）：
+    // 移到右下角；底部一根引线随 6 秒剩余时间烧完自动关；向下滑走 / Esc / 悬停暂停。
+    // 卡内结构 JS 构建（八页外壳 markup 零改动，坑 23 归零）；「进入后台」钮保留。
     // =========================
     var adminToast = document.getElementById('adminToast');
-    var adminToastTimer = null;
+    var adminToastAdminBtn = document.getElementById('adminToastAdminBtn');
+    var adminToastClose = document.getElementById('adminToastClose');
+    var welcomeToast = (function () {
+      if (!adminToast) return null;
+      var oldText = document.getElementById('adminToastText');
+      if (oldText) oldText.textContent = ''; // 旧文本节点保留占位（壳不变），内容由卡片承担
+      var card = document.createElement('div');
+      card.className = 'swipe-toast-card';
+      card.tabIndex = 0;
+      var body = document.createElement('span');
+      body.className = 'swipe-toast-body';
+      var textEl = document.createElement('span');
+      textEl.className = 'swipe-toast-text';
+      body.appendChild(textEl);
+      card.appendChild(body);
+      if (adminToastAdminBtn) { card.appendChild(adminToastAdminBtn); adminToastAdminBtn.style.display = 'none'; }
+      if (adminToastClose) card.appendChild(adminToastClose);
+      var fuse = document.createElement('i');
+      fuse.className = 'swipe-toast-fuse';
+      fuse.setAttribute('aria-hidden', 'true');
+      card.appendChild(fuse);
+      adminToast.appendChild(card);
+
+      var FLICK = 0.11, DEAD_ZONE = 3, RESIST = 24, SWIPE_DIST = 40;
+      var BURN_MS = 6000; // 原欢迎浮窗停留 6 秒口径不变
+      var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      var anim = null, fuseTimer = 0, raf = 0, drag = null, pendingClose = null;
+      var y = 0, phase = 'idle';
+      var hover = false, interacting = false, hidden = false;
+
+      function setY(v) {
+        y = v;
+        card.style.transform = v ? 'translateY(' + v.toFixed(1) + 'px)' : '';
+      }
+      function syncFuse() {
+        if (!anim) return;
+        if (hover || interacting || hidden) { if (anim.playState === 'running') anim.pause(); }
+        else if (anim.playState === 'paused') anim.play();
+      }
+      function stopAnim() {
+        clearTimeout(fuseTimer); fuseTimer = 0;
+        if (!anim) return;
+        anim.onfinish = null;
+        try { anim.cancel(); } catch (e) {}
+        anim = null;
+      }
+      function stopRaf() { if (raf) { cancelAnimationFrame(raf); raf = 0; } }
+      function springTo(to, velocity, bounce, done, omega) {
+        stopRaf();
+        if (reduce) { setY(to); if (done) done(); return; }
+        var x = y, v = velocity, w = omega || 12.6, zeta = bounce ? 0.8 : 1;
+        var last = performance.now();
+        function step(now) {
+          var dt = Math.min(0.032, (now - last) / 1000); last = now;
+          var n = Math.max(1, Math.ceil(dt / 0.008)), h = dt / n;
+          for (var i = 0; i < n; i++) {
+            v += (-w * w * (x - to) - 2 * zeta * w * v) * h;
+            x += v * h;
+          }
+          setY(x);
+          if (Math.abs(x - to) < 0.5 && Math.abs(v) < 6) { raf = 0; setY(to); if (done) done(); return; }
+          raf = requestAnimationFrame(step);
+        }
+        raf = requestAnimationFrame(step);
+      }
+      function finishClose() {
+        stopRaf();
+        phase = 'idle';
+        adminToast.classList.remove('show');
+        card.classList.remove('dragging');
+        card.style.opacity = '0'; // 卡片隐藏：setY(0) 复位时不闪回（show 时再清）
+        setY(0);
+      }
+      function close(reason, velocity) {
+        if (phase !== 'open') return;
+        if (drag) { pendingClose = reason; return; }
+        phase = 'closing';
+        if (anim) anim.onfinish = null;
+        clearTimeout(fuseTimer); fuseTimer = 0;
+        adminToast.classList.remove('show');
+        if (reduce) { finishClose(); return; }
+        springTo(reason === 'swipe' ? y + card.offsetHeight : card.offsetHeight, velocity || 0, false, finishClose, 18);
+      }
+      function velocityOf(hist) {
+        if (hist.length < 2) return 0;
+        var t0 = hist[0][0], y0 = hist[0][1];
+        var t1 = hist[hist.length - 1][0], y1 = hist[hist.length - 1][1];
+        if (performance.now() - t1 > 100) return 0;
+        return (y1 - y0) / Math.max(1, t1 - t0);
+      }
+      function rubber(over) { return (over * RESIST * 0.55) / (RESIST + 0.55 * Math.abs(over)); }
+
+      card.addEventListener('pointerdown', function (e) {
+        if (e.button !== 0 || phase !== 'open' || drag) return;
+        if (e.target.closest('button')) return; // 按钮上的按压不算拖拽（进入后台/关闭）
+        try { card.setPointerCapture(e.pointerId); } catch (err) {}
+        stopRaf();
+        drag = { id: e.pointerId, startY: e.clientY, grab: null, moved: false, hist: [[performance.now(), y]] };
+        interacting = true;
+        syncFuse();
+      });
+      card.addEventListener('pointermove', function (e) {
+        if (!drag || drag.id !== e.pointerId) return;
+        if (drag.grab === null) {
+          if (Math.abs(e.clientY - drag.startY) < DEAD_ZONE) return;
+          drag.grab = e.clientY - y;
+          card.classList.add('dragging');
+        }
+        var raw = e.clientY - drag.grab;
+        setY(raw >= 0 ? raw : rubber(raw));
+        drag.moved = true;
+        drag.hist.push([performance.now(), y]);
+        if (drag.hist.length > 4) drag.hist.shift();
+      });
+      function pointerEnd(e) {
+        if (!drag || drag.id !== e.pointerId) return;
+        var d = drag;
+        drag = null;
+        try { card.releasePointerCapture(e.pointerId); } catch (err) {}
+        interacting = false;
+        var v = velocityOf(d.hist);
+        if (y > 0 && (v > FLICK || (y >= SWIPE_DIST && v >= 0))) { close('swipe', v * 1000); return; }
+        if (d.moved && !reduce) {
+          card.classList.add('dragging');
+          springTo(0, v * 1000, true, function () { card.classList.remove('dragging'); });
+        } else {
+          card.classList.remove('dragging');
+          setY(0);
+        }
+        var queued = pendingClose;
+        pendingClose = null;
+        if (queued) close(queued);
+        else syncFuse();
+      }
+      card.addEventListener('pointerup', pointerEnd);
+      card.addEventListener('pointercancel', pointerEnd);
+      card.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape' && phase === 'open') { e.stopPropagation(); close('escape'); }
+      });
+      card.addEventListener('pointerenter', function (e) {
+        if (e.pointerType === 'mouse') { hover = true; syncFuse(); }
+      });
+      card.addEventListener('pointerleave', function (e) {
+        if (e.pointerType === 'mouse') { hover = false; syncFuse(); }
+      });
+      document.addEventListener('visibilitychange', function () {
+        hidden = document.hidden;
+        syncFuse();
+      });
+
+      // AI 页输入条占住底部且会随附件/多行长高：显示时按输入条顶缘动态抬到它上方（12px 缝隙）；
+      // 其他页面（无输入条）清掉内联，回落到 CSS 台阶让位。视口口径用布局视口（坑 30）
+      function syncOffset() {
+        var bar = document.querySelector('.ai-input-bar');
+        adminToast.style.bottom = bar
+          ? Math.round(document.documentElement.clientHeight - bar.getBoundingClientRect().top + 12) + 'px'
+          : '';
+      }
+
+      return {
+        show: function (text, withAdminBtn) {
+          stopAnim();
+          stopRaf();
+          if (phase === 'closing') finishClose();
+          drag = null; interacting = false; pendingClose = null;
+          card.classList.remove('dragging');
+          card.style.opacity = '';
+          setY(0);
+          textEl.textContent = text || '';
+          if (adminToastAdminBtn) adminToastAdminBtn.style.display = withAdminBtn ? '' : 'none';
+          syncOffset();
+          phase = 'open';
+          adminToast.classList.add('show');
+          if (typeof fuse.animate === 'function') {
+            anim = fuse.animate(
+              [{ transform: 'scaleX(1)' }, { transform: 'scaleX(0)' }],
+              { duration: BURN_MS, easing: 'linear', fill: 'forwards' }
+            );
+            anim.onfinish = function () { close('timeout'); };
+            syncFuse();
+          } else {
+            fuseTimer = setTimeout(function () { close('timeout'); }, BURN_MS);
+          }
+        },
+        hide: function () { close('close'); },
+        // pjax 换页后重算让位：AI 页的内联 bottom 到了别的页面（或反之）必须重估，
+        // 否则旧值残留到本次 toast 烧完（closeAllTransientOverlays 调）
+        resync: function () { if (phase === 'open') syncOffset(); }
+      };
+    })();
 
     function showTopToast(text, withAdminBtn) {
-      if (!adminToast) return;
-      var textEl = document.getElementById('adminToastText');
-      if (textEl) textEl.textContent = text;
-      // "进入后台"按钮只在管理员欢迎时显示，其余场景（普通登录/退出）不展示
-      if (adminToastAdminBtn) adminToastAdminBtn.style.display = withAdminBtn ? '' : 'none';
-      adminToast.classList.add('show');
-      if (adminToastTimer) clearTimeout(adminToastTimer);
-      adminToastTimer = setTimeout(function () { adminToast.classList.remove('show'); }, 6000);
+      if (welcomeToast) welcomeToast.show(text, withAdminBtn);
     }
+
+    // 跨 IIFE 桥（彩蛋段等在文件尾部、够不着本闭包）：暴露同一控制器，保证引线/滑走行为一致
+    try { window.__yhuoWelcomeToast = welcomeToast; } catch (e) {}
 
     function showWelcomeToast(name, isAdmin) {
       showTopToast(isAdmin
@@ -5626,12 +5814,10 @@ window.__siteCalendar = (function () {
         : '👋 欢迎回来，' + (name || ''), isAdmin);
     }
 
-    var adminToastClose = document.getElementById('adminToastClose');
     if (adminToastClose) adminToastClose.addEventListener('click', function () {
-      if (adminToastTimer) clearTimeout(adminToastTimer);
-      adminToast.classList.remove('show');
+      if (welcomeToast) welcomeToast.hide();
+      else if (adminToast) adminToast.classList.remove('show');
     });
-    var adminToastAdminBtn = document.getElementById('adminToastAdminBtn');
     if (adminToastAdminBtn) adminToastAdminBtn.addEventListener('click', function () {
       location.href = '/admin';
     });
@@ -10001,6 +10187,7 @@ window.__siteCalendar = (function () {
       try { closeBgPicker(); } catch (e) {}
       try { setAppearOpen(false); } catch (e) {}
       try { setProfileOpen(false); } catch (e) {}
+      try { if (welcomeToast) welcomeToast.resync(); } catch (e) {} // 欢迎浮窗让位重估（AI 页内联 bottom 跨页防残留）
       miniArmIdle(); // 换页后重新开始闲置计时（外壳播放器跨页常驻）
     }
     function postVisit(path) {
@@ -10770,11 +10957,12 @@ window.__siteCalendar = (function () {
     if (window.self !== window.top) return; // 坑 29
     var reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-    // —— 提示：复用外壳现成的顶部欢迎浮窗 #adminToast（八页外壳各有一份）。showTopToast 在主 IIFE
-    // 闭包里够不着，这里直接驱动同一 DOM：换文案、藏「进入后台」钮、挂 show，3 秒自毁；
-    // 主 IIFE 下次 showTopToast 会重写文案与按钮显隐，两边互不残留 ——
+    // —— 提示：复用外壳现成的欢迎浮窗 #adminToast（八页外壳各有一份）。主 IIFE 已把同一控制器
+    // 挂到 window.__yhuoWelcomeToast（Swipe Toast 形态：引线 6 秒）；这里用它驱动，隐藏「进入后台」钮 ——
     var toastTimer = 0;
     function eggToast(text) {
+      if (window.__yhuoWelcomeToast) { window.__yhuoWelcomeToast.show(text, false); return; }
+      // 兜底（控制器缺失时旧路径）：直接挂 show，3 秒自毁
       var toast = document.getElementById('adminToast');
       if (!toast) return;
       var textEl = document.getElementById('adminToastText');

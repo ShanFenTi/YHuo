@@ -175,14 +175,196 @@
     el.className = 'msg' + (cls ? ' ' + cls : '');
   }
 
-  // ---------- toast 轻提示（底部浮现，自动消失；sticky=true 时常驻直到下一条） ----------
-  var toastTimer = null;
+  // ---------- toast 轻提示（右下角 Swipe Toast 形态，2026-10-14 升级；sticky=true 时常驻直到下一条） ----------
+  // 站长指定 reactbits.dev/c/micro/swipe-toast：卡片底部一根引线随剩余时间烧完自动关，向下滑走 /
+  // Esc 手动关，悬停暂停燃烧（不吞消息），向上拖有橡皮筋阻力、未达阈值松手带速度回弹。
+  // 原版是 React 组件，这里按原版常量做零依赖原生复刻（与按住确认 / Slide Commit 同口径）：
+  //   常量：FLICK .11px/ms / DEAD_ZONE 3px / RESIST 24px / 滑出阈值 40px / 回弹弹簧（omega 12.6，bounce .2）；
+  //   时长：引线烧完 = 原 2600ms 自动消失口径不变；sticky 常驻（引线隐藏）仍可滑走。
+  //   结构：markup 保持空壳（admin 模板零改动），卡内结构 JS 构建；签名 toast(text, cls, sticky) 不变。
+  var toastApi = (function () {
+    var shell = $('toast');
+    if (!shell) return null;
+    shell.textContent = '';
+    var card = document.createElement('div');
+    card.className = 'toast-card';
+    card.tabIndex = 0;
+    card.setAttribute('role', 'status');
+    card.setAttribute('aria-live', 'polite');
+    card.setAttribute('aria-atomic', 'true');
+    var textEl = document.createElement('span');
+    textEl.className = 'toast-text';
+    var fuse = document.createElement('i');
+    fuse.className = 'toast-fuse';
+    fuse.setAttribute('aria-hidden', 'true');
+    card.appendChild(textEl);
+    card.appendChild(fuse);
+    shell.appendChild(card);
+
+    var FLICK = 0.11, DEAD_ZONE = 3, RESIST = 24, SWIPE_DIST = 40;
+    var BURN_MS = 2600;
+    var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    var anim = null, fuseTimer = 0, raf = 0, drag = null, pendingClose = null;
+    var y = 0, phase = 'idle', isSticky = false;
+    var hover = false, interacting = false, hidden = false;
+
+    function setY(v) {
+      y = v;
+      card.style.transform = v ? 'translateY(' + v.toFixed(1) + 'px)' : '';
+    }
+    function syncFuse() {
+      if (!anim) return;
+      if (hover || interacting || hidden) { if (anim.playState === 'running') anim.pause(); }
+      else if (anim.playState === 'paused') anim.play();
+    }
+    function stopAnim() {
+      clearTimeout(fuseTimer); fuseTimer = 0;
+      if (!anim) return;
+      anim.onfinish = null;
+      try { anim.cancel(); } catch (e) {}
+      anim = null;
+    }
+    function stopRaf() { if (raf) { cancelAnimationFrame(raf); raf = 0; } }
+    function clearTimers() { clearTimeout(fuseTimer); fuseTimer = 0; }
+    // 轻量弹簧（半隐式欧拉 + 8ms 子步）：回弹 omega 12.6 轻微欠阻尼（≈原版 duration .5 bounce .2），
+    // 关闭/滑出 omega 18 临界阻尼直落（≈原版 slideMs*EXIT ≈280ms）
+    function springTo(to, velocity, bounce, done, omega) {
+      stopRaf();
+      if (reduce) { setY(to); if (done) done(); return; } // 减弱动态：直达不走动画
+      var x = y, v = velocity, w = omega || 12.6, zeta = bounce ? 0.8 : 1;
+      var last = performance.now();
+      function step(now) {
+        var dt = Math.min(0.032, (now - last) / 1000); last = now;
+        var n = Math.max(1, Math.ceil(dt / 0.008)), h = dt / n;
+        for (var i = 0; i < n; i++) {
+          v += (-w * w * (x - to) - 2 * zeta * w * v) * h;
+          x += v * h;
+        }
+        setY(x);
+        if (Math.abs(x - to) < 0.5 && Math.abs(v) < 6) { raf = 0; setY(to); if (done) done(); return; }
+        raf = requestAnimationFrame(step);
+      }
+      raf = requestAnimationFrame(step);
+    }
+    function finishClose() {
+      stopRaf();
+      phase = 'idle';
+      isSticky = false;
+      shell.classList.remove('show', 'ok', 'err', 'sticky');
+      card.classList.remove('dragging');
+      card.style.opacity = '0'; // 卡片隐藏：setY(0) 复位时不会闪回（show() 再清）
+      setY(0);
+    }
+    function close(reason, velocity) {
+      if (phase !== 'open') return;
+      // 拖拽中请求关闭（如引线烧完）：排队到手势结束再执行（原版 pendingClose 同款）
+      if (drag) { pendingClose = reason; return; }
+      phase = 'closing';
+      if (anim) anim.onfinish = null; // 引线冻结在当前进度（淡出期间不回弹满格）
+      clearTimers();
+      shell.classList.remove('show'); // 所有关闭路径统一：下滑 + 淡出同时进行
+      if (reduce) { finishClose(); return; }
+      springTo(reason === 'swipe' ? y + card.offsetHeight : card.offsetHeight, velocity || 0, false, finishClose, 18);
+    }
+    function velocityOf(hist) {
+      if (hist.length < 2) return 0;
+      var t0 = hist[0][0], y0 = hist[0][1];
+      var t1 = hist[hist.length - 1][0], y1 = hist[hist.length - 1][1];
+      if (performance.now() - t1 > 100) return 0;
+      return (y1 - y0) / Math.max(1, t1 - t0);
+    }
+    function rubber(over) { return (over * RESIST * 0.55) / (RESIST + 0.55 * Math.abs(over)); }
+
+    card.addEventListener('pointerdown', function (e) {
+      if (e.button !== 0 || phase !== 'open' || drag) return;
+      if (e.target.closest('button')) return;
+      try { card.setPointerCapture(e.pointerId); } catch (err) {}
+      stopRaf();
+      drag = { id: e.pointerId, startY: e.clientY, grab: null, moved: false, hist: [[performance.now(), y]] };
+      interacting = true;
+      syncFuse();
+    });
+    card.addEventListener('pointermove', function (e) {
+      if (!drag || drag.id !== e.pointerId) return;
+      if (drag.grab === null) {
+        if (Math.abs(e.clientY - drag.startY) < DEAD_ZONE) return;
+        drag.grab = e.clientY - y;
+        card.classList.add('dragging');
+      }
+      var raw = e.clientY - drag.grab;
+      setY(raw >= 0 ? raw : rubber(raw));
+      drag.moved = true;
+      drag.hist.push([performance.now(), y]);
+      if (drag.hist.length > 4) drag.hist.shift();
+    });
+    function pointerEnd(e) {
+      if (!drag || drag.id !== e.pointerId) return;
+      var d = drag;
+      drag = null;
+      try { card.releasePointerCapture(e.pointerId); } catch (err) {}
+      interacting = false;
+      var v = velocityOf(d.hist);
+      if (y > 0 && (v > FLICK || (y >= SWIPE_DIST && v >= 0))) { close('swipe', v * 1000); return; }
+      if (d.moved && !reduce) {
+        card.classList.add('dragging'); // 回弹期间禁止悬停过渡干扰
+        springTo(0, v * 1000, true, function () { card.classList.remove('dragging'); });
+      } else {
+        card.classList.remove('dragging');
+        setY(0);
+      }
+      // 拖拽期间到点的关闭请求（引线烧完）在此执行
+      var queued = pendingClose;
+      pendingClose = null;
+      if (queued) close(queued);
+      else syncFuse();
+    }
+    card.addEventListener('pointerup', pointerEnd);
+    card.addEventListener('pointercancel', pointerEnd);
+    card.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape' && phase === 'open') { e.stopPropagation(); close('escape'); }
+    });
+    card.addEventListener('pointerenter', function (e) {
+      if (e.pointerType === 'mouse') { hover = true; syncFuse(); }
+    });
+    card.addEventListener('pointerleave', function (e) {
+      if (e.pointerType === 'mouse') { hover = false; syncFuse(); }
+    });
+    document.addEventListener('visibilitychange', function () {
+      hidden = document.hidden;
+      syncFuse();
+    });
+
+    return {
+      show: function (text, cls, sticky) {
+        clearTimers();
+        stopRaf();
+        stopAnim();
+        if (phase === 'closing') finishClose();
+        drag = null; interacting = false; pendingClose = null; // 拖拽中来了新 toast：手势作废，直接换内容
+        card.classList.remove('dragging');
+        card.style.opacity = ''; // 清 finishClose 留下的隐藏内联
+        setY(0);
+        textEl.textContent = text || '';
+        isSticky = !!sticky;
+        shell.className = 'toast' + (cls ? ' ' + cls : '') + (sticky ? ' sticky' : '');
+        phase = 'open';
+        shell.classList.add('show');
+        if (sticky) return; // 常驻：无引线（CSS 按 .sticky 隐藏），仍可滑走 / Esc
+        if (typeof fuse.animate === 'function') {
+          anim = fuse.animate(
+            [{ transform: 'scaleX(1)' }, { transform: 'scaleX(0)' }],
+            { duration: BURN_MS, easing: 'linear', fill: 'forwards' }
+          );
+          anim.onfinish = function () { close('timeout'); };
+          syncFuse();
+        } else {
+          fuseTimer = setTimeout(function () { close('timeout'); }, BURN_MS); // 无 WAAPI 兜底
+        }
+      }
+    };
+  })();
   function toast(text, cls, sticky) {
-    var t = $('toast');
-    t.textContent = text || '';
-    t.className = 'toast show' + (cls ? ' ' + cls : '');
-    clearTimeout(toastTimer);
-    if (!sticky) toastTimer = setTimeout(function () { t.className = 'toast' + (cls ? ' ' + cls : ''); }, 2600);
+    if (toastApi) toastApi.show(text, cls, sticky);
   }
 
   // ---------- 按住确认（Hold Button 原生复刻，2026-10-14） ----------

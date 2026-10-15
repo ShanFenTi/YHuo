@@ -488,14 +488,20 @@ window.__siteCalendar = (function () {
     // ⚠️ 无外壳页面（如已移除的 /about/，2026-10-08 白屏死表盘根因）没有站点外壳：顶栏/播放器/浮层元素一概不存在，
     // 启动期凡直接绑外壳元素的必须先判空，否则一个 TypeError 会打断整个 IIFE、
     // 连尾部 runPageHook(currentPage,'init') 都到不了
-    if (themeBtn) themeBtn.addEventListener('click', function () {
+    // 主题切换核心：originEl = 圆形揭示圆心来源（门屏圆钮也要认自己——此前门屏段用
+    // themeToggle.click() 转发，门开着时顶栏被门控 display:none、rect 全零，揭示会从
+    // 左上角 (0,0) 扫出，2026-10-14 站长实报「点击为什么从左上角开始变化」）。
+    // 门屏段跨 IIFE 调用：挂 window（跨段走全局命名空间是本站惯例，同 __FF_CACHE）。
+    function toggleThemeFrom(originEl) {
       if (themeSwitching) return;
       var isDark = document.documentElement.classList.contains('dark');
       var next = isDark ? 'light' : 'dark';
       var root = document.documentElement;
       var motionOK = !(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
-      if (motionOK && document.startViewTransition) {
-        var rect = themeBtn.getBoundingClientRect();
+      // 圆心来源优先传进来的元素（有盒才认——0 尺寸元素会把圆心甩到左上角），回退顶栏钮
+      var anchor = (originEl && originEl.getBoundingClientRect().width > 0) ? originEl : themeBtn;
+      if (motionOK && document.startViewTransition && anchor) {
+        var rect = anchor.getBoundingClientRect();
         var x = rect.left + rect.width / 2;
         var y = rect.top + rect.height / 2;
         // 覆盖全屏所需半径：圆心到最远角的距离 + 20px 余量
@@ -506,20 +512,22 @@ window.__siteCalendar = (function () {
         var yPct = (y / window.innerHeight) * 100;
         var rPct = radius / (Math.hypot(window.innerWidth, window.innerHeight) / Math.SQRT2) * 100;
         themeSwitching = true;
-        themeBtn.classList.add('is-switching');
+        anchor.classList.add('is-switching');
         themeRevealStyle.textContent = '@keyframes theme-reveal { from { clip-path: circle(0 at ' + xPct.toFixed(4) + '% ' + yPct.toFixed(4) + '%); } to { clip-path: circle(' + rPct.toFixed(4) + '% at ' + xPct.toFixed(4) + '% ' + yPct.toFixed(4) + '%); } }';
         root.classList.add('theme-vt');
         var vt = document.startViewTransition(function () { applyTheme(next); });
         vt.finished.catch(function () {}).finally(function () {
           themeSwitching = false;
-          themeBtn.classList.remove('is-switching');
+          anchor.classList.remove('is-switching');
           root.classList.remove('theme-vt');
         });
       } else {
         applyTheme(next);
       }
       try { localStorage.setItem(THEME_KEY, next); } catch (e) {}
-    });
+    }
+    if (themeBtn) themeBtn.addEventListener('click', function () { toggleThemeFrom(themeBtn); });
+    window.__toggleThemeFrom = toggleThemeFrom;
 
     // =========================
     // 滚动处理：导航高亮 + 进度条 + 回顶按钮 + 导航阴影
@@ -11333,7 +11341,6 @@ window.__siteCalendar = (function () {
     var menuBtn = root.querySelector('#gateMenuBtn');
     var content = root.querySelector('.gate-content');
     var cards = Array.prototype.slice.call(root.querySelectorAll('.gate-card'));
-    var wideCta = root.querySelector('#gateCtaWide');
     var armed = false; // 门当前是否开着（arm/teardown 幂等判据）
 
     // ---------- 展开引擎：p∈[0,1] 弹簧（半隐式欧拉 + 240Hz 子步，原版同构） ----------
@@ -11425,7 +11432,6 @@ window.__siteCalendar = (function () {
     }
     var cta = root.querySelector('#gateCta');
     if (cta) cta.addEventListener('click', function (e) { e.preventDefault(); playOut(); });
-    if (wideCta) wideCta.addEventListener('click', function (e) { e.preventDefault(); playOut(); });
     Array.prototype.forEach.call(root.querySelectorAll('.gate-link'), function (a) {
       // pjax 直达目标页：收场必须同步完成（摘 gate-pending + 摘节点），否则目标页内容
       // 还挂在 html.gate-pending 门控下被 display:none 整页藏掉（2026-10-14 实测复现）。
@@ -11465,12 +11471,13 @@ window.__siteCalendar = (function () {
       });
     }
 
-    // ---------- 深色切换（复用既有 applyTheme 通道：直接点顶栏同款逻辑——触发 themeToggle 的 click 处理器最稳） ----------
+    // ---------- 深色切换：直调主题切换核心并把「自己」当圆心来源（2026-10-14 站长实报「点击为什么
+    // 从左上角开始变化」——此前转发 themeToggle.click()，门开着时顶栏被门控 display:none、
+    // rect 全零，圆形揭示从 (0,0) 左上角扫出）。核心函数挂 window（跨段全局命名空间惯例）。 ----------
     var gateThemeBtn = root.querySelector('#gateThemeBtn');
     if (gateThemeBtn) {
       gateThemeBtn.addEventListener('click', function () {
-        var t = document.getElementById('themeToggle');
-        if (t) t.click(); // 顶栏钮虽被门控隐藏（display:none），监听器仍挂在元素上，click() 照常触发
+        if (typeof window.__toggleThemeFrom === 'function') window.__toggleThemeFrom(gateThemeBtn);
       });
     }
 

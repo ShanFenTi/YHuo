@@ -10021,6 +10021,7 @@
     html.gate-pending .back-top,
     html.gate-pending .appear-tab,
     html.gate-pending .mini-player,
+    html.gate-pending .music-player, /* 悬浮播放器（博客款音乐球）也要藏：站长实测门屏态漏出右下角白球 */
     html.gate-pending .progress-bar { display: none !important; }
 
     /* ---------- 门屏态极简黑白（站长「这个状态下就始终极简黑白色主题不要背景」）：

@@ -833,17 +833,17 @@
     opacity: 0; transition: opacity .12s; white-space: nowrap;
   }
   .visit-tip.show { opacity: 1; }
-  /* 功能开关胶囊钮（2026-10-14 改版——站长发截图「我要的是这种开启了是黑色的这种」：选中=黑墨药丸白字，
-     即 Rubber Segment 拇指/.seg-btn.on 同款胶囊，不再是滑块轨道；gt-* 旧类名沿用免 JS 改动） */
+  /* 功能开关钮（2026-10-14 三改定版——站长发截图「要和我刚才发的卡片一样正方形带圆角」：不再是滑块轨道，
+     选中=黑墨白字圆角矩形（--rs-thumb-radius 7px 同款，与站长截图卡片一致），浅深主题自动反转） */
   .geo-toggle {
     display: inline-flex; align-items: center;
-    padding: 5px 14px; border: 1px solid var(--border); border-radius: 999px;
+    padding: 5px 14px; border: 1px solid var(--border); border-radius: 7px;
     background: transparent; color: var(--muted);
     font-size: 12.5px; line-height: 1.4; cursor: pointer;
     transition: background .18s ease, color .18s ease, border-color .18s ease;
   }
   .geo-toggle:hover { color: var(--fg); border-color: var(--muted); opacity: 1; }
-  .geo-toggle.on { background: var(--fg); color: var(--bg); border-color: var(--fg); font-weight: 600; } /* 选中=黑墨药丸白字（浅深主题自动反转） */
+  .geo-toggle.on { background: var(--fg); color: var(--bg); border-color: var(--fg); font-weight: 600; } /* 选中=黑墨白字圆角矩形（--rs-thumb-radius 7px 同款；浅深主题自动反转） */
   /* 滑动开关（原"归属地"开关样式；归属地功能已移除，现仅外观页功能开关使用） */
   #flagRows { display: flex; flex-wrap: wrap; gap: 6px 22px; max-width: 640px; }
   /* 邮件统计：趋势 + 发送明细 */

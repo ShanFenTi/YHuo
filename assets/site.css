@@ -10023,6 +10023,85 @@
     html.gate-pending .mini-player,
     html.gate-pending .progress-bar { display: none !important; }
 
+    /* ---------- 门屏态极简黑白（站长「这个状态下就始终极简黑白色主题不要背景」）：
+       门开着 = 只认黑与白 + 深浅两态，不随站内主题（陶土/角色/复古全套主题）走，
+       背景装饰（html 光晕/流星/自定义背景/角色泡泡立绘/复古扫描线暗角/特效天气）全部退场。
+       全部规则挂在 html.gate-pending 门控下，特异性压过 data-accent 变量块与主题装饰，
+       摘类（收场/换页）即整组还原——主题自身零改动、零 JS 参与。 ---------- */
+    /* ① 色板：门屏态强制中性黑白（深浅两态由既有 .dark 组合选择器跟随，只换黑白色温） */
+    html.gate-pending {
+      --brand-400: #1b1c1e;      /* 强调色一律墨色（浅态）/浅灰白（深态，深色档再覆盖） */
+      --brand-500: #1b1c1e;
+      --background: #f6f6f4;     /* 浅态纸底：近白冷灰 */
+      --card: #ffffff;
+      --popover: #ffffff;
+      --secondary: #f0f0ee;
+      --muted: #f0f0ee;
+      --accent: #ececea;
+      --border: #e3e3e1;
+      --input: #dcdcda;
+      --glow-a: transparent;     /* 画布光晕清零 */
+      --glow-b: transparent;
+    }
+    html.gate-pending.dark {
+      --brand-400: #f5f5f4;
+      --brand-500: #f5f5f4;
+      --background: #0a0a0a;
+      --card: #141414;
+      --popover: #141414;
+      --secondary: #1b1b1b;
+      --muted: #1b1b1b;
+      --accent: #1b1b1b;
+      --border: #2a2a2a;
+      --input: #2a2a2a;
+    }
+    /* ② 画布底：光晕整段撤掉，只留平色（浅/深） */
+    html.gate-pending {
+      background: var(--apple-background) !important;
+    }
+    /* ③ 背景装饰全部退场：流星层/自定义背景/雨雪 canvas/角色粒子与立绘水印/看板娘 */
+    html.gate-pending .fx-meteors,
+    html.gate-pending .bg-layer,
+    html.gate-pending .fx-weather,
+    html.gate-pending .denia-bubbles,
+    html.gate-pending .denia-bubbles-fg,
+    html.gate-pending .denia-sprite-wall,
+    html.gate-pending .aemeath-motes,
+    html.gate-pending .aemeath-motes-fg,
+    html.gate-pending .aemeath-sprite-wall,
+    html.gate-pending .chibi-mascot { display: none !important; }
+    /* ④ 复古主题的 body 级装饰（CRT 扫描线/暗角/老书纸色）在门屏态一并隐掉 */
+    html.gate-pending[data-accent='crt'] body::before,
+    html.gate-pending[data-accent='crt'] body::after,
+    html.gate-pending[data-accent='oldbook'] body::after { content: none !important; }
+    html.gate-pending[data-accent='crt'] body { text-shadow: none !important; }
+    /* ⑤ 复古主题对门屏面板的皮（win98 浮雕实底 #d4d0c8/圆角清零等）在门屏态一并回退——
+       门屏「始终极简」= 形态也不随主题：毛玻璃面板 + 既有圆角语言。
+       （门屏段末尾的 win98 皮肤规则特异性同档且更靠后，这里用 [data-accent] 提一档压住） */
+    html.gate-pending[data-accent='win98'] .gate-panel {
+      background: var(--gp-panel);
+      border: 0;
+      box-shadow: 0 24px 48px -20px rgba(0, 0, 0, 0.5), 0 6px 16px -8px rgba(0, 0, 0, 0.35);
+      -webkit-backdrop-filter: blur(20px) saturate(1.6);
+      backdrop-filter: blur(20px) saturate(1.6);
+    }
+    html.gate-pending[data-accent='win98'] .gate-panel,
+    html.gate-pending[data-accent='portal'] .gate-panel,
+    html.gate-pending[data-accent='crt'] .gate-panel,
+    html.gate-pending[data-accent='oldbook'] .gate-panel { border-radius: var(--gp-radius); }
+    html.gate-pending[data-accent='win98'] .gate-card,
+    html.gate-pending[data-accent='portal'] .gate-card,
+    html.gate-pending[data-accent='crt'] .gate-card,
+    html.gate-pending[data-accent='oldbook'] .gate-card,
+    html.gate-pending[data-accent='win98'] .gate-cta,
+    html.gate-pending[data-accent='portal'] .gate-cta,
+    html.gate-pending[data-accent='crt'] .gate-cta,
+    html.gate-pending[data-accent='oldbook'] .gate-cta,
+    html.gate-pending[data-accent='win98'] .gate-menu,
+    html.gate-pending[data-accent='portal'] .gate-menu,
+    html.gate-pending[data-accent='crt'] .gate-menu,
+    html.gate-pending[data-accent='oldbook'] .gate-menu { border-radius: calc(var(--gp-radius) - var(--gp-inset)); }
+
     /* ---------- 门屏层：满屏居中，背景透出画布（光晕/流星/自定义背景全在 body/html 层） ---------- */
     .home-gate {
       position: fixed;

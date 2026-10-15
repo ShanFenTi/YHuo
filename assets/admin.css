@@ -241,7 +241,91 @@
   .accent-dot.active { border-color: var(--fg); box-shadow: 0 0 0 2px var(--card), 0 0 0 3.5px var(--fg); }
   .accent-name { font-size: 13px; color: var(--muted); margin-left: 4px; }
   .accent-name b { color: var(--fg); font-weight: 700; }
-  .player-mode-btn.active:hover { opacity: 1; } /* 激活态本体走组件层的分组规则（与 vm-chip/el-chip/range-btn 同一份反色 chip） */
+  /* 底部音乐播放器款式 = Rubber Segment（reactbits.dev/c/micro/rubber-segment 原生复刻，2026-10-14 站长点名
+     「改成点击即刻设置来适配这种特效」）：点选/拖拽松手即刻保存（原「保存播放器设置」钮撤掉）。深墨拇指走
+     clip-path 裁窗伸缩（拉伸 .19s → 交接 .15s → 弹簧落位 + 尾缘挤压 3px 回弹），轨道/拇指/文字取后台主题
+     变量（浅深两态自动跟随）。改样式/交互前先读 admin.js makeRubberSegment 段（常量对齐原版） */
+  .player-seg-row { display: flex; align-items: center; }
+  .rubber-segment {
+    --rs-track: var(--chip);
+    --rs-thumb: var(--fg);
+    --rs-ink: var(--fg);
+    --rs-ink-active: var(--bg);
+    --rs-radius: 10px;
+    --rs-inset: 3px;
+    --rs-thumb-radius: 7px;
+    --rs-h: 36px;
+    --rs-font: 13px;
+    --rs-pad: 14px;
+    --rs-min: 44px;
+    --rs-idle: 0.7;
+    --rs-hover: 0.9;
+    --rs-ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+    position: relative;
+    display: inline-grid;
+    grid-auto-flow: column;
+    grid-auto-columns: auto;
+    vertical-align: middle;
+    padding: var(--rs-inset);
+    border-radius: var(--rs-radius);
+    background: var(--rs-track);
+    font-family: inherit;
+    touch-action: pan-y;
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-touch-callout: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .rubber-segment[data-equal] { grid-auto-columns: minmax(0, 1fr); }
+  .rubber-segment__item {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    height: calc(var(--rs-h) - var(--rs-inset) * 2);
+    min-width: var(--rs-min);
+    margin: 0;
+    padding: 0 var(--rs-pad);
+    border: 0;
+    border-radius: var(--rs-thumb-radius);
+    background: none;
+    color: var(--rs-ink);
+    opacity: var(--rs-idle);
+    font: inherit;
+    font-size: var(--rs-font);
+    font-weight: 500;
+    line-height: 1;
+    white-space: nowrap;
+    cursor: pointer;
+    outline: none;
+    transition: opacity 160ms ease, transform 160ms var(--rs-ease-out);
+  }
+  .rubber-segment__item[aria-checked='true'] { cursor: default; }
+  .rubber-segment[data-draggable] .rubber-segment__item[aria-checked='true'] { cursor: grab; }
+  .rubber-segment[data-held], .rubber-segment[data-held] .rubber-segment__item { cursor: grabbing; }
+  .rubber-segment__item:hover { transform: none; } /* 压过后台全局 button:hover 上浮（细粒度控件不位移） */
+  .rubber-segment__item[data-pressed] { transform: scale(0.96); }
+  .rubber-segment__item:focus-visible { outline: 2px solid var(--fg); outline-offset: 3px; }
+  @media (hover: hover) and (pointer: fine) {
+    .rubber-segment__item[aria-checked='false']:hover { opacity: var(--rs-hover); }
+  }
+  .rubber-segment__thumb {
+    position: absolute;
+    inset: var(--rs-inset);
+    display: grid;
+    grid-auto-flow: column;
+    grid-auto-columns: auto;
+    background: var(--rs-thumb);
+    color: var(--rs-ink-active);
+    pointer-events: none;
+    /* 量测前隐藏：JS 首次 measure 后 clip-path 接管（inset 0 100% = 可见区为零） */
+    clip-path: inset(0 100% 0 0 round var(--rs-thumb-radius));
+  }
+  .rubber-segment[data-equal] .rubber-segment__thumb { grid-auto-columns: minmax(0, 1fr); }
+  .rubber-segment__copy { color: inherit; opacity: 1; cursor: default; }
+  @media (prefers-reduced-motion: reduce) {
+    .rubber-segment__item { transition: opacity 160ms ease; }
+  }
   .bgset-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
   .bg-preview { width: 160px; height: 90px; object-fit: cover; border-radius: 10px; border: 1px solid var(--border); }
   .meta2 { color: var(--muted); font-size: 13px; }
@@ -1218,7 +1302,7 @@
   }
   .seg-btn:hover { color: var(--fg); border-color: var(--muted); opacity: 1; }
   .seg-btn.on { background: var(--fg); color: var(--bg); border-color: var(--fg); font-weight: 600; opacity: 1; }
-  .vm-chip.active, .el-chip.active, .range-btn.active, .player-mode-btn.active { background: var(--fg); color: var(--bg); border-color: var(--fg); }
+  .vm-chip.active, .el-chip.active, .range-btn.active { background: var(--fg); color: var(--bg); border-color: var(--fg); }
   /* 用量条（存储分区/邮件额度）与迷你柱状图 */
   .meter-row { display: flex; align-items: center; gap: 12px; padding: 9px 0; font-size: 13px; border-bottom: 1px solid var(--row-line); }
   .meter-row:last-child { border-bottom: none; }

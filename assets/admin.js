@@ -2855,7 +2855,7 @@
         flagState = d.flags || {};
         renderFlagRows();
         playerCfg = d.player || playerCfg;
-        renderPlayerMode();
+        if (playerSeg) playerSeg.setValue(playerCfg.mode);
       } else if (d._status === 401) {
         show('login');
       }
@@ -2978,27 +2978,386 @@
     }).catch(function () { toast('网络错误', 'err'); });
   });
 
-  // ---------- 播放器样式（迷你播放条 / 悬浮播放器，共用站内曲库；/api/settings 下发 playerMode） ----------
+  // ---------- 播放器款式切换 = Rubber Segment（reactbits.dev/c/micro/rubber-segment 原生复刻，2026-10-14 站长点名） ----------
+  // 站长「改成点击即刻设置来适配这种特效」：点选/拖拽松手即保存（原「保存播放器设置」钮撤掉）。
+  // 结构 JS 构建（admin 模板只有 #playerSeg 空壳，坑 18 零波及）；取色走后台主题变量（浅深两态自动跟随）。
+  // 常量对齐原版：拉伸 DILATE .19s（EASE_OUT cubic-bezier(.23,1,.32,1)）→ 交接 HANDOFF .15s → 弹簧落位
+  // （UI .3s bounce0）+ 尾部挤压 3px 回弹（RELAX .16s）；拖拽：死区 4px、橡皮筋 .55、flick 110px/s、
+  // glide 75 惯性投影、点击判定 SLOP 10px；reduced-motion 全程直达。
   var playerCfg = { mode: 'mini' };
-
-  function renderPlayerMode() {
-    $('playerModeMini').classList.toggle('active', playerCfg.mode !== 'blog');
-    $('playerModeBlog').classList.toggle('active', playerCfg.mode === 'blog');
-  }
-  $('playerModeMini').addEventListener('click', function () { playerCfg.mode = 'mini'; renderPlayerMode(); });
-  $('playerModeBlog').addEventListener('click', function () { playerCfg.mode = 'blog'; renderPlayerMode(); });
-  $('playerSaveBtn').addEventListener('click', function () {
+  var playerSaveSeq = 0;
+  var PLAYER_MODE_LABELS = { mini: '迷你播放条（原版）', blog: '悬浮播放器（博客款）' };
+  function savePlayerMode(mode) {
+    var prev = playerCfg.mode;
+    if (mode === prev) return;
+    playerCfg.mode = mode; // 乐观先行：拇指已落位，失败再翻回
+    var seq = ++playerSaveSeq;
     api('/api/admin/appearance', {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ player: playerCfg })
+      body: JSON.stringify({ player: { mode: mode } })
     }).then(function (d) {
+      if (seq !== playerSaveSeq) return; // 已被更新的一次点选顶掉
       if (d.ok) {
         playerCfg = d.player || playerCfg;
-        renderPlayerMode();
-        toast('播放器设置已保存，访客下次进页面生效', 'ok');
-      } else toast(d.error || '保存失败', 'err');
-    }).catch(function () { toast('网络错误', 'err'); });
+        if (playerSeg) playerSeg.setValue(playerCfg.mode);
+        toast('播放器已切换为「' + PLAYER_MODE_LABELS[playerCfg.mode] + '」，访客下次进页面生效', 'ok');
+      } else {
+        playerCfg.mode = prev;
+        if (playerSeg) playerSeg.setValue(prev);
+        toast(d.error || '保存失败', 'err');
+      }
+    }).catch(function () {
+      if (seq !== playerSaveSeq) return;
+      playerCfg.mode = prev;
+      if (playerSeg) playerSeg.setValue(prev);
+      toast('网络错误', 'err');
+    });
+  }
+  // 工厂：原生复刻原版组件（零依赖；原版两个 MotionValue 换成轻量运动值对象，弹簧与 toast 同口径换算）
+  function makeRubberSegment(host, opts) {
+    if (!host) return null;
+    var list = opts.items;
+    var DILATE = 190, HANDOFF = 150, FLICK = 110, MAXV = 2000, DEADZONE = 4, SLOP = 10;
+    var RUBBER = 0.55, GLIDE = 75, SQUASH = 3;
+    var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    // 原版 duration/bounce → omega/zeta 换算（omega = 6.3/duration、zeta = 1-bounce，与 toast 弹簧同一套）
+    var SPRING_UI = { w: 21, z: 1 }, SPRING_MOM = { w: 15.75, z: 0.8 }, SPRING_RELAX = { w: 39.4, z: 1 };
+
+    function clamp(v, a, b) { return Math.min(b, Math.max(a, v)); }
+    function rubber(over, dim) { return (over * dim * RUBBER) / (dim + RUBBER * Math.abs(over)); }
+    // 惯性投影（原版 project(v, glide)：glide 越大滑越远，75 = 默认档）
+    function project(v) {
+      var d = 1 - 0.1 * Math.pow(0.05, GLIDE / 100);
+      return ((v / 1000) * d) / (1 - d);
+    }
+    // 三次贝塞尔求值（EASE_OUT = cubic-bezier(0.23,1,0.32,1)；Newton 迭代 + 二分兜底）
+    function bezier(x1, y1, x2, y2) {
+      function ca(a, b) { return 1 - 3 * b + 3 * a; }
+      function cb(a, b) { return 3 * b - 6 * a; }
+      function cc(a) { return 3 * a; }
+      function calc(t, a, b) { return ((ca(a, b) * t + cb(a, b)) * t + cc(a)) * t; }
+      function slope(t, a, b) { return 3 * ca(a, b) * t * t + 2 * cb(a, b) * t + cc(a); }
+      return function (x) {
+        if (x <= 0) return 0;
+        if (x >= 1) return 1;
+        var t = x, i, s, e;
+        for (i = 0; i < 8; i++) {
+          s = slope(t, x1, x2);
+          if (Math.abs(s) < 1e-6) break;
+          e = calc(t, x1, x2) - x;
+          if (Math.abs(e) < 1e-5) break;
+          t -= e / s;
+        }
+        if (Math.abs(calc(t, x1, x2) - x) > 1e-4) {
+          var lo = 0, hi = 1;
+          t = clamp(t, 0, 1);
+          for (i = 0; i < 24; i++) {
+            e = calc(t, x1, x2) - x;
+            if (Math.abs(e) < 1e-5) break;
+            if (e > 0) hi = t; else lo = t;
+            t = (lo + hi) / 2;
+          }
+        }
+        return calc(clamp(t, 0, 1), y1, y2);
+      };
+    }
+    var easeOut = bezier(0.23, 1, 0.32, 1);
+
+    // —— DOM（原版结构：轨道 grid + 真按钮 + 拇指层全量副本，clip-path 裁窗只露选中副本）——
+    host.textContent = '';
+    var track = document.createElement('div');
+    track.className = 'rubber-segment';
+    track.setAttribute('role', 'radiogroup');
+    track.setAttribute('aria-label', opts.label || '分段选择');
+    track.setAttribute('data-equal', '');
+    track.setAttribute('data-draggable', '');
+    var itemEls = [];
+    var thumb = document.createElement('div');
+    thumb.className = 'rubber-segment__thumb';
+    thumb.setAttribute('aria-hidden', 'true');
+    list.forEach(function (item, i) {
+      var b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'rubber-segment__item';
+      b.setAttribute('role', 'radio');
+      b.textContent = item.label;
+      b.addEventListener('pointerdown', function (e) { onDown(e, i); });
+      b.addEventListener('keydown', onKey);
+      track.appendChild(b);
+      itemEls.push(b);
+      var cp = document.createElement('span');
+      cp.className = 'rubber-segment__item rubber-segment__copy';
+      cp.textContent = item.label;
+      thumb.appendChild(cp);
+    });
+    track.appendChild(thumb);
+    host.appendChild(track);
+
+    // —— 运动值（原版 edgeL/edgeR 两个 MotionValue；内坐标 0..innerW = 轨道内区）——
+    var edgeL = { v: 0, vel: 0, raf: 0 }, edgeR = { v: 0, vel: 0, raf: 0 };
+    var slots = [], innerW = 0, inset = 3, thumbRadius = 7, box = null;
+    var curIdx = 0, committed = 0, handoff = 0, gen = 0, drag = null;
+
+    function applyThumb() {
+      var r = Math.max(0, innerW - edgeR.v);
+      var l = Math.max(0, edgeL.v);
+      thumb.style.clipPath = 'inset(0 ' + r.toFixed(2) + 'px 0 ' + l.toFixed(2) + 'px round ' + thumbRadius + 'px)';
+    }
+    function stopAnim(mv) { if (mv.raf) { cancelAnimationFrame(mv.raf); mv.raf = 0; } }
+    function stopBoth() { stopAnim(edgeL); stopAnim(edgeR); }
+    // 弹簧落位（半隐式欧拉 + 8ms 子步，与 toast 弹簧同口径）
+    function springTo(mv, to, cfg, velocity, done) {
+      stopAnim(mv);
+      if (reduce) { mv.v = to; mv.vel = 0; applyThumb(); if (done) done(); return; }
+      var x = mv.v;
+      var v = (velocity === null || velocity === undefined) ? mv.vel : clamp(velocity, -MAXV, MAXV);
+      var w = cfg.w, z = cfg.z, last = performance.now();
+      mv.vel = v;
+      function step(now) {
+        var dt = Math.min(0.032, (now - last) / 1000); last = now;
+        var n = Math.max(1, Math.ceil(dt / 0.008)), h = dt / n, i;
+        for (i = 0; i < n; i++) {
+          v += (-w * w * (x - to) - 2 * z * w * v) * h;
+          x += v * h;
+        }
+        mv.v = x; mv.vel = v;
+        applyThumb();
+        if (Math.abs(x - to) < 0.5 && Math.abs(v) < 6) {
+          mv.v = to; mv.vel = 0; mv.raf = 0; applyThumb();
+          if (done) done();
+          return;
+        }
+        mv.raf = requestAnimationFrame(step);
+      }
+      mv.raf = requestAnimationFrame(step);
+    }
+    // 拉伸补间（原版 animate(..., {duration, ease: EASE_OUT})；逐帧记速供交接弹簧续力）
+    function tweenTo(mv, to, dur, done) {
+      stopAnim(mv);
+      if (reduce) { mv.v = to; mv.vel = 0; applyThumb(); if (done) done(); return; }
+      var from = mv.v, start = performance.now(), last = start;
+      function step(now) {
+        var t = Math.min(1, (now - start) / dur);
+        var next = from + (to - from) * easeOut(t);
+        var dt = Math.max(1, now - last); last = now;
+        mv.vel = ((next - mv.v) / dt) * 1000;
+        mv.v = next;
+        applyThumb();
+        if (t < 1) { mv.raf = requestAnimationFrame(step); return; }
+        mv.raf = 0;
+        if (done) done();
+      }
+      mv.raf = requestAnimationFrame(step);
+    }
+    function jumpTo(i) {
+      var s = slots[i];
+      if (!s) return;
+      clearTimeout(handoff); handoff = 0;
+      gen += 1;
+      stopBoth();
+      edgeL.v = s.l; edgeL.vel = 0;
+      edgeR.v = s.r; edgeR.vel = 0;
+      applyThumb();
+    }
+    function measure() {
+      if (drag) return; // 拖拽中不重排（避免量测打断手势）
+      var rect = track.getBoundingClientRect();
+      if (!rect.width) return; // 面板隐藏中——可见时 ResizeObserver 会再量
+      var cs = getComputedStyle(track);
+      inset = parseFloat(cs.getPropertyValue('--rs-inset')) || 3;
+      thumbRadius = parseFloat(cs.getPropertyValue('--rs-thumb-radius')) || 7;
+      slots = list.map(function (_, i) {
+        var el = itemEls[i];
+        if (!el) return { l: 0, r: 0 };
+        var r = el.getBoundingClientRect();
+        return { l: r.left - rect.left - inset, r: r.right - rect.left - inset };
+      });
+      innerW = rect.width - inset * 2;
+      jumpTo(committed);
+      track.setAttribute('data-rs-ready', '');
+    }
+    // 落位（原版 land：前缘弹簧 + 尾缘挤压 3px 再 RELAX 回弹；flick 走惯性档）
+    function land(to, v, flick, withSquash) {
+      var b = slots[to];
+      if (!b) return;
+      var g = ++gen;
+      var dir = ((b.l + b.r) / 2 - (edgeL.v + edgeR.v) / 2) >= 0 ? 1 : -1;
+      var lead = dir > 0 ? edgeR : edgeL, leadTo = dir > 0 ? b.r : b.l;
+      var trail = dir > 0 ? edgeL : edgeR, trailTo = dir > 0 ? b.l : b.r;
+      function velOf(mv) { return clamp(v === null ? mv.vel : v, -MAXV, MAXV); }
+      springTo(lead, leadTo, flick ? SPRING_MOM : SPRING_UI, velOf(lead), null);
+      var tv = velOf(trail);
+      if (!withSquash || SQUASH <= 0) {
+        springTo(trail, trailTo, SPRING_UI, tv, null);
+        return;
+      }
+      springTo(trail, trailTo + dir * SQUASH, SPRING_UI, tv, function () {
+        if (gen === g) springTo(trail, trailTo, SPRING_RELAX, null, null);
+      });
+    }
+    // 拉伸穿越（原版 travel：两缘向并集伸展 → HANDOFF 后交接落位；stretch=100 时跨整段拉伸）
+    function travel(from, to) {
+      var a = slots[from], b = slots[to];
+      if (!a || !b) return;
+      clearTimeout(handoff); handoff = 0;
+      gen += 1;
+      if (reduce) { jumpTo(to); return; }
+      tweenTo(edgeL, Math.min(a.l, b.l), DILATE, null);
+      tweenTo(edgeR, Math.max(a.r, b.r), DILATE, null);
+      handoff = setTimeout(function () { handoff = 0; land(to, null, false, true); }, HANDOFF);
+    }
+    function commit(i) {
+      committed = i;
+      if (i === curIdx) return;
+      curIdx = i;
+      syncA11y();
+      if (opts.onChange) opts.onChange(list[i].value, i);
+    }
+    function syncA11y() {
+      itemEls.forEach(function (el, i) {
+        el.setAttribute('aria-checked', i === curIdx ? 'true' : 'false');
+        el.tabIndex = i === curIdx ? 0 : -1;
+      });
+    }
+    function localX(e) { return e.clientX - (box ? box.left : 0) - inset; }
+    function nearestSlot(x) {
+      var best = 0, i;
+      for (i = 1; i < slots.length; i++) {
+        if (Math.abs((slots[i].l + slots[i].r) / 2 - x) < Math.abs((slots[best].l + slots[best].r) / 2 - x)) best = i;
+      }
+      return best;
+    }
+    function velocityOf(hist, now) {
+      var recent = hist.filter(function (s) { return now - s[0] <= 100; });
+      if (recent.length < 2) return 0;
+      var t0 = recent[0][0], x0 = recent[0][1];
+      var t1 = recent[recent.length - 1][0], x1 = recent[recent.length - 1][1];
+      return (t1 - t0) >= 8 ? ((x1 - x0) / (t1 - t0)) * 1000 : 0;
+    }
+    function onDown(e, i) {
+      if (drag || e.button !== 0) return;
+      box = track.getBoundingClientRect();
+      try { e.currentTarget.setPointerCapture(e.pointerId); } catch (err) {}
+      var x = localX(e);
+      var onThumb = x >= edgeL.v && x <= edgeR.v;
+      drag = { id: e.pointerId, x0: x, slot: i, onThumb: onThumb, live: false, offset: 0, w: 0, hist: [[e.timeStamp, x]] };
+      if (onThumb) {
+        clearTimeout(handoff); handoff = 0;
+        gen += 1;
+        stopBoth();
+      } else if (!reduce) {
+        itemEls[i].setAttribute('data-pressed', '');
+      }
+    }
+    function onMove(e) {
+      var d = drag;
+      if (!d || e.pointerId !== d.id || !d.onThumb) return;
+      var x = localX(e);
+      d.hist.push([e.timeStamp, x]);
+      if (d.hist.length > 8) d.hist.shift();
+      if (!d.live) {
+        if (Math.abs(x - d.x0) < DEADZONE) return;
+        d.live = true;
+        d.offset = x - edgeL.v;
+        d.w = edgeR.v - edgeL.v;
+        track.setAttribute('data-held', '');
+      }
+      var maxL = innerW - d.w;
+      var l = x - d.offset;
+      if (reduce) {
+        l = clamp(l, 0, maxL);
+        edgeL.v = l; edgeR.v = l + d.w;
+      } else if (l < 0) {
+        edgeL.v = 0;
+        edgeR.v = d.w - rubber(-l, d.w); // 左缘橡皮筋：拇指被压扁
+      } else if (l > maxL) {
+        edgeR.v = innerW;
+        edgeL.v = maxL + rubber(l - maxL, d.w); // 右缘橡皮筋
+      } else {
+        edgeL.v = l;
+        edgeR.v = l + d.w;
+      }
+      applyThumb();
+    }
+    function onUp(e) {
+      var d = drag;
+      if (!d || e.pointerId !== d.id) return;
+      drag = null;
+      track.removeAttribute('data-held');
+      itemEls[d.slot].removeAttribute('data-pressed');
+      var x = localX(e);
+      if (!d.live) {
+        // 点击（未拖出死区）：命中非当前项才切换，带拉伸动效
+        if (Math.abs(x - d.x0) <= SLOP && d.slot !== committed) {
+          var from = committed;
+          commit(d.slot);
+          travel(from, d.slot);
+        }
+        return;
+      }
+      var v = velocityOf(d.hist, e.timeStamp);
+      var flick = Math.abs(v) > FLICK;
+      var to = nearestSlot((edgeL.v + edgeR.v) / 2 + project(v));
+      if (flick && to === committed) to = clamp(to + (v > 0 ? 1 : -1), 0, list.length - 1);
+      commit(to);
+      if (reduce) jumpTo(to);
+      else land(to, v, flick, flick);
+    }
+    function onCancel(e) {
+      var d = drag;
+      if (!d || e.pointerId !== d.id) return;
+      drag = null;
+      track.removeAttribute('data-held');
+      itemEls[d.slot].removeAttribute('data-pressed');
+      if (!d.live) return;
+      if (reduce) jumpTo(committed);
+      else land(committed, null, false, false);
+    }
+    function onKey(e) {
+      var last = list.length - 1, next = null;
+      if (e.key === 'ArrowRight' || e.key === 'ArrowDown') next = Math.min(last, curIdx + 1);
+      else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') next = Math.max(0, curIdx - 1);
+      else if (e.key === 'Home') next = 0;
+      else if (e.key === 'End') next = last;
+      if (next === null) return;
+      e.preventDefault();
+      if (next === curIdx) return;
+      commit(next);
+      jumpTo(next);
+      itemEls[next].focus();
+    }
+    track.addEventListener('pointermove', onMove);
+    track.addEventListener('pointerup', onUp);
+    track.addEventListener('pointercancel', onCancel);
+    track.addEventListener('lostpointercapture', onCancel);
+
+    syncA11y();
+    if (window.ResizeObserver) {
+      var ro = new ResizeObserver(measure);
+      ro.observe(track);
+    }
+    if (document.fonts && document.fonts.ready) document.fonts.ready.then(measure);
+    measure();
+
+    return {
+      setValue: function (mode) {
+        var idx = -1, i;
+        for (i = 0; i < list.length; i++) if (list[i].value === mode) { idx = i; break; }
+        if (idx < 0) return;
+        curIdx = idx;
+        syncA11y();
+        if (!drag && committed !== idx) { committed = idx; jumpTo(idx); }
+      }
+    };
+  }
+  var playerSeg = makeRubberSegment($('playerSeg'), {
+    label: '底部音乐播放器款式',
+    items: [
+      { value: 'mini', label: '迷你播放条（原版）' },
+      { value: 'blog', label: '悬浮播放器（博客款）' }
+    ],
+    onChange: savePlayerMode
   });
 
   // 备份导出：媒体清单 + 站点设置 + 访问统计，打包成 JSON 下载

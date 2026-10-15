@@ -382,14 +382,8 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
     </div>
     <div class="section-card">
       <p class="section-title">底部音乐播放器</p>
-      <p class="section-sub">两种款式共用站内曲库，保存后访客下次进页面生效。</p>
-      <div class="seg" style="margin-top:2px">
-        <button id="playerModeMini" class="ghost player-mode-btn" type="button">迷你播放条（原版）</button>
-        <button id="playerModeBlog" class="ghost player-mode-btn" type="button">悬浮播放器（博客款）</button>
-      </div>
-      <div class="bgset-row" style="margin-top:12px">
-        <button id="playerSaveBtn" class="ghost" type="button">保存播放器设置</button>
-      </div>
+      <p class="section-sub">两种款式共用站内曲库；点选即刻保存，访客下次进页面生效。</p>
+      <div id="playerSeg" class="player-seg-row" style="margin-top:2px"></div>
     </div>
     <div class="section-card">
       <p class="section-title">备份</p>

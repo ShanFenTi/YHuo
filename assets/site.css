@@ -4840,24 +4840,31 @@
     .pl-fav.faved svg { fill: #ff4d6a; }
 
     /* ===== 登录欢迎浮窗（Swipe Toast 形态，2026-10-14 升级——reactbits.dev/c/micro/swipe-toast 原生复刻）：
-       右下角；底部一根引线随 6 秒剩余时间烧完自动关；向下滑走 / Esc / 悬停暂停（卡内结构由 common.js 构建，
-       八页外壳 markup 零改动）。外层 .admin-toast 只做定位与显隐，内层 .swipe-toast-card 承担滑动与引线 ===== */
+       右下角；颜色=原版固定深灰卡（#27272a 底 / #f5f5f5 字 / #f5a524 琥珀引线，不随主题——站长「颜色也要」）；
+       底部一根引线随 6 秒剩余时间烧完自动关；向下滑走 / Esc / 悬停暂停（卡内结构由 common.js 构建，
+       八页外壳 markup 零改动）。外层 .admin-toast 只做定位与显隐，内层 .swipe-toast-card 承担滑动与引线。
+       卡内：「进入后台」= 原版动作钮同款（浅色药丸）、关闭 = 原版 X 钮同款。
+       注意：两钮的规则用 .swipe-toast-card 前缀（0,2,0）——「进入后台」带 .appear-btn 类，
+       文件更后方的 .appear-btn（0,1,0）文字链样式会盖掉同特异度规则 ===== */
     .admin-toast {
       position: fixed;
-      right: 28px;
-      bottom: calc(28px + env(safe-area-inset-bottom, 0px));
+      right: 32px;
+      bottom: calc(32px + env(safe-area-inset-bottom, 0px));
       z-index: 300; /* 高于相册/主页(150)和灯箱(200)，低于登录卡片(400) */
-      width: min(356px, calc(100vw - 32px));
+      width: min(356px, calc(100vw - 64px)); /* 原版：min(--st-w, 100vw - 2*offset) */
       opacity: 0;
       visibility: hidden;
-      transform: translateY(14px);
-      transition: opacity 250ms var(--ease-out), transform 300ms var(--ease-out), visibility 250ms;
+      /* 出场（原版 closing 口径）：整卡下滑 280ms = slideMs*0.7、淡出 200ms */
+      transform: translateY(100%);
+      transition: opacity 200ms ease, transform 280ms cubic-bezier(.23, 1, .32, 1), visibility 280ms;
     }
 
     .admin-toast.show {
       opacity: 1;
       visibility: visible;
       transform: translateY(0);
+      /* 入场（原版 lift 口径）：整卡从下方滑入 400ms、淡入 240ms = slideMs*0.6 */
+      transition: opacity 240ms ease, transform 400ms cubic-bezier(.23, 1, .32, 1), visibility 240ms;
     }
 
     /* 迷你播放条出现时让位（条贴底 16px 高约 56px，右端可达窄屏整宽） */
@@ -4881,13 +4888,12 @@
       overflow: hidden;
       display: flex;
       align-items: center;
-      gap: 12px;
-      padding: 12px 14px 13px 16px;
-      border-radius: 14px;
-      background: var(--apple-card);
-      color: var(--apple-card-foreground);
-      border: 1px solid var(--apple-border);
-      box-shadow: 0 16px 48px rgba(0, 0, 0, 0.2), 0 4px 14px rgba(0, 0, 0, 0.1);
+      gap: 8px;
+      padding: 16px;
+      border-radius: 12px;
+      background: #27272a;
+      color: #f5f5f5;
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05), 0 4px 12px rgba(0, 0, 0, 0.1);
       cursor: grab;
       outline: none;
       touch-action: none;
@@ -4900,8 +4906,8 @@
     .swipe-toast-card.dragging { cursor: grabbing; }
 
     .swipe-toast-card:focus-visible {
-      outline: 2px solid var(--apple-ring);
-      outline-offset: 3px;
+      outline: 2px solid #f5a524;
+      outline-offset: 2px;
     }
 
     .swipe-toast-body {
@@ -4913,7 +4919,8 @@
 
     .swipe-toast-text {
       font-size: 13px;
-      font-weight: 600;
+      font-weight: 500;
+      line-height: 1.5;
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
@@ -4928,50 +4935,89 @@
       height: 2px;
       background: linear-gradient(90deg,
         transparent 0%,
-        color-mix(in srgb, var(--apple-primary) 18%, transparent) 9%,
-        color-mix(in srgb, var(--apple-primary) 50%, transparent) 18%,
-        color-mix(in srgb, var(--apple-primary) 84%, transparent) 28%,
-        var(--apple-primary) 38%, var(--apple-primary) 62%,
-        color-mix(in srgb, var(--apple-primary) 84%, transparent) 72%,
-        color-mix(in srgb, var(--apple-primary) 50%, transparent) 82%,
-        color-mix(in srgb, var(--apple-primary) 18%, transparent) 91%,
+        color-mix(in srgb, #f5a524 18%, transparent) 9%,
+        color-mix(in srgb, #f5a524 50%, transparent) 18%,
+        color-mix(in srgb, #f5a524 84%, transparent) 28%,
+        #f5a524 38%, #f5a524 62%,
+        color-mix(in srgb, #f5a524 84%, transparent) 72%,
+        color-mix(in srgb, #f5a524 50%, transparent) 82%,
+        color-mix(in srgb, #f5a524 18%, transparent) 91%,
         transparent 100%);
       transform-origin: left center;
       pointer-events: none;
     }
 
-    .admin-toast-btn { flex: none; }
-
-    .admin-toast-close {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      width: 26px;
-      height: 26px;
+    /* 「进入后台」= 原版动作钮同款（24px 浅色药丸、反色字、悬停 .88、按压 .97）；
+       0,2,0 特异度压过 .appear-btn 文字链样式 */
+    .swipe-toast-card .admin-toast-btn {
       flex: none;
-      padding: 0;
-      border: none;
-      border-radius: 999px;
-      background: none;
-      color: var(--apple-muted-foreground);
+      border: 0;
+      border-bottom: 0;
       cursor: pointer;
-      transition: background-color 150ms var(--ease-out), color 150ms var(--ease-out);
+      height: 24px;
+      padding: 0 8px;
+      border-radius: 5px;
+      background: #f5f5f5;
+      color: #27272a;
+      font: inherit;
+      font-size: 12px;
+      font-weight: 500;
+      line-height: 1;
+      outline: none;
+      touch-action: manipulation;
+      -webkit-tap-highlight-color: transparent;
+      transition: transform 160ms cubic-bezier(.23,1,.32,1), background-color 160ms ease, opacity 160ms ease;
     }
 
-    .admin-toast-close:hover {
-      background: var(--apple-chip, var(--apple-secondary, rgba(128, 128, 128, 0.14)));
-      color: var(--apple-foreground);
+    .swipe-toast-card .admin-toast-btn:active { transform: scale(.97); }
+
+    .swipe-toast-card .admin-toast-btn:focus-visible { outline: 2px solid #f5a524; outline-offset: 2px; }
+
+    /* 关闭 = 原版 X 钮同款（24×24 方角、悬停 10% 白、命中区外扩 8px；图标收到原版 12px/2.5） */
+    .swipe-toast-card .admin-toast-close {
+      position: relative;
+      flex: none;
+      display: grid;
+      place-items: center;
+      width: 24px;
+      height: 24px;
+      padding: 0;
+      border: 0;
+      border-radius: 5px;
+      background: transparent;
+      color: inherit;
+      cursor: pointer;
+      outline: none;
+      touch-action: manipulation;
+      -webkit-tap-highlight-color: transparent;
+      transition: transform 160ms cubic-bezier(.23,1,.32,1), background-color 160ms ease, opacity 160ms ease;
+    }
+
+    .swipe-toast-card .admin-toast-close::before { content: ''; position: absolute; inset: -8px; }
+
+    .swipe-toast-card .admin-toast-close svg { width: 12px; height: 12px; stroke-width: 2.5; }
+
+    .swipe-toast-card .admin-toast-close:active { transform: scale(.97); }
+
+    .swipe-toast-card .admin-toast-close:focus-visible { outline: 2px solid #f5a524; outline-offset: 2px; }
+
+    @media (hover: hover) and (pointer: fine) {
+      .swipe-toast-card .admin-toast-btn:hover { opacity: .88; }
+      .swipe-toast-card .admin-toast-close:hover { background: rgba(245, 245, 245, 0.1); }
     }
 
     @media (prefers-reduced-motion: reduce) {
       .admin-toast { transition: opacity 200ms ease; transform: none; }
       .admin-toast.show { transform: none; }
+      .swipe-toast-card .admin-toast-btn:active,
+      .swipe-toast-card .admin-toast-close:active { transform: none; }
     }
 
-    @media (max-width: 560px) {
+    @media (max-width: 600px) {
       .admin-toast {
         right: 16px;
         bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+        width: min(356px, calc(100vw - 32px)); /* 原版：min(--st-w, 100vw - 2*16px) */
       }
       /* 窄屏右侧控件堆叠高（圆钮 96~136、回顶钮 136~176），迷你条出现时让到最上层 */
       body.mini-active .admin-toast {

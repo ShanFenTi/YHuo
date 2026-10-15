@@ -181,7 +181,9 @@
   // 原版是 React 组件，这里按原版常量做零依赖原生复刻（与按住确认 / Slide Commit 同口径）：
   //   常量：FLICK .11px/ms / DEAD_ZONE 3px / RESIST 24px / 滑出阈值 40px / 回弹弹簧（omega 12.6，bounce .2）；
   //   时长：引线烧完 = 原 2600ms 自动消失口径不变；sticky 常驻（引线隐藏）仍可滑走。
-  //   结构：markup 保持空壳（admin 模板零改动），卡内结构 JS 构建；签名 toast(text, cls, sticky) 不变。
+  //   颜色：原版固定深灰卡（#27272a 底 / #f5f5f5 字 / #f5a524 琥珀引线，不随主题，2026-10-14 站长「颜色也要」）；
+  //   卡内：撤销动作钮（原版 actionLabel/onAction 同款，toast 传 opts.action 才显示）+ X 关闭钮（原版 closeButton 同款）。
+  //   结构：markup 保持空壳（admin 模板零改动），卡内结构 JS 构建；签名 toast(text, cls, sticky, opts) 向后兼容。
   var toastApi = (function () {
     var shell = $('toast');
     if (!shell) return null;
@@ -194,19 +196,35 @@
     card.setAttribute('aria-atomic', 'true');
     var textEl = document.createElement('span');
     textEl.className = 'toast-text';
+    // 撤销动作钮（原版 .swipe-toast__action 同款）：toast 传 opts.action 才显示
+    var actionBtn = document.createElement('button');
+    actionBtn.type = 'button';
+    actionBtn.className = 'toast-action';
+    actionBtn.style.display = 'none';
+    var actionCb = null;
+    // X 关闭钮（原版 .swipe-toast__close 同款，12px 双线 X）
+    var closeBtn = document.createElement('button');
+    closeBtn.type = 'button';
+    closeBtn.className = 'toast-close';
+    closeBtn.setAttribute('aria-label', '关闭提示');
+    closeBtn.innerHTML = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>';
     var fuse = document.createElement('i');
     fuse.className = 'toast-fuse';
     fuse.setAttribute('aria-hidden', 'true');
     card.appendChild(textEl);
+    card.appendChild(actionBtn);
+    card.appendChild(closeBtn);
     card.appendChild(fuse);
     shell.appendChild(card);
 
     var FLICK = 0.11, DEAD_ZONE = 3, RESIST = 24, SWIPE_DIST = 40;
-    var BURN_MS = 2600;
+    var BURN_MS = 2600; // 普通提示：原自动消失口径不变
+    var UNDO_BURN_MS = 4000; // 带撤销动作的提示：原版默认 duration=4000，留足点击时间
     var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    var anim = null, fuseTimer = 0, raf = 0, drag = null, pendingClose = null;
+    var anim = null, fuseTimer = 0, closeTimer = 0, raf = 0, drag = null, pendingClose = null;
     var y = 0, phase = 'idle', isSticky = false;
-    var hover = false, interacting = false, hidden = false;
+    var hover = false, interacting = false, hidden = false, focused = false;
+    var lastInput = 'pointer'; // 原版口径：Esc / 键盘触发的动作关 → 直接收尾不走下滑动画
 
     function setY(v) {
       y = v;
@@ -214,7 +232,7 @@
     }
     function syncFuse() {
       if (!anim) return;
-      if (hover || interacting || hidden) { if (anim.playState === 'running') anim.pause(); }
+      if (hover || interacting || hidden || focused) { if (anim.playState === 'running') anim.pause(); }
       else if (anim.playState === 'paused') anim.play();
     }
     function stopAnim() {
@@ -225,7 +243,7 @@
       anim = null;
     }
     function stopRaf() { if (raf) { cancelAnimationFrame(raf); raf = 0; } }
-    function clearTimers() { clearTimeout(fuseTimer); fuseTimer = 0; }
+    function clearTimers() { clearTimeout(fuseTimer); fuseTimer = 0; clearTimeout(closeTimer); closeTimer = 0; }
     // 轻量弹簧（半隐式欧拉 + 8ms 子步）：回弹 omega 12.6 轻微欠阻尼（≈原版 duration .5 bounce .2），
     // 关闭/滑出 omega 18 临界阻尼直落（≈原版 slideMs*EXIT ≈280ms）
     function springTo(to, velocity, bounce, done, omega) {
@@ -247,11 +265,13 @@
       raf = requestAnimationFrame(step);
     }
     function finishClose() {
+      clearTimers();
       stopRaf();
       phase = 'idle';
       isSticky = false;
       shell.classList.remove('show', 'ok', 'err', 'sticky');
       card.classList.remove('dragging');
+      card.style.transition = '';
       card.style.opacity = '0'; // 卡片隐藏：setY(0) 复位时不会闪回（show() 再清）
       setY(0);
     }
@@ -262,9 +282,29 @@
       phase = 'closing';
       if (anim) anim.onfinish = null; // 引线冻结在当前进度（淡出期间不回弹满格）
       clearTimers();
-      shell.classList.remove('show'); // 所有关闭路径统一：下滑 + 淡出同时进行
-      if (reduce) { finishClose(); return; }
-      springTo(reason === 'swipe' ? y + card.offsetHeight : card.offsetHeight, velocity || 0, false, finishClose, 18);
+      if (reduce) { finishClose(); return; } // 减弱动态：直达收尾
+      // 原版口径：Esc / 键盘触发的动作关 → instant 直达（不走下滑动画）
+      var instant = reason === 'escape' || ((reason === 'action' || reason === 'close') && lastInput === 'keyboard');
+      if (instant) {
+        shell.style.transition = 'none'; // 冻结过渡：这次隐藏即时生效（原版 data-instant 同款）
+        finishClose();
+        void shell.offsetWidth; // 强制回流后再恢复，后续 show/hide 照常走动画
+        shell.style.transition = '';
+        return;
+      }
+      if (reason === 'swipe') {
+        // 滑走：卡片带着用户速度继续下坠 + 200ms 淡出（原版 swipeOut 同款）；外壳不动
+        card.style.transition = 'opacity .2s ease';
+        card.style.opacity = '0';
+        springTo(y + card.offsetHeight, velocity || 0, false, function () {
+          card.style.transition = '';
+          finishClose();
+        }, 18);
+        return;
+      }
+      // 其余关闭路径（超时/Esc/动作/关闭钮）：外壳整卡下滑 100% + 淡出（原版 lift 同款 280ms）
+      shell.classList.remove('show');
+      closeTimer = setTimeout(finishClose, 340); // 280ms 动画 + 60ms 余量（原版 slideMs*EXIT+60）
     }
     function velocityOf(hist) {
       if (hist.length < 2) return 0;
@@ -277,6 +317,7 @@
 
     card.addEventListener('pointerdown', function (e) {
       if (e.button !== 0 || phase !== 'open' || drag) return;
+      lastInput = 'pointer'; // 原版同序：按钮点击（冒泡到这里）也算指针口
       if (e.target.closest('button')) return;
       try { card.setPointerCapture(e.pointerId); } catch (err) {}
       stopRaf();
@@ -321,7 +362,24 @@
     card.addEventListener('pointerup', pointerEnd);
     card.addEventListener('pointercancel', pointerEnd);
     card.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter' || e.key === ' ') lastInput = 'keyboard';
       if (e.key === 'Escape' && phase === 'open') { e.stopPropagation(); close('escape'); }
+    });
+    // 键盘聚焦暂停燃烧（原版 flags.focus 同款）
+    card.addEventListener('focus', function () { focused = true; syncFuse(); });
+    card.addEventListener('blur', function (e) {
+      if (!card.contains(e.relatedTarget)) { focused = false; syncFuse(); }
+    });
+    // 撤销动作钮：先执行回调再关（原版 onAction() → close('action') 同序）
+    actionBtn.addEventListener('click', function () {
+      if (phase !== 'open') return;
+      var cb = actionCb;
+      if (cb) { try { cb(); } catch (e) {} }
+      close('action');
+    });
+    // X 关闭钮（原版 close('close') 同款；键盘触发走 instant 直达）
+    closeBtn.addEventListener('click', function () {
+      if (phase === 'open') close('close');
     });
     card.addEventListener('pointerenter', function (e) {
       if (e.pointerType === 'mouse') { hover = true; syncFuse(); }
@@ -335,7 +393,7 @@
     });
 
     return {
-      show: function (text, cls, sticky) {
+      show: function (text, cls, sticky, opts) {
         clearTimers();
         stopRaf();
         stopAnim();
@@ -345,26 +403,35 @@
         card.style.opacity = ''; // 清 finishClose 留下的隐藏内联
         setY(0);
         textEl.textContent = text || '';
+        // 撤销动作钮（原版 actionLabel/onAction 同款）：opts.action = { label, cb }
+        actionCb = (opts && opts.action && typeof opts.action.cb === 'function') ? opts.action.cb : null;
+        if (opts && opts.action && opts.action.label) {
+          actionBtn.textContent = opts.action.label;
+          actionBtn.style.display = '';
+        } else {
+          actionBtn.style.display = 'none';
+        }
         isSticky = !!sticky;
         shell.className = 'toast' + (cls ? ' ' + cls : '') + (sticky ? ' sticky' : '');
         phase = 'open';
         shell.classList.add('show');
         if (sticky) return; // 常驻：无引线（CSS 按 .sticky 隐藏），仍可滑走 / Esc
+        var burn = actionCb ? UNDO_BURN_MS : BURN_MS; // 带撤销动作：原版 4000ms 口径
         if (typeof fuse.animate === 'function') {
           anim = fuse.animate(
             [{ transform: 'scaleX(1)' }, { transform: 'scaleX(0)' }],
-            { duration: BURN_MS, easing: 'linear', fill: 'forwards' }
+            { duration: burn, easing: 'linear', fill: 'forwards' }
           );
           anim.onfinish = function () { close('timeout'); };
           syncFuse();
         } else {
-          fuseTimer = setTimeout(function () { close('timeout'); }, BURN_MS); // 无 WAAPI 兜底
+          fuseTimer = setTimeout(function () { close('timeout'); }, burn); // 无 WAAPI 兜底
         }
       }
     };
   })();
-  function toast(text, cls, sticky) {
-    if (toastApi) toastApi.show(text, cls, sticky);
+  function toast(text, cls, sticky, opts) {
+    if (toastApi) toastApi.show(text, cls, sticky, opts);
   }
 
   // ---------- 按住确认（Hold Button 原生复刻，2026-10-14） ----------
@@ -1273,8 +1340,10 @@
     if (!ids || !ids.length) return;
     var left = ids.length;
     var byId = {};
+    var oldAlbums = {}; // 撤销用：记录移动前的归属
     (items.image || []).forEach(function (it) { byId[it.id] = it; });
     ids.forEach(function (id) {
+      if (byId[id]) oldAlbums[id] = byId[id].album || '';
       api('/api/admin/media/' + id, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
@@ -1285,7 +1354,19 @@
           // 移完清空勾选：不然接着点别的相册会一直弹移入所选确认
           ids.forEach(function (id) { delete selected[id]; });
           loadList();
-          toast('已把 ' + ids.length + ' 张图片移入「' + (target === '__none__' ? '未分组' : target) + '」', 'ok');
+          toast('已把 ' + ids.length + ' 张图片移入「' + (target === '__none__' ? '未分组' : target) + '」', 'ok', false, {
+            action: { label: '撤销', cb: function () {
+              // 撤销=按记录逐张移回原相册
+              ids.forEach(function (id) {
+                api('/api/admin/media/' + id, {
+                  method: 'PUT',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ album: oldAlbums[id] || '' })
+                }).then(function () { /* 逐张静默回滚 */ });
+              });
+              setTimeout(function () { loadList(); toast('已撤销', 'ok'); }, 150);
+            } }
+          });
         }
       }).catch(function () {
         if (--left === 0) { loadList(); toast('部分移动失败，请重试', 'err'); }
@@ -1313,7 +1394,18 @@
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: 'move', name: name, dir: dir })
       }).then(function (d) {
-        if (d.ok) { loadList(); toast(dir === 'up' ? '已上移' : '已下移', 'ok'); }
+        if (d.ok) {
+          loadList();
+          toast(dir === 'up' ? '已上移' : '已下移', 'ok', false, {
+            action: { label: '撤销', cb: function () {
+              api('/api/admin/albums', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action: 'move', name: name, dir: dir === 'up' ? 'down' : 'up' })
+              }).then(function () { loadList(); toast('已撤销', 'ok'); });
+            } }
+          });
+        }
         else toast(d.error || '操作失败', 'err');
       });
     }
@@ -1352,7 +1444,15 @@
             if (d.ok) {
               if (albumFilter === name) albumFilter = to;
               loadList();
-              toast('已重命名为「' + to + '」', 'ok');
+              toast('已重命名为「' + to + '」', 'ok', false, {
+                action: { label: '撤销', cb: function () {
+                  api('/api/admin/albums', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ action: 'rename', from: to, to: name })
+                  }).then(function () { loadList(); toast('已撤销', 'ok'); });
+                } }
+              });
             } else toast(d.error || '操作失败', 'err');
           });
         }
@@ -1796,6 +1896,7 @@
           value: ainit,
           options: aopts,
           onChange: function (val) {
+            var prevAlbum = it.album || '';
             api('/api/admin/media/' + it.id, {
               method: 'PUT',
               headers: { 'Content-Type': 'application/json' },
@@ -1804,7 +1905,15 @@
               if (d.ok) {
                 it.album = val;
                 rebuildAlbumControls();
-                toast('已移入「' + (val || '未分组') + '」', 'ok');
+                toast('已移入「' + (val || '未分组') + '」', 'ok', false, {
+                  action: { label: '撤销', cb: function () {
+                    api('/api/admin/media/' + it.id, {
+                      method: 'PUT',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ album: prevAlbum })
+                    }).then(function () { loadList(); toast('已撤销', 'ok'); });
+                  } }
+                });
               } else toast(d.error || '操作失败', 'err');
             });
           },
@@ -2316,12 +2425,25 @@
   }
 
   function reorder(type, ids) {
+    var arr = items[type] || [];
+    var prevIds = arr.map(function (x) { return x.id; }); // 撤销用：记录排序前的顺序
     api('/api/admin/media', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ type: type, ids: ids })
     }).then(function (data) {
-      if (data.ok) { loadList(); toast('顺序已更新', 'ok'); }
+      if (data.ok) {
+        loadList();
+        toast('顺序已更新', 'ok', false, {
+          action: { label: '撤销', cb: function () {
+            api('/api/admin/media', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ type: type, ids: prevIds })
+            }).then(function () { loadList(); toast('已撤销', 'ok'); });
+          } }
+        });
+      }
       else toast(data.error || '操作失败', 'err');
     });
   }
@@ -2347,7 +2469,19 @@
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ title: t })
       }).then(function (data) {
-        if (data.ok) { it.title = t; toast('已改名', 'ok'); }
+        if (data.ok) {
+          var prevTitle = it.title;
+          it.title = t;
+          toast('已改名', 'ok', false, {
+            action: { label: '撤销', cb: function () {
+              api('/api/admin/media/' + it.id, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ title: prevTitle })
+              }).then(function () { loadList(); toast('已撤销', 'ok'); });
+            } }
+          });
+        }
         else toast(data.error || '操作失败', 'err');
         renderList();
       }).catch(function () { renderList(); toast('网络错误', 'err'); });
@@ -2577,7 +2711,18 @@
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ banned: banned })
     }).then(function (data) {
-      if (data.ok) { loadUsers(); toast(banned ? '已禁用' : '已解封', 'ok'); }
+      if (data.ok) {
+        loadUsers();
+        toast(banned ? '已禁用' : '已解封', 'ok', false, {
+          action: { label: '撤销', cb: function () {
+            api('/api/admin/users/' + u.id, {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ banned: !banned })
+            }).then(function () { loadUsers(); toast('已撤销', 'ok'); });
+          } }
+        });
+      }
       else toast(data.error || '操作失败', 'err');
     });
   }

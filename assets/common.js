@@ -5636,9 +5636,10 @@ window.__siteCalendar = (function () {
       var FLICK = 0.11, DEAD_ZONE = 3, RESIST = 24, SWIPE_DIST = 40;
       var BURN_MS = 6000; // 原欢迎浮窗停留 6 秒口径不变
       var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-      var anim = null, fuseTimer = 0, raf = 0, drag = null, pendingClose = null;
+      var anim = null, fuseTimer = 0, closeTimer = 0, raf = 0, drag = null, pendingClose = null;
       var y = 0, phase = 'idle';
       var hover = false, interacting = false, hidden = false;
+      var lastInput = 'pointer'; // 原版口径：Esc / 键盘触发的关 → 直接收尾不走下滑动画
 
       function setY(v) {
         y = v;
@@ -5657,6 +5658,7 @@ window.__siteCalendar = (function () {
         anim = null;
       }
       function stopRaf() { if (raf) { cancelAnimationFrame(raf); raf = 0; } }
+      function clearTimers() { clearTimeout(fuseTimer); fuseTimer = 0; clearTimeout(closeTimer); closeTimer = 0; }
       function springTo(to, velocity, bounce, done, omega) {
         stopRaf();
         if (reduce) { setY(to); if (done) done(); return; }
@@ -5676,10 +5678,12 @@ window.__siteCalendar = (function () {
         raf = requestAnimationFrame(step);
       }
       function finishClose() {
+        clearTimers();
         stopRaf();
         phase = 'idle';
         adminToast.classList.remove('show');
         card.classList.remove('dragging');
+        card.style.transition = '';
         card.style.opacity = '0'; // 卡片隐藏：setY(0) 复位时不闪回（show 时再清）
         setY(0);
       }
@@ -5689,9 +5693,29 @@ window.__siteCalendar = (function () {
         phase = 'closing';
         if (anim) anim.onfinish = null;
         clearTimeout(fuseTimer); fuseTimer = 0;
+        if (reduce) { finishClose(); return; } // 减弱动态：直达收尾
+        // 原版口径：Esc / 键盘触发的关 → instant 直达（不走下滑动画）
+        var instant = reason === 'escape' || ((reason === 'close') && lastInput === 'keyboard');
+        if (instant) {
+          adminToast.style.transition = 'none'; // 冻结过渡：这次隐藏即时生效（原版 data-instant 同款）
+          finishClose();
+          void adminToast.offsetWidth; // 强制回流后再恢复，后续 show/hide 照常走动画
+          adminToast.style.transition = '';
+          return;
+        }
+        if (reason === 'swipe') {
+          // 滑走：卡片带着用户速度继续下坠 + 200ms 淡出（原版 swipeOut 同款）；外壳不动
+          card.style.transition = 'opacity .2s ease';
+          card.style.opacity = '0';
+          springTo(y + card.offsetHeight, velocity || 0, false, function () {
+            card.style.transition = '';
+            finishClose();
+          }, 18);
+          return;
+        }
+        // 其余关闭路径（超时/Esc/关闭钮）：外壳整卡下滑 100% + 淡出（原版 lift 同款 280ms）
         adminToast.classList.remove('show');
-        if (reduce) { finishClose(); return; }
-        springTo(reason === 'swipe' ? y + card.offsetHeight : card.offsetHeight, velocity || 0, false, finishClose, 18);
+        closeTimer = setTimeout(finishClose, 340); // 280ms 动画 + 60ms 余量（原版 slideMs*EXIT+60）
       }
       function velocityOf(hist) {
         if (hist.length < 2) return 0;
@@ -5704,6 +5728,7 @@ window.__siteCalendar = (function () {
 
       card.addEventListener('pointerdown', function (e) {
         if (e.button !== 0 || phase !== 'open' || drag) return;
+        lastInput = 'pointer'; // 原版 lastInput 同款（键盘口 vs 指针口）
         if (e.target.closest('button')) return; // 按钮上的按压不算拖拽（进入后台/关闭）
         try { card.setPointerCapture(e.pointerId); } catch (err) {}
         stopRaf();
@@ -5747,6 +5772,7 @@ window.__siteCalendar = (function () {
       card.addEventListener('pointerup', pointerEnd);
       card.addEventListener('pointercancel', pointerEnd);
       card.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter' || e.key === ' ') lastInput = 'keyboard';
         if (e.key === 'Escape' && phase === 'open') { e.stopPropagation(); close('escape'); }
       });
       card.addEventListener('pointerenter', function (e) {
@@ -5773,6 +5799,7 @@ window.__siteCalendar = (function () {
         show: function (text, withAdminBtn) {
           stopAnim();
           stopRaf();
+          clearTimeout(closeTimer); closeTimer = 0;
           if (phase === 'closing') finishClose();
           drag = null; interacting = false; pendingClose = null;
           card.classList.remove('dragging');

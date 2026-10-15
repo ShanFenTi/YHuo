@@ -7423,7 +7423,7 @@ window.__siteCalendar = (function () {
       var den = Math.max(1, n - 1);
       var step = 'calc(' + PB_EDGE + 'px + (100% - ' + (PB_EDGE * 2) + 'px) * ' + (i / den) + ')';
       if (name) name.textContent = AI_EFFORTS[i].name;
-      fill.style.width = i === n - 1 ? '100%' : 'calc(' + step + ' + 7px)';
+      fill.style.width = i === n - 1 ? '100%' : 'calc(' + step + ' + 9px)';
       thumb.style.left = step;
       track.setAttribute('aria-valuenow', String(i));
       track.setAttribute('aria-valuetext', AI_EFFORTS[i].name);

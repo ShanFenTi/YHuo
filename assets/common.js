@@ -10329,6 +10329,9 @@ window.__siteCalendar = (function () {
           void curMain.offsetWidth;
           curMain.classList.add('pjax-enter');
           document.documentElement.setAttribute('data-page', key);
+          // pjax 落地清扫：换回首页时 .home-gate 标记随 main 重插（fixed 层会盖住真首页），
+          // 门屏段挂了清扫函数就调它摘掉（门只由 head 片段在整页加载时判定，pjax 不重演）
+          if (key === 'home' && typeof window.__gateSweep === 'function') window.__gateSweep();
           document.title = doc.title || PAGE_TITLES[key] || document.title;
           syncHeadMeta(doc, u);
           applyNavActive(key);
@@ -11273,4 +11276,190 @@ window.__siteCalendar = (function () {
     } else {
       startParticles();
     }
+  })();
+
+  // ===============================================================
+  // 进站门屏（2026-10-14，站长拍板「进入网站只显示极简导航栏点击开始才进入真正的首页」）：
+  // reactbits.dev/c/components/card-nav 原版零依赖原生复刻（与按住确认/滑动确认/Rubber Segment 同口径）。
+  // markup 在首页 main 里（.home-gate，坑 23 免同步）；门控类 html.gate-pending 由八页 head 片段判定
+  // （根路径 + 本会话未过门 sessionStorage.yhuoGateDone + 无 hash）。本段职责：
+  // ① CardNav 动效：面板高度弹簧展开（原版 k=160·speed²、开 zeta=1-0.68·bounce 卡片错峰 lag 0.12、
+  //    收 zeta=1）、三卡错峰浮起（easeOut cubic + translateY 26px + scale 0.97→1）、
+  //    首次入场 clip-path 胶囊→整条展开 820ms + bar 子件错峰淡入、菜单词 Menu/收起 翻转、
+  //    箭头 hover 斜飞（纯 CSS）、reduced-motion 全直达
+  // ② 交互：菜单钮/外点/Esc 开合；「开始探索」= 收场（gate-out 整层淡出 420ms → 摘 gate-pending →
+  //    写会话旗标）；卡内链接 = 写旗标后放行（pjax 正常换页，门屏随 main 换掉）；深色钮 = 复用主题切换
+  // ③ 兑底：pjax 回首页时摘 gate-pending（pjaxSwap 之外这里兜）；9 秒 head 兜底已拆门的场景全部静默跳过
+  // ===============================================================
+  (function () {
+    var root = document.querySelector('.home-gate');
+    if (!root) return; // 非首页（或未来结构调整）：整段静默退出
+    var htmlEl = document.documentElement;
+    // 带旗标整页刷新 / pjax 重插（2026-10-14 实测复现）：head 不再打 gate-pending（旗标在），
+    // 但 .home-gate 标记原样留在 main 里——无门控保护时它就是盖住真首页的 fixed 层。
+    // 门只演一次：旗标在即摘节点，后续逻辑不再初始化。
+    var flagDone = false;
+    try { flagDone = sessionStorage.getItem('yhuoGateDone') === '1'; } catch (e) {}
+    if (flagDone) { if (root.parentNode) root.parentNode.removeChild(root); return; }
+    var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    var NARROW = 560;
+    var EASE = function (t) { return 1 - Math.pow(1 - t, 3); }; // 原版 easeOut cubic
+    var clamp = function (v, a, b) { return Math.min(b, Math.max(a, v)); };
+
+    var panel = root.querySelector('.gate-panel');
+    var box = panel; // .gate-panel 自身就是动画盒（原版 card-nav__panel 同构）
+    var menuBtn = root.querySelector('#gateMenuBtn');
+    var content = root.querySelector('.gate-content');
+    var cards = Array.prototype.slice.call(root.querySelectorAll('.gate-card'));
+    var wideCta = root.querySelector('#gateCtaWide');
+
+    // ---------- 展开引擎：p∈[0,1] 弹簧（半隐式欧拉 + 240Hz 子步，原版同构） ----------
+    var eng = { p: 0, v: 0, h: 0, raf: 0, last: 0, open: false, shown: false };
+    function renderPanel() {
+      var bar = 64;
+      if (box) box.style.height = (bar + Math.max(0, eng.p) * eng.h) + 'px';
+      var lag = cards.length > 1 ? Math.min(0.12, 0.7 / (cards.length - 1)) : 0;
+      var span = 1 - lag * (cards.length - 1);
+      for (var i = 0; i < cards.length; i++) {
+        var local = clamp((eng.p - i * lag) / Math.max(span, 0.05), 0, 1);
+        var e = EASE(local);
+        var st = cards[i].style;
+        st.transform = 'translateY(' + ((1 - e) * 26) + 'px) scale(' + (0.97 + 0.03 * e) + ')';
+        st.opacity = String(e);
+      }
+    }
+    function measure() {
+      if (!content) return;
+      eng.h = content.offsetHeight;
+      renderPanel();
+    }
+    function tick(now) {
+      eng.raf = 0;
+      var dt = eng.last ? Math.min(0.05, (now - eng.last) / 1000) : 1 / 60;
+      eng.last = now;
+      var target = eng.open ? 1 : 0;
+      if (reduce) { eng.p = target; eng.v = 0; }
+      else {
+        var k = 160; // 原版 speed=1：k=160·1²
+        var zeta = eng.open ? 1 - 0.68 * 0.2 : 1; // 开=欠阻尼 bounce .2（过冲回弹），收=临界
+        var steps = Math.ceil(dt / (1 / 240));
+        var hh = dt / steps;
+        for (var s = 0; s < steps; s++) {
+          eng.v += (-k * (eng.p - target) - 2 * zeta * Math.sqrt(k) * eng.v) * hh;
+          eng.p += eng.v * hh;
+        }
+      }
+      var done = Math.abs(eng.p - target) < 0.0005 && Math.abs(eng.v) < 0.002;
+      if (done) { eng.p = target; eng.v = 0; }
+      renderPanel();
+      if (done && !eng.open) { eng.shown = false; panel.classList.remove('shown'); content.setAttribute('aria-hidden', 'true'); }
+      if (!done) eng.raf = requestAnimationFrame(tick);
+    }
+    function wake() { if (!eng.raf) { eng.last = 0; eng.raf = requestAnimationFrame(tick); } }
+    if (typeof ResizeObserver !== 'undefined' && content) {
+      var ro = new ResizeObserver(function () { eng.h = content.offsetHeight; renderPanel(); });
+      ro.observe(content);
+    } else if (content) {
+      window.addEventListener('resize', measure);
+    }
+
+    function setOpen(next) {
+      if (next === eng.open) return;
+      eng.open = next;
+      if (next) {
+        measure();
+        if (!eng.shown) { eng.shown = true; panel.classList.add('shown'); content.setAttribute('aria-hidden', 'false'); }
+      }
+      panel.classList.toggle('open', next);
+      if (menuBtn) menuBtn.setAttribute('aria-expanded', next ? 'true' : 'false');
+      wake();
+    }
+
+    // ---------- 收场进首页（CTA）与卡内直达 ----------
+    function markDone() { try { sessionStorage.setItem('yhuoGateDone', '1'); } catch (e) {} }
+    function teardown() {
+      // 摘门控类：外壳件与真首页内容随 CSS 自然回归；本段监听随之静默（root 已不在文档流语义里）
+      htmlEl.classList.remove('gate-pending', 'gate-out');
+      // 门屏节点本体必须一并摘除：pjax 回首页 / 带旗标刷新都会把这段 main 标记重新插回来，
+      // 而 gate-pending 那时不会重新打——残留的 fixed 层会盖在真首页上（2026-10-14 实测复现）。
+      // 摘除后重进首页也不会再弹门：门只由 head 片段在整页加载时判定，flag 在收场/直达时已写。
+      if (root && root.parentNode) root.parentNode.removeChild(root);
+      if (eng.raf) { cancelAnimationFrame(eng.raf); eng.raf = 0; }
+      if (ro) ro.disconnect();
+    }
+    function playOut() {
+      markDone();
+      if (reduce || !root.animate) { teardown(); return; }
+      htmlEl.classList.add('gate-out');
+      var layer = root;
+      var onEnd = function (ev) {
+        if (ev.target !== layer) return; // 卡片/子件动画不冒泡处理（animationend 会冒泡，只认整层）
+        layer.removeEventListener('animationend', onEnd);
+        teardown();
+      };
+      layer.addEventListener('animationend', onEnd);
+      setTimeout(function () { // 兜底：animationend 万一丢失（标签页切走等）
+        if (htmlEl.classList.contains('gate-out')) teardown();
+      }, 900);
+    }
+    var cta = root.querySelector('#gateCta');
+    if (cta) cta.addEventListener('click', function (e) { e.preventDefault(); playOut(); });
+    if (wideCta) wideCta.addEventListener('click', function (e) { e.preventDefault(); playOut(); });
+    Array.prototype.forEach.call(root.querySelectorAll('.gate-link'), function (a) {
+      // pjax 直达目标页：收场必须同步完成（摘 gate-pending + 摘节点），否则目标页内容
+      // 还挂在 html.gate-pending 门控下被 display:none 整页藏掉（2026-10-14 实测复现）。
+      a.addEventListener('click', function () { markDone(); teardown(); });
+    });
+    // 卡内链接直达时若 pjax 换页失败回退整页导航，门屏随真首页一起渲染——head 判定已写旗标（markDone 在 click 同步先于导航），整页加载不会再打 gate-pending
+
+    // ---------- 菜单开合：点击/外点/Esc ----------
+    if (menuBtn) menuBtn.addEventListener('click', function () { setOpen(!eng.open); });
+    document.addEventListener('pointerdown', function (e) {
+      if (!eng.open) return;
+      if (e.target && panel.contains(e.target)) return;
+      setOpen(false);
+    });
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape' && eng.open) setOpen(false);
+    });
+
+    // ---------- 首次入场演出：clip-path 胶囊→整条 + bar 子件错峰淡入（原版同构） ----------
+    (function intro() {
+      if (reduce || !box.animate) return;
+      var w = box.offsetWidth || 800;
+      var hh = 64;
+      var r = parseFloat(getComputedStyle(box).borderTopLeftRadius) || 18;
+      box.animate([
+        { clipPath: 'inset(0px ' + Math.max(0, (w - hh) / 2) + 'px round ' + (hh / 2) + 'px)', opacity: 0 },
+        { clipPath: 'inset(0px 0px round ' + r + 'px)', opacity: 1 }
+      ], { duration: 820, easing: 'cubic-bezier(0.22, 1, 0.36, 1)', fill: 'backwards' });
+      var barChildren = root.querySelectorAll('.gate-bar > *');
+      Array.prototype.forEach.call(barChildren, function (child, idx) {
+        child.animate([
+          { opacity: 0, transform: 'translateY(8px)' },
+          { opacity: 1, transform: 'translateY(0)' }
+        ], { duration: 560, delay: 220 + idx * 70, easing: 'cubic-bezier(0.22, 1, 0.36, 1)', fill: 'backwards' });
+      });
+    })();
+
+    // ---------- 深色切换（复用既有 applyTheme 通道：直接点顶栏同款逻辑——触发 themeToggle 的 click 处理器最稳） ----------
+    var gateThemeBtn = root.querySelector('#gateThemeBtn');
+    if (gateThemeBtn) {
+      gateThemeBtn.addEventListener('click', function () {
+        var t = document.getElementById('themeToggle');
+        if (t) t.click(); // 顶栏钮虽被门控隐藏（display:none），监听器仍挂在元素上，click() 照常触发
+      });
+    }
+
+    // ---------- pjax 兑底（2026-10-14 复测批）：门屏段正常加载时，head 9 秒兜底只是空跑；
+    // 这里的守卫防的是极端残留（脚本加载顺序异常、未来结构调整），保证门控类绝不过夜。
+    // 门屏节点本体由 teardown 摘除（收场/直达都会走），pjax 回首页时标记随 main 重插的问题不存在。
+    window.__gateTeardown = teardown;
+    // pjax 落地清扫：pjaxSwap 换回首页时会把带 .home-gate 的标记原样插回（curMain.innerHTML 整体替换），
+    // 此时没人再跑 teardown——残留 fixed 层会盖住真首页（2026-10-14 实测复现）。
+    // 挂给 pjax 落地路径调用：目标页是首页就摘门屏节点（旗标在，门不该再演）。
+    window.__gateSweep = function () {
+      var g = document.querySelector('.home-gate');
+      if (g && g.parentNode) g.parentNode.removeChild(g);
+    };
   })();

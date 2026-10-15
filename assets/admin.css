@@ -833,25 +833,17 @@
     opacity: 0; transition: opacity .12s; white-space: nowrap;
   }
   .visit-tip.show { opacity: 1; }
-  /* 归属地滑动开关（最近访问卡片头部） */
+  /* 功能开关胶囊钮（2026-10-14 改版——站长发截图「我要的是这种开启了是黑色的这种」：选中=黑墨药丸白字，
+     即 Rubber Segment 拇指/.seg-btn.on 同款胶囊，不再是滑块轨道；gt-* 旧类名沿用免 JS 改动） */
   .geo-toggle {
-    display: inline-flex; align-items: center; gap: 8px;
-    background: none; border: 0; cursor: pointer; padding: 4px 0;
+    display: inline-flex; align-items: center;
+    padding: 5px 14px; border: 1px solid var(--border); border-radius: 999px;
+    background: transparent; color: var(--muted);
+    font-size: 12.5px; line-height: 1.4; cursor: pointer;
+    transition: background .18s ease, color .18s ease, border-color .18s ease;
   }
-  .geo-toggle .gt-label { font-size: 12px; color: var(--muted); transition: color .15s; }
-  .geo-toggle.on .gt-label { color: var(--fg); }
-  .geo-toggle .gt-track {
-    width: 34px; height: 20px; border-radius: 999px; position: relative;
-    background: var(--chip); border: 1px solid var(--border);
-    transition: background .18s ease, border-color .18s ease;
-  }
-  .geo-toggle.on .gt-track { background: var(--fg); border-color: var(--fg); } /* on 态=黑墨反白（2026-10-14 站长认可 Rubber Segment 拇指质感后拍板后台开关一族统一；与 .seg-btn.on/chip active 同语言，浅深主题自动反转） */
-  .geo-toggle .gt-thumb {
-    position: absolute; top: 50%; left: 2px; width: 14px; height: 14px;
-    border-radius: 50%; background: var(--card); box-shadow: var(--shadow);
-    transform: translateY(-50%); transition: transform .18s cubic-bezier(.2,.7,.3,1.2);
-  }
-  .geo-toggle.on .gt-thumb { transform: translate(16px, -50%); }
+  .geo-toggle:hover { color: var(--fg); border-color: var(--muted); opacity: 1; }
+  .geo-toggle.on { background: var(--fg); color: var(--bg); border-color: var(--fg); font-weight: 600; } /* 选中=黑墨药丸白字（浅深主题自动反转） */
   /* 滑动开关（原"归属地"开关样式；归属地功能已移除，现仅外观页功能开关使用） */
   #flagRows { display: flex; flex-wrap: wrap; gap: 6px 22px; max-width: 640px; }
   /* 邮件统计：趋势 + 发送明细 */

@@ -2954,7 +2954,7 @@
       b.className = 'geo-toggle' + (flagState[f.key] !== false ? ' on' : '');
       b.setAttribute('data-flag', f.key);
       b.setAttribute('role', 'switch');
-      b.innerHTML = '<span class="gt-label">' + f.label + '</span><span class="gt-track"><span class="gt-thumb"></span></span>';
+      b.textContent = f.label; // 胶囊钮：文字即整体（2026-10-14 改版，旧滑块 gt-track/gt-thumb 标记随 CSS 一并退场）
       b.addEventListener('click', function () {
         // 点击即存（2026-10-14 站长「就这样很好，然后点击即保存」，与播放器款式 Rubber Segment 同口径）：
         // 先翻状态与 UI（乐观先行），PUT 整包 flags；失败翻回并 err 提示；成功 toast 带「撤销」反转回去。

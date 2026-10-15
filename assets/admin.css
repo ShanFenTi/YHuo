@@ -924,6 +924,100 @@
   /* 危险确认钮：状态色走 --danger（深浅主题各一档），文字取 --bg 保证两主题对比度（别写死 hex） */
   #askOk.danger-ok { background: var(--danger); color: var(--bg); }
   #askOk.danger-ok:hover { opacity: .88; }
+  /* ---------- 按住确认（Hold Button 原生复刻，2026-10-14） ----------
+     站长指定 reactbits.dev/c/micro/hold-button 用在后台危险操作确认钮上：按住液面从左向右
+     涨满（波浪液锋）才执行，中途松手弹回取消。几何/时序/无障碍常量对齐原版（见 admin.js 同批注释）。
+     原版是深灰底+紫液面，这里映射到站内主题：浅红描边底 → 危险色液面 + 反色字（红=危险语义，别改色系） */
+  #askOk.hold-confirm {
+    --hb-radius: 10px;
+    --hb-fill: var(--danger);
+    --hb-fill-text: var(--bg);
+    --hb-text: var(--danger);
+    --hb-hold: 1500ms;
+    --hb-release: 200ms;
+    --hb-press: 0.97;
+    --hb-wave: 6px;
+    --hb-w: 0px;
+    --hb-h: 0px;
+    --hb-cycles: 1.36;
+    --hb-ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+    --hb-glow: 0 10px 32px -6px color-mix(in srgb, var(--hb-fill) 70%, transparent);
+    position: relative;
+    display: inline-grid;
+    place-items: center;
+    isolation: isolate;
+    min-width: 104px;
+    padding: 9px 20px;
+    font-weight: 600;
+    background: color-mix(in srgb, var(--danger) 12%, var(--chip));
+    color: var(--hb-text);
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--danger) 40%, transparent);
+    cursor: pointer;
+    outline: none;
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-touch-callout: none;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+    transition: transform 160ms var(--hb-ease-out), background-color 160ms ease, box-shadow var(--hb-release) var(--hb-ease-out);
+  }
+  #askOk.hold-confirm:hover { opacity: 1; background: color-mix(in srgb, var(--danger) 18%, var(--chip)); }
+  #askOk.hold-confirm[data-phase='holding'] {
+    transform: scale(var(--hb-press));
+    box-shadow: var(--hb-glow);
+    transition: transform 160ms var(--hb-ease-out), background-color 160ms ease, box-shadow var(--hb-hold) linear;
+  }
+  #askOk.hold-confirm[data-phase='done'] { box-shadow: var(--hb-glow); }
+  #askOk.hold-confirm:focus-visible { outline: 2px solid var(--hb-fill); outline-offset: 3px; }
+  .hc-pulse { position: absolute; inset: 0; z-index: 0; border-radius: var(--hb-radius); pointer-events: none; opacity: 0; }
+  .hold-confirm[data-phase='done'] .hc-pulse { animation: hb-pulse 600ms var(--hb-ease-out) forwards; }
+  @keyframes hb-pulse {
+    from { opacity: 1; box-shadow: 0 0 0 0 color-mix(in srgb, var(--hb-fill) 55%, transparent); }
+    to { opacity: 0; box-shadow: 0 0 0 14px color-mix(in srgb, var(--hb-fill) 0%, transparent); }
+  }
+  .hc-label { position: relative; z-index: 2; display: grid; place-items: center; }
+  .hc-label > span {
+    grid-area: 1 / 1;
+    display: inline-flex; align-items: center; gap: 8px;
+    white-space: nowrap;
+    transition: opacity 200ms ease, filter 200ms ease;
+  }
+  .hc-done { opacity: 0; filter: blur(2px); }
+  .hold-confirm[data-phase='done'] .hc-idle { opacity: 0; filter: blur(2px); }
+  .hold-confirm[data-phase='done'] .hc-done { opacity: 1; filter: blur(0); }
+  .hc-clip { position: absolute; inset: 0; z-index: 3; clip-path: inset(0 round var(--hb-radius)); pointer-events: none; }
+  .hc-fill {
+    position: absolute; inset: 0; display: grid; place-items: center;
+    background: var(--hb-fill); color: var(--hb-fill-text);
+    clip-path: inset(0 calc((1 - var(--hb-p, 0)) * (100% + 0.75 * var(--hb-wave)) - var(--hb-p, 0) * 0.25 * var(--hb-wave)) 0 0);
+  }
+  .hc-crest {
+    position: absolute; inset: 0; display: grid; place-items: center;
+    background: var(--hb-fill); color: var(--hb-fill-text);
+    -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='200' viewBox='0 0 20 200' preserveAspectRatio='none'%3E%3Cpath d='M0 0H10C18 8 18 25.3 10 33.3S2 58.7 10 66.7S18 92 10 100S2 125.3 10 133.3S18 158.7 10 166.7S2 192 10 200H0Z'/%3E%3C/svg%3E");
+    mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='200' viewBox='0 0 20 200' preserveAspectRatio='none'%3E%3Cpath d='M0 0H10C18 8 18 25.3 10 33.3S2 58.7 10 66.7S18 92 10 100S2 125.3 10 133.3S18 158.7 10 166.7S2 192 10 200H0Z'/%3E%3C/svg%3E");
+    -webkit-mask-repeat: repeat-y; mask-repeat: repeat-y;
+    -webkit-mask-size: var(--hb-wave) calc(var(--hb-h) * 2);
+    mask-size: var(--hb-wave) calc(var(--hb-h) * 2);
+    -webkit-mask-position-x: calc(-1 * var(--hb-wave) + var(--hb-p, 0) * (var(--hb-w) + var(--hb-wave)));
+    mask-position-x: calc(-1 * var(--hb-wave) + var(--hb-p, 0) * (var(--hb-w) + var(--hb-wave)));
+    -webkit-mask-position-y: calc(-1 * var(--hb-p, 0) * var(--hb-cycles) * var(--hb-h));
+    mask-position-y: calc(-1 * var(--hb-p, 0) * var(--hb-cycles) * var(--hb-h));
+  }
+  .hc-label--fill { z-index: auto; }
+  .hc-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+  @media (prefers-contrast: more) {
+    #askOk.hold-confirm { outline: 1px solid var(--hb-text); }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    #askOk.hold-confirm { transition: background-color 160ms ease, box-shadow var(--hb-release) ease; transform: none !important; }
+    .hc-fill { clip-path: inset(0); opacity: 0; transition: opacity var(--hb-release) ease; }
+    .hc-crest { display: none; }
+    .hold-confirm[data-phase='holding'] .hc-fill,
+    .hold-confirm[data-phase='done'] .hc-fill { opacity: 1; transition: opacity var(--hb-hold) linear; }
+    .hc-pulse { animation: none !important; }
+    .hc-label > span { transition: opacity 200ms ease; filter: none !important; }
+  }
   /* 登录/初始化/网络错误：独立居中卡，不套框架 */
   .gate-wrap { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 24px; }
   .gate-wrap .card { width: min(420px, 100%); margin-bottom: 0; }

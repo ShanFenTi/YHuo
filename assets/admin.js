@@ -185,6 +185,221 @@
     if (!sticky) toastTimer = setTimeout(function () { t.className = 'toast' + (cls ? ' ' + cls : ''); }, 2600);
   }
 
+  // ---------- 按住确认（Hold Button 原生复刻，2026-10-14） ----------
+  // 站长指定 reactbits.dev/c/micro/hold-button 动效用在后台危险操作（删除/清空/禁用类）的确认按钮上：
+  // 按住不放液面从左向右涨满（波浪液锋）才执行，中途松手 200ms 弹回取消，轻点（<250ms）不动作。
+  // 原版是 React 组件，这里按原版几何/时序/无障碍常量做零依赖原生复刻（与上传 Slide Commit 同口径）：
+  //   时序：按住 1500ms 线性（原版 2000ms，弹窗场景收到 1.5s）/ 回弹 200ms cubic-bezier(.23,1,.32,1)
+  //         / 按压 0.97 / 完成脉冲 600ms / 完成态展示 300ms 再关弹窗执行；
+  //   几何：6px 波浪液锋（SVG mask 平铺 + 随进度流动）、clip-path 逐帧裁液面、ResizeObserver 喂 --hb-w/--hb-h；
+  //   交互：指针捕获 + 飘出按钮 10px 自动取消（防按着划走误删）；键盘 Space/Enter 按住、Esc 取消；
+  //         窗口失焦 / 切后台取消（原版同款）；
+  //   无障碍：aria-describedby 播报按住时长、prefers-reduced-motion 退化成透明度渐变、prefers-contrast 描边。
+  var ASK_HOLD_MS = 1500, ASK_HOLD_PAD = 10, ASK_HOLD_DONE = 600;
+  var askSeq = 0;
+  var askHold = (function () {
+    var btn = $('askOk');
+    var linear = function (t) { return t; };
+    var easeOut = function (t) { return 1 - Math.pow(1 - t, 3); };
+    var enabled = false, phase = 'idle', input = null, pointerId = null;
+    var startAt = 0, rect = null, p = 0, raf = 0, tComplete = 0, tDone = 0;
+    var idleEls = [], doneEls = [], mainIdle = null, mainDone = null, sr = null;
+
+    // 三层标签（主层 + 液面层 + 液锋层）：常态/完成态文案叠在同一格，切换零位移；
+    // 液面/液锋层是同一份文案的彩色副本，整层 aria-hidden 防三重复读
+    function makeLabel(fillLayer) {
+      var wrap = document.createElement('span');
+      wrap.className = fillLayer ? 'hc-label hc-label--fill' : 'hc-label';
+      var idle = document.createElement('span');
+      idle.className = 'hc-idle';
+      var done = document.createElement('span');
+      done.className = 'hc-done';
+      if (fillLayer) {
+        wrap.setAttribute('aria-hidden', 'true');
+      } else {
+        mainIdle = idle;
+        mainDone = done;
+      }
+      wrap.appendChild(idle);
+      wrap.appendChild(done);
+      idleEls.push(idle);
+      doneEls.push(done);
+      return wrap;
+    }
+    // 非按住模式用 textContent 写纯文本会清掉内部结构，进按住模式前重建
+    function build() {
+      btn.textContent = '';
+      idleEls = [];
+      doneEls = [];
+      var pulse = document.createElement('span');
+      pulse.className = 'hc-pulse';
+      pulse.setAttribute('aria-hidden', 'true');
+      var clip = document.createElement('span');
+      clip.className = 'hc-clip';
+      clip.setAttribute('aria-hidden', 'true');
+      var fill = document.createElement('span');
+      fill.className = 'hc-fill';
+      fill.appendChild(makeLabel(true));
+      var crest = document.createElement('span');
+      crest.className = 'hc-crest';
+      crest.appendChild(makeLabel(true));
+      clip.appendChild(fill);
+      clip.appendChild(crest);
+      sr = document.createElement('span');
+      sr.className = 'hc-sr';
+      sr.id = 'askHoldHint';
+      btn.appendChild(pulse);
+      btn.appendChild(makeLabel(false));
+      btn.appendChild(clip);
+      btn.appendChild(sr);
+    }
+    build();
+    // 波浪 mask 平铺尺寸要用真实按钮尺寸（弹窗打开才有布局，ResizeObserver 在显隐切换时补喂）
+    function measure() {
+      btn.style.setProperty('--hb-w', btn.offsetWidth + 'px');
+      btn.style.setProperty('--hb-h', btn.offsetHeight + 'px');
+    }
+    if (typeof ResizeObserver === 'function') {
+      var ro = new ResizeObserver(measure);
+      ro.observe(btn);
+    }
+
+    function go(next, kind) {
+      phase = next;
+      input = kind;
+      btn.setAttribute('data-phase', next);
+      if (kind) btn.setAttribute('data-input', kind);
+      else btn.removeAttribute('data-input');
+      // 主标签两份文案按阶段互斥播报（对齐原版 aria-hidden 口径）
+      if (mainIdle && mainDone) {
+        var isDone = next === 'done';
+        mainIdle.setAttribute('aria-hidden', isDone ? 'true' : 'false');
+        mainDone.setAttribute('aria-hidden', isDone ? 'false' : 'true');
+      }
+    }
+    function clearTimers() {
+      clearTimeout(tComplete);
+      clearTimeout(tDone);
+    }
+    function drive(to, duration, ease) {
+      cancelAnimationFrame(raf);
+      var from = p;
+      var start = performance.now();
+      var step = function (now) {
+        var t = duration > 0 ? Math.min(1, (now - start) / duration) : 1;
+        p = from + (to - from) * ease(t);
+        btn.style.setProperty('--hb-p', p.toFixed(4));
+        if (t < 1) { raf = requestAnimationFrame(step); return; }
+        raf = 0;
+        if (to === 1) complete();
+      };
+      raf = requestAnimationFrame(step);
+    }
+    function complete() {
+      if (phase !== 'holding') return;
+      if (performance.now() - startAt < ASK_HOLD_MS - 50) return; // 原版口径：不满时长不触发
+      clearTimers();
+      go('done', input);
+      var seq = askSeq;
+      // 完成态（脉冲 + 文案切换）展示一瞬再关弹窗执行；期间被手动关闭/新一轮 ask 顶掉则作废
+      tDone = setTimeout(function () {
+        if (seq !== askSeq || $('askModal').hidden) return;
+        askClose(true);
+      }, ASK_HOLD_DONE);
+    }
+    function begin(kind) {
+      if (!enabled || phase !== 'idle') return false;
+      measure();
+      startAt = performance.now();
+      rect = btn.getBoundingClientRect();
+      go('holding', kind);
+      drive(1, ASK_HOLD_MS, linear);
+      tComplete = setTimeout(complete, ASK_HOLD_MS + 100); // rAF 被后台节流时的兜底
+      return true;
+    }
+    // 轻点与飘出都走同一条回弹路径（本接入没有 onTap 动作，点一下就是"没反应"防误触）
+    function release() {
+      if (phase !== 'holding') return;
+      clearTimers();
+      go('idle', null);
+      drive(0, 200, easeOut);
+    }
+    function cancel() {
+      clearTimers();
+      cancelAnimationFrame(raf);
+      raf = 0;
+      pointerId = null;
+      p = 0;
+      btn.style.setProperty('--hb-p', '0');
+      if (phase !== 'idle') go('idle', null);
+    }
+    function pointerEnd(e) {
+      if (e.pointerId !== pointerId) return;
+      pointerId = null;
+      try { if (btn.hasPointerCapture(e.pointerId)) btn.releasePointerCapture(e.pointerId); } catch (err) {}
+      release();
+    }
+    btn.addEventListener('pointerdown', function (e) {
+      if (!enabled || e.button !== 0 || !e.isPrimary || pointerId !== null) return;
+      if (!begin('pointer')) return;
+      pointerId = e.pointerId;
+      try { btn.setPointerCapture(e.pointerId); } catch (err) {}
+    });
+    btn.addEventListener('pointermove', function (e) {
+      if (e.pointerId !== pointerId || !rect) return;
+      var out = e.clientX < rect.left - ASK_HOLD_PAD || e.clientX > rect.right + ASK_HOLD_PAD ||
+        e.clientY < rect.top - ASK_HOLD_PAD || e.clientY > rect.bottom + ASK_HOLD_PAD;
+      if (out) pointerEnd(e);
+    });
+    btn.addEventListener('pointerup', pointerEnd);
+    btn.addEventListener('pointercancel', pointerEnd);
+    btn.addEventListener('lostpointercapture', pointerEnd);
+    btn.addEventListener('pointerleave', function (e) { if (e.pointerType !== 'touch') pointerEnd(e); });
+    btn.addEventListener('contextmenu', function (e) { if (enabled) e.preventDefault(); });
+    btn.addEventListener('keydown', function (e) {
+      if (!enabled) return;
+      if (e.key === 'Escape') { if (input === 'key') release(); return; }
+      if (e.key === ' ' || e.key === 'Enter') {
+        e.preventDefault();
+        if (!e.repeat) begin('key');
+      }
+    });
+    btn.addEventListener('keyup', function (e) {
+      if (!enabled) return;
+      if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); if (input === 'key') release(); }
+    });
+    window.addEventListener('blur', function () { if (phase === 'holding') release(); });
+    document.addEventListener('visibilitychange', function () { if (document.hidden && phase === 'holding') release(); });
+
+    return {
+      enabled: function () { return enabled; },
+      cancel: cancel,
+      setMode: function (hold, cls, text) {
+        cancel();
+        enabled = !!hold;
+        btn.className = (cls || '') + (hold ? ' hold-confirm' : '');
+        if (hold) {
+          build();
+          // 常态文案「按住+动作」对齐原版 Hold to delete；完成态「已确认」；波浪流速随时长换算
+          btn.style.setProperty('--hb-hold', ASK_HOLD_MS + 'ms');
+          btn.style.setProperty('--hb-release', '200ms');
+          btn.style.setProperty('--hb-cycles', String(ASK_HOLD_MS / 1100));
+          var i;
+          for (i = 0; i < idleEls.length; i++) idleEls[i].textContent = '按住' + text;
+          for (i = 0; i < doneEls.length; i++) doneEls[i].textContent = '已确认';
+          sr.textContent = '按住 ' + (ASK_HOLD_MS / 1000) + ' 秒确认';
+          btn.setAttribute('aria-label', text);
+          btn.setAttribute('aria-describedby', 'askHoldHint');
+        } else {
+          btn.textContent = text;
+          btn.removeAttribute('data-phase');
+          btn.removeAttribute('aria-label');
+          btn.removeAttribute('aria-describedby');
+        }
+      }
+    };
+  })();
+
   // ---------- 询问弹窗（替代原生 prompt / confirm） ----------
   var askCb = null;
   function ask(opts) {
@@ -202,8 +417,8 @@
       input.hidden = true;
     }
     var ok = $('askOk');
-    ok.textContent = opts.okText || '确定';
-    ok.className = opts.danger ? 'danger-ok' : '';
+    // 危险操作（danger）确认钮换「按住确认」：按住不放涨满 1.5s 才执行；普通操作保持点按
+    askHold.setMode(opts.danger, opts.danger ? 'danger-ok' : '', opts.okText || '确定');
     $('askModal').hidden = false;
     askCb = opts.cb || null;
     if (opts.input) { input.focus(); input.select(); }
@@ -212,15 +427,21 @@
   function askClose(okVal) {
     if ($('askModal').hidden) return;
     $('askModal').hidden = true;
+    askSeq++; // 作废在途的完成定时器（按住完成但弹窗已被关掉/顶掉的情况）
+    askHold.cancel();
     var cb = askCb, val = $('askInput').value;
     askCb = null;
     if (cb) cb(okVal, val);
   }
-  $('askOk').addEventListener('click', function () { askClose(true); });
+  $('askOk').addEventListener('click', function () {
+    if (askHold.enabled()) return; // 按住模式：合成的 click（含键盘）不当作确认，只有按满时长才算
+    askClose(true);
+  });
   $('askCancel').addEventListener('click', function () { askClose(false); });
   $('askBackdrop').addEventListener('click', function () { askClose(false); });
   $('askInput').addEventListener('keydown', function (e) {
-    if (e.key === 'Enter') { e.preventDefault(); askClose(true); }
+    // 危险操作（按住模式）不认输入框回车：确认只能靠按住按钮，回车直通会绕过按住语义
+    if (e.key === 'Enter') { e.preventDefault(); if (askHold.enabled()) return; askClose(true); }
   });
 
   function api(path, opts) {

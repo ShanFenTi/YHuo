@@ -904,16 +904,17 @@
     background: var(--input-bg); color: var(--fg); font-size: 14px;
   }
   /* 全局 toast 轻提示（Swipe Toast 形态，2026-10-14 升级——reactbits.dev/c/micro/swipe-toast 原生复刻）
-     位置保持原样（底部居中）；卡片底部一根引线（fuse）随剩余时间烧完自动关；向下滑走 / Esc 手动关；
-     悬停暂停燃烧。外层 #toast 只做定位与显隐（保留旧类名，模板零改动），内层 .toast-card 承担滑动与引线。 */
+     位置=右下角（原版口径：right/bottom 32px、≤600px 16px；2026-10-14 站长「我要的是右下角」修正）；
+     卡片底部一根引线（fuse）随剩余时间烧完自动关；向下滑走 / Esc 手动关；悬停暂停燃烧。
+     外层 #toast 只做定位与显隐（保留旧类名，模板零改动），内层 .toast-card 承担滑动与引线。 */
   .toast {
-    position: fixed; left: 50%; bottom: 30px; z-index: 1001;
-    width: min(356px, calc(100vw - 32px));
+    position: fixed; right: 32px; bottom: calc(32px + env(safe-area-inset-bottom, 0px)); z-index: 1001;
+    width: min(356px, calc(100vw - 64px));
     pointer-events: none; opacity: 0; visibility: hidden;
-    transform: translate(-50%, 14px);
+    transform: translateY(14px);
     transition: opacity .25s var(--ease-outc), transform .32s var(--ease-spring), visibility .25s;
   }
-  .toast.show { opacity: 1; visibility: visible; transform: translate(-50%, 0); pointer-events: auto; }
+  .toast.show { opacity: 1; visibility: visible; transform: translateY(0); pointer-events: auto; }
   .toast-card {
     position: relative; overflow: hidden;
     display: flex; align-items: center; gap: 8px;
@@ -952,8 +953,8 @@
   @media (prefers-reduced-motion: reduce) {
     .toast { transition: opacity .2s ease; transform: none; }
   }
-  @media (max-width: 640px) {
-    .toast { bottom: calc(16px + env(safe-area-inset-bottom, 0px)); } /* 仍底部居中，只抬高度 */
+  @media (max-width: 600px) {
+    .toast { right: 16px; bottom: calc(16px + env(safe-area-inset-bottom, 0px)); width: min(356px, calc(100vw - 32px)); }
   }
   /* 询问弹窗（替代原生 prompt/confirm） */
   .ask-modal-body { width: min(420px, 92vw); }

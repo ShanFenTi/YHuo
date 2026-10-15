@@ -2952,31 +2952,59 @@
       var b = document.createElement('button');
       b.type = 'button';
       b.className = 'geo-toggle' + (flagState[f.key] !== false ? ' on' : '');
+      b.setAttribute('data-flag', f.key);
       b.setAttribute('role', 'switch');
       b.innerHTML = '<span class="gt-label">' + f.label + '</span><span class="gt-track"><span class="gt-thumb"></span></span>';
       b.addEventListener('click', function () {
-        flagState[f.key] = flagState[f.key] === false; // 开→关 / 关→开（缺省视为开）
-        b.classList.toggle('on', flagState[f.key] !== false);
+        // 点击即存（2026-10-14 站长「就这样很好，然后点击即保存」，与播放器款式 Rubber Segment 同口径）：
+        // 先翻状态与 UI（乐观先行），PUT 整包 flags；失败翻回并 err 提示；成功 toast 带「撤销」反转回去。
+        var before = flagState[f.key] !== false; // 翻转前布尔（true=开；缺省视为开）
+        flagState[f.key] = !before;
+        b.classList.toggle('on', !before);
+        saveFlag(f.key, before);
       });
       box.appendChild(b);
     });
   }
 
-  $('flagSaveBtn').addEventListener('click', function () {
+  // 单开关保存（点击即存）：整包 flags 上行（后端契约不变）；seq 防连点时旧响应顶掉新状态；
+  // before = 本次变更前的布尔，失败回滚 / toast 撤销都翻回它。撤销链可无限续（撤销本身也带撤销）。
+  var flagSaveSeq = 0;
+  function saveFlag(key, before) {
     var payload = {};
     FLAG_DEFS.forEach(function (f) { payload[f.key] = flagState[f.key] !== false; });
+    var seq = ++flagSaveSeq;
+    function backTo() {
+      flagState[key] = before;
+      var tb = $('flagRows').querySelector('.geo-toggle[data-flag=' + key + ']');
+      if (tb) tb.classList.toggle('on', flagState[key] !== false);
+    }
     api('/api/admin/appearance', {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ flags: payload })
     }).then(function (d) {
+      if (seq !== flagSaveSeq) return;
       if (d.ok) {
-        flagState = d.flags || payload;
-        renderFlagRows();
-        toast('功能开关已保存，访客下次进页面生效', 'ok');
-      } else toast(d.error || '保存失败', 'err');
-    }).catch(function () { toast('网络错误', 'err'); });
-  });
+        flagState = Object.assign({}, flagState, d.flags || {});
+        var def = null;
+        FLAG_DEFS.forEach(function (f) { if (f.key === key) def = f; });
+        toast('「' + (def ? def.label : key) + '」已' + (flagState[key] !== false ? '开启' : '关闭') + '，访客下次进页面生效', 'ok', false, {
+          action: { label: '撤销', cb: function () {
+            backTo();
+            saveFlag(key, !before); // 反向保存；它的撤销又会翻回本次状态，链路无限安全
+          } }
+        });
+      } else {
+        backTo();
+        toast(d.error || '保存失败', 'err');
+      }
+    }).catch(function () {
+      if (seq !== flagSaveSeq) return;
+      backTo();
+      toast('网络错误', 'err');
+    });
+  }
 
   // ---------- 播放器款式切换 = Rubber Segment（reactbits.dev/c/micro/rubber-segment 原生复刻，2026-10-14 站长点名） ----------
   // 站长「改成点击即刻设置来适配这种特效」：点选/拖拽松手即保存（原「保存播放器设置」钮撤掉）。

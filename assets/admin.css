@@ -845,7 +845,7 @@
     background: var(--chip); border: 1px solid var(--border);
     transition: background .18s ease, border-color .18s ease;
   }
-  .geo-toggle.on .gt-track { background: var(--brand); border-color: var(--brand); } /* on 态走陶土主题色（与新 .switch 统一） */
+  .geo-toggle.on .gt-track { background: var(--fg); border-color: var(--fg); } /* on 态=黑墨反白（2026-10-14 站长认可 Rubber Segment 拇指质感后拍板后台开关一族统一；与 .seg-btn.on/chip active 同语言，浅深主题自动反转） */
   .geo-toggle .gt-thumb {
     position: absolute; top: 50%; left: 2px; width: 14px; height: 14px;
     border-radius: 50%; background: var(--card); box-shadow: var(--shadow);
@@ -1270,7 +1270,7 @@
     background: var(--card); box-shadow: 0 1px 3px rgba(0,0,0,.28); pointer-events: none;
     transform: translateY(-50%); transition: transform .18s cubic-bezier(.2,.7,.3,1.2);
   }
-  .switch input:checked ~ .sw-track { background: var(--brand); border-color: var(--brand); }
+  .switch input:checked ~ .sw-track { background: var(--fg); border-color: var(--fg); } /* checked=黑墨反白（同上：后台开关一族统一） */
   .switch input:checked ~ .sw-thumb { transform: translate(15px, -50%); }
   .switch input:disabled { cursor: default; }
   .switch input:disabled ~ .sw-track { opacity: .45; }

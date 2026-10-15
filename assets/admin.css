@@ -905,7 +905,9 @@
   }
   /* 全局 toast 轻提示（Swipe Toast 形态，2026-10-14 升级——reactbits.dev/c/micro/swipe-toast 原生复刻）
      位置=右下角（原版口径：right/bottom 32px、≤600px 16px）；
-     颜色=原版固定深灰卡（#27272a 底 / #f5f5f5 字 / #f5a524 琥珀引线，不随主题——2026-10-14 站长「颜色也要」）；
+     颜色=白卡（#ffffff 底 / #27272a 字 / #f5a524 琥珀引线，不随主题）——2026-10-14 站长「颜色也要」先对齐原版
+     深灰卡，后站长「不是你这个提示怎么还是黑色的，我要白色的」翻白：按原版同一套 token 结构对调（bg/ink 互换），
+     动作钮=深底白字反色、X 悬停=10% 深墨；
      卡片底部一根引线（fuse）随剩余时间烧完自动关；向下滑走 / Esc 手动关；悬停暂停燃烧；
      卡内=文本 + 撤销动作钮（toast 传 opts.action 才显示，原版 actionLabel 同款）+ X 关闭钮（原版 closeButton 同款）。
      外层 #toast 只做定位与显隐（保留旧类名，模板零改动），内层 .toast-card 承担滑动与引线。 */
@@ -926,7 +928,7 @@
     position: relative; overflow: hidden;
     display: flex; align-items: center; gap: 8px;
     padding: 16px; border-radius: 12px;
-    background: #27272a; color: #f5f5f5;
+    background: #fff; color: #27272a;
     font-size: 13px; line-height: 1.5;
     box-shadow: 0 1px 2px rgba(0,0,0,.05), 0 4px 12px rgba(0,0,0,.1);
     cursor: grab; outline: none;
@@ -940,18 +942,18 @@
   .toast.err .toast-text { font-weight: 700; }
   .toast.err .toast-text::before { content: "✕ "; }
   .toast.ok .toast-text::before { content: "✓ "; }
-  /* 撤销动作钮（原版 .swipe-toast__action 同款：24px 浅色药丸、反色字、悬停 .88、按压 .97） */
+  /* 撤销动作钮（原版 .swipe-toast__action 同款：24px 药丸、反色字——白卡下=深底白字、悬停 .88、按压 .97） */
   .toast-action {
     flex: none; border: 0; cursor: pointer;
     height: 24px; padding: 0 8px; border-radius: 5px;
-    background: #f5f5f5; color: #27272a;
+    background: #27272a; color: #fff;
     font: inherit; font-size: 12px; font-weight: 500; line-height: 1;
     outline: none; touch-action: manipulation; -webkit-tap-highlight-color: transparent;
     transition: transform 160ms cubic-bezier(.23,1,.32,1), background-color 160ms ease, opacity 160ms ease;
   }
   .toast-action:active { transform: scale(.97); }
   .toast-action:focus-visible { outline: 2px solid #f5a524; outline-offset: 2px; }
-  /* X 关闭钮（原版 .swipe-toast__close 同款：24×24 方角、悬停 10% 白、命中区外扩 8px） */
+  /* X 关闭钮（原版 .swipe-toast__close 同款：24×24 方角、悬停 10% 墨、命中区外扩 8px） */
   .toast-close {
     position: relative; flex: none;
     display: grid; place-items: center;
@@ -965,7 +967,7 @@
   .toast-close:focus-visible { outline: 2px solid #f5a524; outline-offset: 2px; }
   @media (hover: hover) and (pointer: fine) {
     .toast-action:hover { opacity: .88; }
-    .toast-close:hover { background: rgba(245,245,245,.1); }
+    .toast-close:hover { background: rgba(39,39,42,.1); }
   }
   /* 引线：2px 渐变细线贴卡片底缘，scaleX 1→0 随剩余时间烧完（JS WAAPI 驱动；sticky 隐藏） */
   .toast-fuse {

@@ -181,7 +181,8 @@
   // 原版是 React 组件，这里按原版常量做零依赖原生复刻（与按住确认 / Slide Commit 同口径）：
   //   常量：FLICK .11px/ms / DEAD_ZONE 3px / RESIST 24px / 滑出阈值 40px / 回弹弹簧（omega 12.6，bounce .2）；
   //   时长：引线烧完 = 原 2600ms 自动消失口径不变；sticky 常驻（引线隐藏）仍可滑走。
-  //   颜色：原版固定深灰卡（#27272a 底 / #f5f5f5 字 / #f5a524 琥珀引线，不随主题，2026-10-14 站长「颜色也要」）；
+  //   颜色：白卡（#fff 底 / #27272a 字 / #f5a524 琥珀引线，不随主题）——先对齐原版深灰卡，后站长
+  //        「不是你这个提示怎么还是黑色的，我要白色的」翻白：按原版同一套 token 结构对调（bg/ink 互换）；
   //   卡内：撤销动作钮（原版 actionLabel/onAction 同款，toast 传 opts.action 才显示）+ X 关闭钮（原版 closeButton 同款）。
   //   结构：markup 保持空壳（admin 模板零改动），卡内结构 JS 构建；签名 toast(text, cls, sticky, opts) 向后兼容。
   var toastApi = (function () {

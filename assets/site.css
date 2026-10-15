@@ -4840,10 +4840,11 @@
     .pl-fav.faved svg { fill: #ff4d6a; }
 
     /* ===== 登录欢迎浮窗（Swipe Toast 形态，2026-10-14 升级——reactbits.dev/c/micro/swipe-toast 原生复刻）：
-       右下角；颜色=原版固定深灰卡（#27272a 底 / #f5f5f5 字 / #f5a524 琥珀引线，不随主题——站长「颜色也要」）；
+       右下角；颜色=白卡（#fff 底 / #27272a 字 / #f5a524 琥珀引线，不随主题）——先对齐原版深灰卡，
+       后站长「不是你这个提示怎么还是黑色的，我要白色的」翻白：按原版同一套 token 结构对调（bg/ink 互换）；
        底部一根引线随 6 秒剩余时间烧完自动关；向下滑走 / Esc / 悬停暂停（卡内结构由 common.js 构建，
        八页外壳 markup 零改动）。外层 .admin-toast 只做定位与显隐，内层 .swipe-toast-card 承担滑动与引线。
-       卡内：「进入后台」= 原版动作钮同款（浅色药丸）、关闭 = 原版 X 钮同款。
+       卡内：「进入后台」= 原版动作钮同款（白卡下=深底白字药丸）、关闭 = 原版 X 钮同款。
        注意：两钮的规则用 .swipe-toast-card 前缀（0,2,0）——「进入后台」带 .appear-btn 类，
        文件更后方的 .appear-btn（0,1,0）文字链样式会盖掉同特异度规则 ===== */
     .admin-toast {
@@ -4891,8 +4892,8 @@
       gap: 8px;
       padding: 16px;
       border-radius: 12px;
-      background: #27272a;
-      color: #f5f5f5;
+      background: #fff;
+      color: #27272a;
       box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05), 0 4px 12px rgba(0, 0, 0, 0.1);
       cursor: grab;
       outline: none;
@@ -4947,7 +4948,7 @@
       pointer-events: none;
     }
 
-    /* 「进入后台」= 原版动作钮同款（24px 浅色药丸、反色字、悬停 .88、按压 .97）；
+    /* 「进入后台」= 原版动作钮同款（24px 药丸、反色字——白卡下=深底白字、悬停 .88、按压 .97）；
        0,2,0 特异度压过 .appear-btn 文字链样式 */
     .swipe-toast-card .admin-toast-btn {
       flex: none;
@@ -4957,8 +4958,8 @@
       height: 24px;
       padding: 0 8px;
       border-radius: 5px;
-      background: #f5f5f5;
-      color: #27272a;
+      background: #27272a;
+      color: #fff;
       font: inherit;
       font-size: 12px;
       font-weight: 500;
@@ -4973,7 +4974,7 @@
 
     .swipe-toast-card .admin-toast-btn:focus-visible { outline: 2px solid #f5a524; outline-offset: 2px; }
 
-    /* 关闭 = 原版 X 钮同款（24×24 方角、悬停 10% 白、命中区外扩 8px；图标收到原版 12px/2.5） */
+    /* 关闭 = 原版 X 钮同款（24×24 方角、悬停 10% 墨、命中区外扩 8px；图标收到原版 12px/2.5） */
     .swipe-toast-card .admin-toast-close {
       position: relative;
       flex: none;
@@ -5003,7 +5004,7 @@
 
     @media (hover: hover) and (pointer: fine) {
       .swipe-toast-card .admin-toast-btn:hover { opacity: .88; }
-      .swipe-toast-card .admin-toast-close:hover { background: rgba(245, 245, 245, 0.1); }
+      .swipe-toast-card .admin-toast-close:hover { background: rgba(39, 39, 42, 0.1); }
     }
 
     @media (prefers-reduced-motion: reduce) {

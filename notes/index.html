@@ -175,15 +175,17 @@
   </script>
 
   <script>
-    // 进站门屏·首帧判定（2026-10-14，八页外壳同步，坑 23）：仅「根路径整页加载 + 本会话未过门」
-    // 才打 html.gate-pending——门屏（首页 main 里的 .home-gate）从第一帧就位、真首页内容藏到门后，
+    // 进站门屏·首帧判定（2026-10-14，八页外壳同步，坑 23）：根路径整页加载且无 hash 才打
+    // html.gate-pending——门屏（首页 main 里的 .home-gate）从第一帧就位、真首页内容藏到门后，
     // 原导航/回顶钮/外观圆钮/迷你播放条/页脚同步隐藏（CSS 门控，见 site.css「进站门屏」段），
-    // 防先闪一帧原首页再被门盖住。深链（/notes/ 等分享直链）、子页刷新、会话内 pjax 回首页都不演，
-    // 点「开始探索」或卡内直达后 sessionStorage.yhuoGateDone 写旗标（与开场动画会话一次同口径）。
-    // 收场与直达都由 common.js 门屏段接管（摘 gate-pending + 摘门屏节点本体，pjax 回首页标记
-    // 随主内容区重插也不会再浮出来）；本片段只负责打类与无 JS 兜底。
+    // 防先闪一帧原首页再被门盖住。常驻名义首页（站长拍板「我要这个常驻而不是只显示一次」）：
+    // 每次根路径整页加载都演（刷新/新开标签；会话旗标 yhuoGateDone 机制随常驻语义退场）；
+    // 深链（/ 下带 hash 的锚点直达）、子页刷新不演；pjax 回首页由 common.js 门屏段
+    // __gateArm 重演整场（__gateDisarm 在离开首页时同步摘门）。
+    // 收场与直达都由 common.js 门屏段接管（摘 gate-pending + 门屏节点回仓不出局）；
+    // 本片段只负责打类与无 JS 兜底。
     try {
-      if (location.pathname === '/' && !location.hash && !sessionStorage.getItem('yhuoGateDone')) {
+      if (location.pathname === '/' && !location.hash) {
         document.documentElement.classList.add('gate-pending');
         // 无 JS 兜底：9 秒后仍没人接管（common.js 门屏段会挂 window.__gateTeardown）才摘类拆门——
         // 正常路径这段到点空跑，不会把演到一半的门屏强行拆掉。

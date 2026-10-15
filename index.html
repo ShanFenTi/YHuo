@@ -175,15 +175,17 @@
   </script>
 
   <script>
-    // 进站门屏·首帧判定（2026-10-14，八页外壳同步，坑 23）：仅「根路径整页加载 + 本会话未过门」
-    // 才打 html.gate-pending——门屏（首页 main 里的 .home-gate）从第一帧就位、真首页内容藏到门后，
+    // 进站门屏·首帧判定（2026-10-14，八页外壳同步，坑 23）：根路径整页加载且无 hash 才打
+    // html.gate-pending——门屏（首页 main 里的 .home-gate）从第一帧就位、真首页内容藏到门后，
     // 原导航/回顶钮/外观圆钮/迷你播放条/页脚同步隐藏（CSS 门控，见 site.css「进站门屏」段），
-    // 防先闪一帧原首页再被门盖住。深链（/notes/ 等分享直链）、子页刷新、会话内 pjax 回首页都不演，
-    // 点「开始探索」或卡内直达后 sessionStorage.yhuoGateDone 写旗标（与开场动画会话一次同口径）。
-    // 收场与直达都由 common.js 门屏段接管（摘 gate-pending + 摘门屏节点本体，pjax 回首页标记
-    // 随主内容区重插也不会再浮出来）；本片段只负责打类与无 JS 兜底。
+    // 防先闪一帧原首页再被门盖住。常驻名义首页（站长拍板「我要这个常驻而不是只显示一次」）：
+    // 每次根路径整页加载都演（刷新/新开标签；会话旗标 yhuoGateDone 机制随常驻语义退场）；
+    // 深链（/ 下带 hash 的锚点直达）、子页刷新不演；pjax 回首页由 common.js 门屏段
+    // __gateArm 重演整场（__gateDisarm 在离开首页时同步摘门）。
+    // 收场与直达都由 common.js 门屏段接管（摘 gate-pending + 门屏节点回仓不出局）；
+    // 本片段只负责打类与无 JS 兜底。
     try {
-      if (location.pathname === '/' && !location.hash && !sessionStorage.getItem('yhuoGateDone')) {
+      if (location.pathname === '/' && !location.hash) {
         document.documentElement.classList.add('gate-pending');
         // 无 JS 兜底：9 秒后仍没人接管（common.js 门屏段会挂 window.__gateTeardown）才摘类拆门——
         // 正常路径这段到点空跑，不会把演到一半的门屏强行拆掉。
@@ -269,10 +271,11 @@
     <!-- 顶部锚点 -->
     <div id="home"></div>
 
-    <!-- 进站门屏（2026-10-14，reactbits.dev CardNav 原生复刻）：仅本页有（不进八页外壳，坑 23 免同步）。
-         head 内联片段判定根路径+本会话未过门才打 html.gate-pending（深链/子页/会话内刷新不演）；
+    <!-- 进站门屏（2026-10-14，reactbits.dev CardNav 原生复刻；常驻名义首页）：仅本页有（不进八页外壳，坑 23 免同步）。
+         head 内联片段判定根路径+无 hash 才打 html.gate-pending（深链/子页不演；每次落到 / 都演——
+         刷新/新标签/pjax 回首页/后退前进全重演，会话旗标已退场）；
          显示时原导航/回顶/外观钮/迷你条隐藏、真首页内容藏到门后——点「开始探索」收场进首页，
-         点卡内链接直达对应页（pjax 换页时门屏随 main 换掉、gate-pending 类由 common.js 门屏段摘除）。
+         点卡内链接直达对应页（pjax 换页前 __gateDisarm 摘门、落地首页 __gateArm 重演）。
          演出/弹簧/收场全部 common.js 末尾「进站门屏」段接管；无 JS 时 9 秒兜底拆门、卡内链接照常跳转。 -->
     <section class="home-gate" id="homeGate" aria-label="站点导航">
       <nav class="gate-panel" id="gatePanel" aria-label="门屏导航">
@@ -326,7 +329,6 @@
         <span class="gt-moon" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg></span>
         <span class="gt-sun" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg></span>
       </button>
-      <p class="gate-hint">点击「开始探索」进入，或从卡片直达任意页面</p>
     </section>
 
       <!-- Hero / 时钟区域 -->

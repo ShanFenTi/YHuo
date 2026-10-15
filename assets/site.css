@@ -9998,11 +9998,13 @@
 
     /* =============================================================
        进站门屏（2026-10-14，reactbits.dev CardNav 原生复刻；仅首页 main 有 .home-gate）
-       门控 = html.gate-pending（head 内联片段判定：根路径 + 本会话未过门 sessionStorage.yhuoGateDone）。
+       门控 = html.gate-pending（head 内联片段判定：根路径 + 无 hash；常驻名义首页——
+       每次根路径整页加载都演，会话旗标 yhuoGateDone 已退场）。
        门开时：真首页内容藏到门后（main 里除 .home-gate 外全部 display:none）、
        原导航胶囊/回顶钮/外观圆钮/迷你播放条/页脚隐藏——防第一帧闪出原导航。
        收场（gate-out）：整层淡出，animationend 后 common.js 摘 gate-pending，
-       外壳件与真首页内容随类摘除自然回归。pjax 换页 <main> 整体被换，gate-pending 由 common.js 摘除。
+       外壳件与真首页内容随类摘除自然回归。pjax 换页 <main> 整体被换：换页前 __gateDisarm
+       同步摘类摘门、落地首页 __gateArm 原地重演（常驻语义，见 common.js 门屏段）。
        ⚠️ .home-gate 只在首页，永不进八页外壳（坑 23 免同步）；外壳件隐藏规则全部挂在
           html.gate-pending 门控类下，摘类即还原，其他页面零波及。
        ⚠️ 门屏 fixed 层在 main 之内（坑 22/28：main 有 pjax-enter 动画构成层叠上下文，
@@ -10290,14 +10292,6 @@
     .gate-theme .gt-sun { display: none; }
     html.dark .gate-theme .gt-moon { display: none; }
     html.dark .gate-theme .gt-sun { display: grid; }
-
-    .gate-hint {
-      flex: none;
-      color: var(--apple-muted-foreground);
-      font-size: 12.5px;
-      letter-spacing: 0.04em;
-      margin-top: 2vh;
-    }
 
     /* ---------- 收场（gate-out）：整层淡出，animationend 后 common.js 摘 gate-pending ---------- */
     html.gate-pending.gate-out .home-gate,

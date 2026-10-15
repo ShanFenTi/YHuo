@@ -7002,6 +7002,9 @@ window.__siteCalendar = (function () {
     var aiConvs = [];        // 左侧历史栏数据 [{id,title,updated_at,msgs}]
     var aiConfig = null;     // {enabled, models:[{name,model}], model(默认档案名)}，来自 /api/ai/config
     var aiCurrentModel = null; // 当前选中的档案名
+    var aiIsAdmin = false;     // 当前身份是否管理员（模型菜单「管理模型」入口仅管理员可见，/api/user/me 判定）
+    var aiModelHi = null;      // 模型菜单光斑定位（aiSyncModelSwitcher 渲染时赋值，打开菜单时复位用）
+    var aiModelSelIdx = 0;     // 模型菜单当前选中行下标（渲染时算好，打开菜单时光斑落在选中行）
     var aiAttach = [];         // 待发送附件 [{name, size, kind:'image'|'text', data}]
     var aiBusy = false;
     var aiAbort = null;
@@ -7775,64 +7778,82 @@ window.__siteCalendar = (function () {
       aiCurrentModel = cur;
       label.textContent = currentModelName();
       btn.hidden = false;
-      menu.innerHTML = '';
-      // 按供应商分组（对应客户端里的供应商分组）
-      var groups = [];
-      aiConfig.models.forEach(function (m) {
-        var g = groups.filter(function (x) { return x.provider === m.provider; })[0];
-        if (!g) {
-          g = { provider: m.provider, items: [] };
-          groups.push(g);
+      // 对齐原版 Prompt Bar：扁平列表（无供应商分组标题），名字 + 类型标签 + 选中勾，
+      // 行高 36px 与 @// 菜单同规约；悬停高亮用 pb 的滑动光斑（复用 pbGlow 机制）
+      var glow = menu.querySelector('.pb-menu-glow');
+      if (!glow) {
+        glow = document.createElement('span');
+        glow.className = 'pb-menu-glow';
+        menu.appendChild(glow);
+      }
+      Array.prototype.slice.call(menu.children).forEach(function (c) { if (c !== glow) menu.removeChild(c); });
+      var rows = [];
+      aiConfig.models.forEach(function (m, i) {
+        var it = document.createElement('button');
+        it.type = 'button';
+        it.className = 'ai-model-item';
+        it.setAttribute('role', 'option');
+        it.setAttribute('aria-selected', m.key === aiCurrentModel ? 'true' : 'false');
+        var nm = document.createElement('span');
+        nm.className = 'pb-row-name';
+        nm.textContent = m.name;
+        it.appendChild(nm);
+        // 类型标签（后台设置：文本/视觉/推理）
+        if (m.tag) {
+          var tag = document.createElement('span');
+          tag.className = 'tag';
+          tag.textContent = m.tag;
+          it.appendChild(tag);
         }
-        g.items.push(m);
-      });
-      groups.forEach(function (g) {
-        var head = document.createElement('div');
-        head.className = 'ai-model-group';
-        head.textContent = g.provider;
-        menu.appendChild(head);
-        g.items.forEach(function (m) {
-          var it = document.createElement('button');
-          it.type = 'button';
-          it.className = 'ai-model-item' + (m.key === aiCurrentModel ? ' active' : '');
-          it.setAttribute('role', 'option');
-          it.setAttribute('aria-selected', m.key === aiCurrentModel ? 'true' : 'false');
-          var nm = document.createElement('span');
-          nm.textContent = m.name;
-          it.appendChild(nm);
-          // 类型标签（后台设置：文本/视觉/推理）
-          if (m.tag) {
-            var tag = document.createElement('span');
-            tag.className = 'tag';
-            tag.textContent = m.tag;
-            it.appendChild(tag);
+        var chk = document.createElement('span');
+        chk.className = 'chk';
+        chk.textContent = '✓';
+        it.appendChild(chk);
+        it.addEventListener('mousedown', function (e) { e.preventDefault(); });
+        it.addEventListener('pointerenter', function () { if (aiModelHi) aiModelHi(i); });
+        it.addEventListener('click', function () {
+          if (m.key !== aiCurrentModel) {
+            aiCurrentModel = m.key;
+            label.textContent = m.name;
+            addAiMsg('bot', '已切换到「' + m.name + '」（' + m.provider + '）～');
           }
-          var chk = document.createElement('span');
-          chk.className = 'chk';
-          chk.textContent = '✓';
-          it.appendChild(chk);
-          it.addEventListener('click', function () {
-            if (m.key !== aiCurrentModel) {
-              aiCurrentModel = m.key;
-              label.textContent = m.name;
-              addAiMsg('bot', '已切换到「' + m.name + '」（' + m.provider + '）～');
-            }
-            aiCloseMenu(menu);
-          });
-          menu.appendChild(it);
+          aiCloseMenu(menu);
         });
+        menu.appendChild(it);
+        rows.push(it);
       });
-      // 底部"管理模型"：跳后台 AI 标签页（新标签打开，不打断当前聊天）
-      var foot = document.createElement('div');
-      foot.className = 'ai-model-foot';
-      var manage = document.createElement('a');
-      manage.className = 'ai-model-manage';
-      manage.href = '/admin';
-      manage.target = '_blank';
-      manage.rel = 'noopener';
-      manage.textContent = '管理模型';
-      foot.appendChild(manage);
-      menu.appendChild(foot);
+      // 悬停高亮光斑（与 pb 菜单同一套：跟着高亮行滑动）；存到模块级供打开菜单时复位定位。
+      // 只动光斑——选中勾由 aria-selected 固定在选中模型上，不跟悬停跑
+      aiModelHi = function (i) {
+        var row = rows[Math.max(0, Math.min(i, rows.length - 1))];
+        if (!row) { glow.style.opacity = '0'; return; }
+        glow.style.top = row.offsetTop + 'px';
+        glow.style.height = row.offsetHeight + 'px';
+        glow.style.opacity = '1';
+      };
+      // 选中行下标始终算好（打开菜单时光斑要落在选中行；渲染多在 hidden 期间，量不到 offsetTop）
+      var activeIdx = 0;
+      for (var k = 0; k < rows.length; k++) {
+        if (rows[k].getAttribute('aria-selected') === 'true') { activeIdx = k; break; }
+      }
+      aiModelSelIdx = activeIdx;
+      // 菜单开着（如身份拉取后重渲染）就地复位光斑；关着则先藏起来，打开时再定位
+      if (menu.hidden) glow.style.opacity = '0';
+      else aiModelHi(activeIdx);
+      // 底部"管理模型"：跳后台 AI 标签页（新标签打开，不打断当前聊天）。
+      // 仅管理员可见——普通用户进不去后台，露出来只会撞登录页（2026-10-15）
+      if (aiIsAdmin) {
+        var foot = document.createElement('div');
+        foot.className = 'ai-model-foot';
+        var manage = document.createElement('a');
+        manage.className = 'ai-model-manage';
+        manage.href = '/admin';
+        manage.target = '_blank';
+        manage.rel = 'noopener';
+        manage.textContent = '管理模型';
+        foot.appendChild(manage);
+        menu.appendChild(foot);
+      }
     }
 
     function currentModelName() {
@@ -8352,6 +8373,15 @@ window.__siteCalendar = (function () {
       if (!aiView) return;
       // 每次进入都刷新一次配置（后台开关/改配置即时生效），再补开场白
       fetchAiConfig(true).then(aiGreetIfEmpty);
+      // 身份判定（模型菜单「管理模型」入口仅管理员可见）：拉到后重渲染菜单，
+      // 菜单开着时即时补上入口；失败按非管理员处理（入口少一个不影响聊天）
+      fetch('/api/user/me', { credentials: 'same-origin' })
+        .then(function (r) { return r.ok ? r.json() : null; })
+        .then(function (d) {
+          aiIsAdmin = !!(d && (d.admin || d.alsoAdmin));
+          aiSyncModelSwitcher();
+        })
+        .catch(function () {});
       if (!aiRestored && !aiHistory.length) {
         aiRestored = true;
         aiLoadConvList();
@@ -8413,7 +8443,12 @@ window.__siteCalendar = (function () {
           e.stopPropagation();
           aiCloseMenu(aiEffortMenu);
           if (pbMenu) { pbPlusOpen = false; pbHideMenu(); }
+          var opening = aiModelMenu.hidden;
           aiToggleMenu(aiModelMenu);
+          // 打开后复位光斑到当前选中行（渲染发生在 hidden 期间，量不到 offsetTop）
+          if (opening && aiModelHi) {
+            requestAnimationFrame(function () { aiModelHi(aiModelSelIdx); });
+          }
         });
       }
       if (aiEffortBtn && aiEffortMenu) {

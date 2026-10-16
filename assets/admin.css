@@ -710,6 +710,10 @@
   .img-grid .ic-info .title {
     flex: none; font-size: 13px; font-weight: 600; cursor: pointer;
     overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    /* 跑马灯前提（2026-10-16 常滚版实测发现）：flex 列子项默认 min-width:auto 会被
+       nowrap 内容反向撑宽（clientWidth=scrollWidth 恒等），溢出永远量不出来——
+       必须钉死宽度上限，让内容真正被裁剪进 overflow:hidden 的裁剪窗 */
+    max-width: 100%; min-width: 0;
   }
   .img-grid .ic-info .title:hover { text-decoration: underline; }
   .img-grid .ic-info .meta {

@@ -9757,13 +9757,23 @@ window.__siteCalendar = (function () {
       var flying = {};      // 槽位下标 -> flight {turned, swapped}
       var drag = null;
       var destroyed = false;
-      // 照片预解码缓存：url -> Promise<Image>（img.decode() 提前解到位图，换图瞬间零解码停顿）
+      // 照片预载缓存：url -> Promise<Image>。以 onload 为主闸（位图数据到手、再赋给卡内 img
+      // 时浏览器走解码缓存，基本零停顿）；decode() 仅竞速加速——实测部分内嵌窗格 decode()
+      // promise 永悬不 resolve（onload 都到了 decode 仍 pending，IAB 环境怪癖），拿它当唯一
+      // 闸门会让首图永远不上屏。超时 1.5s 兜底放行（此时 src 赋值顶多退化为原生行为，绝不卡死）
       var decodeCache = {};
       function decodedImg(url) {
         if (!decodeCache[url]) {
-          var pre = new Image();
-          pre.src = url;
-          decodeCache[url] = pre.decode ? pre.decode().then(function () { return pre; }).catch(function () { return pre; }) : Promise.resolve(pre);
+          decodeCache[url] = new Promise(function (resolve) {
+            var pre = new Image();
+            var done = false;
+            var settle = function () { if (!done) { done = true; resolve(pre); } };
+            pre.onload = settle;
+            pre.onerror = settle;
+            pre.src = url;
+            if (pre.decode) pre.decode().then(settle, settle);
+            setTimeout(settle, 1500);
+          });
         }
         return decodeCache[url];
       }

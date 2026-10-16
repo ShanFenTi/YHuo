@@ -9594,7 +9594,8 @@ window.__siteCalendar = (function () {
         threshold: 90,
         speed: 1,
         count: imgs.length,
-        reduceMotion: !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches)
+        reduceMotion: !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches),
+        onOpen: typeof opts.onOpen === 'function' ? opts.onOpen : null
       };
       var CLICK_SLOP = 6, FLICK_SPEED = 650, LEAN_SPEED = 1300, LEAN_REACH = 260, PRESS_SCALE = 1.035;
       var SPRINGS = {
@@ -10000,7 +10001,12 @@ window.__siteCalendar = (function () {
         host.classList.remove('dragging');
         var values = valuesFor(d.card);
         if (!d.moved) {
-          if (event.type === 'pointerup') sendToBack(null);
+          if (event.type === 'pointerup') {
+            // 顶卡单击=展开照片墙（站长定版：点牌堆进相册，翻牌让位给拖拽/键盘）；
+            // opts.onOpen 未接的裸引擎仍走原版点击翻牌。点露出卡角不展开（onDown 只认顶卡）
+            if (S.onOpen) { settleFace(values, 0); S.onOpen(); }
+            else sendToBack(null);
+          }
           else settleFace(values, 0);
           return;
         }
@@ -10311,13 +10317,19 @@ window.__siteCalendar = (function () {
         entry.addEventListener('click', function () { albumToggleEntry(entry, wall); });
         list.appendChild(entry);
 
-        // 牌堆引擎挂载 + 标题区展开接线。点击语义拆分：牌堆=翻牌（引擎 pointerdown 在卡上
-        // 先吃掉事件、卡 click 不再冒泡到 entry），标题=展开照片墙（原「点封面任意处展开」
-        // 让位给 Stack 交互）。
+        // 牌堆引擎挂载 + 展开接线。点击语义（2026-10-16 站长定版「点牌堆展开、拖拽翻牌」）：
+        // 顶卡单击=展开照片墙（引擎 onOpen 回调→albumToggleEntry）、拖拽/键盘=翻牌；
+        // 点到下层露出卡角静默（onDown 只认顶卡）；标题区=开合（自带接线，stopPropagation
+        // 防止把刚收起的又展开）。卡 click 不冒泡到 entry（老规则保留，双保险防重复触发）。
         stack.classList.add('ys-root');
         // 站长定版参数（官网 demo ?autoplay=true&visible=6&tilt=0&spread=1 的形态，autoplay 已撤）：
-        // fan 扇形 + 6 张可见 + spread=1（每张 +8°）+ tilt=0（拖拽无 3D 倾斜）
-        var engine = albumStackCreate(stack, group.imgs, { visible: 6, tilt: 0, spread: 1 });
+        // fan 扇形 + 6 张可见 + spread=1（每张 +8°）+ tilt=0（拖拽无 3D 倾斜）；
+        // onOpen=顶卡单击展开照片墙（2026-10-16 站长拍板「点牌堆展开、拖拽翻牌」——
+        // 翻牌手势从单击改为拖拽/键盘，标题区开合行为不变）
+        var engine = albumStackCreate(stack, group.imgs, {
+          visible: 6, tilt: 0, spread: 1,
+          onOpen: function () { albumToggleEntry(entry, wall); }
+        });
         albumStacks.push(engine);
         entry.__stackEngine = engine; // 展开照片墙前 settle 用（albumToggleEntry）
         info.addEventListener('click', function (e) {

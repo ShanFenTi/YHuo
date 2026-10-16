@@ -2233,6 +2233,7 @@ window.__siteCalendar = (function () {
       if (accentNameEl) accentNameEl.textContent = accentNames[name] || name;
       if (window.__chibiSync) window.__chibiSync(name); // 看板娘随主题进出（角色主题专属）
       if (window.__homeVideoSync) window.__homeVideoSync(name); // 首页轮播随主题重滤（denia 下只播 denia-* 视频）
+      if (window.__albumThemeSync) window.__albumThemeSync(name); // 相册页随主题重滤（角色主题下只显该角色相册+默认相册）
     }
     var savedAccent = null;
     try { savedAccent = localStorage.getItem('accent'); } catch (e) {}
@@ -9562,6 +9563,10 @@ window.__siteCalendar = (function () {
     var albumHeightTimer = null;   // 收尾卡片背景高度回落（满屏→格子）的行内样式清理延迟
     var albumCollapsing = null;    // 代际守卫：当前收回轮次的 wall——收尾定时器被系统节流拉长后
                                    // 可能晚到在「重新展开」的状态上，没这个守卫会把新展开误收回去
+    // 角色主题相册过滤（站长「角色主题下不显示非当前角色的其他角色相册但要显示默认相册」）：
+    // 主题名 → 相册名前缀候选（中英都认，命一即可）；与首页视频 THEME_VIDEO_RE 同一套前缀约定
+    var CHAR_THEME_ALBUM_PREFIX = { denia: ['denia', '达妮娅'], aemeath: ['aemeath', '爱弥斯'] };
+    var albumThemeChar = false;    // 渲染时的主题是否角色主题（主题切换钩子比对用，变了才重渲染）
 
     function albumStopCycles() {
       albumStacks.forEach(function (st) { try { st.destroy(); } catch (e) {} });
@@ -10244,12 +10249,31 @@ window.__siteCalendar = (function () {
       var groups = [];
       var byName = {};
       var ungrouped = null;
+      // 角色主题过滤（站长定版 2026-10-16「角色主题下不显示非当前角色的其他角色相册但要显示默认相册」）：
+      // 角色主题（denia/aemeath，同 THEME_VIDEO_RE 前缀先例）下只保留「未分组相册 + 相册名以该角色
+      // 前缀开头的组」，其他角色的组不渲染。数据层 albumImgs 保持全量（收藏跳转/灯箱全局索引不动），
+      // 只在渲染层滤组；普通主题（terracotta 等非角色主题）不过滤全部显示。中英文前缀都认
+      //（相册名「达妮娅 · 官方」「denia fanart」都能命中）
+      var accent = document.documentElement.getAttribute('data-accent') || 'terracotta';
+      albumThemeChar = !!CHAR_THEME_ALBUM_PREFIX[accent];
+      var themePrefixes = CHAR_THEME_ALBUM_PREFIX[accent] || null;
+      var lowerPrefixes = themePrefixes ? themePrefixes.map(function (p) { return p.toLowerCase(); }) : null;
+      var albumKeptForTheme = function (name) {
+        if (!lowerPrefixes) return true;
+        var n = (name || '').toLowerCase();
+        if (!n) return true; // 未分组=默认相册，恒显示
+        for (var pi = 0; pi < lowerPrefixes.length; pi++) {
+          if (n.indexOf(lowerPrefixes[pi]) === 0) return true;
+        }
+        return false;
+      };
       albumImgs.forEach(function (img) {
         var a = img.album || '';
         if (!a) {
           if (!ungrouped) { ungrouped = { title: '', imgs: [], named: false }; groups.unshift(ungrouped); }
           ungrouped.imgs.push(img);
         } else {
+          if (!albumKeptForTheme(a)) return; // 非当前角色主题的相册：整组不进渲染清单
           if (!byName[a]) { byName[a] = { title: a, imgs: [], named: true }; groups.push(byName[a]); }
           byName[a].imgs.push(img);
         }
@@ -10809,6 +10833,21 @@ window.__siteCalendar = (function () {
       document.addEventListener('yhuo:favs-changed', albumLbFavsChanged);
       // 展开态旋转屏幕：重算收回锁高（albumHandleResize 内部自带防抖与展开态判定）
       window.addEventListener('resize', albumHandleResize);
+      // 角色主题切换重滤（applyAccent 钩子）：相册页在场时若角色主题/普通主题互换则重渲染。
+      // 展开态先同步收拢（渲染会整表重建，收拢防照片墙旧 DOM 挂着被丢）；普通色板间互切不重渲染
+      window.__albumThemeSync = function (name) {
+        if (!albumLoaded) return;
+        var isChar = !!CHAR_THEME_ALBUM_PREFIX[name];
+        if (isChar === albumThemeChar) return;
+        albumThemeChar = isChar;
+        var list = document.getElementById('albumList');
+        var expanded = list && list.querySelector('.album-entry.expanded');
+        if (expanded) {
+          var wall = expanded.querySelector('.wall');
+          if (wall) albumCollapseFinish(list, wall, expanded); // 快路径立即收尾再重建
+        }
+        albumRender();
+      };
     }
 
     function destroyAlbumPage() {
@@ -10817,6 +10856,7 @@ window.__siteCalendar = (function () {
       if (albumLbKeydown) { document.removeEventListener('keydown', albumLbKeydown); albumLbKeydown = null; }
       if (albumLbFavsChanged) { document.removeEventListener('yhuo:favs-changed', albumLbFavsChanged); albumLbFavsChanged = null; }
       window.removeEventListener('resize', albumHandleResize);
+      if (window.__albumThemeSync) { delete window.__albumThemeSync; } // 相册页离场摘主题钩子（防指向已销毁页状态）
       clearTimeout(albumResizeTimer); albumResizeTimer = null;
       clearTimeout(albumGoneTimer); albumGoneTimer = null;
       clearTimeout(albumCollapseTimer); albumCollapseTimer = null;

@@ -7715,7 +7715,14 @@
         filter: blur(10px);
       }
 
+      /* 终态属性直接写在规则上（此前只靠 animation to 帧承载）：动画时钟因渲染层冻结/后台节流
+         不推进时（实测 IAB 内嵌 iframe 与移动端省电分屏都会——站长真机「爱弥斯官方相册打不开」
+         即此：is-revealed 挂了但 fx-reveal-in 卡在 backwards from 帧 opacity 0，照片墙整壳隐形），
+         元素按终态常显，动画播得动时只是重播一遍同样的入场 */
       html.fx-reveal .page-main :is(.album-bar, .apple-card, .doc-card, .note, .notes-year).is-revealed {
+        opacity: 1;
+        transform: none;
+        filter: blur(0);
         animation: fx-reveal-in 0.6s var(--ease-out) var(--reveal-delay, 0s) backwards;
       }
     }

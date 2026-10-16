@@ -1897,26 +1897,29 @@
       }
 
       // 行内操作按钮组（桌面悬停/聚焦浮现，触屏常显，窄屏换行到第二行；图片网格时放进悬停层）。
-      // 图片卡改版（2026-10-16 站长「按钮太多了……改成这样怎么样」+「全放在一起」= GlideSelect 方案）：
-      // 悬停层只留 查看 / ⋯更多（GlideSelect 动作菜单：改名/归属相册/上移/下移，带 tag）/ 删除；
+      // 图片卡改版（2026-10-16 站长「按钮太多了……」→「全放在一起」→「都放在这里面，完美复刻」三连定版）：
+      // 悬停层只留 ⋯ 一枚，GlideSelect 动作菜单收全部操作（查看大图/改名/归属相册/上移/下移/删除）；
       // 音乐/视频仍是全量按钮行
       var actions = document.createElement('div');
       actions.className = 'row-actions' + (currentType === 'image' ? ' ic-act' : '');
 
-      var playBtn = document.createElement('button');
-      playBtn.className = 'ghost icon-btn-sm';
-      playBtn.innerHTML = (currentType === 'image' ? ICO.view : ICO.play) +
-        (currentType === 'image' ? '' : '<span>' + (currentType === 'music' ? '试听' : '预览') + '</span>');
-      playBtn.title = currentType === 'image' ? '查看大图' : (currentType === 'music' ? '试听' : '预览');
-      playBtn.addEventListener('click', function () { openPreview(it); });
-      actions.appendChild(playBtn);
+      if (currentType !== 'image') {
+        var playBtn = document.createElement('button');
+        playBtn.className = 'ghost icon-btn-sm';
+        playBtn.innerHTML = ICO.play + '<span>' + (currentType === 'music' ? '试听' : '预览') + '</span>';
+        playBtn.title = currentType === 'music' ? '试听' : '预览';
+        playBtn.addEventListener('click', function () { openPreview(it); });
+        actions.appendChild(playBtn);
+      }
 
       if (currentType === 'image') {
-        // ⋯更多 = GlideSelect 动作菜单（改名/归属相册/上移/下移全收进来；相册项带当前归属对勾）
+        // ⋯更多 = GlideSelect 动作菜单，图片卡悬停层只留这一枚（2026-10-16 站长「都放在这里面，
+        // 完美复刻」：查看/删除也进菜单）：查看大图 / 修改名称 / 归属相册（带当前 tag）/ 上移下移 / 删除（危险色）
         var gsHost = document.createElement('span');
         var cur = (it.album || '').trim();
         var anames = albumNames();
         var gsOpts = [
+          { value: 'view', label: '查看大图', icon: ICO.view, onPick: function () { openPreview(it); } },
           { value: 'rename', label: '修改名称', icon: ICO.pencil, onPick: function () { startRename(it, title); } },
         ];
         var albumOpts = [{ value: '', label: '未分组' }];
@@ -1959,9 +1962,11 @@
           gsOpts.push({ value: 'up', label: '上移', icon: ICO.up, tag: (i + 1) + '/' + arrLen, onPick: function () { if (i > 0) move('image', i, -1); } });
           gsOpts.push({ value: 'down', label: '下移', icon: ICO.down, tag: (i + 1) + '/' + arrLen, onPick: function () { if (i < arrLen - 1) move('image', i, 1); } });
         }
+        gsOpts.push({ value: 'del', label: '删除', icon: ICO.trash, danger: true, onPick: function () { removeItem(it); } });
         makeGlideSelect(gsHost, {
           className: 'ic-more',
           size: 'sm',
+          menuWidth: 176, // 原版默认
           title: '更多操作',
           ariaLabel: '更多操作',
           chipContent: ICO.dots,
@@ -2038,12 +2043,15 @@
       }
       if (!filtering) addDragHandlers(li, currentType, i);
 
-      var del = document.createElement('button');
-      del.className = 'danger';
-      del.innerHTML = ICO.trash + '<span>删除</span>';
-      del.title = '删除';
-      del.addEventListener('click', function () { removeItem(it); });
-      actions.appendChild(del);
+      if (currentType !== 'image') {
+        // 图片卡的删除已收进 ⋯ 菜单（2026-10-16「都放在这里面，完美复刻」），行上不再挂删除钮
+        var del = document.createElement('button');
+        del.className = 'danger';
+        del.innerHTML = ICO.trash + '<span>删除</span>';
+        del.title = '删除';
+        del.addEventListener('click', function () { removeItem(it); });
+        actions.appendChild(del);
+      }
 
       if (currentType === 'image') { icOv.appendChild(actions); li.appendChild(icInfo); }
       else li.appendChild(actions);
@@ -3769,6 +3777,7 @@
     var ROW = S.row + GAP;
     var POP = opts.popDuration != null ? opts.popDuration : 180;
     var POP_OUT = Math.round((POP * 2) / 3);
+    var MENU_W = opts.menuWidth != null ? opts.menuWidth : 176; // 原版默认 176
     var GLIDE = opts.glideDuration != null ? opts.glideDuration : 220;
     var items = opts.options || [];
     var current = opts.value != null ? opts.value : '';
@@ -3799,6 +3808,7 @@
 
     var menu = document.createElement('div');
     menu.className = 'gs-menu';
+    menu.style.setProperty('--gs-menu-w', MENU_W + 'px');
     menu.setAttribute('role', 'listbox');
     menu.setAttribute('aria-label', opts.ariaLabel || opts.title || '操作菜单');
     var list = document.createElement('div');

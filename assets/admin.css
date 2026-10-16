@@ -980,7 +980,7 @@
   .gs-chev svg { width: 12px; height: 12px; }
   .gs.open .gs-chev { transform: rotate(180deg); }
   .gs-menu {
-    position: absolute; z-index: 80; width: max-content; min-width: 168px; max-width: 260px;
+    position: absolute; z-index: 80; width: var(--gs-menu-w, 176px); min-width: 100%; max-width: 300px;
     padding: 4px; border-radius: 10px;
     background: var(--card); border: 1px solid var(--border);
     box-shadow: 0 4px 16px color-mix(in srgb, #000 22%, transparent);

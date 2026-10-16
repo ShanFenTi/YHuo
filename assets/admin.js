@@ -1881,46 +1881,8 @@
         li._vtitle = it.title;
       }
 
-      // 图片：行内相册归属下拉（自定义组件，带展开动画；与 AI 面板同款 makeAiDrop）
-      if (currentType === 'image') {
-        var cur = (it.album || '').trim();
-        var anames = albumNames();
-        var aopts = [{ value: '', label: '未分组' }];
-        if (cur && anames.indexOf(cur) === -1) aopts.push({ value: cur, label: cur }); // 刚被别人改名的兜底
-        anames.forEach(function (nm) { aopts.push({ value: nm, label: nm }); });
-        var ainit = '';
-        aopts.forEach(function (o) { if (o.value === cur) ainit = cur; });
-        var ahost = document.createElement('span');
-        makeAiDrop(ahost, {
-          className: 'row-album',
-          title: '归属相册（拖到左侧相册名也可归类）',
-          value: ainit,
-          options: aopts,
-          onChange: function (val) {
-            var prevAlbum = it.album || '';
-            api('/api/admin/media/' + it.id, {
-              method: 'PUT',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ album: val })
-            }).then(function (d) {
-              if (d.ok) {
-                it.album = val;
-                rebuildAlbumControls();
-                toast('已移入「' + (val || '未分组') + '」', 'ok', false, {
-                  action: { label: '撤销', cb: function () {
-                    api('/api/admin/media/' + it.id, {
-                      method: 'PUT',
-                      headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify({ album: prevAlbum })
-                    }).then(function () { loadList(); toast('已撤销', 'ok'); });
-                  } }
-                });
-              } else toast(d.error || '操作失败', 'err');
-            });
-          },
-        });
-        icInfo.appendChild(ahost);
-      }
+      // 图片：行内相册归属下拉已收进「⋯更多」GlideSelect 菜单（2026-10-16 站长「全放在一起」），
+      // 卡面信息区不再挂下拉——相册变更走菜单内「归属相册」项（同一保存+撤销链路）
 
       // 图片行可拖到左侧相册栏归类（勾选状态下拖任意已选行 = 整批移动）；
       // 与排序拖拽共存：drop 落在相册项上走归类，落在列表行上走排序
@@ -1941,23 +1903,86 @@
         });
       }
 
-      // 行内操作按钮组（桌面悬停/聚焦浮现，触屏常显，窄屏换行到第二行；图片网格时放进悬停层）
+      // 行内操作按钮组（桌面悬停/聚焦浮现，触屏常显，窄屏换行到第二行；图片网格时放进悬停层）。
+      // 图片卡改版（2026-10-16 站长「按钮太多了……改成这样怎么样」+「全放在一起」= GlideSelect 方案）：
+      // 悬停层只留 查看 / ⋯更多（GlideSelect 动作菜单：改名/归属相册/上移/下移，带 tag）/ 删除；
+      // 音乐/视频仍是全量按钮行
       var actions = document.createElement('div');
       actions.className = 'row-actions' + (currentType === 'image' ? ' ic-act' : '');
 
-      var renameBtn = document.createElement('button');
-      renameBtn.className = 'ghost icon-btn-sm';
-      renameBtn.innerHTML = ICO.pencil;
-      renameBtn.title = '修改显示名称';
-      renameBtn.addEventListener('click', function () { startRename(it, title); });
-      actions.appendChild(renameBtn);
-
       var playBtn = document.createElement('button');
-      playBtn.className = 'ghost';
+      playBtn.className = 'ghost icon-btn-sm';
       playBtn.innerHTML = (currentType === 'image' ? ICO.view : ICO.play) +
-        '<span>' + (currentType === 'music' ? '试听' : (currentType === 'video' ? '预览' : '查看')) + '</span>';
+        (currentType === 'image' ? '' : '<span>' + (currentType === 'music' ? '试听' : '预览') + '</span>');
+      playBtn.title = currentType === 'image' ? '查看大图' : (currentType === 'music' ? '试听' : '预览');
       playBtn.addEventListener('click', function () { openPreview(it); });
       actions.appendChild(playBtn);
+
+      if (currentType === 'image') {
+        // ⋯更多 = GlideSelect 动作菜单（改名/归属相册/上移/下移全收进来；相册项带当前归属对勾）
+        var gsHost = document.createElement('span');
+        var cur = (it.album || '').trim();
+        var anames = albumNames();
+        var gsOpts = [
+          { value: 'rename', label: '修改名称', icon: ICO.pencil, onPick: function () { startRename(it, title); } },
+        ];
+        var albumOpts = [{ value: '', label: '未分组' }];
+        if (cur && anames.indexOf(cur) === -1) albumOpts.push({ value: cur, label: cur });
+        anames.forEach(function (nm) { albumOpts.push({ value: nm, label: nm }); });
+        albumOpts.forEach(function (o) {
+          gsOpts.push({
+            value: 'album:' + o.value,
+            label: o.label === '' ? '归属相册：未分组' : '归属相册：' + o.label,
+            icon: ICO.box,
+            tag: o.value === cur ? '当前' : '',
+            onPick: function () {
+              if (o.value === cur) return; // 点当前归属不重复提交
+              // 与旧行内下拉同一条保存+撤销链路（直接调 onChange 逻辑体）
+              var prevAlbum = it.album || '';
+              api('/api/admin/media/' + it.id, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ album: o.value })
+              }).then(function (d) {
+                if (d.ok) {
+                  it.album = o.value;
+                  rebuildAlbumControls();
+                  toast('已移入「' + (o.value || '未分组') + '」', 'ok', false, {
+                    action: { label: '撤销', cb: function () {
+                      api('/api/admin/media/' + it.id, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ album: prevAlbum })
+                      }).then(function () { loadList(); toast('已撤销', 'ok'); });
+                    } }
+                  });
+                } else toast(d.error || '操作失败', 'err');
+              });
+            }
+          });
+        });
+        if (!filtering) {
+          var arrLen = (items.image || []).length;
+          gsOpts.push({ value: 'up', label: '上移', icon: ICO.up, tag: (i + 1) + '/' + arrLen, onPick: function () { if (i > 0) move('image', i, -1); } });
+          gsOpts.push({ value: 'down', label: '下移', icon: ICO.down, tag: (i + 1) + '/' + arrLen, onPick: function () { if (i < arrLen - 1) move('image', i, 1); } });
+        }
+        makeGlideSelect(gsHost, {
+          className: 'ic-more',
+          size: 'sm',
+          title: '更多操作',
+          ariaLabel: '更多操作',
+          chipContent: ICO.dots,
+          options: gsOpts,
+        });
+        actions.appendChild(gsHost);
+      } else {
+        var renameBtn2 = document.createElement('button');
+        renameBtn2.className = 'ghost icon-btn-sm';
+        renameBtn2.innerHTML = ICO.pencil;
+        renameBtn2.title = '修改显示名称';
+        renameBtn2.addEventListener('click', function () { startRename(it, title); });
+        actions.appendChild(renameBtn2);
+      }
 
       // 视频行：设为首页单视频循环（独播）——选中项高亮星标
       if (currentType === 'video') {
@@ -3690,6 +3715,270 @@
   });
   document.addEventListener('keydown', function (e) {
     if (e.key === 'Escape') { pruneAiDrops(); closeAllAiDrops(); }
+  });
+
+  // ---------- GlideSelect（reactbits.dev/c/micro/glide-select 零依赖原生复刻，2026-10-16） ----------
+  // 站长拍板「图片管理按钮太多了……改成这样怎么样」+「全放在一起」：chip 触发钮 + 角落弹出菜单 +
+  // 跨行滑行高亮垫（pill），把图片卡的低频操作全收进一枚「⋯」菜单。原版 React+Tailwind+hugeicons，
+  // 常量/时序/交互逐项对齐后零依赖重建；配色走站内主题 token（浅深主题自动跟随）。
+  // 交互面（对齐原版）：点 chip 开合；悬停高亮滑行；按住拖动「刷选」松手即选；键盘 Enter/空格/↑↓ 开、
+  // ↑↓/Home/End 移（跳变不滑）、Enter 选、Esc/Tab 关、首字母 typeahead；点外关；触摸=刷选；
+  // 选中行常驻半透底+对勾；换值时 chip 文字 gs-swap 模糊切换；reduced-motion 全直达。
+  // 与 makeAiDrop 的差异：本件是「动作菜单」语义（选中即触发动作并可带图标/危险色），非表单取值。
+  var gsInsts = []; // 实例注册表：点空白/Esc 全关 + 断连清理（同 aiDrops 家族）
+  function makeGlideSelect(host, opts) {
+    opts = opts || {};
+    host.classList.add('gs');
+    if (opts.className) host.classList.add(opts.className);
+    var S = opts.size === 'sm' ? { chip: 28, row: 26, font: 12 } : (opts.size === 'lg' ? { chip: 44, row: 40, font: 14 } : { chip: 32, row: 30, font: 13 });
+    var PAD = 4, GAP = 1, MENU_GAP = 6;
+    var ROW = S.row + GAP;
+    var POP = opts.popDuration != null ? opts.popDuration : 180;
+    var POP_OUT = Math.round((POP * 2) / 3);
+    var GLIDE = opts.glideDuration != null ? opts.glideDuration : 220;
+    var items = opts.options || [];
+    var current = opts.value != null ? opts.value : '';
+    var phase = 'closed'; // closed | open | closing
+    var active = null;    // 高亮垫所在行（null=隐藏）
+    var selected = -1;    // 选中行（对勾/半透底）
+    items.forEach(function (o, i) { if (o.value === current) selected = i; });
+    var instant = false;  // 下一次移动跳变不滑行（开菜单/键盘跳行）
+    var closeTimer = null, scrub = null, closeT2 = null;
+
+    var btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'gs-btn';
+    btn.setAttribute('role', 'combobox');
+    btn.setAttribute('aria-haspopup', 'listbox');
+    btn.setAttribute('aria-expanded', 'false');
+    btn.setAttribute('aria-label', opts.ariaLabel || opts.title || '更多操作');
+    if (opts.title) btn.title = opts.title;
+    var lbl = document.createElement('span');
+    lbl.className = 'gs-lbl';
+    lbl.innerHTML = opts.chipContent != null ? opts.chipContent : (opts.chipLabel || '');
+    var chev = document.createElement('span');
+    chev.className = 'gs-chev';
+    chev.innerHTML = ico('<path d="m6 9 6 6 6-6"/>');
+    if (opts.chipContent == null && !opts.chipLabel) chev.style.display = 'none'; // 纯图标 chip（⋯）不配箭头
+    btn.appendChild(lbl);
+    btn.appendChild(chev);
+
+    var menu = document.createElement('div');
+    menu.className = 'gs-menu';
+    menu.setAttribute('role', 'listbox');
+    menu.setAttribute('aria-label', opts.ariaLabel || opts.title || '操作菜单');
+    var list = document.createElement('div');
+    list.className = 'gs-list';
+    var pill = document.createElement('span');
+    pill.className = 'gs-pill';
+    pill.setAttribute('aria-hidden', 'true');
+    list.appendChild(pill);
+    items.forEach(function (o, i) {
+      var row = document.createElement('div');
+      row.className = 'gs-row' + (o.danger ? ' danger' : '');
+      row.setAttribute('role', 'option');
+      row.setAttribute('aria-selected', 'false');
+      row.dataset.index = i;
+      var ic = document.createElement('span');
+      ic.className = 'gs-ic';
+      ic.innerHTML = o.icon || '';
+      var tx = document.createElement('span');
+      tx.className = 'gs-tx';
+      tx.textContent = o.label;
+      row.appendChild(ic);
+      row.appendChild(tx);
+      if (o.tag) {
+        var tg = document.createElement('span');
+        tg.className = 'gs-tag';
+        tg.textContent = o.tag;
+        row.appendChild(tg);
+      }
+      var tick = document.createElement('span');
+      tick.className = 'gs-tick';
+      tick.innerHTML = ico('<path d="M20 6 9 17l-5-5"/>');
+      row.appendChild(tick);
+      list.appendChild(row);
+    });
+    menu.appendChild(list);
+    host.appendChild(btn);
+    host.appendChild(menu);
+
+    function rowAt(clientY) {
+      var top = list.getBoundingClientRect().top;
+      var i = Math.floor((clientY - top - PAD) / ROW);
+      return i >= 0 && i < items.length ? i : null;
+    }
+    function paintTick() {
+      menu.querySelectorAll('.gs-row').forEach(function (r) {
+        r.classList.toggle('on', Number(r.dataset.index) === selected);
+        r.setAttribute('aria-selected', Number(r.dataset.index) === selected ? 'true' : 'false');
+      });
+    }
+    function paintPill() {
+      if (phase !== 'open') return;
+      if (active === null) { pill.style.opacity = '0'; return; }
+      var jump = instant || pill.style.opacity !== '1';
+      pill.style.transitionDuration = jump ? '0ms, 150ms' : '';
+      pill.style.transform = 'translateY(' + (active * ROW) + 'px)';
+      pill.style.opacity = '1';
+      instant = false;
+    }
+    function placeMenu() {
+      var r = btn.getBoundingClientRect();
+      var up = r.bottom + menu.offsetHeight + MENU_GAP > window.innerHeight;
+      menu.classList.toggle('up', up);
+      menu.style.transitionDuration = instant ? '0ms' : '';
+      menu.dataset.state = 'closed';
+      void menu.offsetHeight;
+      menu.dataset.state = 'open';
+    }
+    function openMenu(viaKey) {
+      if (phase !== 'closed') return;
+      clearTimeout(closeT2);
+      closeAllGsInsts(inst);
+      instant = true;
+      active = selected >= 0 ? selected : (viaKey ? 0 : null);
+      selected = selected; // 保持
+      phase = 'open';
+      host.classList.add('open');
+      btn.setAttribute('aria-expanded', 'true');
+      menu.hidden = false;
+      placeMenu();
+      // pill 直达选中/首行（无滑行）
+      pill.style.transition = 'none';
+      pill.style.transform = 'translateY(' + Math.max(0, active || 0) * ROW + 'px)';
+      pill.style.opacity = active === null ? '0' : '1';
+      void pill.offsetHeight;
+      pill.style.transition = '';
+      paintTick();
+    }
+    function closeMenu(mode) {
+      if (phase === 'closed') return;
+      active = null;
+      clearTimeout(closeTimer);
+      if (mode === 'instant') {
+        phase = 'closed';
+        host.classList.remove('open');
+        btn.setAttribute('aria-expanded', 'false');
+        menu.hidden = true;
+        return;
+      }
+      menu.style.transitionDuration = '';
+      menu.dataset.state = 'closed';
+      phase = 'closing';
+      host.classList.remove('open');
+      btn.setAttribute('aria-expanded', 'false');
+      closeTimer = setTimeout(function () { phase = 'closed'; menu.hidden = true; }, POP_OUT + 20);
+    }
+    function pick(i) {
+      var o = items[i];
+      closeMenu('instant');
+      btn.focus({ preventScroll: true });
+      if (o && typeof o.onPick === 'function') o.onPick(o, i);
+    }
+    function typeahead(from, ch) {
+      var c = ch.toLowerCase(), n = items.length;
+      for (var k = 1; k <= n; k++) {
+        var i = (from + k) % n;
+        if ((items[i].label || '').toLowerCase().indexOf(c) === 0) return i;
+      }
+      return from;
+    }
+    btn.addEventListener('pointerdown', function (e) {
+      if (e.button !== 0) return;
+      btn.focus({ preventScroll: true });
+      if (phase === 'open') closeMenu('pop'); else openMenu(false);
+    });
+    btn.addEventListener('keydown', function (e) {
+      var k = e.key, n = items.length;
+      var cur = active != null ? active : Math.max(0, selected);
+      if (phase !== 'open') {
+        if (k === 'Enter' || k === ' ' || k === 'ArrowDown' || k === 'ArrowUp') { e.preventDefault(); openMenu(true); }
+        return;
+      }
+      var go = function (i) { e.preventDefault(); instant = true; active = Math.min(n - 1, Math.max(0, i)); paintPill(); };
+      if (k === 'ArrowDown' || k === 'ArrowUp') go(active === null ? cur : cur + (k === 'ArrowDown' ? 1 : -1));
+      else if (k === 'Home') go(0);
+      else if (k === 'End') go(n - 1);
+      else if (k === 'Enter' || k === ' ') { e.preventDefault(); pick(cur); }
+      else if (k === 'Escape' || k === 'Tab') { if (k === 'Escape') e.preventDefault(); closeMenu('instant'); }
+      else if (k.length === 1 && !e.metaKey && !e.ctrlKey && !e.altKey) go(typeahead(cur, k));
+    });
+    // 刷选（pointer capture：按住拖过哪行亮哪行，松手选中）；触屏同链路
+    list.addEventListener('pointerdown', function (e) {
+      if (scrub) return;
+      try { list.setPointerCapture(e.pointerId); } catch (err) {}
+      scrub = { id: e.pointerId };
+      instant = true;
+      active = rowAt(e.clientY);
+      paintPill();
+    });
+    list.addEventListener('pointermove', function (e) {
+      if (!scrub || scrub.id !== e.pointerId) return;
+      var i = rowAt(e.clientY);
+      if (i !== active) { active = i; paintPill(); }
+    });
+    var listUp = function (e) {
+      if (!scrub || scrub.id !== e.pointerId) return;
+      scrub = null;
+      var i = e.type === 'pointerup' ? rowAt(e.clientY) : null;
+      if (i !== null) pick(i);
+    };
+    list.addEventListener('pointerup', listUp);
+    list.addEventListener('pointercancel', listUp);
+    list.addEventListener('lostpointercapture', listUp);
+    list.addEventListener('pointerover', function (e) {
+      if (e.pointerType === 'touch' || scrub) return;
+      var row = e.target.closest && e.target.closest('.gs-row');
+      if (!row) return;
+      var i = Number(row.dataset.index);
+      if (i !== active) { active = i; paintPill(); }
+    });
+    list.addEventListener('pointerleave', function () { if (!scrub) { active = null; paintPill(); } });
+
+    var inst = {
+      host: host,
+      close: function () { closeMenu('instant'); },
+      update: function (patch) { // 外部改选项/tag（如上移禁用态变化后重开菜单要刷新）
+        if (!patch) return;
+        if (patch.options) {
+          items = patch.options;
+          list.querySelectorAll('.gs-row').forEach(function (r) { r.remove(); });
+          items.forEach(function (o, i2) {
+            var row = document.createElement('div');
+            row.className = 'gs-row' + (o.danger ? ' danger' : '');
+            row.setAttribute('role', 'option');
+            row.dataset.index = i2;
+            var ic = document.createElement('span'); ic.className = 'gs-ic'; ic.innerHTML = o.icon || '';
+            var tx = document.createElement('span'); tx.className = 'gs-tx'; tx.textContent = o.label;
+            row.appendChild(ic); row.appendChild(tx);
+            if (o.tag) { var tg = document.createElement('span'); tg.className = 'gs-tag'; tg.textContent = o.tag; row.appendChild(tg); }
+            var tick = document.createElement('span'); tick.className = 'gs-tick'; tick.innerHTML = ico('<path d="M20 6 9 17l-5-5"/>');
+            row.appendChild(tick);
+            list.appendChild(row);
+          });
+          paintTick();
+        }
+      },
+      get open() { return phase === 'open'; }
+    };
+    gsInsts.push(inst);
+    return inst;
+  }
+  function closeAllGsInsts(except) {
+    gsInsts.forEach(function (d) { if (d !== except) d.close(); });
+  }
+  function pruneGsInsts() {
+    for (var i = gsInsts.length - 1; i >= 0; i--) {
+      if (!gsInsts[i].host.isConnected) gsInsts.splice(i, 1);
+    }
+  }
+  document.addEventListener('pointerdown', function (e) {
+    pruneGsInsts();
+    gsInsts.forEach(function (d) { if (!d.host.contains(e.target)) d.close(); });
+  });
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape') { pruneGsInsts(); closeAllGsInsts(); }
   });
 
   makeAiDrop($('aiProtocol'), {

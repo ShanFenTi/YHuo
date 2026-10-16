@@ -724,7 +724,6 @@
     0%, 12% { transform: translateX(0); }
     88%, 100% { transform: translateX(calc(-1 * var(--mq-shift, 0px))); }
   }
-  .img-grid .ic-info .ai-drop.row-album { align-self: flex-start; margin-top: 3px; }
   .img-grid .ic-info .inline-edit { margin: 0 0 2px; }
   .empty { color: var(--muted); font-size: 14px; text-align: center; padding: 34px 0; }
   /* 相册/列表切换淡入动效（搜索输入不触发，仅在整表刷新与切相册时重播） */
@@ -949,6 +948,67 @@
   }
   .album-menu button:hover { background: var(--hover); }
   .album-menu button.danger { color: var(--danger); }
+
+  /* ---------- GlideSelect（reactbits.dev/c/micro/glide-select 原生复刻，2026-10-16） ----------
+     chip 触发钮 + 角落弹出菜单 + 跨行滑行高亮垫。配色全走站内主题 token（浅深跟随）；
+     时序常量对齐原版：pop 180ms / pop-out 120ms / glide 220ms，cubic-bezier(0.23,1,0.32,1) */
+  .gs { position: relative; display: inline-block; }
+  .gs-btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: 4px;
+    border: none; cursor: pointer; user-select: none; -webkit-tap-highlight-color: transparent;
+    height: var(--gs-chip, 28px); min-width: var(--gs-chip, 28px); padding: 0 7px;
+    border-radius: var(--gs-inner-radius, 10px);
+    background: var(--chip); color: var(--fg); font-family: inherit; font-size: var(--gs-font, 12px); font-weight: 500;
+    transition: background-color 100ms ease, transform 160ms cubic-bezier(0.23, 1, 0.32, 1);
+  }
+  .gs-btn:active { transform: scale(0.97); }
+  .gs.open .gs-btn, .gs-btn:hover { background: color-mix(in srgb, var(--fg) 12%, var(--chip)); }
+  .gs-lbl { display: inline-flex; align-items: center; line-height: 1; }
+  .gs-lbl svg { width: 14px; height: 14px; }
+  .gs-lbl.swap { animation: gs-swap 160ms ease; }
+  @keyframes gs-swap { from { opacity: .6; filter: blur(2px); } }
+  .gs-chev { display: inline-flex; color: color-mix(in srgb, var(--fg) 55%, transparent); transition: transform 200ms cubic-bezier(0.23, 1, 0.32, 1); }
+  .gs-chev svg { width: 12px; height: 12px; }
+  .gs.open .gs-chev { transform: rotate(180deg); }
+  .gs-menu {
+    position: absolute; z-index: 80; width: max-content; min-width: 168px; max-width: 260px;
+    padding: 4px; border-radius: 10px;
+    background: var(--card); border: 1px solid var(--border);
+    box-shadow: 0 4px 16px color-mix(in srgb, #000 22%, transparent);
+    opacity: 0; transform: scale(0.95);
+    transition: opacity var(--gs-pop, 180ms) cubic-bezier(0.23, 1, 0.32, 1), transform var(--gs-pop, 180ms) cubic-bezier(0.23, 1, 0.32, 1);
+  }
+  .gs-menu:not(.up) { top: calc(100% + 6px); left: 0; transform-origin: top left; }
+  .gs-menu.up { bottom: calc(100% + 6px); left: 0; transform-origin: bottom left; }
+  .gs-menu[data-state="open"] { opacity: 1; transform: scale(1); }
+  .gs-menu[data-state="closed"] { pointer-events: none; }
+  .gs-list { position: relative; display: grid; gap: 1px; touch-action: none; }
+  .gs-pill {
+    pointer-events: none; position: absolute; left: 0; right: 0; top: 0; height: var(--gs-row, 26px);
+    border-radius: 6px; background: var(--hover); opacity: 0;
+    transition: transform var(--gs-glide, 220ms) cubic-bezier(0.23, 1, 0.32, 1), opacity 150ms ease;
+  }
+  .gs-row {
+    position: relative; z-index: 1; display: flex; align-items: center; gap: 8px;
+    height: var(--gs-row, 26px); padding: 0 9px; border-radius: 6px;
+    color: var(--fg); font-size: var(--gs-font, 12px); font-weight: 500;
+    cursor: pointer; user-select: none; -webkit-tap-highlight-color: transparent;
+  }
+  .gs-row .gs-ic { display: inline-flex; flex: none; color: var(--muted); }
+  .gs-row .gs-ic svg { width: 13px; height: 13px; }
+  .gs-row .gs-tx { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .gs-row .gs-tag { flex: none; color: var(--muted); font-size: calc(var(--gs-font, 12px) - 2px); }
+  .gs-row .gs-tick { display: inline-flex; flex: none; visibility: hidden; color: var(--brand); }
+  .gs-row .gs-tick svg { width: 12px; height: 12px; }
+  .gs-row.on .gs-tick { visibility: visible; }
+  .gs-row.danger { color: var(--danger); }
+  .gs-row.danger .gs-ic { color: var(--danger); }
+  /* 图片卡悬停层内的 GlideSelect：chip 透明融入玻璃层（与其他图标钮同规格） */
+  .img-grid .ic-ov .gs-btn { background: rgba(255, 255, 255, 0.16); color: #ffffff; backdrop-filter: blur(4px); }
+  .img-grid .ic-ov .gs-btn:hover, .img-grid .ic-ov .gs.open .gs-btn { background: rgba(255, 255, 255, 0.28); }
+  @media (prefers-reduced-motion: reduce) {
+    .gs-menu, .gs-pill, .gs-chev, .gs-btn { transition: none !important; animation: none !important; }
+  }
   @media (max-width: 900px) {
     .image-shell { flex-direction: column; }
     .album-side { width: 100%; position: static; }
@@ -956,8 +1016,6 @@
     .album-side-item { border: 1px solid var(--border); border-radius: 999px; padding: 5px 10px; }
     .album-side-item .as-cover { width: 18px; height: 18px; border-radius: 6px; }
   }
-  ul.list li .ai-drop.row-album .ai-drop-btn { padding: 4px 8px; font-size: 12px; border-radius: 8px; }
-  ul.list li .ai-drop.row-album .ai-drop-lbl { max-width: 96px; }
   .avatar {
     width: 34px; height: 34px; border-radius: 50%; flex: none; overflow: hidden;
     background: var(--fg); color: var(--bg);

@@ -9566,7 +9566,7 @@ window.__siteCalendar = (function () {
     // 角色主题相册过滤（站长「角色主题下不显示非当前角色的其他角色相册但要显示默认相册」）：
     // 主题名 → 相册名前缀候选（中英都认，命一即可）；与首页视频 THEME_VIDEO_RE 同一套前缀约定
     var CHAR_THEME_ALBUM_PREFIX = { denia: ['denia', '达妮娅'], aemeath: ['aemeath', '爱弥斯'] };
-    var albumThemeChar = false;    // 渲染时的主题是否角色主题（主题切换钩子比对用，变了才重渲染）
+    var albumThemeRendered = null; // 渲染时的主题名（主题切换钩子比对用，变了才重渲染——比『是否角色主题』细，角色间互切 denia→aemeath 也重滤）
 
     function albumStopCycles() {
       albumStacks.forEach(function (st) { try { st.destroy(); } catch (e) {} });
@@ -10255,7 +10255,7 @@ window.__siteCalendar = (function () {
       // 只在渲染层滤组；普通主题（terracotta 等非角色主题）不过滤全部显示。中英文前缀都认
       //（相册名「达妮娅 · 官方」「denia fanart」都能命中）
       var accent = document.documentElement.getAttribute('data-accent') || 'terracotta';
-      albumThemeChar = !!CHAR_THEME_ALBUM_PREFIX[accent];
+      albumThemeRendered = accent;
       var themePrefixes = CHAR_THEME_ALBUM_PREFIX[accent] || null;
       var lowerPrefixes = themePrefixes ? themePrefixes.map(function (p) { return p.toLowerCase(); }) : null;
       var albumKeptForTheme = function (name) {
@@ -10833,13 +10833,11 @@ window.__siteCalendar = (function () {
       document.addEventListener('yhuo:favs-changed', albumLbFavsChanged);
       // 展开态旋转屏幕：重算收回锁高（albumHandleResize 内部自带防抖与展开态判定）
       window.addEventListener('resize', albumHandleResize);
-      // 角色主题切换重滤（applyAccent 钩子）：相册页在场时若角色主题/普通主题互换则重渲染。
-      // 展开态先同步收拢（渲染会整表重建，收拢防照片墙旧 DOM 挂着被丢）；普通色板间互切不重渲染
+      // 角色主题切换重滤（applyAccent 钩子）：相册页在场时按当前主题名比对上次渲染的主题名，
+      // 变了才重渲染（同角色主题间互切 denia→aemeath 也要重滤——按「是否角色主题」比对会漏掉
+      // 角色间互换，实测踩中）。展开态先同步收拢（渲染会整表重建，收拢防照片墙旧 DOM 挂着被丢）
       window.__albumThemeSync = function (name) {
-        if (!albumLoaded) return;
-        var isChar = !!CHAR_THEME_ALBUM_PREFIX[name];
-        if (isChar === albumThemeChar) return;
-        albumThemeChar = isChar;
+        if (!albumLoaded || !name || name === albumThemeRendered) return;
         var list = document.getElementById('albumList');
         var expanded = list && list.querySelector('.album-entry.expanded');
         if (expanded) {

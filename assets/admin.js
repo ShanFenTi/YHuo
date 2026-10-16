@@ -3899,6 +3899,10 @@
       menu.classList.toggle('up', up);
       void menu.offsetHeight;
       menu.style.visibility = '';
+      // 揭示开关=data-state（[data-state="open"] 才 opacity:1）；closed→reflow→open 重触发 pop 过渡
+      menu.dataset.state = 'closed';
+      void menu.offsetHeight;
+      menu.dataset.state = 'open';
     }
     function openMenu(viaKey) {
       if (phase !== 'closed') return;

@@ -9744,12 +9744,31 @@ window.__siteCalendar = (function () {
       }
 
       // —— 值与 DOM ——
-      var order = imgs.map(function (_, i) { return i; });
-      var valuesMap = {};   // cardIndex -> values（13 项里本复刻用 x/y/rotate/scale/tiltX/tiltY/spin/lift/z/opacity/shade，grab 不需要——倾斜原点直接用卡中心）
-      var els = {};         // cardIndex -> 外层卡元素
-      var flying = {};      // cardIndex -> flight {turned}
+      // 槽位池模型（2026-10-16 卡顿治理）：只为扇形可见位建 SLOTS 张卡（大模糊阴影+will-change
+      // 合成层是牌堆主要绘制开销，此前 54 张卡全量常驻=54 个合成层+52 张永不显示的 img）。
+      // order 只存槽位下标（0..SLOTS-1），翻牌转槽位序；位置 p 显示的照片=imgs[(base+p)%count]，
+      // base 每翻一张 +1——飞行卡离堆瞬间（clearOfPile）才换图源，肉眼不可见。
+      var SLOTS = Math.min(S.visible, S.count);
+      var base = 0;
+      var order = [];
+      for (var oi = 0; oi < SLOTS; oi++) order.push(oi);
+      var valuesMap = {};   // 槽位下标 -> values（13 项里本复刻用 x/y/rotate/scale/tiltX/tiltY/spin/lift/z/opacity/shade，grab 不需要——倾斜原点直接用卡中心）
+      var els = {};         // 槽位下标 -> 外层卡元素
+      var flying = {};      // 槽位下标 -> flight {turned, swapped}
       var drag = null;
       var destroyed = false;
+      // 槽位换图源（logical=imgs 下标）：src 相同零开销；飞行/隐藏中换图不可见
+      function slotSetImg(slot, logical) {
+        var el = els[slot];
+        if (!el || !imgs[logical]) return;
+        var im = el.querySelector('img');
+        if (!im) return;
+        var src = imgs[logical].url;
+        if (im.getAttribute('src') !== src) {
+          im.alt = imgs[logical].name || '';
+          im.setAttribute('src', src);
+        }
+      }
 
       host.classList.add('yhuo-stack');
       host.setAttribute('tabindex', '0');
@@ -9763,7 +9782,7 @@ window.__siteCalendar = (function () {
         var v = {
           x: { cur: start.x }, y: { cur: start.y }, rotate: { cur: start.rotate }, scale: { cur: start.scale },
           tiltX: { cur: 0 }, tiltY: { cur: 0 }, spin: { cur: 0 }, lift: { cur: 1 },
-          z: { cur: S.count - pos }, opacity: { cur: pos < S.visible ? 1 : 0 }, shade: { cur: 0 }
+          z: { cur: SLOTS - pos }, opacity: { cur: pos < S.visible ? 1 : 0 }, shade: { cur: 0 }
         };
         var apply = function (key) {
           return function (val) {
@@ -9822,7 +9841,7 @@ window.__siteCalendar = (function () {
         // opacity/shade 走 0.35s easeOut 渐变（原版 fade）非弹簧；reduced-motion 即时落位
         animate(values, 'opacity', null, { target: values.opacity.target, delay: delay, duration: S.reduceMotion ? null : 0.35 / S.speed });
         animate(values, 'shade', null, { target: values.shade.target, delay: delay, duration: S.reduceMotion ? null : 0.35 / S.speed });
-        if (!o.keepZ) setValue(values, 'z', S.count - position); // z 层级瞬时置位（原版 values.z.set）
+        if (!o.keepZ) setValue(values, 'z', SLOTS - position); // z 层级瞬时置位（原版 values.z.set）
       }
       function settleFace(values, delay) {
         ['tiltX', 'tiltY', 'spin'].forEach(function (k) { setT(values, k, 0); });
@@ -9848,13 +9867,15 @@ window.__siteCalendar = (function () {
         });
       }
 
-      // sendToBack（原版原逻辑：掷出→rAF 监听离堆→tuck 归位→land 恢复 z；1500ms 兜底）
+      // sendToBack（原版原逻辑：掷出→rAF 监听离堆→tuck 归位→land 恢复 z；1500ms 兜底）。
+      // 槽位池版：转的是槽位序（不重建卡），飞行槽在离堆瞬间换上新图源（此刻它在堆外不可见）
       function sendToBack(direction, velocity) {
         if (destroyed || order.length < 2) return;
         var top = order[0];
         if (flying[top]) return;
+        var nextLogical = (base + SLOTS) % S.count; // 本次转到最底的槽位接下来显示的照片
         var next = order.slice(1).concat([top]);
-        if (S.reduceMotion) { order = next; placeAll({}); return; }
+        if (S.reduceMotion) { order = next; base++; slotSetImg(top, nextLogical); placeAll({}); return; }
         // 出牌方向：原版 direction || EXITS[layout] || noise 圆周——fan 向右上飞出（[1,-0.3]），
         // pile 沿伪随机圆周
         var EXIT_DIRS = { fan: [1, -0.3], cascade: [0.8, 0.6], deck: [0, 1] };
@@ -9869,29 +9890,39 @@ window.__siteCalendar = (function () {
         var travel = clearance * 1.12 + 40;
         var outX = home.x + dx * travel, outY = home.y + dy * travel;
         var values = valuesFor(top);
-        var flight = { turned: false };
+        var flight = { turned: false, swapped: false };
         flying[top] = flight;
-        setValue(values, 'z', S.count + 1); // 飞行卡浮到最上层（原版 values.z.set）
+        setValue(values, 'z', SLOTS + 1); // 飞行卡浮到最上层（原版 values.z.set）
         setT(values, 'x', outX); setT(values, 'y', outY);
         animate(values, 'x', 'fling', velocity ? { velocity: velocity[0] } : {});
         animate(values, 'y', 'fling', velocity ? { velocity: velocity[1] } : {});
         settleFace(values, 0);
         order = next;
-        placeAll({}); // 其余卡按新次序前移落位（原版 order 变更触发的 layout effect → placeAll）
+        base++;
+        placeAll({}); // 其余槽位按新次序前移落位（原版 order 变更触发的 layout effect → placeAll）
         var span = Math.max(Math.hypot(outX - values.x.cur, outY - values.y.cur), 1);
         var landed = false;
+        // 离堆瞬间换图：此刻飞行槽在堆外（或透明），新图源不可见；tuck 归位时带的就是新照片
+        var swapImg = function () {
+          if (flight.swapped) return;
+          flight.swapped = true;
+          slotSetImg(top, nextLogical);
+        };
         var turn = function () {
           flight.turned = true;
+          swapImg();
           var pos = order.indexOf(top);
           if (pos >= 0) placeCard(top, pos, { kind: 'tuck', keepZ: !landed });
         };
         var land = function () {
           landed = true;
+          swapImg();
           if (flying[top] === flight) delete flying[top];
           var pos = order.indexOf(top);
-          if (pos >= 0) setValue(values, 'z', S.count - pos);
+          if (pos >= 0) setValue(values, 'z', SLOTS - pos);
         };
         var fallback = setTimeout(function () {
+          swapImg();
           if (!flight.turned) turn();
           if (!landed) land();
         }, 1500 / S.speed);
@@ -9912,7 +9943,7 @@ window.__siteCalendar = (function () {
           var vx = velocityOf(values, 'x'), vy = velocityOf(values, 'y');
           var outward = vx * dx + vy * dy;
           if (!flight.turned && (Math.hypot(outX - values.x.cur, outY - values.y.cur) <= span * 0.06 || outward < 0)) turn();
-          if (!landed && (clearOfPile() || (flight.turned && outward < 0))) land();
+          if (!landed && (clearOfPile() || (flight.turned && outward < 0))) { swapImg(); land(); }
           setTimeout(watch, 16); // 后台窗格 rAF 冻结也照常工作（原版 rAF watch 同样依赖 motion 的定时器退化）
         };
         setTimeout(watch, 16);
@@ -10031,12 +10062,13 @@ window.__siteCalendar = (function () {
       // （无 autoplay：原版默认 autoplay=false，站长定版「相册封面不要自动切换」——
       //   封面翻牌只由点击/拖拽/键盘驱动；曾补的站点版定时翻牌整环拆除）
 
-      // —— 构建 DOM ——
-      imgs.forEach(function (img, i) {
+      // —— 构建 DOM（槽位池：只建 SLOTS 张卡，初始图源=base 起的照片环）——
+      for (var si = 0; si < SLOTS; si++) {
+        var img = imgs[(base + si) % S.count];
         var card = document.createElement('div');
         card.className = 'ys-card';
-        card.setAttribute('data-idx', i);
-        card.style.zIndex = S.count - i;
+        card.setAttribute('data-idx', si);
+        card.style.zIndex = SLOTS - si;
         // fan 布局的旋转轴（原版 ORIGINS.fan=[0.9,0.9]，官网实测右下角 207,207@230 容器）
         if (S.layout === 'fan') card.style.transformOrigin = '90% 90%';
         var face = document.createElement('div');
@@ -10051,8 +10083,7 @@ window.__siteCalendar = (function () {
         var el = document.createElement('img');
         el.src = img.url;
         el.alt = img.name || '';
-        el.loading = 'lazy';
-        el.decoding = 'async';
+        el.decoding = 'async'; // 常驻卡全量 eagerly 解码（池内最多 6 张）；lazy 会在扇后不可见时卡换图
         el.draggable = false;
         el.addEventListener('dragstart', function (e) { e.preventDefault(); });
         content.appendChild(el);
@@ -10067,8 +10098,8 @@ window.__siteCalendar = (function () {
         card.addEventListener('click', function (e) { e.stopPropagation(); });
         card.addEventListener('pointerdown', onDown);
         host.appendChild(card);
-        els[i] = card;
-      });
+        els[si] = card;
+      }
       host.addEventListener('keydown', onKeyDown); // 键盘挂在 root（原版挂 stack 容器，tabIndex=0）
 
       function mount() {
@@ -10096,7 +10127,10 @@ window.__siteCalendar = (function () {
 
       return {
         host: host,
-        // 展开照片墙前调用：结算拖拽/飞行（卡瞬回堆内），防发牌起点量到飞行中的卡
+        // 展开照片墙前调用：结算拖拽/飞行（卡瞬回堆内），防发牌起点量到飞行中的卡。
+        // 槽位池版顺带做全环复位：牌序回 base=0 初态、图源按新序重映射（收场后牌堆
+        // 回到开场那张照片，与照片墙第一张对齐——旧全量卡模型下序号不重排无所谓，
+        // 池模型里 base 停在中途会让下次展开从半截照片序开始）
         settle: function () {
           if (drag) {
             var d = drag; drag = null;
@@ -10110,8 +10144,12 @@ window.__siteCalendar = (function () {
           // 飞行中的卡立即结算（清 flight 标记后按新序落位）；再把所有卡瞬移归位——
           // placeAll 的弹簧归位会跟发牌动画叠跑，此处必须瞬时
           Object.keys(flying).forEach(function (k) { delete flying[+k]; });
+          base = 0;
+          order = [];
+          for (var ri = 0; ri < SLOTS; ri++) order.push(ri);
           order.forEach(function (index, position) {
             var shown = Math.min(position, S.visible - 1);
+            slotSetImg(index, position % S.count);
             var t = placement(shown, index);
             var v = valuesFor(index);
             ['x', 'y', 'rotate', 'scale'].forEach(function (k2) {
@@ -10127,7 +10165,7 @@ window.__siteCalendar = (function () {
             v.opacity.apply(v.opacity.cur);
             v.shade.target = v.shade.cur = Math.min(0.6, shown * S.depth * 0.14);
             v.shade.apply(v.shade.cur);
-            v.z.target = v.z.cur = S.count - position;
+            v.z.target = v.z.cur = SLOTS - position;
             v.z.apply(v.z.cur);
           });
         },

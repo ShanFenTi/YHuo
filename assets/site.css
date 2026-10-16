@@ -9193,6 +9193,10 @@
       pointer-events: none;
       -webkit-user-drag: none;
     }
+    /* 位图解码完成前的兜底底色（站内 --card 面色，浅深主题自动跟随）：此前 img 空白帧
+       透出透明卡底，深色主题下叠出「黑卡」观感（站长「每次加载卡片都是黑色然后才显示图片」）。
+       位图就绪由 JS 摘 ys-img-loading（decodedImg 链路），此后 img 常驻不闪 */
+    .ys-card.ys-img-loading .ys-content { background: var(--card, #ece9e4); }
     .ys-shade { position: absolute; inset: 0; background: #000; pointer-events: none; opacity: 0; }
 
     .album-count-badge {

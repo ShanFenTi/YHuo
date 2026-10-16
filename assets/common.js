@@ -9757,17 +9757,41 @@ window.__siteCalendar = (function () {
       var flying = {};      // 槽位下标 -> flight {turned, swapped}
       var drag = null;
       var destroyed = false;
-      // 槽位换图源（logical=imgs 下标）：src 相同零开销；飞行/隐藏中换图不可见
+      // 照片预解码缓存：url -> Promise<Image>（img.decode() 提前解到位图，换图瞬间零解码停顿）
+      var decodeCache = {};
+      function decodedImg(url) {
+        if (!decodeCache[url]) {
+          var pre = new Image();
+          pre.src = url;
+          decodeCache[url] = pre.decode ? pre.decode().then(function () { return pre; }).catch(function () { return pre; }) : Promise.resolve(pre);
+        }
+        return decodeCache[url];
+      }
+      // 槽位换图源（logical=imgs 下标）：src 相同零开销；换图走预解码位图 + 120ms 交叉淡入——
+      // 直接 setAttribute('src') 在浏览器解码大图前会渲染空白帧（深色页里叠出黑闪，站长报
+      // 「每次加载卡片都是黑色然后才显示图片」），decode() 保证新图上屏即完整
       function slotSetImg(slot, logical) {
         var el = els[slot];
         if (!el || !imgs[logical]) return;
         var im = el.querySelector('img');
         if (!im) return;
-        var src = imgs[logical].url;
-        if (im.getAttribute('src') !== src) {
-          im.alt = imgs[logical].name || '';
-          im.setAttribute('src', src);
-        }
+        var next = imgs[logical];
+        if (im.getAttribute('src') === next.url) return;
+        im.alt = next.name || '';
+        decodedImg(next.url).then(function (pre) {
+          if (destroyed || els[slot] !== el) return;
+          if (im.getAttribute('src') === next.url) return; // 连翻时槽位可能已再次换图
+          im.setAttribute('src', next.url);
+          // 交叉淡入：透明度 0→1 一次过渡（120ms，CSS transition 驱动），
+          // 消掉旧图→新图切换瞬间的空白帧感
+          im.style.transition = 'none';
+          im.style.opacity = '0';
+          void im.offsetWidth;
+          im.style.transition = 'opacity 120ms ease-out';
+          im.style.opacity = '1';
+          el.classList.remove('ys-img-loading');
+        });
+        el.classList.add('ys-img-loading');
       }
 
       host.classList.add('yhuo-stack');
@@ -10063,10 +10087,12 @@ window.__siteCalendar = (function () {
       //   封面翻牌只由点击/拖拽/键盘驱动；曾补的站点版定时翻牌整环拆除）
 
       // —— 构建 DOM（槽位池：只建 SLOTS 张卡，初始图源=base 起的照片环）——
+      // 首挂不直接 setAttribute('src')（解码前空白帧=黑闪），走同一 decode() 链路：
+      // 卡先带 ys-img-loading 底色兜底，位图解好再上屏淡入
       for (var si = 0; si < SLOTS; si++) {
         var img = imgs[(base + si) % S.count];
         var card = document.createElement('div');
-        card.className = 'ys-card';
+        card.className = 'ys-card ys-img-loading';
         card.setAttribute('data-idx', si);
         card.style.zIndex = SLOTS - si;
         // fan 布局的旋转轴（原版 ORIGINS.fan=[0.9,0.9]，官网实测右下角 207,207@230 容器）
@@ -10081,11 +10107,21 @@ window.__siteCalendar = (function () {
         content.className = 'ys-content';
         content.style.borderRadius = INNER_RADIUS + 'px';
         var el = document.createElement('img');
-        el.src = img.url;
         el.alt = img.name || '';
-        el.decoding = 'async'; // 常驻卡全量 eagerly 解码（池内最多 6 张）；lazy 会在扇后不可见时卡换图
+        el.decoding = 'async';
         el.draggable = false;
         el.addEventListener('dragstart', function (e) { e.preventDefault(); });
+        decodedImg(img.url).then(function (ready) {
+          // 槽位建好后即刻上屏（src 预先留空，此处一次性赋首图）；连翻到该槽换图由 slotSetImg 接管
+          if (destroyed || !els[si]) return;
+          if (!el.getAttribute('src')) {
+            el.src = ready.src;
+            void el.offsetWidth;
+            el.style.transition = 'opacity 120ms ease-out';
+            el.style.opacity = '1';
+            card.classList.remove('ys-img-loading');
+          }
+        });
         content.appendChild(el);
         var shade = document.createElement('div');
         shade.className = 'ys-shade';

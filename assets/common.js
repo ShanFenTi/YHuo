@@ -10121,17 +10121,20 @@ window.__siteCalendar = (function () {
         el.decoding = 'async';
         el.draggable = false;
         el.addEventListener('dragstart', function (e) { e.preventDefault(); });
-        decodedImg(img.url).then((function (slotIdx, slotCard, slotImg, ready) {
-          // （si 是 ES5 var——闭包共享循环末值，此处必须用 IIFE/参数捕获本次迭代的下标）
-          // 槽位建好后即刻上屏（src 预先留空，此处一次性赋首图）；连翻到该槽换图由 slotSetImg 接管
-          if (destroyed || els[slotIdx] !== slotCard) return;
-          if (!slotImg.getAttribute('src')) {
-            slotImg.src = ready.src;
-            void slotImg.offsetWidth;
-            slotImg.style.transition = 'opacity 120ms ease-out';
-            slotImg.style.opacity = '1';
-            slotCard.classList.remove('ys-img-loading');
-          }
+        decodedImg(img.url).then((function (slotIdx, slotCard, slotImg) {
+          // （si 是 ES5 var——闭包共享循环末值；IIFE 在此只为捕获本次迭代的下标/卡/img，
+          // 必须【返回】真正的回调交给 then 调用——若把回调本体立即执行，ready 是 undefined、
+          // then(undefined) 空转，src 永不赋值）
+          return function (ready) {
+            if (destroyed || els[slotIdx] !== slotCard) return;
+            if (!slotImg.getAttribute('src')) {
+              slotImg.src = ready.src;
+              void slotImg.offsetWidth;
+              slotImg.style.transition = 'opacity 120ms ease-out';
+              slotImg.style.opacity = '1';
+              slotCard.classList.remove('ys-img-loading');
+            }
+          };
         })(si, card, el));
         content.appendChild(el);
         var shade = document.createElement('div');

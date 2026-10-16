@@ -2052,7 +2052,7 @@
         actions.appendChild(del);
       }
 
-      if (currentType === 'image') { li.appendChild(icOv); li.appendChild(icInfo); }
+      if (currentType === 'image') { icOv.appendChild(actions); li.appendChild(icOv); li.appendChild(icInfo); }
       else li.appendChild(actions);
 
       list.appendChild(li);

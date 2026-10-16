@@ -9158,8 +9158,8 @@
 
     /* 牌堆封面：reactbits Stack 引擎驱动（common.js albumStackCreate，2026-10-16）。
        卡片位移/旋转/层级/透明度全部由 JS 直控 inline transform（原版 motion values 语义），
-       CSS 只管皮肤：原版 stack-card-face 同款白框（padding 6px JS 写入）+ 圆角 16px +
-       原版双层阴影 + 深度遮暗层。旧「三张叠放/悬停扇开/4s 交叉淡入」的 .stack-photo 全套退役 */
+       CSS 只管皮肤：原版 stack-card-face 同款（frame=0 无白框——站长「相册无边框」，2026-10-16
+       追改；圆角 16px + 原版双层阴影 + 深度遮暗层）。旧「三张叠放/悬停扇开/4s 交叉淡入」退役 */
     .album-cover { padding: 22px 16px 8px; text-align: center; }
     .album-stack {
       position: relative; height: 200px; max-width: 240px; margin: 0 auto;
@@ -9183,8 +9183,8 @@
     .ys-face {
       position: absolute; inset: 0;
       overflow: hidden;
-      border: 0 solid var(--card); /* 白框宽度由 JS 写 padding 时一并呈现在背景色上 */
-      background: var(--card);
+      /* frame=0：无白框（face 背景透明，圆角/阴影由 JS 按原版 props 写入） */
+      background: transparent;
       will-change: transform;
     }
     .ys-content { position: relative; width: 100%; height: 100%; overflow: hidden; }

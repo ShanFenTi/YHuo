@@ -9578,7 +9578,7 @@ window.__siteCalendar = (function () {
     //     （tilt=30，lean 公式原样）；松手位移>90px 或甩速>650px/s 且与拖向同向 → sendToBack
     //   · 掷出：EXITS.pile 走伪随机方向；清屏距离 clearance*1.12+40；rAF 监听「离堆」
     //     （bbox 相交检测）先压 z 到堆底（turn）再落 z（land），1500ms 兜底
-    //   · shade 遮暗 = min(.6, 深度×.14)（placeCard 原式）；visible=5 只显 5 张
+    //   · shade 遮暗 = min(.6, 深度×.14)（placeCard 原式）；visible=4（原版默认）只显 4 张
     //   · reduced-motion：0.2s easeOut 直切（springFor 的 reduceMotion 分支）
     //   · 无 autoplay：原版默认 autoplay=false，定时翻牌不进复刻（站长定版）
     // 差异（站点语境）：pointer capture 防拖出 iframe；touch-action:none 只挂顶卡（拖拽
@@ -9587,7 +9587,7 @@ window.__siteCalendar = (function () {
       opts = opts || {};
       var S = {
         layout: 'pile',
-        visible: opts.visible || 5,
+        visible: opts.visible || 4,
         spread: opts.spread != null ? opts.spread : 0.5,
         depth: opts.depth != null ? opts.depth : 0.5,
         tilt: 30,
@@ -9602,7 +9602,10 @@ window.__siteCalendar = (function () {
         lean: [240, 28], press: [420, 34], fling: [650, 42]
       };
       var SHADOW = '0 14px 34px -10px rgba(0,0,0,.45), 0 3px 8px -2px rgba(0,0,0,.18)';
-      var FRAME = 6, RADIUS = 16, INNER_RADIUS = RADIUS - FRAME;
+      // 皮肤参数对齐原版 props 默认值（站长「相册无边框」+「看看那个网站还有很多设置效果自行调整」）：
+      // frame=0（原版默认，白框退场——face 背景 transparent、padding 0、内外圆角同值）、
+      // radius=16、visible=4、depth=0.5（pile 深层微缩 1-position*depth*.03 已在 placement 里）
+      var RADIUS = 16, FRAME = 0, INNER_RADIUS = RADIUS - FRAME;
 
       var clamp = function (v, a, b) { return Math.min(b, Math.max(a, v)); };
       var mix = function (a, b, t) { return a + (b - a) * t; };
@@ -10013,7 +10016,7 @@ window.__siteCalendar = (function () {
         face.className = 'ys-face';
         face.style.borderRadius = RADIUS + 'px';
         face.style.padding = FRAME + 'px';
-        face.style.backgroundColor = opts.faceColor || 'var(--card)';
+        face.style.backgroundColor = FRAME > 0 ? (opts.faceColor || 'var(--card)') : 'transparent';
         face.style.boxShadow = SHADOW;
         var content = document.createElement('div');
         content.className = 'ys-content';
@@ -10224,7 +10227,7 @@ window.__siteCalendar = (function () {
         entry.className = 'album-entry';
 
         // 牌堆封面：reactbits Stack 引擎（pile 散落+点击/拖拽/键盘翻牌，无自动切换），整组照片进堆。
-        // 卡片 DOM 由引擎自建（只渲染 visible=5 张），stack 只提供容器与徽章
+        // 卡片 DOM 由引擎自建（只渲染 visible=4 张），stack 只提供容器与徽章
         var cover = document.createElement('div');
         cover.className = 'album-cover';
         var stack = document.createElement('div');

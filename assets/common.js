@@ -9542,8 +9542,9 @@ window.__siteCalendar = (function () {
     // 相册页（/album/，2026-10-01 恢复为第九个真实页面；原 2026-09-05 版寄生首页画廊 DOM，随杂项页
     // 移除失去数据源，现直接吃 /api/playlist 的 images 分支——后台 KV 图片 + media.album 分组）。
     // 三层结构：牌堆封面（Stack 引擎——reactbits.dev Stack 组件零依赖复刻：pile 散落 +
-    // 点击/拖拽翻牌 + autoplay 定时翻牌，2026-10-16 替换原「三张叠放+悬停扇开+4s 交叉淡入」；
-    // 点击牌堆=翻牌，展开照片墙挪到标题区）→ 照片墙（发牌入场/收回飞回）
+    // 点击/拖拽/键盘翻牌，2026-10-16 替换原「三张叠放+悬停扇开+4s 交叉淡入」；无自动翻牌
+    // ——原版默认 autoplay=false，站长定版「封面不要自动切换」；点击牌堆=翻牌，
+    // 展开照片墙挪到标题区）→ 照片墙（发牌入场/收回飞回）
     // → 灯箱（左右翻页 / ♥ 收藏 / Esc / 遮罩关闭）。旧版"大卡片 3D 跟随/照片悬停倾斜"动效依赖
     // 已随画廊删除的外观开关，不随本恢复带回。
     // =========================
@@ -9579,7 +9580,7 @@ window.__siteCalendar = (function () {
     //     （bbox 相交检测）先压 z 到堆底（turn）再落 z（land），1500ms 兜底
     //   · shade 遮暗 = min(.6, 深度×.14)（placeCard 原式）；visible=5 只显 5 张
     //   · reduced-motion：0.2s easeOut 直切（springFor 的 reduceMotion 分支）
-    //   · autoplay：定时 sendToBack(null)，悬停/拖拽/文档隐藏时暂停（与原轮播跳过条件一致）
+    //   · 无 autoplay：原版默认 autoplay=false，定时翻牌不进复刻（站长定版）
     // 差异（站点语境）：pointer capture 防拖出 iframe；touch-action:none 只挂顶卡（拖拽
     // 与页面滚动手势隔离，非顶卡 pan-y 照常滚屏——手机上除顶卡外都能正常滚动页面）。
     function albumStackCreate(host, imgs, opts) {
@@ -9730,8 +9731,6 @@ window.__siteCalendar = (function () {
       var flying = {};      // cardIndex -> flight {turned}
       var drag = null;
       var destroyed = false;
-      var autoplayTimer = 0;
-      var hovered = false;
 
       host.classList.add('yhuo-stack');
       host.setAttribute('tabindex', '0');
@@ -9836,7 +9835,7 @@ window.__siteCalendar = (function () {
         var top = order[0];
         if (flying[top]) return;
         var next = order.slice(1).concat([top]);
-        if (S.reduceMotion) { order = next; placeAll({}); scheduleAutoplay(); return; }
+        if (S.reduceMotion) { order = next; placeAll({}); return; }
         var dx = direction ? direction[0] : Math.cos(noise(top + 9) * 6.283);
         var dy = direction ? direction[1] : Math.sin(noise(top + 9) * 6.283);
         var len = Math.hypot(dx, dy) || 1; dx /= len; dy /= len;
@@ -9894,7 +9893,6 @@ window.__siteCalendar = (function () {
           setTimeout(watch, 16); // 后台窗格 rAF 冻结也照常工作（原版 rAF watch 同样依赖 motion 的定时器退化）
         };
         setTimeout(watch, 16);
-        scheduleAutoplay();
       }
 
       // lean（原版原式： sideways/upward 混合速度与位移，tilt 上限、spin ±6°）
@@ -10002,23 +10000,8 @@ window.__siteCalendar = (function () {
         }
       }
 
-      // autoplay（原版语义：定时 sendToBack(null)；站点条件并入：文档隐藏/照片墙展开时暂停）
-      function scheduleAutoplay() {
-        clearTimeout(autoplayTimer);
-        if (destroyed || S.count < 2) return;
-        if (hovered || drag || document.hidden) return;
-        autoplayTimer = setTimeout(function () {
-          autoplayTimer = 0;
-          if (destroyed || hovered || drag || document.hidden) return;
-          if (opts.beforeSend && opts.beforeSend()) { scheduleAutoplay(); return; } // 展开照片墙期间：轮询等撤门
-          sendToBack(null);
-        }, Math.max(300, opts.autoplayDelay || 3000));
-      }
-      function onMouseEnter() { hovered = true; clearTimeout(autoplayTimer); }
-      function onMouseLeave() { hovered = false; scheduleAutoplay(); }
-
-      function onVisibility() { if (document.hidden) clearTimeout(autoplayTimer); else scheduleAutoplay(); }
-      document.addEventListener('visibilitychange', onVisibility);
+      // （无 autoplay：原版默认 autoplay=false，站长定版「相册封面不要自动切换」——
+      //   封面翻牌只由点击/拖拽/键盘驱动；曾补的站点版定时翻牌整环拆除）
 
       // —— 构建 DOM ——
       imgs.forEach(function (img, i) {
@@ -10056,15 +10039,12 @@ window.__siteCalendar = (function () {
         host.appendChild(card);
         els[i] = card;
       });
-      host.addEventListener('mouseenter', onMouseEnter);
-      host.addEventListener('mouseleave', onMouseLeave);
       host.addEventListener('keydown', onKeyDown); // 键盘挂在 root（原版挂 stack 容器，tabIndex=0）
 
       function mount() {
         order.forEach(function (index, position) {
           placeCard(index, position, { delay: position * 60, kind: 'place' });
         });
-        scheduleAutoplay();
       }
       // 首帧落位：直接 mount（placeCard 首次调用时 apply 已可用，clearance 在 sendToBack 时才量，
       // 届时布局早已稳定——无「刚插入 DOM 量不到」问题）
@@ -10086,10 +10066,8 @@ window.__siteCalendar = (function () {
 
       return {
         host: host,
-        // 展开照片墙前调用：立即停 autoplay、结算拖拽/飞行（卡瞬回堆内），防发牌起点量到飞行中的卡
+        // 展开照片墙前调用：结算拖拽/飞行（卡瞬回堆内），防发牌起点量到飞行中的卡
         settle: function () {
-          clearTimeout(autoplayTimer);
-          autoplayTimer = 0;
           if (drag) {
             var d = drag; drag = null;
             clearTimeout(d.idle);
@@ -10126,7 +10104,6 @@ window.__siteCalendar = (function () {
         isDragging: function () { return !!drag; },
         destroy: function () {
           destroyed = true;
-          clearTimeout(autoplayTimer);
           clearTimeout(watchdog);
           if (rafId) {
             if (timerMode) clearTimeout(rafId);
@@ -10134,7 +10111,6 @@ window.__siteCalendar = (function () {
             rafId = 0;
           }
           moving.clear();
-          document.removeEventListener('visibilitychange', onVisibility);
           window.removeEventListener('pointermove', onMove);
           window.removeEventListener('pointerup', onUp);
           window.removeEventListener('pointercancel', onUp);
@@ -10247,7 +10223,7 @@ window.__siteCalendar = (function () {
         var entry = document.createElement('div');
         entry.className = 'album-entry';
 
-        // 牌堆封面：reactbits Stack 引擎（pile 散落+点击/拖拽翻牌+autoplay），整组照片进堆。
+        // 牌堆封面：reactbits Stack 引擎（pile 散落+点击/拖拽/键盘翻牌，无自动切换），整组照片进堆。
         // 卡片 DOM 由引擎自建（只渲染 visible=5 张），stack 只提供容器与徽章
         var cover = document.createElement('div');
         cover.className = 'album-cover';
@@ -10313,12 +10289,9 @@ window.__siteCalendar = (function () {
 
         // 牌堆引擎挂载 + 标题区展开接线。点击语义拆分：牌堆=翻牌（引擎 pointerdown 在卡上
         // 先吃掉事件、卡 click 不再冒泡到 entry），标题=展开照片墙（原「点封面任意处展开」
-        // 让位给 Stack 交互）；beforeSend 供引擎在 autoplay 触发前查「照片墙开着就先不翻」。
+        // 让位给 Stack 交互）。
         stack.classList.add('ys-root');
-        var engine = albumStackCreate(stack, group.imgs, {
-          autoplayDelay: 4000,
-          beforeSend: function () { return entry.classList.contains('expanded'); }
-        });
+        var engine = albumStackCreate(stack, group.imgs, {});
         albumStacks.push(engine);
         entry.__stackEngine = engine; // 展开照片墙前 settle 用（albumToggleEntry）
         info.addEventListener('click', function (e) {

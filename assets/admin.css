@@ -458,7 +458,9 @@
   #gateWrap .card:not([hidden]) { animation: gateIn .5s var(--ease-soft); }
   #appShell:not([hidden]) { animation: panelReveal .55s var(--ease-soft); }
   /* 无障碍合规：系统开启"减弱动态效果"时压掉全部动画与过渡（面板/列表/弹窗/下拉/侧边栏一律瞬时完成），
-     不再逐个枚举——漏一个就还有动的。无 infinite 动画，iteration-count 收 1 安全 */
+     不再逐个枚举——漏一个就还有动的。无 infinite 动画，iteration-count 收 1 安全
+     （2026-10-16 起例外：图片卡标题跑马灯是 infinite 功能性滚动，在下方跑马灯段有专项
+     回退覆盖本条——停动画+恢复省略号，不靠这里 0.01ms 的"假跑完"） */
   @media (prefers-reduced-motion: reduce) {
     *, *::before, *::after {
       animation-duration: .01ms !important;
@@ -716,6 +718,11 @@
        必须钉死宽度上限，让内容真正被裁剪进 overflow:hidden 的裁剪窗 */
     max-width: 100%; min-width: 0;
   }
+  /* 跑马灯卡撤省略号（2026-10-16 站长「显示不完整啊有文字被截断了」）：ellipsis 的「…」
+     按布局溢出绘制、恒钉在裁剪窗右缘，而跑马灯靠 transform 平移（不改布局），滚动的
+     文字始终从「…」底下穿过——看起来就像一直在截断。mq 卡改 clip（两端停驻期露完整
+     文字头）；非溢出卡仍走上面的 ellipsis。减动态回退见下方跑马灯段的媒体查询 */
+  .img-grid .ic-info .title.mq { text-overflow: clip; }
   .img-grid .ic-info .title:hover { text-decoration: underline; }
   .img-grid .ic-info .meta {
     color: var(--muted); font-size: 11.5px; white-space: nowrap;
@@ -724,7 +731,7 @@
   /* 超长文件名滚动跑马灯（2026-10-16 站长「图片名称太长使用滚动显示」= 常滚不依赖悬停，
      悬停暂停便于读名/点改名；2026-10-03 首版是悬停才滚）：溢出即滚，shift/时长由 JS 在列表
      渲染后统一测量写入（约 26px/s），两端各停 12% 时长再折返（alternate 往返）；
-     reduced-motion 走全局 0.01ms 覆盖=实际不动 */
+     reduced-motion 有专项回退（见下方媒体查询：停动画+恢复省略号），不再走全局 0.01ms 覆盖 */
   .img-grid .ic-info .title .mq-inner { display: inline-block; vertical-align: top; }
   .img-grid .ic-info .title.mq .mq-inner {
     animation: titleMq var(--mq-dur, 7s) linear infinite alternate;
@@ -733,6 +740,14 @@
   @keyframes titleMq {
     0%, 12% { transform: translateX(0); }
     88%, 100% { transform: translateX(calc(-1 * var(--mq-shift, 0px))); }
+  }
+  /* 减动态回退（2026-10-16「显示不完整」批次补）：跑马灯是 infinite 功能性滚动，
+     上方全局 reduce 规则（animation-duration:.01ms !important）会把整个站点名静止钉在
+     起点而裁剪窗右缘无任何截断指示——比省略号更糟的「看不见的截断」。豁免它：改为
+     不动+撤省略号恢复 ellipsis（静态可读全名靠 title 提示），标题整行本就有 hover title */
+  @media (prefers-reduced-motion: reduce) {
+    .img-grid .ic-info .title.mq { text-overflow: ellipsis; }
+    .img-grid .ic-info .title.mq .mq-inner { animation: none; }
   }
   .img-grid .ic-info .inline-edit { margin: 0 0 2px; }
   .empty { color: var(--muted); font-size: 14px; text-align: center; padding: 34px 0; }

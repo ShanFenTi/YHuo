@@ -694,9 +694,14 @@
   /* ⋯更多 GlideSelect 宿主是 span（2026-10-16）：上条「隐藏按钮文字」规则会连它一起藏掉——
      组件整个 display:none，菜单量不到尺寸永远弹不出。整条豁免（chip 钮/菜单/滑垫全部参与布局） */
   .img-grid .ic-ov .row-actions span.gs { display: inline-block; }
-  .img-grid .ic-ov .row-actions button { padding: 4px 5px !important; background: rgba(255,255,255,.16); color: #ffffff; backdrop-filter: blur(4px); }
-  .img-grid .ic-ov .row-actions button svg { width: 14px; height: 14px; }
-  .img-grid .ic-ov .row-actions button:hover { background: rgba(255,255,255,.28); opacity: 1; }
+  /* 这三条白玻璃规则只服务普通图标钮（查看/改名等）；⋯ GlideSelect chip（button.gs-btn）
+     必须排除——:not(.gs-btn) 是特异性补漏（2026-10-16「为什么是透明的」二次修复）：
+     此前按「gs-btn 规则在后面覆盖」处理，但本规则特异性 (0,3,1) 高于 .ic-ov .gs-btn 的
+     (0,3,0)，白玻璃 rgba(255,255,255,.16)+blur 一直压着深墨实底（computedStyle 实测
+     rgba(255,255,255,0.16)+blur(4px)），钮在图上仍是透图的。chip 专项样式在下方 gs-btn 段 */
+  .img-grid .ic-ov .row-actions button:not(.gs-btn) { padding: 4px 5px !important; background: rgba(255,255,255,.16); color: #ffffff; backdrop-filter: blur(4px); }
+  .img-grid .ic-ov .row-actions button:not(.gs-btn) svg { width: 14px; height: 14px; }
+  .img-grid .ic-ov .row-actions button:not(.gs-btn):hover { background: rgba(255,255,255,.28); opacity: 1; }
   .img-grid .ic-ov .row-actions button.danger:hover {
     color: #ffffff;
     background: color-mix(in srgb, var(--danger) 55%, transparent);
@@ -1013,7 +1018,9 @@
   .gs-row.danger .gs-ic { color: var(--danger); }
   /* 角标 GlideSelect 触发钮（2026-10-16 站长「为什么是透明的」定版）：常驻后钮身不能再用悬停
      浮层时代的半透明白玻璃（rgba(255,255,255,.16)+blur 在图片上=透图），改不透明深墨实底+白点，
-     恒压图片恒清晰，悬停/开启态同色微亮提反馈 */
+     恒压图片恒清晰，悬停/开启态同色微亮提反馈。
+     注意：本段特异性 (0,3,0) 天生低于上方 .row-actions button 规则的 (0,3,1)——后者已加
+     :not(.gs-btn) 排除本钮，特异性补漏见上方注释；靠「写在后面覆盖」救不了特异性差一档 */
   .img-grid .ic-ov .gs-btn { background: rgba(0, 0, 0, 0.55); color: #ffffff; box-shadow: 0 1px 4px rgba(0,0,0,.28); }
   .img-grid .ic-ov .gs-btn:hover, .img-grid .ic-ov .gs.open .gs-btn { background: rgba(0, 0, 0, 0.72); }
   @media (prefers-reduced-motion: reduce) {

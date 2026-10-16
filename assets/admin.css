@@ -1011,9 +1011,11 @@
   .gs-row.on .gs-tick { visibility: visible; }
   .gs-row.danger { color: var(--danger); }
   .gs-row.danger .gs-ic { color: var(--danger); }
-  /* 图片卡悬停层内的 GlideSelect：chip 透明融入玻璃层（与其他图标钮同规格） */
-  .img-grid .ic-ov .gs-btn { background: rgba(255, 255, 255, 0.16); color: #ffffff; backdrop-filter: blur(4px); box-shadow: 0 1px 4px rgba(0,0,0,.28); }
-  .img-grid .ic-ov .gs-btn:hover, .img-grid .ic-ov .gs.open .gs-btn { background: rgba(255, 255, 255, 0.28); }
+  /* 角标 GlideSelect 触发钮（2026-10-16 站长「为什么是透明的」定版）：常驻后钮身不能再用悬停
+     浮层时代的半透明白玻璃（rgba(255,255,255,.16)+blur 在图片上=透图），改不透明深墨实底+白点，
+     恒压图片恒清晰，悬停/开启态同色微亮提反馈 */
+  .img-grid .ic-ov .gs-btn { background: rgba(0, 0, 0, 0.55); color: #ffffff; box-shadow: 0 1px 4px rgba(0,0,0,.28); }
+  .img-grid .ic-ov .gs-btn:hover, .img-grid .ic-ov .gs.open .gs-btn { background: rgba(0, 0, 0, 0.72); }
   @media (prefers-reduced-motion: reduce) {
     .gs-menu, .gs-pill, .gs-chev, .gs-btn { transition: none !important; animation: none !important; }
   }

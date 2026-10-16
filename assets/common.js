@@ -360,6 +360,16 @@ window.__siteCalendar = (function () {
         for (i = 0; i < batch.length; i++) {
           batch[i].style.setProperty('--reveal-delay', Math.min(i, 6) * 0.06 + 's');
           batch[i].classList.add('is-revealed');
+          // 时钟冻结兜底（2026-10-16 站长真机「爱弥斯官方相册打不开」同源）：fx-reveal-in 是
+          // CSS 动画，fill:backwards——渲染层动画时钟不推进时（IAB 内嵌 iframe 实测 t 恒 0；
+          // 移动端后台节流/省电分屏同类）is-revealed 壳永久卡在 from 帧 opacity:0，照片墙
+          // 全被隐形壳罩住。终态声明盖不过 running 动画的帧值，必须到点后用类把动画整个摘掉。
+          // setTimeout 不依赖动画时钟（watchdog 同源可靠），delay+0.65s 后补 reveal-done
+          //（CSS：animation:none+终态三件套）；动画正常跑完的环境多摘一次无感
+          (function (el) {
+            var d = Math.min(i, 6) * 0.06;
+            setTimeout(function () { el.classList.add('reveal-done'); }, Math.round(d * 1000) + 650);
+          })(batch[i]);
         }
       }
       function queueShow() {

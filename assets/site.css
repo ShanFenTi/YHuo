@@ -7725,6 +7725,16 @@
         filter: blur(0);
         animation: fx-reveal-in 0.6s var(--ease-out) var(--reveal-delay, 0s) backwards;
       }
+
+      /* reveal-done：动画时钟冻结环境的 JS 兜底（common.js 揭示批 setTimeout 到点补挂）——
+         running 动画的帧值盖过终态声明，只有把 animation 整个摘掉终态才生效。
+         动画正常跑完的环境这批类到点后追加，视觉无变化 */
+      html.fx-reveal .page-main :is(.album-bar, .apple-card, .doc-card, .note, .notes-year).reveal-done {
+        animation: none;
+        opacity: 1;
+        transform: none;
+        filter: blur(0);
+      }
     }
 
     @keyframes fx-reveal-in {

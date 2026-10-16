@@ -9711,11 +9711,15 @@ window.__siteCalendar = (function () {
           return;
         }
         var mv;
+        // delay 口径统一为毫秒（调用方 placeCard 的 o.delay 均按 ms 传：mount 错峰 position*60、
+        // placeAll stagger*1000）——tick 循环按秒积分，这里 /1000 换算。旧 pile 下卡片初值≈目标值，
+        // 错峰延迟未生效也看不出；fan 初值（叠直）≠目标（展开），单位不修所有延迟弹簧永不落位
+        var delaySec = (extra.delay || 0) / 1000;
         if (extra.duration != null) {
-          mv = { tween: true, cur: slot.cur, target: target, from: slot.cur, dur: extra.duration, t: 0, delay: extra.delay || 0, apply: slot.apply };
+          mv = { tween: true, cur: slot.cur, target: target, from: slot.cur, dur: extra.duration, t: 0, delay: delaySec, apply: slot.apply };
         } else {
           var sp = SPRINGS[kind] || SPRINGS.place;
-          mv = { cur: slot.cur, target: target, vel: extra.velocity || 0, k: sp[0] * S.speed * S.speed, c: sp[1] * S.speed, delay: extra.delay || 0, apply: slot.apply };
+          mv = { cur: slot.cur, target: target, vel: extra.velocity || 0, k: sp[0] * S.speed * S.speed, c: sp[1] * S.speed, delay: delaySec, apply: slot.apply };
         }
         moving.set(k, mv);
         ensureRaf();

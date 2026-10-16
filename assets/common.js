@@ -9625,6 +9625,7 @@ window.__siteCalendar = (function () {
         rafId = 0;
         var dt = lastT ? Math.min((now - lastT) / 1000, 0.032) : 0.008;
         lastT = now;
+        lastTickAt = now; // 看门狗心跳
         var active = false;
         moving.forEach(function (mv, key) {
           if (mv.delay > 0) { mv.delay -= dt; if (mv.delay > 0) { active = true; return; } }
@@ -9649,21 +9650,37 @@ window.__siteCalendar = (function () {
           }
           mv.apply(mv.cur);
         });
-        if (active) rafId = frame(tick);
-        else lastT = 0;
+        if (active) { rafId = frame(tick); armWatchdog(); }
+        else { lastT = 0; clearTimeout(watchdog); watchdog = 0; }
       }
       // 帧调度：可见走 rAF，文档隐藏走 16ms 定时器——原版依赖 motion/react 的 animate，
-      // 其在后台标签页自动退化为定时器驱动（不渲染但动画照走不丢），复刻同语义
-      var frameIsTimer = false; // 当前帧调度是不是定时器（destroy 清理要对号）
+      // 其在后台标签页自动退化为定时器驱动（不渲染但动画照走不丢），复刻同语义。
+      // 再兜一层看门狗：某些内嵌窗格/被遮挡窗口 visibilityState 仍报 visible 但 rAF 整体冻结
+      //（本地 IAB 实测踩中——弹簧永远不走、卡停在初始位），260ms 没见到 tick 就切定时器驱动，
+      // rAF 健康的环境零开销（看门狗只在动画进行中每 260ms 醒一次查心跳）
+      var timerMode = false, lastTickAt = 0, watchdog = 0;
       function frame(fn) {
-        if (document.hidden) return setTimeout(function () { fn(performance.now()); }, 16);
+        if (timerMode || document.hidden) return setTimeout(function () { fn(performance.now()); }, 16);
         return requestAnimationFrame(fn);
+      }
+      function armWatchdog() {
+        if (timerMode || document.hidden) return;
+        clearTimeout(watchdog);
+        watchdog = setTimeout(function () {
+          watchdog = 0;
+          if (timerMode || !moving.size) return;
+          if (performance.now() - lastTickAt > 220) {
+            timerMode = true; // 本环境 rAF 冻结：永久切定时器（引擎生命周期内）
+            if (rafId) { cancelAnimationFrame(rafId); rafId = 0; }
+            if (moving.size && !rafId) rafId = setTimeout(function () { tick(performance.now()); }, 16);
+          } else if (moving.size) armWatchdog();
+        }, 260);
       }
       function ensureRaf() {
         if (rafId) return;
         lastT = 0;
-        frameIsTimer = document.hidden;
         rafId = frame(tick);
+        armWatchdog();
       }
       // animate(values, key, springName, {velocity, delay, target, duration})
       // —— 对齐原版 springFor（speed² 缩放刚度、speed 缩放阻尼）与 fade（duration 渐变）
@@ -10110,8 +10127,9 @@ window.__siteCalendar = (function () {
         destroy: function () {
           destroyed = true;
           clearTimeout(autoplayTimer);
+          clearTimeout(watchdog);
           if (rafId) {
-            if (frameIsTimer) clearTimeout(rafId);
+            if (timerMode) clearTimeout(rafId);
             else cancelAnimationFrame(rafId);
             rafId = 0;
           }

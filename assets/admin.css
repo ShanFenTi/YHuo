@@ -716,13 +716,15 @@
     color: var(--muted); font-size: 11.5px; white-space: nowrap;
     overflow: hidden; text-overflow: ellipsis; /* 尺寸+日期超窄卡时也走省略号（2026-10-03 截断修复） */
   }
-  /* 超长文件名悬停跑马灯（2026-10-03 站长提案）：静止省略号，悬停标题=内层 span 平移读全名；
-     shift/时长由 JS pointerenter 写入（约 26px/s），两端各停 12% 时长再折返；
+  /* 超长文件名滚动跑马灯（2026-10-16 站长「图片名称太长使用滚动显示」= 常滚不依赖悬停，
+     悬停暂停便于读名/点改名；2026-10-03 首版是悬停才滚）：溢出即滚，shift/时长由 JS 在列表
+     渲染后统一测量写入（约 26px/s），两端各停 12% 时长再折返（alternate 往返）；
      reduced-motion 走全局 0.01ms 覆盖=实际不动 */
   .img-grid .ic-info .title .mq-inner { display: inline-block; vertical-align: top; }
-  .img-grid .ic-info .title.mq:hover .mq-inner {
+  .img-grid .ic-info .title.mq .mq-inner {
     animation: titleMq var(--mq-dur, 7s) linear infinite alternate;
   }
+  .img-grid .ic-info .title.mq:hover .mq-inner { animation-play-state: paused; }
   @keyframes titleMq {
     0%, 12% { transform: translateX(0); }
     88%, 100% { transform: translateX(calc(-1 * var(--mq-shift, 0px))); }

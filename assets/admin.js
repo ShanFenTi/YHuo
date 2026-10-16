@@ -1769,6 +1769,8 @@
   }
   if ($('qqCoverBtn')) $('qqCoverBtn').addEventListener('click', qqCoverBatch);
 
+  // 跑马灯 resize 重测只挂一次的守卫（模块级；渲染循环里每次重绘都会走到那段代码）
+  var mqResizeHooked = false, mqResizeTimer = null;
   function renderList() {
     var list = $('list');
     var arr = items[currentType] || [];
@@ -1845,23 +1847,14 @@
       title.title = it.title;
       title.addEventListener('click', function () { startRename(it, title); });
       if (currentType === 'image') {
-        // 超长文件名悬停跑马灯（2026-10-03 站长提案；静止仍省略号，悬停可读全名）：
-        // pointerenter 时量溢出量写 --mq-shift/--mq-dur（约 26px/s，3~14s 封顶），
-        // CSS 在内层 span 平移、两端各停 12% 时长折返；overflow:hidden 的 .title 充当裁剪窗
+        // 超长文件名滚动跑马灯（2026-10-16 站长「图片名称太长使用滚动显示」= 常滚不依赖悬停，
+        // 悬停暂停便于读名；2026-10-03 首版是悬停才滚）：溢出量改在列表渲染后统一测量写入
+        // --mq-shift/--mq-dur（约 26px/s，3~14s 封顶），CSS 在内层 span 平移、两端各停 12%
+        // 时长折返；overflow:hidden 的 .title 充当裁剪窗；reduced-motion 走全局 0.01ms 覆盖=实际不动
         var mqInner = document.createElement('span');
         mqInner.className = 'mq-inner';
         mqInner.textContent = it.title;
         title.appendChild(mqInner);
-        title.addEventListener('pointerenter', function () {
-          var shift = mqInner.scrollWidth - title.clientWidth;
-          if (shift > 4) {
-            title.classList.add('mq');
-            title.style.setProperty('--mq-shift', shift + 'px');
-            title.style.setProperty('--mq-dur', Math.min(14, Math.max(3, shift / 26)).toFixed(1) + 's');
-          } else {
-            title.classList.remove('mq');
-          }
-        });
       } else {
         title.textContent = it.title;
       }
@@ -2057,6 +2050,47 @@
 
       list.appendChild(li);
     });
+    // 跑马灯溢出量统一测量（2026-10-16 常滚版）：挂上 DOM 后 .title 才有 clientWidth 可量，
+    // 只对溢出的卡打 .mq 写 --mq-shift/--mq-dur；窗口拉伸后重测（宽度变大可能不再溢出）
+    if (currentType === 'image') {
+      requestAnimationFrame(function () {
+        list.querySelectorAll('.img-grid .ic-info .title').forEach(function (t) {
+          var inner = t.querySelector('.mq-inner');
+          if (!inner) return;
+          var shift = inner.scrollWidth - t.clientWidth;
+          if (shift > 4) {
+            t.classList.add('mq');
+            t.style.setProperty('--mq-shift', shift + 'px');
+            t.style.setProperty('--mq-dur', Math.min(14, Math.max(3, shift / 26)).toFixed(1) + 's');
+          } else {
+            t.classList.remove('mq');
+            t.style.removeProperty('--mq-shift');
+            t.style.removeProperty('--mq-dur');
+          }
+        });
+      });
+      if (!mqResizeHooked) {
+        mqResizeHooked = true;
+        window.addEventListener('resize', function () {
+          clearTimeout(mqResizeTimer);
+          mqResizeTimer = setTimeout(function () {
+            document.querySelectorAll('#list.img-grid .ic-info .title.mq').forEach(function (t) {
+              var inner = t.querySelector('.mq-inner');
+              if (!inner) return;
+              var shift = inner.scrollWidth - t.clientWidth;
+              if (shift > 4) {
+                t.style.setProperty('--mq-shift', shift + 'px');
+                t.style.setProperty('--mq-dur', Math.min(14, Math.max(3, shift / 26)).toFixed(1) + 's');
+              } else {
+                t.classList.remove('mq');
+                t.style.removeProperty('--mq-shift');
+                t.style.removeProperty('--mq-dur');
+              }
+            });
+          }, 160);
+        });
+      }
+    }
     syncSelAll(showArr);
     updateBatchBtn();
     renderStorage();

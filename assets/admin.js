@@ -1838,7 +1838,6 @@
         thumb.style.cursor = 'zoom-in';
         thumb.addEventListener('click', function () { openPreview(it); });
         icThumbs.appendChild(thumb);
-        icThumbs.appendChild(icOv);
         li.appendChild(icThumbs);
       }
 
@@ -2053,7 +2052,7 @@
         actions.appendChild(del);
       }
 
-      if (currentType === 'image') { icOv.appendChild(actions); li.appendChild(icInfo); }
+      if (currentType === 'image') { li.appendChild(icOv); li.appendChild(icInfo); }
       else li.appendChild(actions);
 
       list.appendChild(li);

@@ -676,20 +676,16 @@
   .img-grid .ic-thumbs { position: relative; }
   .img-grid .thumb { width: 100%; height: auto; aspect-ratio: 4 / 3; display: block; border: none; border-radius: 0; background: var(--chip); }
   .img-grid .ic-ov {
-    /* 2026-10-16 站长「更多放在图片的右下角」→「是卡片的右下角」两步定版：悬停层从「通栏渐变+
-       居中钮组」改为一枚 ⋯ 角标，且锚的是整张卡片（li 自己 position:relative，角标挂 li 直下、
-       不再嵌在 .ic-thumbs 内），右下 6px 钉卡角（渐变底/居中布局/大 padding 全退场）；
-       浮现时机（悬停显/触屏常显）不变 */
+    /* 2026-10-16 站长「更多放在图片的右下角」→「是卡片的右下角」→「右下角常驻」三步定版：
+       悬停层从「通栏渐变+居中钮组」改为一枚 ⋯ 角标，且锚的是整张卡片（li 自己 position:relative，
+       角标挂 li 直下、不再嵌在 .ic-thumbs 内），右下 6px 钉卡角（渐变底/居中布局/大 padding 全退场）；
+       浮现时机全档常驻（2026-10-16 站长「右下角常驻的三个点而不是透明的」：桌面不再悬停显） */
     position: absolute; right: 6px; bottom: 6px;
     display: flex; justify-content: flex-end; align-items: flex-end; gap: 4px;
     padding: 0;
   }
-  @media (hover: hover) and (pointer: fine) {
-    .img-grid .ic-ov { opacity: 0; pointer-events: none; transition: opacity .18s var(--ease-outc); }
-    ul.list.img-grid li:hover .ic-ov, ul.list.img-grid li:focus-within .ic-ov { opacity: 1; pointer-events: auto; }
-  }
-  /* 悬停操作钮（2026-10-16 角标化后只剩 ⋯ 一枚，2026-10-16 再定版=钉整卡右下角）：
-     白色玻璃底压在图片上（同前台毛玻璃配方），触屏常显不隐藏 */
+  /* 悬停操作钮（2026-10-16 角标化后只剩 ⋯ 一枚，2026-10-16 再定版=钉整卡右下角+常驻）：
+     白色玻璃底压在图片上（同前台毛玻璃配方） */
   .img-grid .ic-ov .row-actions {
     margin: 0; opacity: 1; pointer-events: auto; flex-basis: auto;
     max-width: 100%;

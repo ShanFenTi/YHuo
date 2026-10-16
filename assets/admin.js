@@ -3850,6 +3850,7 @@
       row.appendChild(tick);
       list.appendChild(row);
     });
+    menu.appendChild(list);
     host.appendChild(btn);
     host.appendChild(portal);
 

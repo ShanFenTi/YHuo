@@ -9295,6 +9295,30 @@
     @media (max-width: 1024px) { .wall { grid-template-columns: repeat(3, 1fr); } }
     @media (max-width: 640px)  { .wall { grid-template-columns: repeat(2, 1fr); } }
 
+    /* ===== 相册手机版适配（≤640px，2026-10-16 站长「相册进行手机版优化适配」）=====
+       实测口径：390px 视口单列 entry≈358px、牌堆固定 240×200、fan 最外卡（40°，origin 右下）
+       左探 entry 外 36px、下探 83px（压标题区）。逐项： */
+    @media (max-width: 640px) {
+      /* ① 牌堆自适应缩小：宽度跟格子走（min(240px, 74%)≈265 上限不变），高度按 6:5 等比；
+         fan 扇形旋转轴在右下，缩小后外卡探出量随宽度等比收窄 */
+      .album-stack { width: min(240px, 74%); height: auto; aspect-ratio: 6 / 5; }
+      /* ② cover 横向呼吸位：外卡探出不再贴页边；顶部收窄（窄屏纵向空间金贵） */
+      .album-cover { padding: 14px 18px 4px; }
+      /* ③ 标题热区加大：卡底探出量缩小后 margin 也收，触达高度靠 padding 补（≥44px 热区） */
+      .album-info { margin-top: 14px; padding: 8px 12px 10px; }
+      .album-info h3 { font-size: 16px; }
+      /* ④ 照片墙收紧：白框 8/26→6/18、间距 22/20→14/12、内衬 22→14 */
+      .album-photos-inner { padding: 4px 14px 18px; }
+      .wall { gap: 14px 12px; padding-top: 10px; }
+      .wall-item .frame { padding: 6px 6px 18px; }
+      /* ⑤ 展开态满屏最低高度扣掉窄屏头部更矮的余量（96px 是桌面头部补偿，窄屏同源沿用） */
+      .album-list.has-expanded { min-height: calc(100vh - 84px); }
+      /* ⑥ 灯箱贴边看图：5vw→10px，大图在同尺寸下多占约 8% 宽 */
+      .lightbox { padding: 10px; }
+      /* ⑦ 计数徽章随堆缩小同步收（11px 字在 74% 堆上比例失衡） */
+      .album-count-badge { padding: 2px 10px; font-size: 10px; }
+    }
+
     /* 拍立得照片卡：白框 + 随机倾斜 + 错落入场 + spring 回正 */
     .wall-item {
       position: relative;

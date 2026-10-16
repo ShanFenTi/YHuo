@@ -9556,6 +9556,10 @@ window.__siteCalendar = (function () {
     var albumLbIndex = 0;
     var albumLbKeydown = null;
     var albumLbFavsChanged = null;
+    // 手机版滑动翻页（2026-10-16 相册手机版适配）：灯箱内左右滑=上一张/下一张，下滑=关闭。
+    // 死区 24px 起判方向；横向位移>60px 翻页、纵向>80px 且大于横向判下滑关闭；
+    // 拖动中图片跟手轻移（transform，松手归位）——只在触摸设备生效（pointerType==='touch'）
+    var albumLbTouch = null;
     var albumLoaded = false; // 本页图片清单是否到终态（成功/失败；加载中 false——albumOpenPhoto 据此决定就地开灯箱还是写通道等渲染后消费）
     var albumGoneTimer = null;     // 展开后其他相册「缩小退场完成 → display:none」的 360ms 延迟
     var albumCollapseTimer = null; // 收回时「照片淡出 → 容器收起+相册浮回」的 200ms 延迟
@@ -10828,6 +10832,44 @@ window.__siteCalendar = (function () {
         else if (e.key === 'ArrowRight') albumLbStep(1);
       };
       document.addEventListener('keydown', albumLbKeydown);
+      // 灯箱触摸滑动（手机版翻页/关闭）：挂在灯箱元素上（不干扰页面滚动），
+      // pointer events 统一处理；photo 点击开灯箱的冒泡已在格子层 stopPropagation
+      var lightboxEl = document.getElementById('lightbox');
+      if (lightboxEl) {
+        lightboxEl.addEventListener('pointerdown', function (e) {
+          if (e.pointerType !== 'touch' || lightboxEl.hidden) return;
+          albumLbTouch = { id: e.pointerId, x: e.clientX, y: e.clientY, active: false, img: lightboxEl.querySelector('img') };
+        });
+        lightboxEl.addEventListener('pointermove', function (e) {
+          var t = albumLbTouch;
+          if (!t || e.pointerId !== t.id || lightboxEl.hidden) return;
+          var dx = e.clientX - t.x, dy = e.clientY - t.y;
+          if (!t.active) {
+            if (Math.hypot(dx, dy) < 24) return; // 死区：防轻点误判
+            t.active = true;
+            if (t.img) t.img.style.transition = 'none';
+          }
+          if (t.img) {
+            // 横滑带图（1:1 跟手）；下滑带一点下坠感（0.6 衰减）
+            var tx = Math.abs(dx) > Math.abs(dy) ? dx : 0;
+            var ty = dy > 0 && Math.abs(dy) >= Math.abs(dx) ? dy * 0.6 : 0;
+            if (t.img) t.img.style.transform = 'translate(' + tx + 'px,' + ty + 'px)';
+          }
+        });
+        var albumLbTouchEnd = function (e) {
+          var t = albumLbTouch;
+          if (!t || e.pointerId !== t.id) return;
+          albumLbTouch = null;
+          if (lightboxEl.hidden) return;
+          var dx = e.clientX - t.x, dy = e.clientY - t.y;
+          if (t.img) { t.img.style.transition = ''; t.img.style.transform = ''; } // 跟手位移归位（.show img 的 scale(1) 接管）
+          if (!t.active) return;
+          if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 60) albumLbStep(dx < 0 ? 1 : -1);
+          else if (dy > 80 && Math.abs(dy) > Math.abs(dx)) albumLbClose();
+        };
+        lightboxEl.addEventListener('pointerup', albumLbTouchEnd);
+        lightboxEl.addEventListener('pointercancel', albumLbTouchEnd);
+      }
       // 收藏在播放列表/别处增删时，灯箱心形同步（refreshHearts 派发）
       albumLbFavsChanged = function () { albumLbUpdate(); };
       document.addEventListener('yhuo:favs-changed', albumLbFavsChanged);

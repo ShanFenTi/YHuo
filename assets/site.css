@@ -9156,51 +9156,60 @@
     .album-list.has-expanded .album-entry:not(.expanded) { opacity: 0; transform: scale(.92); pointer-events: none; }
     .album-list.has-expanded .album-entry:not(.expanded).gone { display: none; }
 
-    /* 牌堆封面：三张微旋转叠放，悬停/展开时扇形张开 */
+    /* 牌堆封面：reactbits Stack 引擎驱动（common.js albumStackCreate，2026-10-16）。
+       卡片位移/旋转/层级/透明度全部由 JS 直控 inline transform（原版 motion values 语义），
+       CSS 只管皮肤：原版 stack-card-face 同款白框（padding 6px JS 写入）+ 圆角 16px +
+       原版双层阴影 + 深度遮暗层。旧「三张叠放/悬停扇开/4s 交叉淡入」的 .stack-photo 全套退役 */
     .album-cover { padding: 22px 16px 8px; text-align: center; }
-    .album-stack { position: relative; height: 176px; max-width: 240px; margin: 0 auto; }
-    .stack-photo {
+    .album-stack {
+      position: relative; height: 200px; max-width: 240px; margin: 0 auto;
+      touch-action: pan-y; /* 顶卡以下允许页面滚动（原版非顶卡 touchAction:'auto' 同义） */
+      outline: none;
+    }
+    .album-stack:focus-visible .ys-card[data-idx] { outline: none; }
+    .album-stack:focus-visible::after {
+      content: ''; position: absolute; inset: -4px; border-radius: 20px;
+      border: 2px solid var(--primary); pointer-events: none; opacity: .55;
+    }
+    .ys-card {
       position: absolute; inset: 0;
-      transform-origin: center;
-      transition: transform .5s var(--spring), opacity .35s ease;
+      will-change: transform;
+      user-select: none; -webkit-user-select: none;
+      -webkit-tap-highlight-color: transparent;
+      cursor: grab;
+    }
+    .album-stack.dragging .ys-card { cursor: grabbing; }
+    .ys-card:first-of-type { touch-action: none; } /* 顶卡（DOM 首个=初始顶卡）拖拽与滚屏手势隔离 */
+    .ys-face {
+      position: absolute; inset: 0;
+      overflow: hidden;
+      border: 0 solid var(--card); /* 白框宽度由 JS 写 padding 时一并呈现在背景色上 */
+      background: var(--card);
       will-change: transform;
     }
-    .stack-photo .img-wrap {
-      position: relative;
-      width: 100%; height: 100%;
-      border-radius: 10px; overflow: hidden;
-      border: 6px solid var(--card);
-      box-shadow: var(--shadow-md);
-      background: var(--card);
+    .ys-content { position: relative; width: 100%; height: 100%; overflow: hidden; }
+    .ys-content img {
+      display: block; width: 100%; height: 100%; object-fit: cover;
+      pointer-events: none;
+      -webkit-user-drag: none;
     }
-    /* 两张图叠在一起做交叉淡入淡出（幻灯片式换图，不做位移避免割裂感） */
-    .stack-photo .img-wrap img {
-      position: absolute; inset: 0;
-      width: 100%; height: 100%; object-fit: cover; display: block;
-      transition: opacity .7s ease;
-    }
-    .stack-photo .img-wrap img.under { opacity: 0; }
-    .stack-photo:nth-child(1) { transform: rotate(-4deg) translateY(0)    scale(1);    z-index: 1; }
-    .stack-photo:nth-child(2) { transform: rotate(0deg)  translateY(12px) scale(.96); z-index: 2; }
-    .stack-photo:nth-child(3) { transform: rotate(3deg)  translateY(24px) scale(.92); z-index: 3; }
-    .album-entry:hover .stack-photo:nth-child(1),
-    .album-entry.expanded .stack-photo:nth-child(1) { transform: rotate(-12deg) translateY(-4px)  scale(.95); }
-    .album-entry:hover .stack-photo:nth-child(2),
-    .album-entry.expanded .stack-photo:nth-child(2) { transform: rotate(0deg)   translateY(-10px) scale(1); }
-    .album-entry:hover .stack-photo:nth-child(3),
-    .album-entry.expanded .stack-photo:nth-child(3) { transform: rotate(12deg)  translateY(-4px)  scale(.95); }
+    .ys-shade { position: absolute; inset: 0; background: #000; pointer-events: none; opacity: 0; }
 
     .album-count-badge {
-      position: absolute; bottom: -6px; right: 0; z-index: 4;
+      position: absolute; bottom: -6px; right: 0; z-index: 50; /* 高于引擎 z 上限（count+1）防被飞行卡盖住 */
       padding: 3px 12px; border-radius: 999px;
       background: var(--primary); color: var(--primary-foreground);
       font-size: 11px; font-weight: 700;
       box-shadow: var(--shadow-md);
+      pointer-events: none;
     }
 
-    .album-info { margin-top: 20px; padding-bottom: 6px; }
+    /* 标题区=展开照片墙的热区（点击语义拆分：牌堆专管翻牌，2026-10-16） */
+    .album-info { margin-top: 20px; padding-bottom: 6px; cursor: pointer; border-radius: 8px; }
     .album-info h3 { font-size: 17px; font-weight: 700; }
     .album-info p { font-size: 12px; color: var(--muted-foreground); margin-top: 4px; letter-spacing: .05em; }
+    .album-info:hover h3 { color: var(--primary); }
+    .album-info:focus-visible { outline: 2px solid var(--primary); outline-offset: 4px; }
 
     /* 照片墙容器：高度不参与动画——display 瞬时切换，入场动画由每张 .wall-item 的
        stagger 错落（纯 transform/opacity 合成动画）承担。
@@ -9265,6 +9274,9 @@
       .album-entry.dealing .album-stack { animation: none; }
       .wall-item.deal { transition: none; }
       .album-entry.back { animation: none; }
+      /* Stack 牌堆在 JS 里对 reduceMotion 有整条直切分支（albumStackCreate S.reduceMotion），
+         这里再兜一层：万一 JS 侧判漏，别让弹簧 transform 与过渡残影同屏 */
+      .ys-card, .ys-face { transition: none !important; }
     }
     .album-photos-inner { padding: 4px 22px 24px; }
     .wall {

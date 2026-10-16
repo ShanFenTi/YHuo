@@ -9541,12 +9541,14 @@ window.__siteCalendar = (function () {
     // =========================
     // 相册页（/album/，2026-10-01 恢复为第九个真实页面；原 2026-09-05 版寄生首页画廊 DOM，随杂项页
     // 移除失去数据源，现直接吃 /api/playlist 的 images 分支——后台 KV 图片 + media.album 分组）。
-    // 三层结构照旧：牌堆封面（前 3 张叠放 + 悬停扇开 + 4s 封面轮播）→ 点击展开照片墙（拍立得卡错落入场）
+    // 三层结构：牌堆封面（Stack 引擎——reactbits.dev Stack 组件零依赖复刻：pile 散落 +
+    // 点击/拖拽翻牌 + autoplay 定时翻牌，2026-10-16 替换原「三张叠放+悬停扇开+4s 交叉淡入」；
+    // 点击牌堆=翻牌，展开照片墙挪到标题区）→ 照片墙（发牌入场/收回飞回）
     // → 灯箱（左右翻页 / ♥ 收藏 / Esc / 遮罩关闭）。旧版"大卡片 3D 跟随/照片悬停倾斜"动效依赖
     // 已随画廊删除的外观开关，不随本恢复带回。
     // =========================
     var albumAbort = null;
-    var albumTimers = [];
+    var albumStacks = []; // 本页各相册的牌堆引擎实例（albumStackCreate 返回值；离页/重渲染时逐个停机）
     var albumImgs = [];       // 扁平照片清单 [{name,url,album}]（灯箱翻页/收藏按它走）
     var albumOrderNames = null; // 后台相册顺序表（playlist albums 字段，2026-10-03 相册排序接通；null=老响应无此字段走出现序）
     var albumLbIndex = 0;
@@ -9561,8 +9563,569 @@ window.__siteCalendar = (function () {
                                    // 可能晚到在「重新展开」的状态上，没这个守卫会把新展开误收回去
 
     function albumStopCycles() {
-      albumTimers.forEach(function (t) { clearInterval(t); });
-      albumTimers = [];
+      albumStacks.forEach(function (st) { try { st.destroy(); } catch (e) {} });
+      albumStacks = [];
+    }
+
+    // =========================
+    // Stack 牌堆引擎（reactbits.dev Stack 组件零依赖原生复刻，2026-10-16）。
+    // 复刻要点（常量/公式/状态机逐项对齐原版源码 Stack.jsx）：
+    //   · pile 布局：Math.sin 伪随机噪声给每张卡算散落偏移与旋转（placement 的 pile 分支原式）
+    //   · 弹簧组 SPRINGS 原值照抄（fling[650,42]/place[260,24]/settle[320,34]/tuck[240,28]/
+    //     face[240,30]/lean[240,28]/press[420,34]），半隐式欧拉积分器代替 motion/react 的 animate
+    //   · 交互：只有顶卡可拖；6px 点击容差；按住抬起 PRESS_SCALE=1.035；拖动 3D 倾斜
+    //     （tilt=30，lean 公式原样）；松手位移>90px 或甩速>650px/s 且与拖向同向 → sendToBack
+    //   · 掷出：EXITS.pile 走伪随机方向；清屏距离 clearance*1.12+40；rAF 监听「离堆」
+    //     （bbox 相交检测）先压 z 到堆底（turn）再落 z（land），1500ms 兜底
+    //   · shade 遮暗 = min(.6, 深度×.14)（placeCard 原式）；visible=5 只显 5 张
+    //   · reduced-motion：0.2s easeOut 直切（springFor 的 reduceMotion 分支）
+    //   · autoplay：定时 sendToBack(null)，悬停/拖拽/文档隐藏时暂停（与原轮播跳过条件一致）
+    // 差异（站点语境）：pointer capture 防拖出 iframe；touch-action:none 只挂顶卡（拖拽
+    // 与页面滚动手势隔离，非顶卡 pan-y 照常滚屏——手机上除顶卡外都能正常滚动页面）。
+    function albumStackCreate(host, imgs, opts) {
+      opts = opts || {};
+      var S = {
+        layout: 'pile',
+        visible: opts.visible || 5,
+        spread: opts.spread != null ? opts.spread : 0.5,
+        depth: opts.depth != null ? opts.depth : 0.5,
+        tilt: 30,
+        threshold: 90,
+        speed: 1,
+        count: imgs.length,
+        reduceMotion: !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches)
+      };
+      var CLICK_SLOP = 6, FLICK_SPEED = 650, LEAN_SPEED = 1300, LEAN_REACH = 260, PRESS_SCALE = 1.035;
+      var SPRINGS = {
+        place: [260, 24], settle: [320, 34], tuck: [240, 28], face: [240, 30],
+        lean: [240, 28], press: [420, 34], fling: [650, 42]
+      };
+      var SHADOW = '0 14px 34px -10px rgba(0,0,0,.45), 0 3px 8px -2px rgba(0,0,0,.18)';
+      var FRAME = 6, RADIUS = 16, INNER_RADIUS = RADIUS - FRAME;
+
+      var clamp = function (v, a, b) { return Math.min(b, Math.max(a, v)); };
+      var mix = function (a, b, t) { return a + (b - a) * t; };
+      var noise = function (seed) { var v = Math.sin(seed * 127.1 + 311.7) * 43758.5453; return v - Math.floor(v); };
+      // placement pile 分支（原版原式；x/y/rotate 三轴独立噪声）
+      var placement = function (position, cardIndex) {
+        return {
+          x: (noise(cardIndex + 1) - 0.5) * S.spread * 56,
+          y: (noise(cardIndex + 2) - 0.5) * S.spread * 44,
+          rotate: (noise(cardIndex + 3) - 0.5) * S.spread * 40,
+          scale: 1 - position * S.depth * 0.03
+        };
+      };
+
+      // —— 弹簧积分器（motion/react animate 的最小替身）——
+      // 两种模式：spring（半隐式欧拉一步 dt/2×2，120Hz 采样）与 tween（0.35s easeOut 渐变，
+      // 供 opacity/shade 用——原版 fade 是 easeOut 渐变不是弹簧，弹簧会让透明度过冲）
+      var moving = new Map(); // valueKey -> spring/tween 状态
+      var rafId = 0, lastT = 0;
+      function tick(now) {
+        rafId = 0;
+        var dt = lastT ? Math.min((now - lastT) / 1000, 0.032) : 0.008;
+        lastT = now;
+        var active = false;
+        moving.forEach(function (mv, key) {
+          if (mv.delay > 0) { mv.delay -= dt; if (mv.delay > 0) { active = true; return; } }
+          if (mv.tween) {
+            mv.t += dt;
+            var p = Math.min(1, mv.t / mv.dur);
+            var e = 1 - Math.pow(1 - p, 3); // easeOut cubic
+            mv.cur = mv.from + (mv.target - mv.from) * e;
+            if (p >= 1) { mv.cur = mv.target; moving.delete(key); } else active = true;
+          } else {
+            var h = dt / 2;
+            for (var s = 0; s < 2; s++) {
+              var a = -mv.k * (mv.cur - mv.target) - mv.c * mv.vel;
+              mv.vel += a * h;
+              mv.cur += mv.vel * h;
+            }
+            // restDelta 0.01 / restSpeed 0.5（原版 springFor 的静止阈值）
+            if (Math.abs(mv.cur - mv.target) < 0.01 && Math.abs(mv.vel) < 0.5) {
+              mv.cur = mv.target;
+              moving.delete(key);
+            } else active = true;
+          }
+          mv.apply(mv.cur);
+        });
+        if (active) rafId = frame(tick);
+        else lastT = 0;
+      }
+      // 帧调度：可见走 rAF，文档隐藏走 16ms 定时器——原版依赖 motion/react 的 animate，
+      // 其在后台标签页自动退化为定时器驱动（不渲染但动画照走不丢），复刻同语义
+      var frameIsTimer = false; // 当前帧调度是不是定时器（destroy 清理要对号）
+      function frame(fn) {
+        if (document.hidden) return setTimeout(function () { fn(performance.now()); }, 16);
+        return requestAnimationFrame(fn);
+      }
+      function ensureRaf() {
+        if (rafId) return;
+        lastT = 0;
+        frameIsTimer = document.hidden;
+        rafId = frame(tick);
+      }
+      // animate(values, key, springName, {velocity, delay, target, duration})
+      // —— 对齐原版 springFor（speed² 缩放刚度、speed 缩放阻尼）与 fade（duration 渐变）
+      function animate(values, key, kind, extra) {
+        extra = extra || {};
+        var k = keyOf(values, key);
+        var slot = values[key];
+        var target = extra.target != null ? extra.target : slot.target;
+        if (S.reduceMotion) { // 0.2s easeOut 直切语义简化为即时落位（减少动态=不要过程）
+          moving.delete(k);
+          slot.target = target;
+          slot.apply(target);
+          return;
+        }
+        var mv;
+        if (extra.duration != null) {
+          mv = { tween: true, cur: slot.cur, target: target, from: slot.cur, dur: extra.duration, t: 0, delay: extra.delay || 0, apply: slot.apply };
+        } else {
+          var sp = SPRINGS[kind] || SPRINGS.place;
+          mv = { cur: slot.cur, target: target, vel: extra.velocity || 0, k: sp[0] * S.speed * S.speed, c: sp[1] * S.speed, delay: extra.delay || 0, apply: slot.apply };
+        }
+        moving.set(k, mv);
+        ensureRaf();
+      }
+      function stopAnim(values, key) { moving.delete(keyOf(values, key)); }
+      // 瞬时置位（原版 motionValue.set 语义）：z 层级跳变不走弹簧——飞行中段压层必须立刻生效
+      function setValue(values, key, v) {
+        stopAnim(values, key);
+        values[key].target = v;
+        values[key].apply(v);
+      }
+      function keyOf(values, key) {
+        if (!values.__id) values.__id = ++uid;
+        return values.__id + ':' + key;
+      }
+      var uid = 0;
+      // getVelocity 替身：记录每帧位置供 sendToBack 的「向外速度」判定
+      function velocityOf(values, axis) {
+        var mv = moving.get(keyOf(values, axis));
+        return mv ? mv.vel : 0;
+      }
+
+      // —— 值与 DOM ——
+      var order = imgs.map(function (_, i) { return i; });
+      var valuesMap = {};   // cardIndex -> values（13 项里本复刻用 x/y/rotate/scale/tiltX/tiltY/spin/lift/z/opacity/shade，grab 不需要——倾斜原点直接用卡中心）
+      var els = {};         // cardIndex -> 外层卡元素
+      var flying = {};      // cardIndex -> flight {turned}
+      var drag = null;
+      var destroyed = false;
+      var autoplayTimer = 0;
+      var hovered = false;
+
+      host.classList.add('yhuo-stack');
+      host.setAttribute('tabindex', '0');
+      host.setAttribute('role', 'group');
+      host.setAttribute('aria-label', '相册牌堆：点击或拖动翻牌');
+
+      function makeValues(i) {
+        var pos = Math.max(0, order.indexOf(i));
+        var start = placement(S.reduceMotion ? Math.min(pos, S.visible - 1) : 0, i);
+        var el = els[i];
+        var v = {
+          x: { cur: start.x }, y: { cur: start.y }, rotate: { cur: start.rotate }, scale: { cur: start.scale },
+          tiltX: { cur: 0 }, tiltY: { cur: 0 }, spin: { cur: 0 }, lift: { cur: 1 },
+          z: { cur: S.count - pos }, opacity: { cur: pos < S.visible ? 1 : 0 }, shade: { cur: 0 }
+        };
+        var apply = function (key) {
+          return function (val) {
+            v[key].cur = val;
+            if (!el || destroyed) return;
+            if (key === 'z') el.style.zIndex = Math.round(val);
+            else if (key === 'opacity') el.style.opacity = val;
+            else if (key === 'shade') shadeEl.style.opacity = val;
+            else {
+              v.__t = true;
+              el.style.transform = 'translate3d(' + v.x.cur + 'px,' + v.y.cur + 'px,0) rotate(' + v.rotate.cur + 'deg) scale(' + v.scale.cur + ')';
+              faceEl.style.transform = 'perspective(800px) rotateX(' + v.tiltX.cur + 'deg) rotateY(' + v.tiltY.cur + 'deg) rotate(' + v.spin.cur + 'deg) scale(' + v.lift.cur + ')';
+            }
+          };
+        };
+        var shadeEl = el ? el.querySelector('.ys-shade') : null;
+        var faceEl = el ? el.querySelector('.ys-face') : null;
+        Object.keys(v).forEach(function (key) {
+          if (!v[key] || v[key].apply) return;
+          v[key].apply = apply(key);
+          v[key].target = v[key].cur;
+        });
+        return v;
+      }
+      function valuesFor(i) {
+        if (!valuesMap[i]) valuesMap[i] = makeValues(i);
+        return valuesMap[i];
+      }
+      function setT(values, key, target) { values[key].target = target; return target; }
+
+      // placeCard（原版原逻辑：shown 钳到 visible-1；shade= shown*depth*.14*（1-lift））
+      function placeCard(index, position, o) {
+        o = o || {};
+        var shown = Math.min(position, S.visible - 1);
+        var target = placement(shown, index);
+        if (o.lift > 0 && shown > 0) {
+          var ahead = placement(shown - 1, index);
+          target.x = mix(target.x, ahead.x, o.lift);
+          target.y = mix(target.y, ahead.y, o.lift);
+          target.rotate = mix(target.rotate, ahead.rotate, o.lift);
+          target.scale = mix(target.scale, ahead.scale, o.lift);
+        }
+        var values = valuesFor(index);
+        var delay = o.delay || 0;
+        var vel = o.velocity || null;
+        var kind = o.kind || 'place';
+        setT(values, 'x', target.x); setT(values, 'y', target.y);
+        setT(values, 'rotate', target.rotate); setT(values, 'scale', target.scale);
+        animate(values, 'x', kind, vel ? { velocity: vel[0], delay: delay } : { delay: delay });
+        animate(values, 'y', kind, vel ? { velocity: vel[1], delay: delay } : { delay: delay });
+        animate(values, 'rotate', kind, { delay: delay });
+        animate(values, 'scale', kind, { delay: delay });
+        settleFace(values, delay);
+        setT(values, 'opacity', position < S.visible ? 1 : 0);
+        setT(values, 'shade', Math.min(0.6, shown * S.depth * 0.14 * (1 - (o.lift || 0))));
+        // opacity/shade 走 0.35s easeOut 渐变（原版 fade）非弹簧；reduced-motion 即时落位
+        animate(values, 'opacity', null, { target: values.opacity.target, delay: delay, duration: S.reduceMotion ? null : 0.35 / S.speed });
+        animate(values, 'shade', null, { target: values.shade.target, delay: delay, duration: S.reduceMotion ? null : 0.35 / S.speed });
+        if (!o.keepZ) setValue(values, 'z', S.count - position); // z 层级瞬时置位（原版 values.z.set）
+      }
+      function settleFace(values, delay) {
+        ['tiltX', 'tiltY', 'spin'].forEach(function (k) { setT(values, k, 0); });
+        setT(values, 'lift', 1);
+        animate(values, 'tiltX', 'face', { delay: delay });
+        animate(values, 'tiltY', 'face', { delay: delay });
+        animate(values, 'spin', 'face', { delay: delay });
+        animate(values, 'lift', 'face', { delay: delay });
+      }
+      function placeAll(o) {
+        o = o || {};
+        order.forEach(function (index, position) {
+          var flight = flying[index];
+          if (flight && !flight.turned) return;
+          if (drag && drag.moved && drag.card === index) return;
+          placeCard(index, position, {
+            delay: (position * (o.stagger || 0) * 1000) || 0,
+            lift: position > 0 ? o.lift || 0 : 0,
+            kind: flight ? 'tuck' : (index === o.released ? 'settle' : o.kind || 'place'),
+            velocity: index === o.released ? o.velocity : null,
+            keepZ: !!flight
+          });
+        });
+      }
+
+      // sendToBack（原版原逻辑：掷出→rAF 监听离堆→tuck 归位→land 恢复 z；1500ms 兜底）
+      function sendToBack(direction, velocity) {
+        if (destroyed || order.length < 2) return;
+        var top = order[0];
+        if (flying[top]) return;
+        var next = order.slice(1).concat([top]);
+        if (S.reduceMotion) { order = next; placeAll({}); scheduleAutoplay(); return; }
+        var dx = direction ? direction[0] : Math.cos(noise(top + 9) * 6.283);
+        var dy = direction ? direction[1] : Math.sin(noise(top + 9) * 6.283);
+        var len = Math.hypot(dx, dy) || 1; dx /= len; dy /= len;
+        var bounds = host.getBoundingClientRect();
+        var w = bounds.width || 240, h = bounds.height || 240;
+        var clearance = Math.min(w / Math.max(Math.abs(dx), 0.01), h / Math.max(Math.abs(dy), 0.01));
+        var home = placement(0, top);
+        var travel = clearance * 1.12 + 40;
+        var outX = home.x + dx * travel, outY = home.y + dy * travel;
+        var values = valuesFor(top);
+        var flight = { turned: false };
+        flying[top] = flight;
+        setValue(values, 'z', S.count + 1); // 飞行卡浮到最上层（原版 values.z.set）
+        setT(values, 'x', outX); setT(values, 'y', outY);
+        animate(values, 'x', 'fling', velocity ? { velocity: velocity[0] } : {});
+        animate(values, 'y', 'fling', velocity ? { velocity: velocity[1] } : {});
+        settleFace(values, 0);
+        order = next;
+        placeAll({}); // 其余卡按新次序前移落位（原版 order 变更触发的 layout effect → placeAll）
+        var span = Math.max(Math.hypot(outX - values.x.cur, outY - values.y.cur), 1);
+        var landed = false;
+        var turn = function () {
+          flight.turned = true;
+          var pos = order.indexOf(top);
+          if (pos >= 0) placeCard(top, pos, { kind: 'tuck', keepZ: !landed });
+        };
+        var land = function () {
+          landed = true;
+          if (flying[top] === flight) delete flying[top];
+          var pos = order.indexOf(top);
+          if (pos >= 0) setValue(values, 'z', S.count - pos);
+        };
+        var fallback = setTimeout(function () {
+          if (!flight.turned) turn();
+          if (!landed) land();
+        }, 1500 / S.speed);
+        var clearOfPile = function () {
+          var el = els[top];
+          if (!el) return true;
+          var mine = el.getBoundingClientRect();
+          for (var idx in els) {
+            var i = +idx;
+            if (i === top || flying[i] || valuesFor(i).opacity.cur < 0.5) continue;
+            var box = els[i].getBoundingClientRect();
+            if (mine.left < box.right && mine.right > box.left && mine.top < box.bottom && mine.bottom > box.top) return false;
+          }
+          return true;
+        };
+        var watch = function () {
+          if (destroyed || (flight.turned && landed)) { clearTimeout(fallback); return; }
+          var vx = velocityOf(values, 'x'), vy = velocityOf(values, 'y');
+          var outward = vx * dx + vy * dy;
+          if (!flight.turned && (Math.hypot(outX - values.x.cur, outY - values.y.cur) <= span * 0.06 || outward < 0)) turn();
+          if (!landed && (clearOfPile() || (flight.turned && outward < 0))) land();
+          setTimeout(watch, 16); // 后台窗格 rAF 冻结也照常工作（原版 rAF watch 同样依赖 motion 的定时器退化）
+        };
+        setTimeout(watch, 16);
+        scheduleAutoplay();
+      }
+
+      // lean（原版原式： sideways/upward 混合速度与位移，tilt 上限、spin ±6°）
+      function lean() {
+        if (S.reduceMotion || !drag) return;
+        var values = valuesFor(drag.card);
+        var offsetX = values.x.cur - drag.homeX, offsetY = values.y.cur - drag.homeY;
+        var sideways = clamp(drag.vx / LEAN_SPEED, -1, 1) * 0.7 + clamp(offsetX / LEAN_REACH, -1, 1) * 0.3;
+        var upward = clamp(-drag.vy / LEAN_SPEED, -1, 1) * 0.7 + clamp(-offsetY / LEAN_REACH, -1, 1) * 0.3;
+        setT(values, 'tiltY', sideways * S.tilt); setT(values, 'tiltX', upward * S.tilt);
+        setT(values, 'spin', clamp(offsetX / LEAN_REACH, -1, 1) * 6);
+        animate(values, 'tiltY', 'lean', {}); animate(values, 'tiltX', 'lean', {});
+        animate(values, 'spin', 'lean', {});
+      }
+
+      function releaseVelocity(samples, time) {
+        var recent = samples.filter(function (s) { return time - s[2] <= 100; });
+        if (recent.length < 2) return [0, 0];
+        var first = recent[0], last = recent[recent.length - 1];
+        var elapsed = Math.max((last[2] - first[2]) / 1000, 0.008);
+        return [(last[0] - first[0]) / elapsed, (last[1] - first[1]) / elapsed];
+      }
+
+      function onDown(event) {
+        if (destroyed || event.button !== 0 || drag) return;
+        var index = +event.currentTarget.getAttribute('data-idx');
+        if (order[0] !== index || flying[index]) return;
+        var values = valuesFor(index);
+        var home = placement(0, index);
+        if (!S.reduceMotion) { setT(values, 'lift', PRESS_SCALE); animate(values, 'lift', 'press', {}); }
+        drag = {
+          card: index, id: event.pointerId, element: event.currentTarget,
+          startX: event.clientX, startY: event.clientY,
+          originX: 0, originY: 0, homeX: home.x, homeY: home.y,
+          vx: 0, vy: 0, idle: 0, moved: false, progress: 0,
+          samples: [[event.clientX, event.clientY, event.timeStamp]]
+        };
+        if (event.pointerType === 'mouse') event.preventDefault();
+        window.addEventListener('pointermove', onMove);
+        window.addEventListener('pointerup', onUp);
+        window.addEventListener('pointercancel', onUp);
+      }
+      function onMove(event) {
+        if (!drag || event.pointerId !== drag.id) return;
+        var dx = event.clientX - drag.startX, dy = event.clientY - drag.startY;
+        var values = valuesFor(drag.card);
+        if (!drag.moved) {
+          if (Math.hypot(dx, dy) < CLICK_SLOP) return;
+          drag.moved = true;
+          stopAnim(values, 'x'); stopAnim(values, 'y');
+          drag.originX = values.x.cur - dx; drag.originY = values.y.cur - dy;
+          try { drag.element.setPointerCapture(drag.id); } catch (e) {}
+          host.classList.add('dragging');
+        }
+        setT(values, 'x', drag.originX + dx); setT(values, 'y', drag.originY + dy);
+        values.x.apply(values.x.cur); values.y.apply(values.y.cur); // 拖拽直控（setT 只改 target，cur 由 apply 落）
+        drag.samples.push([event.clientX, event.clientY, event.timeStamp]);
+        if (drag.samples.length > 12) drag.samples.shift();
+        var rv = releaseVelocity(drag.samples, event.timeStamp);
+        drag.vx = rv[0]; drag.vy = rv[1];
+        lean();
+        clearTimeout(drag.idle);
+        drag.idle = setTimeout(function () {
+          if (!drag || dragRef() !== drag) return;
+          drag.vx = 0; drag.vy = 0; lean();
+        }, 70);
+        var progress = clamp(Math.hypot(dx, dy) / Math.max(S.threshold, 1), 0, 1);
+        if (Math.abs(progress - drag.progress) > 0.02) {
+          drag.progress = progress;
+          placeAll({ lift: progress * 0.4, kind: 'settle' });
+        }
+      }
+      function dragRef() { return drag; }
+      function onUp(event) {
+        if (!drag || event.pointerId !== drag.id) return;
+        var d = drag;
+        drag = null;
+        clearTimeout(d.idle);
+        window.removeEventListener('pointermove', onMove);
+        window.removeEventListener('pointerup', onUp);
+        window.removeEventListener('pointercancel', onUp);
+        try { d.element.releasePointerCapture(d.id); } catch (e) {}
+        host.classList.remove('dragging');
+        var values = valuesFor(d.card);
+        if (!d.moved) {
+          if (event.type === 'pointerup') sendToBack(null);
+          else settleFace(values, 0);
+          return;
+        }
+        var dx = event.clientX - d.startX, dy = event.clientY - d.startY;
+        var rv = releaseVelocity(d.samples, event.timeStamp);
+        var vx = rv[0], vy = rv[1];
+        var distance = Math.hypot(dx, dy), pace = Math.hypot(vx, vy);
+        var flick = pace > FLICK_SPEED && distance > 16 && vx * dx + vy * dy > 0;
+        if (event.type === 'pointerup' && S.count > 1 && (distance > S.threshold || flick)) {
+          sendToBack(pace > 300 ? [vx, vy] : [dx, dy], [vx, vy]);
+        } else {
+          placeAll({ released: d.card, velocity: [clamp(vx, -3000, 3000), clamp(vy, -3000, 3000)] });
+        }
+      }
+      function onKeyDown(event) {
+        if (['ArrowRight', 'ArrowDown', 'Enter', ' '].indexOf(event.key) >= 0) {
+          event.preventDefault();
+          sendToBack(null);
+        }
+      }
+
+      // autoplay（原版语义：定时 sendToBack(null)；站点条件并入：文档隐藏/照片墙展开时暂停）
+      function scheduleAutoplay() {
+        clearTimeout(autoplayTimer);
+        if (destroyed || S.count < 2) return;
+        if (hovered || drag || document.hidden) return;
+        autoplayTimer = setTimeout(function () {
+          autoplayTimer = 0;
+          if (destroyed || hovered || drag || document.hidden) return;
+          if (opts.beforeSend && opts.beforeSend()) { scheduleAutoplay(); return; } // 展开照片墙期间：轮询等撤门
+          sendToBack(null);
+        }, Math.max(300, opts.autoplayDelay || 3000));
+      }
+      function onMouseEnter() { hovered = true; clearTimeout(autoplayTimer); }
+      function onMouseLeave() { hovered = false; scheduleAutoplay(); }
+
+      function onVisibility() { if (document.hidden) clearTimeout(autoplayTimer); else scheduleAutoplay(); }
+      document.addEventListener('visibilitychange', onVisibility);
+
+      // —— 构建 DOM ——
+      imgs.forEach(function (img, i) {
+        var card = document.createElement('div');
+        card.className = 'ys-card';
+        card.setAttribute('data-idx', i);
+        card.style.zIndex = S.count - i;
+        var face = document.createElement('div');
+        face.className = 'ys-face';
+        face.style.borderRadius = RADIUS + 'px';
+        face.style.padding = FRAME + 'px';
+        face.style.backgroundColor = opts.faceColor || 'var(--card)';
+        face.style.boxShadow = SHADOW;
+        var content = document.createElement('div');
+        content.className = 'ys-content';
+        content.style.borderRadius = INNER_RADIUS + 'px';
+        var el = document.createElement('img');
+        el.src = img.url;
+        el.alt = img.name || '';
+        el.loading = 'lazy';
+        el.decoding = 'async';
+        el.draggable = false;
+        el.addEventListener('dragstart', function (e) { e.preventDefault(); });
+        content.appendChild(el);
+        var shade = document.createElement('div');
+        shade.className = 'ys-shade';
+        shade.style.borderRadius = RADIUS + 'px';
+        face.appendChild(content);
+        face.appendChild(shade);
+        card.appendChild(face);
+        // 卡面点击不冒泡到 entry（否则点牌堆=翻牌的同时又触发「展开照片墙」）；
+        // 点到下层露出卡角也不展开（只顶卡响应翻牌，其余点击静默）
+        card.addEventListener('click', function (e) { e.stopPropagation(); });
+        card.addEventListener('pointerdown', onDown);
+        host.appendChild(card);
+        els[i] = card;
+      });
+      host.addEventListener('mouseenter', onMouseEnter);
+      host.addEventListener('mouseleave', onMouseLeave);
+      host.addEventListener('keydown', onKeyDown); // 键盘挂在 root（原版挂 stack 容器，tabIndex=0）
+
+      function mount() {
+        order.forEach(function (index, position) {
+          placeCard(index, position, { delay: position * 60, kind: 'place' });
+        });
+        scheduleAutoplay();
+      }
+      // 首帧落位：直接 mount（placeCard 首次调用时 apply 已可用，clearance 在 sendToBack 时才量，
+      // 届时布局早已稳定——无「刚插入 DOM 量不到」问题）
+      mount();
+      if (document.hidden) { // 离页渲染（后台标签页打开相册）：撤掉入场错峰直接静态落位
+        order.forEach(function (index, position) {
+          var v = valuesFor(index);
+          var shown = Math.min(position, S.visible - 1);
+          var t = placement(shown, index);
+          ['x', 'y', 'rotate', 'scale'].forEach(function (k) {
+            v[k].target = v[k].cur = t[k]; v[k].apply(t[k]);
+          });
+          v.opacity.target = v.opacity.cur = position < S.visible ? 1 : 0;
+          v.opacity.apply(v.opacity.cur);
+          v.shade.target = v.shade.cur = Math.min(0.6, shown * S.depth * 0.14);
+          v.shade.apply(v.shade.cur);
+        });
+      }
+
+      return {
+        host: host,
+        // 展开照片墙前调用：立即停 autoplay、结算拖拽/飞行（卡瞬回堆内），防发牌起点量到飞行中的卡
+        settle: function () {
+          clearTimeout(autoplayTimer);
+          autoplayTimer = 0;
+          if (drag) {
+            var d = drag; drag = null;
+            clearTimeout(d.idle);
+            window.removeEventListener('pointermove', onMove);
+            window.removeEventListener('pointerup', onUp);
+            window.removeEventListener('pointercancel', onUp);
+            try { d.element.releasePointerCapture(d.id); } catch (e) {}
+            host.classList.remove('dragging');
+          }
+          // 飞行中的卡立即结算（清 flight 标记后按新序落位）；再把所有卡瞬移归位——
+          // placeAll 的弹簧归位会跟发牌动画叠跑，此处必须瞬时
+          Object.keys(flying).forEach(function (k) { delete flying[+k]; });
+          order.forEach(function (index, position) {
+            var shown = Math.min(position, S.visible - 1);
+            var t = placement(shown, index);
+            var v = valuesFor(index);
+            ['x', 'y', 'rotate', 'scale'].forEach(function (k2) {
+              moving.delete(keyOf(v, k2));
+              v[k2].target = v[k2].cur = t[k2];
+              v[k2].apply(t[k2]);
+            });
+            v.tiltX.target = v.tiltX.cur = 0; v.tiltX.apply(0);
+            v.tiltY.target = v.tiltY.cur = 0; v.tiltY.apply(0);
+            v.spin.target = v.spin.cur = 0; v.spin.apply(0);
+            v.lift.target = v.lift.cur = 1; v.lift.apply(1);
+            v.opacity.target = v.opacity.cur = position < S.visible ? 1 : 0;
+            v.opacity.apply(v.opacity.cur);
+            v.shade.target = v.shade.cur = Math.min(0.6, shown * S.depth * 0.14);
+            v.shade.apply(v.shade.cur);
+            v.z.target = v.z.cur = S.count - position;
+            v.z.apply(v.z.cur);
+          });
+        },
+        isDragging: function () { return !!drag; },
+        destroy: function () {
+          destroyed = true;
+          clearTimeout(autoplayTimer);
+          if (rafId) {
+            if (frameIsTimer) clearTimeout(rafId);
+            else cancelAnimationFrame(rafId);
+            rafId = 0;
+          }
+          moving.clear();
+          document.removeEventListener('visibilitychange', onVisibility);
+          window.removeEventListener('pointermove', onMove);
+          window.removeEventListener('pointerup', onUp);
+          window.removeEventListener('pointercancel', onUp);
+          if (drag && drag.element) {
+            try { drag.element.releasePointerCapture(drag.id); } catch (e) {}
+          }
+          drag = null;
+        }
+      };
     }
 
     function albumGroups() {
@@ -9666,31 +10229,21 @@ window.__siteCalendar = (function () {
         var entry = document.createElement('div');
         entry.className = 'album-entry';
 
-        // 牌堆封面：前 3 张微旋转叠放 + 数量徽章，悬停扇形张开（纯 CSS）
+        // 牌堆封面：reactbits Stack 引擎（pile 散落+点击/拖拽翻牌+autoplay），整组照片进堆。
+        // 卡片 DOM 由引擎自建（只渲染 visible=5 张），stack 只提供容器与徽章
         var cover = document.createElement('div');
         cover.className = 'album-cover';
         var stack = document.createElement('div');
         stack.className = 'album-stack';
-        group.imgs.slice(0, 3).forEach(function (img) {
-          var photo = document.createElement('div');
-          photo.className = 'stack-photo';
-          var wrap = document.createElement('div');
-          wrap.className = 'img-wrap';
-          var el = document.createElement('img');
-          el.src = img.url;
-          el.alt = img.name || '';
-          el.loading = 'lazy';
-          el.decoding = 'async'; // 解码挪出动画关键路径（展开瞬切高度时避免集中同步解码卡帧）
-          wrap.appendChild(el);
-          photo.appendChild(wrap);
-          stack.appendChild(photo);
-        });
         var badge = document.createElement('div');
         badge.className = 'album-count-badge';
         badge.textContent = group.imgs.length + ' 张';
         stack.appendChild(badge);
         var info = document.createElement('div');
         info.className = 'album-info';
+        info.setAttribute('role', 'button');
+        info.setAttribute('tabindex', '0');
+        info.setAttribute('aria-label', '展开「' + group.title + '」照片墙');
         var h3 = document.createElement('h3');
         h3.textContent = group.title;
         var p = document.createElement('p');
@@ -9740,33 +10293,25 @@ window.__siteCalendar = (function () {
         entry.addEventListener('click', function () { albumToggleEntry(entry, wall); });
         list.appendChild(entry);
 
-        // 封面轮播：每 4 秒最前一张与备用位交叉淡入淡出（悬停/展开/离页时跳过）
-        if (!reduceMotion && group.imgs.length > 3) {
-          var frontWrap = stack.children[2] && stack.children[2].querySelector('.img-wrap');
-          if (frontWrap) {
-            var imgA = frontWrap.querySelector('img');
-            var imgB = document.createElement('img');
-            imgB.className = 'under';
-            imgB.alt = '';
-            imgB.decoding = 'async';
-            frontWrap.appendChild(imgB);
-            var aOnTop = true;
-            var nextIdx = 3;
-            var timer = setInterval(function () {
-              if (document.hidden || entry.classList.contains('expanded') || entry.matches(':hover')) return;
-              var next = group.imgs[nextIdx % group.imgs.length];
-              nextIdx++;
-              var showing = aOnTop ? imgA : imgB;
-              var standby = aOnTop ? imgB : imgA;
-              standby.src = next.url;
-              standby.alt = next.name || '';
-              standby.classList.remove('under');
-              showing.classList.add('under');
-              aOnTop = !aOnTop;
-            }, 4000);
-            albumTimers.push(timer);
-          }
-        }
+        // 牌堆引擎挂载 + 标题区展开接线。点击语义拆分：牌堆=翻牌（引擎 pointerdown 在卡上
+        // 先吃掉事件、卡 click 不再冒泡到 entry），标题=展开照片墙（原「点封面任意处展开」
+        // 让位给 Stack 交互）；beforeSend 供引擎在 autoplay 触发前查「照片墙开着就先不翻」。
+        stack.classList.add('ys-root');
+        var engine = albumStackCreate(stack, group.imgs, {
+          autoplayDelay: 4000,
+          beforeSend: function () { return entry.classList.contains('expanded'); }
+        });
+        albumStacks.push(engine);
+        entry.__stackEngine = engine; // 展开照片墙前 settle 用（albumToggleEntry）
+        info.addEventListener('click', function (e) {
+          e.stopPropagation(); // 标题热区自己开合，别让冒泡把刚收起的又展开
+          albumToggleEntry(entry, wall);
+        });
+        info.addEventListener('keydown', function (e) {
+          if (e.key !== 'Enter' && e.key !== ' ') return;
+          e.preventDefault();
+          albumToggleEntry(entry, wall);
+        });
       });
     }
 
@@ -9926,6 +10471,10 @@ window.__siteCalendar = (function () {
       if (!wasExpanded) {
         var pc = entry.querySelector('.album-stack');
         if (pc) albumFlipCleanup(pc); // 上一次收回的归位动画还在播就再点开：立即中止，防牌堆带位移展开
+        // Stack 牌堆展开前结算：停 autoplay、飞行中的卡立即归位、拖拽链路全清——
+        // 发牌起点量的是「牌堆」位置，飞行中的卡还挂在堆外会把起点量偏
+        var st = entry.__stackEngine;
+        if (st) st.settle();
         // 上一次收回的高度回落若还在播：清掉行内高度/过渡/计时器，别跟 .expanded 的满屏最低高度打架
         clearTimeout(albumHeightTimer);
         albumHeightTimer = null;

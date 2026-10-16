@@ -10758,6 +10758,21 @@ window.__siteCalendar = (function () {
           }
         });
         if (entry) entry.classList.remove('dealing');
+        // 时钟冻结兜底（同揭示壳 reveal-done）：到点该落位的卡若 opacity 仍 0（CSS 过渡在
+        // 冻结渲染层不推进，transform/opacity 锁在 deal 终点），直补终态——正常环境到点时
+        // op 已 1，此分支不命中零影响
+        items.forEach(function (el) {
+          if (el.classList.contains('out')) return;
+          if (parseFloat(getComputedStyle(el).opacity) < 0.5) {
+            el.style.transition = 'none';
+            el.classList.add('in');
+            el.style.opacity = '1';
+            el.style.transform = '';
+            void el.offsetWidth;
+            el.style.removeProperty('transition');
+            el.style.removeProperty('opacity');
+          }
+        });
       }, step * (items.length - 1) + 750);
     }
 

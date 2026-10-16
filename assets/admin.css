@@ -676,23 +676,21 @@
   .img-grid .ic-thumbs { position: relative; }
   .img-grid .thumb { width: 100%; height: auto; aspect-ratio: 4 / 3; display: block; border: none; border-radius: 0; background: var(--chip); }
   .img-grid .ic-ov {
-    position: absolute; left: 0; right: 0; bottom: 0;
-    display: flex; justify-content: center; align-items: center; gap: 4px; flex-wrap: wrap;
-    padding: 24px 6px 6px;
-    background: linear-gradient(transparent, rgba(0, 0, 0, .55));
+    /* 2026-10-16 站长「更多放在图片的右下角」：悬停层从「通栏渐变+居中钮组」改为一枚
+       ⋯ 角标钉右下角（渐变底/居中布局/大 padding 全退场），浮现时机（悬停显/触屏常显）不变 */
+    position: absolute; right: 6px; bottom: 6px;
+    display: flex; justify-content: flex-end; align-items: flex-end; gap: 4px;
+    padding: 0;
   }
   @media (hover: hover) and (pointer: fine) {
     .img-grid .ic-ov { opacity: 0; pointer-events: none; transition: opacity .18s var(--ease-outc); }
     ul.list.img-grid li:hover .ic-ov, ul.list.img-grid li:focus-within .ic-ov { opacity: 1; pointer-events: auto; }
   }
-  /* 悬停层里的操作钮：白色玻璃底压在图片上（同前台毛玻璃配方），触屏常显不隐藏；
-     网格里按钮只留图标（文字 span 隐藏，说明走 title 提示）并紧凑化保证单行——
-     5 钮（图标 14 + padding 4×5 = 24px/钮，gap 3）共 ~132px，最小列 164px 去掉层内边距剩 ~152px，
-     数学上必单行；flex-wrap 仅作极端情况的兜底（坑 36 前身 b881dcf 的「允许换行」治标不治本：
-     原 30~36px/钮一行需 ~186px，158px 最小列怎么都放不下，用户实拍仍是 4+1 两行） */
+  /* 悬停层里的操作钮（2026-10-16 角标化后只剩 ⋯ 一枚）：白色玻璃底压在图片上（同前台毛玻璃配方），
+     触屏常显不隐藏 */
   .img-grid .ic-ov .row-actions {
     margin: 0; opacity: 1; pointer-events: auto; flex-basis: auto;
-    flex-wrap: wrap; justify-content: center; max-width: 100%; gap: 3px; row-gap: 4px;
+    max-width: 100%;
   }
   .img-grid .ic-ov .row-actions span { display: none; }
   /* ⋯更多 GlideSelect 宿主是 span（2026-10-16）：上条「隐藏按钮文字」规则会连它一起藏掉——
@@ -1016,7 +1014,7 @@
   .gs-row.danger { color: var(--danger); }
   .gs-row.danger .gs-ic { color: var(--danger); }
   /* 图片卡悬停层内的 GlideSelect：chip 透明融入玻璃层（与其他图标钮同规格） */
-  .img-grid .ic-ov .gs-btn { background: rgba(255, 255, 255, 0.16); color: #ffffff; backdrop-filter: blur(4px); }
+  .img-grid .ic-ov .gs-btn { background: rgba(255, 255, 255, 0.16); color: #ffffff; backdrop-filter: blur(4px); box-shadow: 0 1px 4px rgba(0,0,0,.28); }
   .img-grid .ic-ov .gs-btn:hover, .img-grid .ic-ov .gs.open .gs-btn { background: rgba(255, 255, 255, 0.28); }
   @media (prefers-reduced-motion: reduce) {
     .gs-menu, .gs-pill, .gs-chev, .gs-btn { transition: none !important; animation: none !important; }

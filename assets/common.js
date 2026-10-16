@@ -9586,11 +9586,11 @@ window.__siteCalendar = (function () {
     function albumStackCreate(host, imgs, opts) {
       opts = opts || {};
       var S = {
-        layout: 'pile',
+        layout: opts.layout || 'fan',
         visible: opts.visible || 4,
         spread: opts.spread != null ? opts.spread : 0.5,
         depth: opts.depth != null ? opts.depth : 0.5,
-        tilt: 30,
+        tilt: opts.tilt != null ? opts.tilt : 30,
         threshold: 90,
         speed: 1,
         count: imgs.length,
@@ -9610,8 +9610,19 @@ window.__siteCalendar = (function () {
       var clamp = function (v, a, b) { return Math.min(b, Math.max(a, v)); };
       var mix = function (a, b, t) { return a + (b - a) * t; };
       var noise = function (seed) { var v = Math.sin(seed * 127.1 + 311.7) * 43758.5453; return v - Math.floor(v); };
-      // placement pile 分支（原版原式；x/y/rotate 三轴独立噪声）
+      // placement（原版原式）：fan=扇形（rotate 逐张 +8°、scale 逐张缩、右下角为轴展开），
+      // pile=噪声散堆（x/y/rotate 三轴独立噪声）。站长定版 fan+visible=6+spread=1+tilt=0
+      // （官网 demo ?autoplay=true&visible=6&tilt=0&spread=1 实测基准：deg 0/8/16/24/32/40、
+      //  scale 1/0.94/…/0.70、transform-origin 0.9,0.9）
       var placement = function (position, cardIndex) {
+        if (S.layout === 'fan') {
+          return {
+            x: 0,
+            y: 0,
+            rotate: position * S.spread * 8,
+            scale: 1 - position * S.depth * 0.12
+          };
+        }
         return {
           x: (noise(cardIndex + 1) - 0.5) * S.spread * 56,
           y: (noise(cardIndex + 2) - 0.5) * S.spread * 44,
@@ -9839,8 +9850,12 @@ window.__siteCalendar = (function () {
         if (flying[top]) return;
         var next = order.slice(1).concat([top]);
         if (S.reduceMotion) { order = next; placeAll({}); return; }
-        var dx = direction ? direction[0] : Math.cos(noise(top + 9) * 6.283);
-        var dy = direction ? direction[1] : Math.sin(noise(top + 9) * 6.283);
+        // 出牌方向：原版 direction || EXITS[layout] || noise 圆周——fan 向右上飞出（[1,-0.3]），
+        // pile 沿伪随机圆周
+        var EXIT_DIRS = { fan: [1, -0.3], cascade: [0.8, 0.6], deck: [0, 1] };
+        var dir = direction || EXIT_DIRS[S.layout];
+        var dx = dir ? dir[0] : Math.cos(noise(top + 9) * 6.283);
+        var dy = dir ? dir[1] : Math.sin(noise(top + 9) * 6.283);
         var len = Math.hypot(dx, dy) || 1; dx /= len; dy /= len;
         var bounds = host.getBoundingClientRect();
         var w = bounds.width || 240, h = bounds.height || 240;
@@ -10012,6 +10027,8 @@ window.__siteCalendar = (function () {
         card.className = 'ys-card';
         card.setAttribute('data-idx', i);
         card.style.zIndex = S.count - i;
+        // fan 布局的旋转轴（原版 ORIGINS.fan=[0.9,0.9]，官网实测右下角 207,207@230 容器）
+        if (S.layout === 'fan') card.style.transformOrigin = '90% 90%';
         var face = document.createElement('div');
         face.className = 'ys-face';
         face.style.borderRadius = RADIUS + 'px';
@@ -10294,7 +10311,9 @@ window.__siteCalendar = (function () {
         // 先吃掉事件、卡 click 不再冒泡到 entry），标题=展开照片墙（原「点封面任意处展开」
         // 让位给 Stack 交互）。
         stack.classList.add('ys-root');
-        var engine = albumStackCreate(stack, group.imgs, {});
+        // 站长定版参数（官网 demo ?autoplay=true&visible=6&tilt=0&spread=1 的形态，autoplay 已撤）：
+        // fan 扇形 + 6 张可见 + spread=1（每张 +8°）+ tilt=0（拖拽无 3D 倾斜）
+        var engine = albumStackCreate(stack, group.imgs, { visible: 6, tilt: 0, spread: 1 });
         albumStacks.push(engine);
         entry.__stackEngine = engine; // 展开照片墙前 settle 用（albumToggleEntry）
         info.addEventListener('click', function (e) {

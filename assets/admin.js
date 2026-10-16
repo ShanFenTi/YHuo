@@ -3786,7 +3786,7 @@
     var selected = -1;    // 选中行（对勾/半透底）
     items.forEach(function (o, i) { if (o.value === current) selected = i; });
     var instant = false;  // 下一次移动跳变不滑行（开菜单/键盘跳行）
-    var closeTimer = null, scrub = null, closeT2 = null;
+    var closeTimer = null, scrub = null;
 
     var btn = document.createElement('button');
     btn.type = 'button';
@@ -3817,6 +3817,13 @@
     pill.className = 'gs-pill';
     pill.setAttribute('aria-hidden', 'true');
     list.appendChild(pill);
+    // 菜单元素挂宿主，open 时搬 document.body（portal）：图片卡等 overflow:hidden 容器会
+    // 裁掉 absolute 菜单（站长「看不到任何内容」根因），fixed+body 逃出裁剪链；
+    // closeMenu 归位保持 DOM 常驻、粒子（翻页重渲染）由 isConnected 清理兜底
+    menu.hidden = true;
+    var portal = document.createElement('div');
+    portal.style.cssText = 'position:absolute;left:0;top:0;width:0;height:0;overflow:visible;';
+    portal.appendChild(menu);
     items.forEach(function (o, i) {
       var row = document.createElement('div');
       row.className = 'gs-row' + (o.danger ? ' danger' : '');
@@ -3843,9 +3850,8 @@
       row.appendChild(tick);
       list.appendChild(row);
     });
-    menu.appendChild(list);
     host.appendChild(btn);
-    host.appendChild(menu);
+    host.appendChild(portal);
 
     function rowAt(clientY) {
       var top = list.getBoundingClientRect().top;
@@ -3867,18 +3873,34 @@
       pill.style.opacity = '1';
       instant = false;
     }
+    // 摆位：fixed 菜单按按钮视口 rect 摆——默认按钮正下方居左（left=rect.left），
+    // 右缘出界换按钮右对齐（left=rect.right-菜单宽）；下方放不下翻到上方（含菜单
+    // offsetHeight 的测量需先摆出再读，翻转后再复贴一次 top/bottom）；上下都放不下时
+    // 贴近夹进视口。inline top/left/bottom 每次全量重写（翻转在 top/bottom 两键间切换）
     function placeMenu() {
+      menu.classList.remove('up');
+      menu.style.top = ''; menu.style.bottom = ''; menu.style.left = '';
+      menu.style.visibility = 'hidden';
+      menu.style.left = '0px'; menu.style.top = '0px';
       var r = btn.getBoundingClientRect();
-      var up = r.bottom + menu.offsetHeight + MENU_GAP > window.innerHeight;
+      var mw = menu.offsetWidth, mh = menu.offsetHeight;
+      var vw = document.documentElement.clientWidth;
+      var up = r.bottom + mh + MENU_GAP > window.innerHeight && r.top - mh - MENU_GAP >= 0;
+      var left = r.left; if (left + mw > vw - 4) left = Math.max(4, r.right - mw);
+      if (up) {
+        menu.style.top = ''; menu.style.bottom = (window.innerHeight - r.top + MENU_GAP) + 'px';
+        menu.style.transformOrigin = 'bottom left';
+      } else {
+        menu.style.bottom = ''; menu.style.top = (r.bottom + MENU_GAP) + 'px';
+        menu.style.transformOrigin = 'top left';
+      }
+      menu.style.left = left + 'px';
       menu.classList.toggle('up', up);
-      menu.style.transitionDuration = instant ? '0ms' : '';
-      menu.dataset.state = 'closed';
       void menu.offsetHeight;
-      menu.dataset.state = 'open';
+      menu.style.visibility = '';
     }
     function openMenu(viaKey) {
       if (phase !== 'closed') return;
-      clearTimeout(closeT2);
       closeAllGsInsts(inst);
       instant = true;
       active = selected >= 0 ? selected : (viaKey ? 0 : null);
@@ -3887,6 +3909,7 @@
       host.classList.add('open');
       btn.setAttribute('aria-expanded', 'true');
       menu.hidden = false;
+      document.body.appendChild(portal); // portal：菜单逃出 overflow:hidden 祖先的裁剪链
       placeMenu();
       // pill 直达选中/首行（无滑行）
       pill.style.transition = 'none';
@@ -3895,16 +3918,33 @@
       void pill.offsetHeight;
       pill.style.transition = '';
       paintTick();
+      hookAutoClose();
+    }
+    // fixed 菜单不随滚动/缩放跟手：窗口一动（滚轮/拖滚动条/缩放/键盘空格滚动）直接收场，
+    // 比跟摆更接近原生 select 的直觉，也杜绝「按钮移走了菜单还钉在原地」的错位残留
+    var autoCloseHooked = false, closeT3 = null;
+    function hookAutoClose() {
+      if (autoCloseHooked) return;
+      autoCloseHooked = true;
+      var deb = function () {
+        if (phase !== 'open') return;
+        clearTimeout(closeT3);
+        closeT3 = setTimeout(function () { if (phase === 'open') closeMenu(); }, 120);
+      };
+      window.addEventListener('scroll', deb, true);
+      window.addEventListener('resize', deb);
     }
     function closeMenu(mode) {
       if (phase === 'closed') return;
       active = null;
       clearTimeout(closeTimer);
+      clearTimeout(closeT3);
       if (mode === 'instant') {
         phase = 'closed';
         host.classList.remove('open');
         btn.setAttribute('aria-expanded', 'false');
         menu.hidden = true;
+        if (portal.parentNode) portal.parentNode.removeChild(portal);
         return;
       }
       menu.style.transitionDuration = '';
@@ -3912,7 +3952,10 @@
       phase = 'closing';
       host.classList.remove('open');
       btn.setAttribute('aria-expanded', 'false');
-      closeTimer = setTimeout(function () { phase = 'closed'; menu.hidden = true; }, POP_OUT + 20);
+      closeTimer = setTimeout(function () {
+        phase = 'closed'; menu.hidden = true;
+        if (portal.parentNode) portal.parentNode.removeChild(portal);
+      }, POP_OUT + 20);
     }
     function pick(i) {
       var o = items[i];
@@ -3982,6 +4025,7 @@
 
     var inst = {
       host: host,
+      menuEl: menu, // 菜单 open 时搬去 body portal，点空白判定需要它本身
       close: function () { closeMenu('instant'); },
       update: function (patch) { // 外部改选项/tag（如上移禁用态变化后重开菜单要刷新）
         if (!patch) return;
@@ -4019,7 +4063,10 @@
   }
   document.addEventListener('pointerdown', function (e) {
     pruneGsInsts();
-    gsInsts.forEach(function (d) { if (!d.host.contains(e.target)) d.close(); });
+    gsInsts.forEach(function (d) {
+      // 点菜单自身不关（fixed portal 后菜单不再挂在宿主子树里）
+      if (!d.host.contains(e.target) && !d.menuEl.contains(e.target)) d.close();
+    });
   });
   document.addEventListener('keydown', function (e) {
     if (e.key === 'Escape') { pruneGsInsts(); closeAllGsInsts(); }

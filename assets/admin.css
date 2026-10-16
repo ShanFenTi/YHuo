@@ -979,16 +979,19 @@
   .gs-chev { display: inline-flex; color: color-mix(in srgb, var(--fg) 55%, transparent); transition: transform 200ms cubic-bezier(0.23, 1, 0.32, 1); }
   .gs-chev svg { width: 12px; height: 12px; }
   .gs.open .gs-chev { transform: rotate(180deg); }
+  /* 菜单 fixed 挂 body（2026-10-16 站长「自己截图看吧」诊断）：菜单 DOM 常驻宿主内、open 时
+     document.body.appendChild(portal) 移出门外——图片卡 ul.list.img-grid li 是 overflow:hidden
+     （2026-10-03 截断修复钉的），absolute 菜单画在卡内会被卡缘整段裁掉（rect 量着正常、
+     绘画看不见，「看不到任何内容」的根因）；fixed+body 使菜单不受任何祖先 overflow/层叠裁剪 */
   .gs-menu {
-    position: absolute; z-index: 80; width: var(--gs-menu-w, 176px); min-width: 100%; max-width: 300px;
+    position: fixed; z-index: 200; width: var(--gs-menu-w, 176px); min-width: min(100vw, 176px); max-width: 300px;
     padding: 4px; border-radius: 10px;
     background: var(--card); border: 1px solid var(--border);
     box-shadow: 0 4px 16px color-mix(in srgb, #000 22%, transparent);
     opacity: 0; transform: scale(0.95);
     transition: opacity var(--gs-pop, 180ms) cubic-bezier(0.23, 1, 0.32, 1), transform var(--gs-pop, 180ms) cubic-bezier(0.23, 1, 0.32, 1);
   }
-  .gs-menu:not(.up) { top: calc(100% + 6px); left: 0; transform-origin: top left; }
-  .gs-menu.up { bottom: calc(100% + 6px); left: 0; transform-origin: bottom left; }
+  /* top/left/bottom 由 JS placeMenu() 按按钮 rect 写 inline style（视口翻转+夹边），CSS 不再定锚 */
   .gs-menu[data-state="open"] { opacity: 1; transform: scale(1); }
   .gs-menu[data-state="closed"] { pointer-events: none; }
   .gs-list { position: relative; display: grid; gap: 1px; touch-action: none; }

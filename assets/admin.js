@@ -2050,24 +2050,23 @@
 
       list.appendChild(li);
     });
-    // 跑马灯溢出量统一测量（2026-10-16 常滚版）：挂上 DOM 后 .title 才有 clientWidth 可量，
-    // 只对溢出的卡打 .mq 写 --mq-shift/--mq-dur；窗口拉伸后重测（宽度变大可能不再溢出）
+    // 跑马灯溢出量统一测量（2026-10-16 常滚版）：同步测量（读 scrollWidth 强制回流），
+    // 不进 rAF——定时器/帧时钟在某些环境不可靠；只对溢出的卡打 .mq 写 --mq-shift/--mq-dur；
+    // 窗口拉伸后重测（宽度变大可能不再溢出）
     if (currentType === 'image') {
-      requestAnimationFrame(function () {
-        list.querySelectorAll('.img-grid .ic-info .title').forEach(function (t) {
-          var inner = t.querySelector('.mq-inner');
-          if (!inner) return;
-          var shift = inner.scrollWidth - t.clientWidth;
-          if (shift > 4) {
-            t.classList.add('mq');
-            t.style.setProperty('--mq-shift', shift + 'px');
-            t.style.setProperty('--mq-dur', Math.min(14, Math.max(3, shift / 26)).toFixed(1) + 's');
-          } else {
-            t.classList.remove('mq');
-            t.style.removeProperty('--mq-shift');
-            t.style.removeProperty('--mq-dur');
-          }
-        });
+      list.querySelectorAll('.img-grid .ic-info .title').forEach(function (t) {
+        var inner = t.querySelector('.mq-inner');
+        if (!inner) return;
+        var shift = inner.scrollWidth - t.clientWidth;
+        if (shift > 4) {
+          t.classList.add('mq');
+          t.style.setProperty('--mq-shift', shift + 'px');
+          t.style.setProperty('--mq-dur', Math.min(14, Math.max(3, shift / 26)).toFixed(1) + 's');
+        } else {
+          t.classList.remove('mq');
+          t.style.removeProperty('--mq-shift');
+          t.style.removeProperty('--mq-dur');
+        }
       });
       if (!mqResizeHooked) {
         mqResizeHooked = true;

@@ -10111,17 +10111,18 @@ window.__siteCalendar = (function () {
         el.decoding = 'async';
         el.draggable = false;
         el.addEventListener('dragstart', function (e) { e.preventDefault(); });
-        decodedImg(img.url).then(function (ready) {
+        decodedImg(img.url).then((function (slotIdx, slotCard, slotImg, ready) {
+          // （si 是 ES5 var——闭包共享循环末值，此处必须用 IIFE/参数捕获本次迭代的下标）
           // 槽位建好后即刻上屏（src 预先留空，此处一次性赋首图）；连翻到该槽换图由 slotSetImg 接管
-          if (destroyed || !els[si]) return;
-          if (!el.getAttribute('src')) {
-            el.src = ready.src;
-            void el.offsetWidth;
-            el.style.transition = 'opacity 120ms ease-out';
-            el.style.opacity = '1';
-            card.classList.remove('ys-img-loading');
+          if (destroyed || els[slotIdx] !== slotCard) return;
+          if (!slotImg.getAttribute('src')) {
+            slotImg.src = ready.src;
+            void slotImg.offsetWidth;
+            slotImg.style.transition = 'opacity 120ms ease-out';
+            slotImg.style.opacity = '1';
+            slotCard.classList.remove('ys-img-loading');
           }
-        });
+        })(si, card, el));
         content.appendChild(el);
         var shade = document.createElement('div');
         shade.className = 'ys-shade';

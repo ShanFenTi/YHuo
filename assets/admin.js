@@ -2029,7 +2029,8 @@
         }
       }
 
-      if (!filtering) {
+      if (!filtering && currentType !== 'image') {
+        // 图片卡的排序（上移/下移）已收进「⋯更多」GlideSelect 菜单（2026-10-16），不再挂行上
         var up = document.createElement('button');
         up.className = 'ghost icon-btn-sm'; up.innerHTML = ICO.up; up.disabled = i === 0;
         up.title = '上移';
@@ -2041,8 +2042,8 @@
         down.addEventListener('click', function () { move(currentType, i, 1); });
 
         actions.appendChild(up); actions.appendChild(down);
-        addDragHandlers(li, currentType, i);
       }
+      if (!filtering) addDragHandlers(li, currentType, i);
 
       var del = document.createElement('button');
       del.className = 'danger';

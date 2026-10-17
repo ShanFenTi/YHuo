@@ -6309,7 +6309,10 @@ window.__siteCalendar = (function () {
         if (!cur) return; // 文档大标题等前置内容不进时间轴
         if ((m = line.match(/^\*\s+(.+)$/))) {
           var raw = m[1];
-          var tm = raw.match(/^\*\*(.+?)\*\*[:：]\s*/);
+          // 标题只认本条第一对 ** 及其后紧跟的冒号/破折号：历史条目两种写法并存
+          // （`**标题**：正文` 与 `**标题**——正文`）。正则必须限定在第一对 ** 内且不跨越 **，
+          // 否则会一路吃到正文里某个 `**重点**：`，把整段正文当成卡片标题。
+          var tm = raw.match(/^\*\*([^*]+)\*\*(?:[:：]|——)\s*/);
           var eTitle = tm ? tm[1] : '';
           if (tm) raw = raw.slice(tm[0].length);
           entry = { title: eTitle, body: raw };

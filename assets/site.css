@@ -276,8 +276,9 @@
        流星→泡泡：泡泡与饵是她的技能签名，denia 下流星层整体退场、
        一群泡泡从页底缓缓升起（common.js 仅 denia+非 reduced-motion 时注入 .denia-bubbles，
        负 animation-delay 预填充，进页即有泡泡在场）；顶栏胶囊/滚动条染粉；
-       深色档泡泡层顶部加一道舞台聚光。 */
-    html[data-accent='denia'] .fx-meteors { display: none; }
+       深色档泡泡层顶部加一道舞台聚光。门屏态豁免：门屏要流星（2026-10-17），
+       与下面 aemeath 同口径。 */
+    html[data-accent='denia']:not(.gate-pending) .fx-meteors { display: none; }
     html[data-accent='denia'] .header-pill {
       background: color-mix(in srgb, var(--brand-400) 10%, var(--card));
       border-color: color-mix(in srgb, var(--brand-400) 32%, var(--border));
@@ -432,8 +433,9 @@
     /* 星屑升腾群（泡泡同款机制）：电子幽灵的星辉签名，aemeath 下流星退场、
        一群星屑从页底缓缓升起（common.js 对 aemeath+非 reduced-motion 注入 .aemeath-motes，
        负 animation-delay 预填充，进页即有星屑在场）；顶栏胶囊/滚动条染电光粉；
-       深色档星屑层顶部加一道星海聚光；暗色不显示（2026-10-14 站长口径，与达妮娅同款） */
-    html[data-accent='aemeath'] .fx-meteors { display: none; }
+       深色档星屑层顶部加一道星海聚光；暗色不显示（2026-10-14 站长口径，与达妮娅同款）。
+       门屏态豁免：门屏要流星（2026-10-17），与上面 denia 同口径。 */
+    html[data-accent='aemeath']:not(.gate-pending) .fx-meteors { display: none; }
     html[data-accent='aemeath'] .header-pill {
       background: color-mix(in srgb, var(--brand-400) 10%, var(--card));
       border-color: color-mix(in srgb, var(--brand-400) 32%, var(--border));
@@ -10117,8 +10119,9 @@
     html.gate-pending {
       background: var(--apple-background) !important;
     }
-    /* ③ 背景装饰全部退场：流星层/自定义背景/雨雪 canvas/角色粒子与立绘水印/看板娘 */
-    html.gate-pending .fx-meteors,
+    /* ③ 背景装饰全部退场：自定义背景/雨雪 canvas/角色粒子与立绘水印/看板娘。
+       流星层例外（2026-10-17 站长「首页的这个界面也要流星特效」）：门屏下放行，
+       配色在 ③′ 跟极简黑白走 */
     html.gate-pending .bg-layer,
     html.gate-pending .fx-weather,
     html.gate-pending .denia-bubbles,
@@ -10128,6 +10131,22 @@
     html.gate-pending .aemeath-motes-fg,
     html.gate-pending .aemeath-sprite-wall,
     html.gate-pending .chibi-mascot { display: none !important; }
+    /* ③′ 门屏流星配色跟极简黑白走（默认灰蓝 rgba(148,163,184) 是彩色的）：
+       浅态=石墨灰，深态=浅灰白；明暗反转不改动画本身，reduced-motion 仍由全局规则压停 */
+    html.gate-pending .fx-meteor {
+      background: rgba(82, 82, 82, 0.95);
+      box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.06);
+    }
+    html.gate-pending .fx-meteor::before {
+      background: linear-gradient(90deg, rgba(82, 82, 82, 0.9), rgba(0, 0, 0, 0));
+    }
+    html.gate-pending.dark .fx-meteor {
+      background: rgba(212, 212, 212, 0.95);
+      box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.1);
+    }
+    html.gate-pending.dark .fx-meteor::before {
+      background: linear-gradient(90deg, rgba(212, 212, 212, 0.9), rgba(0, 0, 0, 0));
+    }
     /* ④ 复古主题的 body 级装饰（CRT 扫描线/暗角/老书纸色）在门屏态一并隐掉 */
     html.gate-pending[data-accent='crt'] body::before,
     html.gate-pending[data-accent='crt'] body::after,

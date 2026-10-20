@@ -5,7 +5,9 @@
 export const SCRIPT_PREFIX = 'scripts/';
 // 文件名只取 basename 后按此校验：首字符字母/数字，其后字母数字 . _ -，最长 64 字符 + .sh
 export const SCRIPT_NAME_RE = /^[A-Za-z0-9][A-Za-z0-9._-]{0,63}\.sh$/;
-export const MAX_SCRIPT_SIZE = 512 * 1024;
+// 平台保护上限（不是业务限制）：KV 单值上限 25MiB、Worker 内存有限，
+// 超过 20MB 的请求在解析/写 KV 前直接拒绝，避免把 Worker 打爆；业务上不再限制 512KB。
+export const MAX_SCRIPT_BYTES = 20 * 1024 * 1024;
 
 // 上传端：从 File.name 或路径里取 basename，非法返回空串（浏览器/客户端可能带路径）
 export function normalizeScriptName(raw) {
@@ -41,7 +43,7 @@ export function scriptItemFromMeta(name, meta) {
   if (!meta || typeof meta !== 'object') return null;
   const size = Number(meta.size);
   const version = Number(meta.version);
-  if (!Number.isInteger(size) || size < 0 || size > MAX_SCRIPT_SIZE) return null;
+  if (!Number.isInteger(size) || size < 0) return null; // 业务上不设大小上限，只要是非负整数
   if (!Number.isInteger(version) || version < 1) return null;
   if (!isSha256Hex(meta.sha256)) return null;
   if (typeof meta.signature !== 'string' || !meta.signature) return null;

@@ -5111,7 +5111,6 @@
   // ---------- 脚本库（Sprout Pro，2026-10-20）：上传 .sh + .sig，服务端验签后写 KV ----------
   // 说明字段不 trim：签名 payload 覆盖的就是原字符串，前后空格改动会导致验签失败
   var scriptsCache = [];
-  var SCRIPT_MAX = 512 * 1024;
 
   function scriptMsg(text, err) {
     var el = $('scriptUploadMsg');
@@ -5254,7 +5253,7 @@
       scriptMsg('文件名需以字母数字开头，仅含字母数字 . _ -，并以 .sh 结尾', true);
       return;
     }
-    if (file.size > SCRIPT_MAX) { scriptMsg('脚本超过 512KB 上限', true); return; }
+    // 大小不设业务上限；平台保护上限由服务端返回（超限会显示明确错误）
     var description = $('scriptDesc').value; // 不 trim（见上方注释）
     if (description.length > 200) { scriptMsg('说明最长 200 字符', true); return; }
     if (/[\r\n]/.test(description)) { scriptMsg('说明必须是单行文本', true); return; }
@@ -5313,7 +5312,7 @@
       $('scriptPickFile').classList.remove('has-file');
       return;
     }
-    $('scriptFileName').textContent = f.name;
+    $('scriptFileName').textContent = f.name + ' · ' + scriptFmtSize(f.size);
     $('scriptPickFile').classList.add('has-file');
     var baseName = String(f.name || '').split(/[\\/]/).pop();
     var existing = null;
@@ -5325,7 +5324,7 @@
   });
   $('scriptSig').addEventListener('change', function () {
     var f = this.files[0];
-    $('scriptSigName').textContent = f ? f.name : '未选择 .sig';
+    $('scriptSigName').textContent = f ? f.name + ' · ' + scriptFmtSize(f.size) : '未选择 .sig';
     $('scriptPickSig').classList.toggle('has-file', !!f);
     scriptMsg('');
   });

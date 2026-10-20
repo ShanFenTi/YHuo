@@ -5,7 +5,7 @@
 // 验签失败绝不落 KV；description 必须逐字节保留（签名覆盖它，trim 会让 App 端验签失败）。
 import { json } from '../../../lib/util.js';
 import {
-  MAX_SCRIPT_SIZE,
+  MAX_SCRIPT_BYTES,
   SCRIPT_PREFIX,
   base64ToBytes,
   bytesToBase64,
@@ -50,10 +50,12 @@ export async function onRequestPost(context) {
     return json({ ok: false, error: '脚本服务未配置公钥' }, 503);
   }
 
-  // 先按 content-length 拦超大请求（multipart 边界/字段也给一点余量）
+  // 只留平台保护上限（业务上不限制大小）：先按 content-length 拦，避免解析超大表单
+  // multipart 边界/签名字段给一点余量；20MB 由 MAX_SCRIPT_BYTES 统一决定
+  const maxMb = Math.round(MAX_SCRIPT_BYTES / 1024 / 1024);
   const declared = Number(request.headers.get('content-length') || 0);
-  if (declared > MAX_SCRIPT_SIZE + 128 * 1024) {
-    return json({ ok: false, error: '脚本超过 512KB 上限' }, 413);
+  if (declared > MAX_SCRIPT_BYTES + 128 * 1024) {
+    return json({ ok: false, error: '脚本超过平台保护上限 ' + maxMb + 'MB' }, 413);
   }
 
   let form;
@@ -72,9 +74,10 @@ export async function onRequestPost(context) {
     return json({ ok: false, error: '文件名需为 1~64 位字母数字开头、仅含字母数字 . _ -，并以 .sh 结尾' }, 400);
   }
 
-  // 2. 大小
-  if (file.size > MAX_SCRIPT_SIZE) {
-    return json({ ok: false, error: '脚本超过 512KB 上限' }, 413);
+  // 2. 大小：仅平台保护上限（业务上不限制大小）
+  if (file.size > MAX_SCRIPT_BYTES) {
+    const mb = (file.size / 1024 / 1024).toFixed(1);
+    return json({ ok: false, error: '脚本超过平台保护上限 ' + maxMb + 'MB（当前 ' + mb + 'MB）' }, 413);
   }
 
   const bytes = new Uint8Array(await file.arrayBuffer());

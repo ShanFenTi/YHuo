@@ -46,10 +46,14 @@ export function scriptItemFromMeta(name, meta) {
   if (!Number.isInteger(size) || size < 0) return null; // 业务上不设大小上限，只要是非负整数
   if (!Number.isInteger(version) || version < 1) return null;
   if (!isSha256Hex(meta.sha256)) return null;
-  if (typeof meta.signature !== 'string' || !meta.signature) return null;
-  if (typeof meta.keyId !== 'string' || !meta.keyId) return null;
   if (typeof meta.updatedAt !== 'string' || !meta.updatedAt) return null;
   if (typeof meta.description !== 'string') return null;
+  // 兼容旧条目：没有 mode 的按签名条目处理；direct 免签名，不要求 signature/keyId
+  const mode = meta.mode === 'direct' ? 'direct' : 'signed';
+  if (mode === 'signed') {
+    if (typeof meta.signature !== 'string' || !meta.signature) return null;
+    if (typeof meta.keyId !== 'string' || !meta.keyId) return null;
+  }
   return {
     name,
     description: meta.description,
@@ -57,8 +61,9 @@ export function scriptItemFromMeta(name, meta) {
     sha256: meta.sha256,
     version,
     updatedAt: meta.updatedAt,
-    signature: meta.signature,
-    keyId: meta.keyId,
+    signature: mode === 'signed' ? meta.signature : '',
+    keyId: mode === 'signed' ? meta.keyId : '',
+    mode,
   };
 }
 

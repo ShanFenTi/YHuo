@@ -5136,7 +5136,25 @@
     return bj.toISOString().slice(0, 16).replace('T', ' ');
   }
 
+  function syncScriptMode() {
+    var direct = $('scriptDirect').checked;
+    $('scriptPickSig').hidden = direct;
+    $('scriptSig').disabled = direct;
+    $('scriptPicks').classList.toggle('direct', direct);
+    if (direct) {
+      $('scriptSig').value = '';
+      $('scriptSigName').textContent = '未选择 .sig';
+      $('scriptPickSig').classList.remove('has-file');
+    }
+    $('scriptUploadBtn').textContent = direct ? '直接上传' : '上传并验签';
+    $('scriptDirectHint').textContent = direct
+      ? '直接模式：只选 .sh，按原始字节发布，不校验 UTF-8/签名；仅超级管理员可用，App 端需按 mode=direct 同步。'
+      : '签名模式：需要 .sh + 对应 .sig；说明与版本必须与签名时一致。';
+    scriptMsg('');
+  }
+
   function scriptResetForm() {
+    $('scriptDirect').checked = false;
     $('scriptFile').value = '';
     $('scriptSig').value = '';
     $('scriptDesc').value = '';
@@ -5145,6 +5163,7 @@
     $('scriptSigName').textContent = '未选择 .sig';
     $('scriptPickFile').classList.remove('has-file');
     $('scriptPickSig').classList.remove('has-file');
+    syncScriptMode();
     scriptMsg('');
   }
 
@@ -5192,7 +5211,12 @@
       ver.className = 'script-badge';
       ver.textContent = 'v' + (s.version == null ? '?' : s.version);
       head.appendChild(ver);
-      if (s.keyId) {
+      if (s.mode === 'direct') {
+        var dir = document.createElement('span');
+        dir.className = 'script-badge script-badge-direct';
+        dir.textContent = '免签名';
+        head.appendChild(dir);
+      } else if (s.keyId) {
         var kid = document.createElement('span');
         kid.className = 'script-badge';
         kid.textContent = 'key ' + s.keyId;
@@ -5248,9 +5272,10 @@
 
   function scriptUpload() {
     var file = $('scriptFile').files[0];
+    var direct = $('scriptDirect').checked;
     var sigFile = $('scriptSig').files[0];
     if (!file) { scriptMsg('请选择 .sh 脚本文件', true); return; }
-    if (!sigFile) { scriptMsg('请选择 .sig 签名文件', true); return; }
+    if (!direct && !sigFile) { scriptMsg('请选择 .sig 签名文件（或勾选直接上传）', true); return; }
     var baseName = String(file.name || '').split(/[\\/]/).pop();
     if (!/^[A-Za-z0-9][A-Za-z0-9._-]{0,63}\.sh$/.test(baseName)) {
       scriptMsg('文件名需以字母数字开头，仅含字母数字 . _ -，并以 .sh 结尾', true);
@@ -5266,14 +5291,18 @@
     var run = function () {
       var btn = $('scriptUploadBtn');
       btn.disabled = true;
-      scriptMsg('读取签名并上传中…');
-      sigFile.text().then(function (sigText) {
+      scriptMsg(direct ? '直接上传中…' : '读取签名并上传中…');
+      var send = function (sigText) {
         var fd = new FormData();
         fd.append('file', file, file.name);
-        fd.append('sig', sigText);
         fd.append('description', description);
         fd.append('version', String(version));
-        fd.append('keyId', '1');
+        if (direct) {
+          fd.append('direct', '1');
+        } else {
+          fd.append('sig', sigText);
+          fd.append('keyId', '1');
+        }
         return api('/api/admin/scripts', { method: 'POST', body: fd, timeout: 120000 }).then(function (r) {
           btn.disabled = false;
           if (!r.ok) {
@@ -5281,14 +5310,20 @@
             if (r._status === 401) show('login');
             return;
           }
-          toast('脚本已上传并通过验签', 'ok');
+          toast(direct ? '脚本已直接上传' : '脚本已上传并通过验签', 'ok');
           scriptResetForm();
           loadScripts();
         });
-      }).catch(function () {
+      };
+      var onFail = function () {
         btn.disabled = false;
-        scriptMsg('上传失败（网络异常或签名文件读取失败）', true);
-      });
+        scriptMsg(direct ? '上传失败（网络异常）' : '上传失败（网络异常或签名文件读取失败）', true);
+      };
+      if (direct) {
+        send('').catch(onFail);
+      } else {
+        sigFile.text().then(send).catch(onFail);
+      }
     };
 
     var existing = null;
@@ -5331,8 +5366,10 @@
     $('scriptPickSig').classList.toggle('has-file', !!f);
     scriptMsg('');
   });
+  $('scriptDirect').addEventListener('change', syncScriptMode);
   $('scriptUploadBtn').addEventListener('click', scriptUpload);
   $('scriptsRefreshBtn').addEventListener('click', function () { loadScripts(); });
+  syncScriptMode();
 
   // ---------- 顶部胶囊 + 抽屉导航（两套按钮同走 switchPage，active 同步打在两份上） ----------
   var navBtns = document.querySelectorAll('#sideNav button, #drawerNav button');

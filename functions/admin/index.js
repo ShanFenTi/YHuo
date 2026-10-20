@@ -261,12 +261,17 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
   </div>
 
   <div id="scriptsPanel" hidden>
-    <div class="page-head"><div><h2>脚本</h2><p class="ph-desc">Sprout Pro 在线脚本库：上传 .sh 与对应的 .sig，服务端验签通过才写入 KV；App 读取后还会独立再验一次。</p></div></div>
+    <div class="page-head"><div><h2>脚本</h2><p class="ph-desc">Sprout Pro 在线脚本库：可签名上传（.sh + .sig，服务端验签）或勾选「直接上传」按原始字节发布；App 读取时按 mode 处理。</p></div></div>
     <div class="section-card">
       <p class="section-title">上传脚本</p>
-      <p class="section-sub">脚本与签名各选一个文件；说明与版本都会进入签名 payload，必须与签名时完全一致（说明的前后空格也不能改）。同名上传会先确认再覆盖。</p>
+      <p class="section-sub">签名模式需 .sh + .sig（说明与版本参与签名，必须一致）；也可勾选「直接上传」只传 .sh、按原始字节发布。同名上传会先确认再覆盖。</p>
       <div class="script-form">
-        <div class="script-picks">
+        <label class="script-direct-row">
+          <input type="checkbox" id="scriptDirect">
+          <span>直接上传（免签名，按原始字节发布）</span>
+        </label>
+        <p class="meta2 script-direct-hint" id="scriptDirectHint">勾选后只需选择 .sh，不再需要 .sig；服务端不校验 UTF-8/签名，仅超级管理员可用。App 端需按 mode=direct 同步。</p>
+        <div class="script-picks" id="scriptPicks">
           <label class="script-pick" id="scriptPickFile">
             <span class="sp-title">脚本文件</span>
             <span class="sp-name" id="scriptFileName">未选择 .sh</span>

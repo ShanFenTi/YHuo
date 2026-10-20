@@ -1,7 +1,8 @@
 // GET /api/scripts/<name> → 脚本原文（Sprout Pro 只读接口）
 // 鉴权与清单接口一致（X-Sprout-Token === SCRIPTS_TOKEN；未配置 token → 503）。
-// 成功：text/plain; charset=utf-8 + ETag "<sha256>" + Cache-Control: no-cache，支持 If-None-Match → 304。
-// 不存在 / 元数据残缺 / 未签名一律 404：读接口绝不把没有签名的记录当脚本下发。
+// 签名模式：text/plain; charset=utf-8；免签名直传：application/octet-stream（原始字节）。
+// 两者都带 ETag "<sha256>" + Cache-Control: no-cache + X-Sprout-Mode，支持 If-None-Match → 304。
+// 不存在 / 元数据残缺一律 404；签名条目缺签名也不下发。
 import { json } from '../../lib/util.js';
 import { scriptItemFromMeta, scriptTokenMatches, SCRIPT_PREFIX, strictScriptName } from '../../lib/scripts.js';
 
@@ -36,25 +37,38 @@ export async function onRequestGet({ request, env, params }) {
 
   let obj;
   try {
-    obj = await env.MEDIA.getWithMetadata(SCRIPT_PREFIX + name, { type: 'text', cacheTtl: 60 });
+    obj = await env.MEDIA.getWithMetadata(SCRIPT_PREFIX + name, { type: 'arrayBuffer', cacheTtl: 60 });
   } catch (e) {
     console.error('[scripts] read failed', name, e);
     return fail(500, '读取脚本失败');
   }
-  if (!obj || typeof obj.value !== 'string') return fail(404, '脚本不存在');
+  if (!obj || !obj.value) return fail(404, '脚本不存在');
 
   const item = scriptItemFromMeta(name, obj.metadata);
   if (!item) return fail(404, '脚本不存在');
 
   const etag = '"' + item.sha256 + '"';
   const headers = Object.assign({
-    'Content-Type': 'text/plain; charset=utf-8',
     'Cache-Control': 'no-cache',
     'ETag': etag,
+    'X-Sprout-Mode': item.mode,
   }, SECURITY_HEADERS);
 
   if (etagMatches(request.headers.get('If-None-Match'), etag)) {
     return new Response(null, { status: 304, headers });
   }
-  return new Response(obj.value, { status: 200, headers });
+
+  if (item.mode === 'direct') {
+    headers['Content-Type'] = 'application/octet-stream';
+    return new Response(obj.value, { status: 200, headers });
+  }
+
+  headers['Content-Type'] = 'text/plain; charset=utf-8';
+  let text;
+  try {
+    text = new TextDecoder('utf-8', { fatal: true, ignoreBOM: true }).decode(obj.value);
+  } catch {
+    return fail(500, '脚本内容解码失败');
+  }
+  return new Response(text, { status: 200, headers });
 }

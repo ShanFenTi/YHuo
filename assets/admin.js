@@ -697,10 +697,13 @@
   function api(path, opts) {
     opts = opts || {};
     opts.credentials = 'same-origin';
+    // 默认 20s；大文件上传等慢请求可在调用处传 timeout（毫秒）
+    var timeout = Number(opts.timeout) > 0 ? Number(opts.timeout) : 20000;
+    delete opts.timeout; // 非 fetch 标准字段，不传给 fetch
     if (typeof AbortController === 'function') {
       var ctl = new AbortController();
       opts.signal = ctl.signal;
-      setTimeout(function () { ctl.abort(); }, 20000);
+      setTimeout(function () { ctl.abort(); }, timeout);
     }
     return fetch(path, opts).then(function (res) {
       return res.json().catch(function () { return { ok: false, error: '响应异常' }; })
@@ -5271,7 +5274,7 @@
         fd.append('description', description);
         fd.append('version', String(version));
         fd.append('keyId', '1');
-        return api('/api/admin/scripts', { method: 'POST', body: fd }).then(function (r) {
+        return api('/api/admin/scripts', { method: 'POST', body: fd, timeout: 120000 }).then(function (r) {
           btn.disabled = false;
           if (!r.ok) {
             scriptMsg(r.error || '上传失败', true);

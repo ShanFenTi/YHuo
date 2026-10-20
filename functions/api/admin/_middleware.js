@@ -31,6 +31,7 @@ const SUPER_PREFIX = [
   '/api/admin/admins',      // 管理员账号管理（本功能自身）
   '/api/admin/schedule',    // 课表定时任务（tick 密钥/重新生成/测试发送——2026-09-30 尾部调整：
                             //   邮件页对普通管理员整体隐藏后，此接口随邮件页整口收归超管）
+  '/api/admin/scripts',     // 在线脚本库（Sprout Pro 上传/列表/删除，含 /<name> 子路径）
 ];
 
 export async function onRequest(context) {

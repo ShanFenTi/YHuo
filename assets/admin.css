@@ -1519,6 +1519,43 @@
   @media (hover: hover) {
     .data-table tbody tr:hover { background: color-mix(in srgb, var(--hover) 55%, transparent); }
   }
+  /* ---------- 脚本库（Sprout Pro，2026-10-20）：双文件上传 + 列表 ---------- */
+  .script-form { display: flex; flex-direction: column; gap: 14px; }
+  .script-picks { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+  .script-pick {
+    position: relative; display: flex; flex-direction: column; gap: 4px;
+    padding: 12px 14px; border: 1px dashed var(--border); border-radius: 12px;
+    background: var(--input-bg); cursor: pointer;
+    transition: border-color .15s, background .15s;
+  }
+  .script-pick:hover { border-color: var(--muted); background: var(--hover); }
+  .script-pick:focus-within { outline: 2px solid var(--fg); outline-offset: 2px; }
+  .script-pick.has-file { border-style: solid; border-color: var(--fg); }
+  .script-pick input[type=file] {
+    position: absolute; inset: 0; width: 100%; height: 100%;
+    opacity: 0; cursor: pointer;
+  }
+  .script-pick .sp-title { font-size: 12px; font-weight: 600; color: var(--muted); }
+  .script-pick .sp-name { font-size: 13.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .script-fields { display: grid; grid-template-columns: minmax(0, 1fr) 120px; gap: 12px; align-items: start; }
+  .script-actions { align-items: center; }
+  .script-actions #scriptUploadMsg { min-height: 0; margin: 0; }
+  .script-list li { align-items: flex-start; }
+  .script-row-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+  .script-row-head { display: flex; align-items: center; gap: 7px; flex-wrap: wrap; min-width: 0; }
+  .script-name { font-weight: 700; font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .script-badge {
+    flex: none; font-size: 11px; font-weight: 600; color: var(--muted);
+    background: var(--chip); border-radius: 999px; padding: 2px 8px;
+  }
+  .script-badge-warn { color: var(--warn); background: color-mix(in srgb, var(--warn) 12%, transparent); }
+  .script-desc { font-size: 13px; line-height: 1.55; color: var(--fg); overflow-wrap: anywhere; }
+  .script-desc-empty { color: var(--muted); }
+  .script-meta { font-size: 12px; color: var(--muted); }
+  @media (max-width: 640px) {
+    .script-picks, .script-fields { grid-template-columns: minmax(0, 1fr); }
+  }
+
   /* 多管理员分级（2026-09-30）：普通管理员隐藏超管专属入口与区块——
      前端隐藏只是体验层，真正的边界在 /api/admin/* 中间件按角色 403 */
   body.role-limited [data-superonly], body.role-limited [data-super-nav] { display: none !important; }

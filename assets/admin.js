@@ -5108,6 +5108,230 @@
   });
   $('notePolishDiscard').addEventListener('click', function () { notePolishReset(); });
 
+  // ---------- 脚本库（Sprout Pro，2026-10-20）：上传 .sh + .sig，服务端验签后写 KV ----------
+  // 说明字段不 trim：签名 payload 覆盖的就是原字符串，前后空格改动会导致验签失败
+  var scriptsCache = [];
+  var SCRIPT_MAX = 512 * 1024;
+
+  function scriptMsg(text, err) {
+    var el = $('scriptUploadMsg');
+    el.textContent = text || '';
+    el.className = 'meta2' + (err ? ' ai-test-err' : '');
+  }
+
+  function scriptFmtSize(n) {
+    if (typeof n !== 'number' || !isFinite(n)) return '—';
+    if (n < 1024) return n + ' B';
+    if (n < 1024 * 1024) return (n / 1024).toFixed(n < 10 * 1024 ? 1 : 0) + ' KB';
+    return (n / 1024 / 1024).toFixed(1) + ' MB';
+  }
+
+  function scriptFmtTime(s) {
+    var d = new Date(String(s || ''));
+    if (isNaN(d.getTime())) return String(s || '');
+    // 服务端存 ISO（UTC），列表按站内口径显示北京时间
+    var bj = new Date(d.getTime() + 8 * 3600e3);
+    return bj.toISOString().slice(0, 16).replace('T', ' ');
+  }
+
+  function scriptResetForm() {
+    $('scriptFile').value = '';
+    $('scriptSig').value = '';
+    $('scriptDesc').value = '';
+    $('scriptVersion').value = '1';
+    $('scriptFileName').textContent = '未选择 .sh';
+    $('scriptSigName').textContent = '未选择 .sig';
+    $('scriptPickFile').classList.remove('has-file');
+    $('scriptPickSig').classList.remove('has-file');
+    scriptMsg('');
+  }
+
+  function loadScripts() {
+    var listEl = $('scriptList');
+    $('scriptsEmpty').hidden = true;
+    listEl.innerHTML = skListHtml(3);
+    $('scriptsSumm').textContent = '加载中…';
+    api('/api/admin/scripts', { cache: 'reload' }).then(function (d) {
+      if (!d.ok) {
+        if (d._status === 401) { show('login'); return; }
+        listEl.innerHTML = emptyStateHtml(ICO.x, '加载失败', d.error || '请稍后重试。');
+        $('scriptsSumm').textContent = '';
+        return;
+      }
+      scriptsCache = d.scripts || [];
+      renderScripts();
+    }).catch(function () {
+      listEl.innerHTML = emptyStateHtml(ICO.x, '加载失败', '网络异常，请稍后重试。');
+      $('scriptsSumm').textContent = '';
+    });
+  }
+
+  function renderScripts() {
+    var listEl = $('scriptList');
+    listEl.textContent = '';
+    $('scriptsSumm').textContent = '共 ' + scriptsCache.length + ' 个脚本';
+    if (!scriptsCache.length) {
+      $('scriptsEmpty').hidden = false;
+      return;
+    }
+    $('scriptsEmpty').hidden = true;
+    var frag = document.createDocumentFragment();
+    scriptsCache.forEach(function (s) {
+      var li = document.createElement('li');
+      var main = document.createElement('div');
+      main.className = 'script-row-main';
+      var head = document.createElement('div');
+      head.className = 'script-row-head';
+      var nm = document.createElement('span');
+      nm.className = 'script-name';
+      nm.textContent = s.name;
+      head.appendChild(nm);
+      var ver = document.createElement('span');
+      ver.className = 'script-badge';
+      ver.textContent = 'v' + (s.version == null ? '?' : s.version);
+      head.appendChild(ver);
+      if (s.keyId) {
+        var kid = document.createElement('span');
+        kid.className = 'script-badge';
+        kid.textContent = 'key ' + s.keyId;
+        head.appendChild(kid);
+      }
+      if (!s.valid) {
+        var bad = document.createElement('span');
+        bad.className = 'script-badge script-badge-warn';
+        bad.textContent = '元数据不完整';
+        head.appendChild(bad);
+      }
+      main.appendChild(head);
+      var desc = document.createElement('div');
+      desc.className = 'script-desc' + (s.description ? '' : ' script-desc-empty');
+      desc.textContent = s.description || '（无说明）';
+      main.appendChild(desc);
+      var parts = [];
+      if (s.size != null) parts.push(scriptFmtSize(s.size));
+      if (s.updatedAt) parts.push(scriptFmtTime(s.updatedAt));
+      if (s.sha256) parts.push('sha256 ' + s.sha256.slice(0, 8));
+      var meta = document.createElement('div');
+      meta.className = 'script-meta';
+      meta.textContent = parts.join(' · ');
+      main.appendChild(meta);
+      li.appendChild(main);
+      var del = document.createElement('button');
+      del.type = 'button';
+      del.className = 'mini danger';
+      del.textContent = '删除';
+      del.addEventListener('click', function () { scriptDelete(s); });
+      li.appendChild(del);
+      frag.appendChild(li);
+    });
+    listEl.appendChild(frag);
+  }
+
+  function scriptDelete(s) {
+    ask({
+      title: '删除脚本？',
+      msg: s.name + ' 将从脚本库删除，App 下次拉取清单时不再出现。',
+      okText: '删除',
+      danger: true,
+      cb: function (okVal) {
+        if (!okVal) return;
+        api('/api/admin/scripts/' + encodeURIComponent(s.name), { method: 'DELETE' }).then(function (r) {
+          if (!r.ok) { toast(r.error || '删除失败', 'err'); return; }
+          toast('已删除 ' + s.name, 'ok');
+          loadScripts();
+        }).catch(function () { toast('删除失败（网络异常）', 'err'); });
+      }
+    });
+  }
+
+  function scriptUpload() {
+    var file = $('scriptFile').files[0];
+    var sigFile = $('scriptSig').files[0];
+    if (!file) { scriptMsg('请选择 .sh 脚本文件', true); return; }
+    if (!sigFile) { scriptMsg('请选择 .sig 签名文件', true); return; }
+    var baseName = String(file.name || '').split(/[\\/]/).pop();
+    if (!/^[A-Za-z0-9][A-Za-z0-9._-]{0,63}\.sh$/.test(baseName)) {
+      scriptMsg('文件名需以字母数字开头，仅含字母数字 . _ -，并以 .sh 结尾', true);
+      return;
+    }
+    if (file.size > SCRIPT_MAX) { scriptMsg('脚本超过 512KB 上限', true); return; }
+    var description = $('scriptDesc').value; // 不 trim（见上方注释）
+    if (description.length > 200) { scriptMsg('说明最长 200 字符', true); return; }
+    if (/[\r\n]/.test(description)) { scriptMsg('说明必须是单行文本', true); return; }
+    var version = parseInt($('scriptVersion').value, 10);
+    if (!(version >= 1)) { scriptMsg('版本必须是正整数', true); return; }
+
+    var run = function () {
+      var btn = $('scriptUploadBtn');
+      btn.disabled = true;
+      scriptMsg('读取签名并上传中…');
+      sigFile.text().then(function (sigText) {
+        var fd = new FormData();
+        fd.append('file', file, file.name);
+        fd.append('sig', sigText);
+        fd.append('description', description);
+        fd.append('version', String(version));
+        fd.append('keyId', '1');
+        return api('/api/admin/scripts', { method: 'POST', body: fd }).then(function (r) {
+          btn.disabled = false;
+          if (!r.ok) {
+            scriptMsg(r.error || '上传失败', true);
+            if (r._status === 401) show('login');
+            return;
+          }
+          toast('脚本已上传并通过验签', 'ok');
+          scriptResetForm();
+          loadScripts();
+        });
+      }).catch(function () {
+        btn.disabled = false;
+        scriptMsg('上传失败（网络异常或签名文件读取失败）', true);
+      });
+    };
+
+    var existing = null;
+    for (var i = 0; i < scriptsCache.length; i++) {
+      if (scriptsCache[i].name === baseName) { existing = scriptsCache[i]; break; }
+    }
+    if (existing) {
+      ask({
+        title: '覆盖同名脚本？',
+        msg: baseName + ' 已存在（v' + (existing.version == null ? '?' : existing.version) + '），本次会覆盖为 v' + version + '。',
+        okText: '覆盖',
+        danger: true,
+        cb: function (okVal) { if (okVal) run(); }
+      });
+    } else {
+      run();
+    }
+  }
+
+  $('scriptFile').addEventListener('change', function () {
+    var f = this.files[0];
+    if (!f) {
+      $('scriptFileName').textContent = '未选择 .sh';
+      $('scriptPickFile').classList.remove('has-file');
+      return;
+    }
+    $('scriptFileName').textContent = f.name;
+    $('scriptPickFile').classList.add('has-file');
+    var baseName = String(f.name || '').split(/[\\/]/).pop();
+    var existing = null;
+    for (var i = 0; i < scriptsCache.length; i++) {
+      if (scriptsCache[i].name === baseName) { existing = scriptsCache[i]; break; }
+    }
+    $('scriptVersion').value = existing && existing.version ? String(existing.version + 1) : '1';
+    scriptMsg('');
+  });
+  $('scriptSig').addEventListener('change', function () {
+    var f = this.files[0];
+    $('scriptSigName').textContent = f ? f.name : '未选择 .sig';
+    $('scriptPickSig').classList.toggle('has-file', !!f);
+    scriptMsg('');
+  });
+  $('scriptUploadBtn').addEventListener('click', scriptUpload);
+  $('scriptsRefreshBtn').addEventListener('click', function () { loadScripts(); });
+
   // ---------- 顶部胶囊 + 抽屉导航（两套按钮同走 switchPage，active 同步打在两份上） ----------
   var navBtns = document.querySelectorAll('#sideNav button, #drawerNav button');
   // ---------- 我的（管理员资料 + 头像；头像 KV 键存 site_settings 'admin_avatar'） ----------
@@ -5419,7 +5643,7 @@
   function switchPage(type) {
     // 角色闸（2026-09-30）：普通管理员只进内容运营页——邮件页整体超管专属（尾部调整：
     // 含课表测试发送），用户/管理员/外观/AI 本就超管专属；误入（预览消息/降级瞬间）弹回概览
-    if (myRole !== 'super' && (type === 'accounts' || type === 'appearance' || type === 'ai' || type === 'email')) type = 'overview';
+    if (myRole !== 'super' && (type === 'accounts' || type === 'appearance' || type === 'ai' || type === 'email' || type === 'scripts')) type = 'overview';
     currentType = type;
     navBtns.forEach(function (b) { b.classList.toggle('active', b.getAttribute('data-type') === type); });
     var isOverview = type === 'overview';
@@ -5430,9 +5654,11 @@
     var isMe = type === 'me';
     var isStatus = type === 'status';
     var isNotes = type === 'notes';
+    var isScripts = type === 'scripts';
     $('overviewPanel').hidden = !isOverview;
-    $('mediaPanel').hidden = isOverview || isAccounts || isAppear || isAi || isEmail || isMe || isStatus || isNotes;
+    $('mediaPanel').hidden = isOverview || isAccounts || isAppear || isAi || isEmail || isMe || isStatus || isNotes || isScripts;
     $('notesPanel').hidden = !isNotes;
+    $('scriptsPanel').hidden = !isScripts;
     $('accountsPanel').hidden = !isAccounts;
     $('appearancePanel').hidden = !isAppear;
     $('aiPanel').hidden = !isAi;
@@ -5475,6 +5701,10 @@
       noteResetForm(); // 每次进页弹窗字段归零，防上次的编辑草稿串场
       loadNotes();
     }
+    if (isScripts) {
+      scriptResetForm(); // 清掉上次选中的文件/说明，防止误传旧文件
+      loadScripts();
+    }
     if (isAccounts) {
       $('userSearch').value = ''; // 换进来重置搜索
       var usb = $('userSearch').closest('.search-box');
@@ -5482,7 +5712,7 @@
       loadUsers(); // 两个列表都拉：授权后两边（用户行管理员徽标 / 管理员账号列表）都要即时反映
       loadAdmins();
     }
-    if (!isOverview && !isAccounts && !isAppear && !isAi && !isEmail && !isMe && !isStatus && !isNotes) {
+    if (!isOverview && !isAccounts && !isAppear && !isAi && !isEmail && !isMe && !isStatus && !isNotes && !isScripts) {
       $('fileInput').accept = TYPE_EXT[type];
       $('titleInput').value = '';
       selected = {}; // 换标签页清空勾选和搜索
@@ -5516,7 +5746,8 @@
       isEmail ? $('emailPanel') :
       isMe ? $('mePanel') :
       isStatus ? $('statusPanel') :
-      isNotes ? $('notesPanel') : $('mediaPanel');
+      isNotes ? $('notesPanel') :
+      isScripts ? $('scriptsPanel') : $('mediaPanel');
     if (targetPanel && targetPanel !== lastEnterPanel) {
       lastEnterPanel = targetPanel;
       targetPanel.classList.remove('panel-enter');
@@ -5563,6 +5794,7 @@
       ai: { name: 'AI', desc: 'AI 供应商 / 模型 / 全局开关' },
       email: { name: '邮件', desc: '邮件服务 / 验证码 / 课表提醒定时任务' },
       notes: { name: '随笔', desc: '随笔管理 · 新增 / 编辑 / 删除 / 静态清单导入' },
+      scripts: { name: '脚本', desc: 'Sprout Pro 脚本库 · 验签上传 / 列表 / 删除' },
       me: { name: '我的', desc: '管理员资料 / 头像 / 安全中心' },
       status: { name: '状态', desc: '健康状态 / 数据库与 KV' }
     };

@@ -79,6 +79,7 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
       <button data-type="video" title="视频"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M2 8h20M2 16h20M8 4v16M16 4v16"/></svg><span>视频</span></button>
       <button data-type="image" title="图片"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m21 15-5-5L5 21"/></svg><span>图片</span></button>
       <button data-type="notes" title="随笔"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/><path d="M9 7h7M9 11h5"/></svg><span>随笔</span></button>
+      <button data-type="scripts" data-super-nav title="脚本"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m8 9-3 3 3 3"/><path d="m16 9 3 3-3 3"/><path d="M13 5 11 19"/></svg><span>脚本</span></button>
       <button data-type="accounts" data-super-nav title="账号（用户与管理员）"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg><span>账号</span></button>
       <button data-type="appearance" data-super-nav title="外观"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 2a10 10 0 0 0 0 20z" fill="currentColor" stroke="none"/></svg><span>外观</span></button>
       <button data-type="ai" data-super-nav title="AI 设置"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="8" width="16" height="12" rx="2"/><path d="M12 8V4"/><path d="M9 4h6"/><circle cx="9" cy="13" r="1" fill="currentColor" stroke="none"/><circle cx="15" cy="13" r="1" fill="currentColor" stroke="none"/><path d="M9 17h6"/></svg><span>AI</span></button>
@@ -101,6 +102,7 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
           <button data-type="video">视频</button>
           <button data-type="image">图片</button>
           <button data-type="notes">随笔</button>
+          <button data-type="scripts" data-super-nav>脚本</button>
           <button data-type="accounts" data-super-nav>账号</button>
           <button data-type="appearance" data-super-nav>外观</button>
           <button data-type="ai" data-super-nav>AI</button>
@@ -254,6 +256,46 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
         <span class="es-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></span>
         <span class="es-title">还没有随笔</span>
         <span class="es-hint">点左上角「写一篇」发布第一篇；搜索无结果时也会显示这里。</span>
+      </div>
+    </div>
+  </div>
+
+  <div id="scriptsPanel" hidden>
+    <div class="page-head"><div><h2>脚本</h2><p class="ph-desc">Sprout Pro 在线脚本库：上传 .sh 与对应的 .sig，服务端验签通过才写入 KV；App 读取后还会独立再验一次。</p></div></div>
+    <div class="section-card">
+      <p class="section-title">上传脚本</p>
+      <p class="section-sub">脚本与签名各选一个文件；说明与版本都会进入签名 payload，必须与签名时完全一致（说明的前后空格也不能改）。同名上传会先确认再覆盖。</p>
+      <div class="script-form">
+        <div class="script-picks">
+          <label class="script-pick" id="scriptPickFile">
+            <span class="sp-title">脚本文件</span>
+            <span class="sp-name" id="scriptFileName">未选择 .sh</span>
+            <input type="file" id="scriptFile" accept=".sh">
+          </label>
+          <label class="script-pick" id="scriptPickSig">
+            <span class="sp-title">签名文件</span>
+            <span class="sp-name" id="scriptSigName">未选择 .sig</span>
+            <input type="file" id="scriptSig" accept=".sig">
+          </label>
+        </div>
+        <div class="script-fields">
+          <div class="field"><label for="scriptDesc">说明（≤200 字符，单行）</label><input type="text" id="scriptDesc" maxlength="200" placeholder="示例脚本"></div>
+          <div class="field"><label for="scriptVersion">版本</label><input type="text" id="scriptVersion" inputmode="numeric" value="1"></div>
+        </div>
+        <div class="bgset-row script-actions">
+          <button id="scriptUploadBtn" type="button">上传并验签</button>
+          <button id="scriptsRefreshBtn" class="ghost" type="button">刷新列表</button>
+          <span class="meta2" id="scriptUploadMsg"></span>
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <p class="meta2" id="scriptsSumm" style="margin:0 0 4px"></p>
+      <ul class="list script-list" id="scriptList"></ul>
+      <div class="empty-state" id="scriptsEmpty" hidden>
+        <span class="es-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m8 9-3 3 3 3"/><path d="m16 9 3 3-3 3"/><path d="M13 5 11 19"/></svg></span>
+        <span class="es-title">还没有脚本</span>
+        <span class="es-hint">选好 .sh 与 .sig 后点「上传并验签」，通过后 App 端即可读取。</span>
       </div>
     </div>
   </div>

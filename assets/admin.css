@@ -112,7 +112,18 @@
   aside.sidenav { display: none; }
   aside.sidenav .brand { padding: 6px 10px 14px; }
   aside.sidenav .brand h1 { font-size: 16px; font-weight: 700; }
-  nav.sidenav-links { display: flex; flex-direction: column; gap: 4px; }
+  nav.sidenav-links { display: flex; flex-direction: column; gap: 4px; position: relative; }
+  /* 抽屉滑动指示器（2026-10-24 站长「窄屏这个能不能也改成那样」）：机制同 GlideSelect 滑垫——
+     一颗胶囊垫 translateY 滑行（纯 transform 合成器动画 220ms 同条贝塞尔），active 行文字反色
+     由 .lit 跟随垫子位置；悬停其他行垫子半透明预览滑过去（peek），离开滑回 active 行。
+     垫子是 nav 末位子节点：:nth-child 入场级联选择器不受影响，层级靠 z-index 垫底 */
+  nav.sidenav-links .drawer-ind {
+    position: absolute; left: 0; right: 0; top: 0; z-index: 0;
+    border-radius: 10px; background: var(--fg);
+    transition: transform 220ms cubic-bezier(0.23, 1, 0.32, 1);
+    pointer-events: none;
+  }
+  nav.sidenav-links .drawer-ind.peek { background: var(--hover); }
   nav.sidenav-links button {
     display: flex; align-items: center; gap: 10px;
     background: transparent; color: var(--fg);
@@ -120,8 +131,9 @@
     text-align: left; border: none; cursor: pointer;
     transition: background .2s var(--ease-outc), color .2s var(--ease-outc);
   }
-  nav.sidenav-links button:hover { background: var(--hover); }
-  nav.sidenav-links button.active { background: var(--fg); color: var(--bg); font-weight: 600; }
+  nav.sidenav-links button { position: relative; z-index: 1; } /* 行浮在滑垫上 */
+  nav.sidenav-links button.active { background: none; font-weight: 600; } /* 深底由滑垫承担，反色文字由 .lit 跟随 */
+  nav.sidenav-links button.lit { color: var(--bg); }
   nav.sidenav-links button svg { width: 17px; height: 17px; flex: none; }
   .menu-btn { display: none; }
   main.content { padding: 24px 28px 48px; flex: 1; }

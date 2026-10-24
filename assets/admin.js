@@ -5691,6 +5691,7 @@
     if (myRole !== 'super' && (type === 'accounts' || type === 'appearance' || type === 'ai' || type === 'email' || type === 'scripts')) type = 'overview';
     currentType = type;
     navBtns.forEach(function (b) { b.classList.toggle('active', b.getAttribute('data-type') === type); });
+    syncDrawerInd(true); // 窄屏抽屉滑垫滑到新 active 行（220ms 滑行）
     var isOverview = type === 'overview';
     var isAccounts = type === 'accounts';
     var isAppear = type === 'appearance';
@@ -5808,9 +5809,61 @@
       switchPage(btn.getAttribute('data-type'));
     });
   });
+  // 窄屏抽屉滑动指示器（2026-10-24 站长「窄屏这个能不能也改成那样」）：机制同 GlideSelect 滑垫——
+  // 一颗胶囊垫按 active 行 offsetTop/offsetHeight 定位，transform 滑行（合成器动画），变行才写 DOM；
+  // 悬停其他行垫子半透明预览滑过去（peek），离开滑回 active 行；active 行文字反色由 .lit 跟随垫子。
+  // 量取依赖抽屉可见（display:none 时 offsetTop 恒 0），开抽屉/切页两条路径都会重算兜底
+  function syncDrawerInd(animate) {
+    var nav = document.getElementById('drawerNav');
+    var ind = nav ? nav.querySelector('.drawer-ind') : null;
+    if (!ind || !nav) return;
+    var btn = nav.querySelector('button.active');
+    if (!btn || !btn.offsetParent) return;
+    if (!animate) ind.style.transitionDuration = '0ms';
+    ind.style.transform = 'translateY(' + btn.offsetTop + 'px)';
+    ind.style.height = btn.offsetHeight + 'px';
+    if (!animate) { void ind.offsetHeight; ind.style.transitionDuration = ''; }
+    drawerLightRow(btn);
+  }
+  function drawerLightRow(btn) {
+    var nav = document.getElementById('drawerNav');
+    if (!nav) return;
+    nav.querySelectorAll('button.lit').forEach(function (b) { if (b !== btn) b.classList.remove('lit'); });
+    if (btn) btn.classList.add('lit');
+  }
+  (function () {
+    var nav = document.getElementById('drawerNav');
+    if (!nav) return;
+    nav.addEventListener('pointerover', function (e) {
+      var b = e.target.closest('button');
+      if (!b) return;
+      var ind = nav.querySelector('.drawer-ind');
+      var active = nav.querySelector('button.active');
+      if (!ind) return;
+      if (b === active) {
+        ind.classList.remove('peek');
+        drawerLightRow(active); // 实心垫在 home，反色文字跟回
+      } else {
+        // 半透明预览垫不反色文字（浅垫上白字对比度不足）——悬停行保持深色，离开的 active 行文字自然回深
+        ind.classList.add('peek');
+        ind.style.transform = 'translateY(' + b.offsetTop + 'px)';
+        ind.style.height = b.offsetHeight + 'px';
+        drawerLightRow(null);
+      }
+    });
+    nav.addEventListener('pointerleave', function () {
+      var ind = nav.querySelector('.drawer-ind');
+      var active = nav.querySelector('button.active');
+      if (!ind) return;
+      ind.classList.remove('peek');
+      if (active) { ind.style.transform = 'translateY(' + active.offsetTop + 'px)'; ind.style.height = active.offsetHeight + 'px'; }
+      drawerLightRow(active);
+    });
+  })();
   // 窄屏汉堡菜单：点遮罩收起
   $('menuBtn').addEventListener('click', function () {
     document.body.classList.toggle('nav-open');
+    syncDrawerInd(false); // 开抽屉免动画直落 active 行（display:none 期间量不到，此刻才可量）
   });
   document.addEventListener('click', function (e) {
     if (!document.body.classList.contains('nav-open')) return;

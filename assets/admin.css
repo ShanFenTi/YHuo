@@ -134,6 +134,11 @@
   nav.sidenav-links button { position: relative; z-index: 1; } /* 行浮在滑垫上 */
   nav.sidenav-links button.active { background: none; font-weight: 600; } /* 深底由滑垫承担，反色文字由 .lit 跟随 */
   nav.sidenav-links button.lit { color: var(--bg); }
+  /* 入场动画时钟冻结兜底（2026-10-24）：IAB/手机省电节流会让 CSS 动画时钟停走，backwards 填充
+     把 opacity 锁死在 from 帧（active 行浅色文字在深垫上=不可见，站长线上截图实锤）——
+     开抽屉 1.2s 后（最晚条目 70ms+11×36ms+420ms≈886ms 收尾）强制摘动画直出终态；
+     关抽屉摘掉本类，下次开抽屉级联重播照旧 */
+  nav.sidenav-links.drawer-anim-done button { animation: none; }
   nav.sidenav-links button svg { width: 17px; height: 17px; flex: none; }
   .menu-btn { display: none; }
   main.content { padding: 24px 28px 48px; flex: 1; }

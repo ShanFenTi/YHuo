@@ -5863,6 +5863,17 @@
   // 窄屏汉堡菜单：点遮罩收起
   $('menuBtn').addEventListener('click', function () {
     document.body.classList.toggle('nav-open');
+    // 入场动画时钟冻结兜底（2026-10-24 站长线上截图：active 行文字冻在 from 帧 opacity 0 不可见——
+    // IAB/手机省电节流会让动画时钟停走）：开抽屉 1.2s 后强制摘入场动画直出终态，关抽屉摘掉
+    // 兜底类让下次级联重播照旧；非冻结环境 1.2s 时动画早已自然结束（≈886ms 收尾），零感知
+    var dn = document.getElementById('drawerNav');
+    if (dn) {
+      clearTimeout(syncDrawerInd._doneT);
+      dn.classList.remove('drawer-anim-done');
+      if (document.body.classList.contains('nav-open')) {
+        syncDrawerInd._doneT = setTimeout(function () { dn.classList.add('drawer-anim-done'); }, 1200);
+      }
+    }
     syncDrawerInd(false); // 开抽屉免动画直落 active 行（display:none 期间量不到，此刻才可量）
   });
   document.addEventListener('click', function (e) {

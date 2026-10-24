@@ -1378,21 +1378,13 @@
     });
   }
 
-  // 相册 ⋯ 菜单（重命名 / 解散）
-  function closeAlbumMenu() {
-    var m = document.getElementById('albumMenuPop');
-    if (m) m.remove();
-  }
-  function openAlbumMenu(anchor, name) {
-    closeAlbumMenu();
-    var menu = document.createElement('div');
-    menu.className = 'album-menu';
-    menu.id = 'albumMenuPop';
-    // 排序（2026-10-03 相册排序落地）：上移/下移，已在边界时不显示该项
+  // 相册 ⋯ 菜单选项（2026-10-24 换壳 GlideSelect，站长「全改成这种」拍板）：旧 .album-menu 弹层退役，
+  // 重命名/上移/下移/解散四动作与撤销链路原样保留；边界项不显示上移/下移、位置 tag 与图片卡菜单同规约
+  function albumMenuOptions(name) {
     var orderList = albumNames();
     var idx = orderList.indexOf(name);
+    var total = orderList.length;
     function moveAlbum(dir) {
-      closeAlbumMenu();
       api('/api/admin/albums', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -1413,61 +1405,42 @@
         else toast(d.error || '操作失败', 'err');
       });
     }
-    if (idx > 0) {
-      var up = document.createElement('button');
-      up.type = 'button';
-      up.textContent = '上移';
-      up.addEventListener('click', function () { moveAlbum('up'); });
-      menu.appendChild(up);
-    }
-    if (idx > -1 && idx < orderList.length - 1) {
-      var down = document.createElement('button');
-      down.type = 'button';
-      down.textContent = '下移';
-      down.addEventListener('click', function () { moveAlbum('down'); });
-      menu.appendChild(down);
-    }
-    var rn = document.createElement('button');
-    rn.type = 'button';
-    rn.textContent = '重命名';
-    rn.addEventListener('click', function () {
-      closeAlbumMenu();
-      ask({
-        title: '重命名相册',
-        msg: '把相册「' + name + '」重命名为：',
-        input: true, value: name, max: 50,
-        okText: '重命名',
-        cb: function (ok, val) {
-          var to = (val || '').trim().slice(0, 50);
-          if (!ok || !to || to === name) return;
-          api('/api/admin/albums', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ action: 'rename', from: name, to: to })
-          }).then(function (d) {
-            if (d.ok) {
-              if (albumFilter === name) albumFilter = to;
-              loadList();
-              toast('已重命名为「' + to + '」', 'ok', false, {
-                action: { label: '撤销', cb: function () {
-                  api('/api/admin/albums', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ action: 'rename', from: to, to: name })
-                  }).then(function () { loadList(); toast('已撤销', 'ok'); });
-                } }
-              });
-            } else toast(d.error || '操作失败', 'err');
-          });
-        }
-      });
-    });
-    var del = document.createElement('button');
-    del.type = 'button';
-    del.className = 'danger';
-    del.textContent = '解散相册（不删图）';
-    del.addEventListener('click', function () {
-      closeAlbumMenu();
+    var opts = [
+      { value: 'rename', label: '重命名', icon: ICO.pencil, onPick: function () {
+        ask({
+          title: '重命名相册',
+          msg: '把相册「' + name + '」重命名为：',
+          input: true, value: name, max: 50,
+          okText: '重命名',
+          cb: function (ok, val) {
+            var to = (val || '').trim().slice(0, 50);
+            if (!ok || !to || to === name) return;
+            api('/api/admin/albums', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ action: 'rename', from: name, to: to })
+            }).then(function (d) {
+              if (d.ok) {
+                if (albumFilter === name) albumFilter = to;
+                loadList();
+                toast('已重命名为「' + to + '」', 'ok', false, {
+                  action: { label: '撤销', cb: function () {
+                    api('/api/admin/albums', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ action: 'rename', from: to, to: name })
+                    }).then(function () { loadList(); toast('已撤销', 'ok'); });
+                  } }
+                });
+              } else toast(d.error || '操作失败', 'err');
+            });
+          }
+        });
+      } },
+    ];
+    if (idx > 0) opts.push({ value: 'up', label: '上移', icon: ICO.up, tag: (idx + 1) + '/' + total, onPick: function () { moveAlbum('up'); } });
+    if (idx > -1 && idx < total - 1) opts.push({ value: 'down', label: '下移', icon: ICO.down, tag: (idx + 1) + '/' + total, onPick: function () { moveAlbum('down'); } });
+    opts.push({ value: 'del', label: '解散相册', icon: ICO.trash, danger: true, onPick: function () {
       ask({
         title: '解散相册',
         msg: '解散相册「' + name + '」？里面的图片会回到"未分组"，文件本体不受影响。',
@@ -1487,19 +1460,8 @@
           });
         }
       });
-    });
-    menu.appendChild(rn);
-    menu.appendChild(del);
-    document.body.appendChild(menu);
-    var r = anchor.getBoundingClientRect();
-    var left = Math.min(r.left, window.innerWidth - menu.offsetWidth - 8);
-    menu.style.left = Math.max(8, left) + 'px';
-    menu.style.top = (r.bottom + 6) + 'px';
-    setTimeout(function () {
-      document.addEventListener('click', function onDoc(e) {
-        if (!menu.contains(e.target)) { closeAlbumMenu(); document.removeEventListener('click', onDoc); }
-      });
-    }, 0);
+    } });
+    return opts;
   }
 
   function clearAlbumDropHints() {
@@ -1565,16 +1527,20 @@
       item.appendChild(badge);
 
       if (isAlbum) {
-        var more = document.createElement('button');
-        more.type = 'button';
-        more.className = 'as-more';
-        more.innerHTML = ICO.dots;
-        more.title = '相册操作';
-        more.addEventListener('click', function (e) {
-          e.stopPropagation();
-          openAlbumMenu(more, value);
+        // ⋯ 相册操作 = GlideSelect（2026-10-24 站长拍板「全改成这种」）：滑行高亮/键盘/刷选与图片卡
+        // 菜单同一组件；点击/指针事件不冒泡到行（行的 click 是切筛选/批量移入）
+        var gsHost = document.createElement('span');
+        gsHost.className = 'as-gs';
+        gsHost.addEventListener('click', function (e) { e.stopPropagation(); });
+        makeGlideSelect(gsHost, {
+          className: 'as-more-gs',
+          size: 'sm',
+          title: '相册操作',
+          ariaLabel: '相册操作',
+          chipContent: ICO.dots,
+          options: albumMenuOptions(value),
         });
-        item.appendChild(more);
+        item.appendChild(gsHost);
       }
 
       // 点击：有勾选时 = 把所选移入该相册（"全部图片"除外，仅导航）

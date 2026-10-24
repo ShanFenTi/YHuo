@@ -1774,6 +1774,7 @@
 
   // 跑马灯 resize 重测只挂一次的守卫（模块级；渲染循环里每次重绘都会走到那段代码）
   var mqResizeHooked = false, mqResizeTimer = null;
+  var lastListKey = ''; // 上次全量渲染的数据指纹（见 renderList 快路径）
   function renderList() {
     var list = $('list');
     var arr = items[currentType] || [];
@@ -1788,9 +1789,34 @@
       showArr = showArr.filter(function (it) { return (it.album || '').trim() === albumFilter; });
     }
     var filtering = !!q || (currentType === 'image' && !!albumFilter); // 筛选视图只读，不排不拖
-    list.classList.toggle('img-grid', currentType === 'image'); // 图片页走缩略图网格，音乐/视频走行式
-    list.innerHTML = '';
+    var imgMode = currentType === 'image';
     var ebox = $('empty');
+    // 快路径（2026-10-24 站长「各个相册之间切换卡顿严重」）：数据没变（只切相册/搜索）不整页重建——
+    // 重建 = 全卡 DOM 重建 + 每卡 GlideSelect 菜单 DOM + 缩略图重挂解码 + 跑马灯逐卡读写强制回流，
+    // 实测 73 卡每次切换同步阻塞 11~98ms 且累积 longtask；改为按 id 显隐既有卡片，DOM/图片/菜单全复用。
+    // 数据指纹含 title/album（图片）与 has_lrc/has_cover（音乐视频），改名/归属/歌词封面变更自动回落重建
+    var dataKey = (imgMode ? 'img\n' : currentType + '\n') + arr.map(function (it) {
+      return imgMode
+        ? it.id + '|' + it.title + '|' + (it.album || '')
+        : it.id + '|' + it.title + '|' + (it.has_lrc ? 1 : 0) + (it.has_cover ? 1 : 0);
+    }).join('\n');
+    if (lastListKey === dataKey && list.children.length === arr.length) {
+      var vis = {};
+      showArr.forEach(function (it) { vis[it.id] = true; });
+      Array.prototype.forEach.call(list.children, function (li) {
+        li.style.display = vis[li._dataId] ? '' : 'none';
+        li.draggable = !filtering || imgMode;
+        var h = li.querySelector('.handle');
+        if (h) h.style.display = filtering ? 'none' : '';
+      });
+      ebox.hidden = showArr.length > 0;
+      syncSelAll(showArr);
+      updateBatchBtn();
+      if (imgMode) rebuildAlbumControls(); // 侧栏 active 高亮/上传提示跟 albumFilter 走
+      return;
+    }
+    list.classList.toggle('img-grid', imgMode); // 图片页走缩略图网格，音乐/视频走行式
+    list.innerHTML = '';
     ebox.hidden = showArr.length > 0;
     if (arr.length) {
       ebox.querySelector('.es-title').textContent = '没有匹配的文件';
@@ -1799,9 +1825,13 @@
       ebox.querySelector('.es-title').textContent = '还没有内容';
       ebox.querySelector('.es-hint').textContent = '先上传一个文件吧。';
     }
-    showArr.forEach(function (it) {
-      var i = arr.indexOf(it);
+    var showSet = {};
+    showArr.forEach(function (it) { showSet[it.id] = true; });
+    arr.forEach(function (it, idx) {
+      var i = idx; // 位置标签用全量序（与旧行为一致）；省掉逐项 arr.indexOf 的 O(n²)
       var li = document.createElement('li');
+      li._dataId = it.id; // 快路径显隐按 id 匹配
+      li.style.display = showSet[it.id] ? '' : 'none'; // 全量建卡+按筛选显隐，切相册/搜索走快路径
       li.draggable = !filtering || currentType === 'image';
       // 图片网格：缩略图容器 + 悬停操作层 + 下方信息区；音乐/视频仍是平铺行
       var icThumbs = null, icOv = null, icInfo = null;
@@ -1829,8 +1859,9 @@
       handle.className = 'handle';
       handle.innerHTML = ICO.grip;
       handle.title = '拖动排序';
-
-      if (!filtering) li.appendChild(handle);
+      // 始终装配、筛选态内联隐藏（旧版筛选时整个不装——快路径需要能跟平显隐；网格本就 CSS 隐藏）
+      handle.style.display = filtering ? 'none' : '';
+      li.appendChild(handle);
 
       // 图片类显示缩略图（点击可直接预览大图）
       if (currentType === 'image' && it.r2_key) {
@@ -1944,7 +1975,10 @@
               }).then(function (d) {
                 if (d.ok) {
                   it.album = o.value;
-                  rebuildAlbumControls();
+                  // renderList 而非只 rebuildAlbumControls（2026-10-24）：菜单 DOM 上的「当前」tag 是
+                  // 渲染时烙进去的，改归属后不重建的话重开菜单仍显示旧归属（旧链路既有问题）；
+                  // 数据指纹含 album 会走一次重建，菜单/侧栏/快路径状态全部对齐
+                  renderList();
                   toast('已移入「' + (o.value || '未分组') + '」', 'ok', false, {
                     action: { label: '撤销', cb: function () {
                       api('/api/admin/media/' + it.id, {
@@ -2064,10 +2098,15 @@
     // 不进 rAF——定时器/帧时钟在某些环境不可靠；只对溢出的卡打 .mq 写 --mq-shift/--mq-dur；
     // 窗口拉伸后重测（宽度变大可能不再溢出）
     if (currentType === 'image') {
+      // 两阶段量写（2026-10-24 切相册卡顿修复）：旧实现逐卡「读 scrollWidth→写样式」交错，每张卡
+      // 都强制一次回流（73 卡=73 次）；改先全量读差值再统一写，整页只回流 1 次
+      var mqShifts = [];
       list.querySelectorAll('.img-grid .ic-info .title').forEach(function (t) {
         var inner = t.querySelector('.mq-inner');
-        if (!inner) return;
-        var shift = inner.scrollWidth - t.clientWidth;
+        if (inner) mqShifts.push(inner.scrollWidth - t.clientWidth);
+      });
+      list.querySelectorAll('.img-grid .ic-info .title').forEach(function (t, k) {
+        var shift = mqShifts[k];
         if (shift > 4) {
           t.classList.add('mq');
           t.style.setProperty('--mq-shift', shift + 'px');
@@ -2104,6 +2143,7 @@
     updateBatchBtn();
     renderStorage();
     if (currentType === 'image') rebuildAlbumControls();
+    lastListKey = dataKey; // 全量重建完成后记录指纹，之后的筛选/搜索切换走快路径
   }
 
   function syncSelAll(showArr) {

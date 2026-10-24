@@ -696,6 +696,12 @@
   /* ⋯更多 GlideSelect 宿主是 span（2026-10-16）：上条「隐藏按钮文字」规则会连它一起藏掉——
      组件整个 display:none，菜单量不到尺寸永远弹不出。整条豁免（chip 钮/菜单/滑垫全部参与布局） */
   .img-grid .ic-ov .row-actions span.gs { display: inline-block; }
+  /* chip 钮内部的 .gs-lbl 是 ⋯ 圆点图标载体，同被上条连坐（2026-10-24 站长截图实锤：
+     角标一直是无圆点空方块，svg 量出 0×0）——它不是按钮文字，豁免恢复组件默认 inline-flex。
+     .gs-chev 显式不显示（⋯ 纯图标 chip 不配箭头，此前全靠上条误伤才没露出来，这里定版）；
+     旧按钮的文字 span 不在 .gs-btn 内，照旧隐藏 */
+  .img-grid .ic-ov .row-actions .gs-lbl { display: inline-flex; }
+  .img-grid .ic-ov .row-actions .gs-chev { display: none; }
   /* 这三条白玻璃规则只服务普通图标钮（查看/改名等）；⋯ GlideSelect chip（button.gs-btn）
      必须排除——:not(.gs-btn) 是特异性补漏（2026-10-16「为什么是透明的」二次修复）：
      此前按「gs-btn 规则在后面覆盖」处理，但本规则特异性 (0,3,1) 高于 .ic-ov .gs-btn 的
@@ -727,6 +733,10 @@
   .img-grid .ic-info .meta {
     color: var(--muted); font-size: 11.5px; white-space: nowrap;
     overflow: hidden; text-overflow: ellipsis; /* 尺寸+日期超窄卡时也走省略号（2026-10-03 截断修复） */
+    /* 让位右下角 ⋯ 角标（2026-10-24）：角标钉卡缘 6px+chip 实宽 34px（圆点 14px+行钮 padding
+       5px 10px）=左缘距卡右 40px，扣除 .ic-info 右 padding 11px 即 29px，再留 4px 净缝——
+       日期不再钻到角标底下 */
+    padding-right: 33px;
   }
   /* 超长文件名滚动跑马灯（2026-10-16 站长「图片名称太长使用滚动显示」= 常滚不依赖悬停，
      悬停暂停便于读名/点改名；2026-10-03 首版是悬停才滚）：溢出即滚，shift/时长由 JS 在列表
@@ -1031,13 +1041,18 @@
   .gs-row.on .gs-tick { visibility: visible; }
   .gs-row.danger { color: var(--danger); }
   .gs-row.danger .gs-ic { color: var(--danger); }
-  /* 角标 GlideSelect 触发钮（2026-10-16 站长「为什么是透明的」定版）：常驻后钮身不能再用悬停
-     浮层时代的半透明白玻璃（rgba(255,255,255,.16)+blur 在图片上=透图），改不透明深墨实底+白点，
-     恒压图片恒清晰，悬停/开启态同色微亮提反馈。
+  /* 角标 GlideSelect 触发钮（2026-10-24 站长「黑色观感很违和」改版）：钮身仍须不透明
+     （半透底压在缩略图上=透图，「为什么是透明的」的老坑），但 2026-10-16 十四起角标锚的是
+     整卡右下、恒悬在信息区上，无差别深墨与浅色信息区相冲——改回组件同款主题 token
+     （chip 底+fg 点，浅深自动跟随），发丝描边+浅阴影保「浮在卡上」的层次；
+     悬停/开启态用组件同款 color-mix 提亮。
      注意：本段特异性 (0,3,0) 天生低于上方 .row-actions button 规则的 (0,3,1)——后者已加
      :not(.gs-btn) 排除本钮，特异性补漏见上方注释；靠「写在后面覆盖」救不了特异性差一档 */
-  .img-grid .ic-ov .gs-btn { background: rgba(0, 0, 0, 0.55); color: #ffffff; box-shadow: 0 1px 4px rgba(0,0,0,.28); }
-  .img-grid .ic-ov .gs-btn:hover, .img-grid .ic-ov .gs.open .gs-btn { background: rgba(0, 0, 0, 0.72); }
+  .img-grid .ic-ov .gs-btn {
+    background: var(--chip); color: var(--fg);
+    box-shadow: inset 0 0 0 1px var(--border), 0 1px 4px rgba(0, 0, 0, 0.10);
+  }
+  .img-grid .ic-ov .gs-btn:hover, .img-grid .ic-ov .gs.open .gs-btn { background: color-mix(in srgb, var(--fg) 12%, var(--chip)); }
   @media (prefers-reduced-motion: reduce) {
     .gs-menu, .gs-pill, .gs-chev, .gs-btn { transition: none !important; animation: none !important; }
   }

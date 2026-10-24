@@ -7,6 +7,8 @@ node_modules/
 .wrangler/
 .wrangler-home/
 .wrangler-xdg/
+.wrangler-perf/
+.wrangler-verify-tmp/
 package.json
 package-lock.json
 

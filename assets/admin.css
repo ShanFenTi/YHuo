@@ -1010,7 +1010,13 @@
      （2026-10-03 截断修复钉的），absolute 菜单画在卡内会被卡缘整段裁掉（rect 量着正常、
      绘画看不见，「看不到任何内容」的根因）；fixed+body 使菜单不受任何祖先 overflow/层叠裁剪 */
   .gs-menu {
-    position: fixed; z-index: 200; width: var(--gs-menu-w, 176px); min-width: min(100vw, 176px); max-width: 300px;
+    /* width 改 fit-content（2026-10-24 站长截图「菜单文字显示有问题」）：固定 176px 装不下
+       「归属相册：」+相册名的长行（实测最宽行内容 200.5px），而 .gs-list 的 grid 列轨道按
+       max-content 取尺寸会把整行撑出菜单盒——「当前」/「n/N」标签右缘压在菜单边框上、最长行
+       文字顶缘甚至被圆角裁掉。改 fit-content 后菜单按内容自适应（min-width=menuWidth 保底、
+       max-width 300 封顶，超出部分由 .gs-list 的 minmax(0,1fr) 兜底走 .gs-tx 既有 ellipsis）；
+       menuWidth 传参语义从「固定宽」变「最小宽」，placeMenu 按实际 offsetWidth 摆位不受影响 */
+    position: fixed; z-index: 200; width: fit-content; min-width: min(var(--gs-menu-w, 176px), 100vw); max-width: 300px;
     padding: 4px; border-radius: 10px;
     background: var(--card); border: 1px solid var(--border);
     box-shadow: 0 4px 16px color-mix(in srgb, #000 22%, transparent);
@@ -1020,7 +1026,7 @@
   /* top/left/bottom 由 JS placeMenu() 按按钮 rect 写 inline style（视口翻转+夹边），CSS 不再定锚 */
   .gs-menu[data-state="open"] { opacity: 1; transform: scale(1); }
   .gs-menu[data-state="closed"] { pointer-events: none; }
-  .gs-list { position: relative; display: grid; gap: 1px; touch-action: none; }
+  .gs-list { position: relative; display: grid; grid-template-columns: minmax(0, 1fr); gap: 1px; touch-action: none; }
   .gs-pill {
     pointer-events: none; position: absolute; left: 0; right: 0; top: 0; height: var(--gs-row, 26px);
     border-radius: 6px; background: var(--hover); opacity: 0;

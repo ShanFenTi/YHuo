@@ -402,7 +402,7 @@ export async function runTick(env) {
   const now = bjNow();
   const day = bjDayStr(now);
   // 法定假日整天停发课表提醒（早报+课前一起停；后台「邮件」页节假日表可覆盖内置默认，
-  // 返回 holiday=命中的条目供后台留痕显示）。每日备份搭在 tick.js 侧独立执行，不受此处早退影响
+  // 返回 holiday=命中的条目供后台留痕显示）。2026-11-02 起外部 cron 已停用，tick 不再被自动敲门
   const holiday = await getHoliday(env, day);
   if (holiday) return { ok: true, sent: 0, holiday, users: [] };
   const p = bjDateParts(now);

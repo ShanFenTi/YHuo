@@ -1,4 +1,5 @@
-// GET /api/schedule/tick → 定时触发入口（cron-job.org 每 5 分钟调一次）
+// GET /api/schedule/tick → 课表提醒定时触发入口（2026-11-02 起站长已关闭 cron-job.org，
+// 无人自动敲门；接口与后台「立即执行一次」保留，将来恢复提醒时按部署说明 §2 重配外部 cron）
 // 鉴权：?key= 或 Authorization: Bearer <key>，密钥存 site_settings `schedule_tick_key`
 //（后台「邮件」页可查看/重新生成）。幂等：发送记录在 schedule_sent 表，重复调用不会重发。
 // 访问留痕：无论密钥对错都写一条时间戳到 site_settings（schedule_tick_last=鉴权成功 /
@@ -6,7 +7,6 @@
 import { json } from '../../lib/util.js';
 import { ensureSchema } from '../../lib/migrate.js';
 import { runTick } from '../../lib/schedule.js';
-import { maybeRunDailyBackup } from '../../lib/backup.js'; // 每日 D1 备份搭车执行（见下）
 
 const KEY_NAME = 'schedule_tick_key';
 const LAST_OK = 'schedule_tick_last';
@@ -33,7 +33,7 @@ async function record(env, keyName, obj) {
   } catch {}
 }
 
-export async function onRequestGet({ request, env, waitUntil }) {
+export async function onRequestGet({ request, env }) {
   await ensureSchema(env);
   const url = new URL(request.url);
   const given = url.searchParams.get('key')
@@ -50,10 +50,6 @@ export async function onRequestGet({ request, env, waitUntil }) {
   try {
     const r = await runTick(env);
     await record(env, LAST_OK, { t: bjStamp(), sent: r.sent || 0, disabled: !!r.disabled, holiday: r.holiday || '', errors: (r.errors || []).length });
-    // 每日 D1 备份搭车跑一次（发完邮件之后；maybeRunDailyBackup 内部 try/catch 兜底绝不抛错、
-    // 幂等：当天已备过即跳过）。有 waitUntil 就挂后台执行不拖慢响应，没有则原地 await。
-    if (typeof waitUntil === 'function') waitUntil(maybeRunDailyBackup(env));
-    else await maybeRunDailyBackup(env);
     return json({ ok: true, sent: r.sent, disabled: !!r.disabled, holiday: r.holiday || '', errors: r.errors || [], users: r.users || [] });
   } catch (e) {
     await record(env, LAST_OK, { t: bjStamp(), error: String((e && e.message) || '执行失败').slice(0, 80) });

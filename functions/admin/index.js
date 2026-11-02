@@ -565,7 +565,7 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
     </div>
     <div class="section-card">
       <p class="section-title">课表提醒定时任务</p>
-      <p class="section-sub">用户课表的每日早报 / 重点课课前提醒。Pages Functions 不支持定时触发，需要外部 cron 每 5 分钟访问下面的 URL——推荐 cron-job.org（免费）：注册后新建任务，地址填下面的 URL，执行间隔选「每 5 分钟」。</p>
+      <p class="section-sub">用户课表的每日早报 / 重点课课前提醒。<strong>2026-11-02 起外部定时任务已停用，提醒不会自动发送</strong>；如需恢复，按下述方式接入外部 cron（Pages Functions 不支持定时触发，需每 5 分钟访问下面的 URL）。</p>
       <div class="field" data-superonly>
         <label for="schedTickUrl">Tick 地址（首次查看自动生成密钥）</label>
         <div class="bgset-row">
@@ -580,7 +580,7 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
         <span class="meta2" id="schedTickMsg"></span>
       </div>
       <div class="field" data-superonly style="margin-top:16px;max-width:560px">
-        <label for="schedHoliInput">节假日表（命中的日期整天停发课表提醒；每日备份不受影响）</label>
+        <label for="schedHoliInput">节假日表（命中的日期整天停发课表提醒）</label>
         <textarea id="schedHoliInput" rows="3" placeholder="留空 = 内置默认（元旦/春节/清明/五一/端午/中秋/国庆）；写 none = 不停发；示例：10-01~10-07，2027-02-05~2027-02-11"></textarea>
         <div class="bgset-row" style="margin-top:8px">
           <button id="schedHoliSaveBtn" class="ghost" type="button">保存节假日表</button>
@@ -689,7 +689,7 @@ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('
         <button id="stBackupNowBtn" class="ghost" type="button">立即备份</button>
         <span class="meta2" id="stBackupTip"></span>
       </div>
-      <p class="meta2" style="margin:8px 0 0">每日自动备份到 KV，保留最近 7 份（随课表提醒的定时任务每天顺带执行）。</p>
+      <p class="meta2" style="margin:8px 0 0">手动备份到 KV，保留最近 7 份（点「立即备份」生成；不再自动执行）。</p>
     </div>
     <div class="card" id="stRumCard">
       <div class="visit-head"><strong>前端错误</strong><span class="meta2" id="stRumSumm"></span></div>

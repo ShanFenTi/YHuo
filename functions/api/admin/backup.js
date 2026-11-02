@@ -1,4 +1,4 @@
-// GET/POST /api/admin/backup → D1 每日备份管理（位于 api/admin/ 下，自动被 _middleware.js
+// GET/POST /api/admin/backup → D1 备份管理（手动触发；位于 api/admin/ 下，自动被 _middleware.js
 // 会话门卫保护，未登录 401，本文件不写鉴权）。备份本体在 functions/lib/backup.js：
 //   GET            最近 7 份清单 {ok, list:[{date, size(字节), counts:{notes,messages,checkins,users}}], lastdate}
 //   GET ?date=…    下载该份备份原始 JSON（attachment，浏览器同源带 Cookie 直接下载）

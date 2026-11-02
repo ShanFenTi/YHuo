@@ -3,9 +3,9 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="YHuo 站点公开状态页：数据库、对象存储、邮件服务、每日备份四项健康灯，60 秒自动刷新，不含任何用户数据。">
+  <meta name="description" content="YHuo 站点公开状态页：数据库、对象存储、邮件服务、数据备份四项健康灯，60 秒自动刷新，不含任何用户数据。">
   <meta property="og:title" content="YHuo — 站点状态">
-  <meta property="og:description" content="数据库 / 对象存储 / 邮件服务 / 每日备份四项健康灯。">
+  <meta property="og:description" content="数据库 / 对象存储 / 邮件服务 / 数据备份四项健康灯。">
   <meta property="og:type" content="website">
   <meta property="og:url" content="https://190963.xyz/status/">
   <meta property="og:image" content="https://190963.xyz/images/og-banner.jpg">
@@ -129,8 +129,8 @@
     <p class="sub">YHuo（<a href="/" style="color:inherit;">190963.xyz</a>）核心服务健康灯 · 60 秒自动刷新</p>
     <div class="row"><span class="dot" id="d1"></span><div><p class="name">数据库</p><p class="desc">D1 · 存随笔 / 留言 / 签到 / 课表</p></div><span class="state" id="d1t">检查中…</span></div>
     <div class="row"><span class="dot" id="kv"></span><div><p class="name">对象存储</p><p class="desc">KV · 存媒体文件 / 头像 / 备份</p></div><span class="state" id="kvt">检查中…</span></div>
-    <div class="row"><span class="dot" id="mail"></span><div><p class="name">邮件服务</p><p class="desc">验证码 / 课表提醒的发信通道</p></div><span class="state" id="mailt">检查中…</span></div>
-    <div class="row"><span class="dot" id="bak"></span><div><p class="name">每日备份</p><p class="desc">四张业务表全量 JSON · 保留 7 份</p></div><span class="state" id="bakt">检查中…</span></div>
+    <div class="row"><span class="dot" id="mail"></span><div><p class="name">邮件服务</p><p class="desc">验证码 / 通知邮件的发信通道</p></div><span class="state" id="mailt">检查中…</span></div>
+    <div class="row"><span class="dot" id="bak"></span><div><p class="name">数据备份</p><p class="desc">后台手动生成 · 保留最近 7 份</p></div><span class="state" id="bakt">检查中…</span></div>
     <div class="foot">
       <a href="/">← 返回首页</a>
       <span style="display:flex;align-items:center;gap:10px;"><span id="checkedAt"></span><button class="refresh" id="btnRefresh" type="button">立即刷新</button></span>
@@ -138,7 +138,7 @@
   </main>
   <script>
     (function () {
-      // 北京时间当天（YYYY-MM-DD）：备份日期口径与 tick/签到一致
+      // 北京时间当天（YYYY-MM-DD）：备份日期口径与签到一致
       function bjToday() {
         var d = new Date(Date.now() + 8 * 3600 * 1000);
         return d.getUTCFullYear() + '-' + String(d.getUTCMonth() + 1).padStart(2, '0') + '-' + String(d.getUTCDate()).padStart(2, '0');

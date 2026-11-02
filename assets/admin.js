@@ -2342,7 +2342,7 @@
     }
   });
 
-  // ---------- 状态页 · 数据备份卡（D1 每日自动备份，KV 保留最近 7 份） ----------
+  // ---------- 状态页 · 数据备份卡（D1 备份，后台手动触发，KV 保留最近 7 份） ----------
   function loadBackupCard() {
     $('stBackupBody').innerHTML = skListHtml(3);
     $('stBackupSumm').textContent = '';

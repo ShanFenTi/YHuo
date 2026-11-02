@@ -31,7 +31,7 @@ export async function onRequestGet({ env }) {
       report.mediaOk = false;
     }
   }
-  // 只读观测：最近一次每日备份的日期（KV backup:lastdate，由 /api/schedule/tick 每天顺带写入；
+  // 只读观测：最近一次手动备份的日期（KV backup:lastdate，由后台「立即备份」写入；
   // 读取失败置 null，不影响本接口）
   report.backupLastDate = null;
   if (report.media) {

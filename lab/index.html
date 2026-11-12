@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="zh-CN" class="light" data-page="lab">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="YHuo 的 ReactBits 效果实验室：零依赖原生复刻的交互与动效。">
+  <meta name="robots" content="noindex, follow">
+  <title>效果实验室 — YHuo</title>
+  <link rel="icon" type="image/png" href="/assets/icons/favicon.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,100..1000;1,9..40,100..1000&family=JetBrains+Mono:wght@100..800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/assets/site.css">
+  <link rel="stylesheet" href="/lab/lab.css">
+</head>
+<body class="lab-page">
+  <div class="lab-progress" id="labProgress" aria-hidden="true"><i></i></div>
+
+  <header class="lab-top">
+    <a class="lab-brand" href="/" aria-label="回到 YHuo 首页">
+      <span class="lab-brand-dot"></span>
+      <span>YHuo <em>Lab</em></span>
+    </a>
+    <nav class="lab-nav" id="labNav" aria-label="效果分类"></nav>
+    <div class="lab-actions">
+      <button class="lab-theme" id="labTheme" type="button" aria-label="切换深浅色">
+        <svg class="lab-ico-moon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+        <svg class="lab-ico-sun" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>
+      </button>
+      <a class="lab-home" href="/">回主页</a>
+    </div>
+  </header>
+
+  <main class="lab-main">
+    <section class="lab-hero">
+      <div class="lab-kicker">REACTBITS · NATIVE PORT</div>
+      <h1>交互实验室</h1>
+      <p class="lab-lede">
+        从 ReactBits 的 218 个组件里筛掉不适合这个站的，剩下的全部按<strong>零依赖原生</strong>方式复刻在这里。
+        没有 React、没有 GSAP、没有 Three.js；素材用站内相册、音乐与角色贴纸。
+      </p>
+      <div class="lab-stats">
+        <span><b id="labCount">0</b> 个效果</span>
+        <span><b>6</b> 组</span>
+        <span><b>0</b> 个运行时依赖</span>
+      </div>
+      <p class="lab-hint">滚到哪一组都可以直接玩；右上角可切深浅色。桌面端效果最完整，移动端有降级。</p>
+    </section>
+
+    <div class="lab-filters" id="labFilters" aria-label="筛选效果"></div>
+    <div class="lab-sections" id="labSections"></div>
+  </main>
+
+  <footer class="lab-foot">
+    <span>YHuo Lab · 仅本地预览，不对外索引</span>
+    <a href="/">← 回主页</a>
+  </footer>
+
+  <script src="/lab/lab-core.js"></script>
+  <script src="/lab/lab-global.js"></script>
+  <script src="/lab/lab-ai.js"></script>
+  <script src="/lab/lab-gallery.js"></script>
+  <script src="/lab/lab-lists.js"></script>
+  <script src="/lab/lab-cards.js"></script>
+  <script src="/lab/lab-themes.js"></script>
+  <script src="/lab/lab-boot.js"></script>
+</body>
+</html>

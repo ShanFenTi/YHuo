@@ -1904,3 +1904,30 @@
     .aemeath-motes, .aemeath-motes-fg { display: none; }
     .aemeath-motes i, .aemeath-motes-fg i { animation: none; }
   }
+
+/* 存储/用量条 · 液面波（SloshGauge 2026-11-02）
+   只改观感：宽度仍由既有 JS 内联写，过渡换成带回弹的高度；波峰用伪元素循环。 */
+.storage-bar { height: 10px; border-radius: 999px; overflow: hidden; }
+.storage-bar i {
+  position: relative; height: 100%; border-radius: inherit;
+  background: linear-gradient(90deg, var(--brand), color-mix(in srgb, var(--brand) 72%, #fff));
+  transition: width .55s cubic-bezier(.34, 1.2, .64, 1);
+}
+.storage-bar i::after {
+  content: ''; position: absolute; left: -50%; right: -50%; top: -5px; height: 10px;
+  background: radial-gradient(7px 5px at 7px 5px, color-mix(in srgb, var(--brand) 72%, #fff) 62%, transparent 64%) repeat-x;
+  background-size: 14px 10px; opacity: .55;
+  animation: admin-slosh 2.4s linear infinite;
+}
+@keyframes admin-slosh { to { transform: translateX(14px); } }
+.meter-row .mt-track i { position: relative; overflow: hidden; }
+.meter-row .mt-track i::after {
+  content: ''; position: absolute; left: 0; right: 0; top: 0; height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,.28), transparent);
+  transform: translateX(-100%);
+  animation: admin-meter-sheen 2.8s ease-in-out infinite;
+}
+@keyframes admin-meter-sheen { 0%, 55% { transform: translateX(-100%); } 100% { transform: translateX(100%); } }
+@media (prefers-reduced-motion: reduce) {
+  .storage-bar i::after, .meter-row .mt-track i::after { animation: none; }
+}

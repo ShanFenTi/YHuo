@@ -10473,3 +10473,135 @@
       -webkit-backdrop-filter: none;
       backdrop-filter: none;
     }
+
+/* ========================= AI 工作态（2026-11-02 交互升级） =========================
+   替换原「三点跳动」：点阵波 + 三行思考轨迹 + 耗时秒数。首 token 到达即被正文整体替换，
+   所以这里只负责“等待中”的观感；.ai-thinking-sec 保留给既有计时器。 */
+.ai-work { display: flex; flex-direction: column; gap: 7px; min-width: 148px; }
+.ai-work-head { display: flex; align-items: center; gap: 8px; }
+.ai-lattice { display: grid; grid-template-columns: repeat(3, 1fr); gap: 2px; width: 21px; flex: none; }
+.ai-lattice i {
+  display: block; width: 5px; height: 5px; border-radius: 1.5px;
+  background: currentColor; opacity: .2;
+  animation: ai-lattice-wave 1.35s ease-in-out infinite;
+  animation-delay: calc(var(--i) * .08s);
+}
+@keyframes ai-lattice-wave {
+  0%, 100% { opacity: .18; transform: scaleY(.7); }
+  40% { opacity: .95; transform: scaleY(1.15); }
+}
+.ai-work-steps { display: flex; flex-direction: column; gap: 3px; padding-left: 1px; }
+.ai-work-steps span {
+  display: flex; align-items: center; gap: 6px;
+  font-size: 11px; line-height: 1.4; color: currentColor; opacity: .34;
+  animation: ai-work-step 3.6s ease-in-out infinite;
+}
+.ai-work-steps span:nth-child(2) { animation-delay: .7s; }
+.ai-work-steps span:nth-child(3) { animation-delay: 1.4s; }
+.ai-work-steps i { width: 4px; height: 4px; border-radius: 50%; background: currentColor; opacity: .7; flex: none; }
+@keyframes ai-work-step {
+  0%, 18%, 100% { opacity: .28; }
+  28%, 48% { opacity: .78; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ai-lattice i, .ai-work-steps span { animation: none; opacity: .55; }
+}
+
+/* 语音听写胶囊（2026-11-02）：录音时麦克风按钮胀成小胶囊，EQ + 计时；
+   原有 data-on 态保留，.rec 只负责宽度与计时显示。 */
+#aiMicBtn { transition: width .3s var(--ease-out), min-width .3s var(--ease-out), padding .3s var(--ease-out), background-color .2s ease, border-radius .3s ease; }
+#aiMicBtn.rec {
+  width: auto; min-width: 76px; padding: 0 10px; gap: 6px;
+  border-radius: 999px; opacity: 1;
+  background: color-mix(in srgb, var(--apple-primary) 9%, transparent);
+}
+#aiMicBtn .pb-mic-time {
+  display: none; font-family: var(--font-mono); font-size: 10px; line-height: 1;
+  color: var(--apple-primary); font-variant-numeric: tabular-nums; white-space: nowrap;
+}
+#aiMicBtn.rec .pb-mic-time { display: inline-block; }
+@media (prefers-reduced-motion: reduce) {
+  #aiMicBtn { transition: none; }
+}
+
+/* 留言板 · 移动端左滑删除（SwipeRow 2026-11-02）
+   仅管理员且 boardMe.admin 时由 common.js 给 .board-item 加 .swipeable；
+   桌面保留头部删除钮，触屏横向拖动才生效（pointerType=mouse 直接放行）。 */
+.board-item.swipeable { padding: 0; overflow: hidden; touch-action: pan-y; }
+.board-swipe {
+  position: relative; z-index: 1; display: flex; width: 100%; gap: 12px;
+  padding: 14px 16px;
+  background:
+    linear-gradient(105deg, transparent 49.6%, var(--letter-crease) 49.6%, var(--letter-crease) 50.4%, transparent 50.4%),
+    var(--apple-card);
+  transition: transform .26s var(--ease-out);
+}
+.board-swipe-actions {
+  position: absolute; inset: 0 0 0 auto; width: 84px;
+  display: flex; align-items: stretch; justify-content: flex-end;
+  background: linear-gradient(90deg, #e05252, #c93b3b);
+}
+.board-swipe-actions button {
+  border: 0; background: none; color: #fff; font-size: 12px; font-weight: 600;
+  padding: 0 14px; cursor: pointer; font-family: inherit;
+}
+@media (max-width: 560px) {
+  .board-item.swipeable .board-del { display: none; }
+}
+
+/* 课表 · 数字胶囊拖动改值（ScrubField 2026-11-02） */
+.sched-inline-input.scrub-num { cursor: ew-resize; touch-action: pan-y; user-select: none; -webkit-user-select: none; }
+.sched-inline-input.scrub-num.scrubbing {
+  cursor: grabbing;
+  border-color: var(--apple-primary);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--apple-primary) 12%, transparent);
+}
+
+/* 课表 · 开关按压形变（SquishSwitch 2026-11-02）：只加手感，不改开关语义 */
+.sched-switch input:active + i::after { transform: scaleX(1.16); }
+.sched-switch input:checked:active + i::after { transform: translateX(18px) scaleX(1.16); }
+
+/* 文档阅读层 · 上下缘渐进模糊（GradualBlur 2026-11-02）
+   两条 backdrop-filter + mask 的固定带，滚动内容从下面穿过；不改 .doc-scroll 布局。 */
+.doc-viewer::before,
+.doc-viewer::after {
+  content: ''; position: absolute; left: 0; right: 0; height: 36px;
+  z-index: 2; pointer-events: none;
+  backdrop-filter: blur(8px) saturate(120%);
+  -webkit-backdrop-filter: blur(8px) saturate(120%);
+}
+.doc-viewer::before {
+  top: 52px;
+  -webkit-mask-image: linear-gradient(#000 30%, transparent);
+  mask-image: linear-gradient(#000 30%, transparent);
+}
+.doc-viewer::after {
+  bottom: 0;
+  -webkit-mask-image: linear-gradient(transparent, #000 70%);
+  mask-image: linear-gradient(transparent, #000 70%);
+}
+
+/* 首页快捷入口 · 指针光斑（SpotlightCard 2026-11-02） */
+.home-entry.lit {
+  background-image: radial-gradient(170px circle at var(--he-mx, 50%) var(--he-my, 50%),
+    color-mix(in srgb, var(--primary) 14%, transparent), transparent 70%);
+}
+
+/* 首页问候语 · 高光扫过（ShinyText 2026-11-02）：只作用于“你好”这一行 */
+#heroGreeting {
+  background: linear-gradient(105deg,
+    var(--apple-muted-foreground) 30%,
+    var(--primary) 44%,
+    color-mix(in srgb, var(--primary) 30%, #fff) 50%,
+    var(--primary) 56%,
+    var(--apple-muted-foreground) 70%);
+  background-size: 240% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: hero-greeting-shine 5.2s linear infinite;
+}
+@keyframes hero-greeting-shine { to { background-position: -240% 0; } }
+@media (prefers-reduced-motion: reduce) {
+  #heroGreeting { animation: none; background-position: 0 0; }
+}

@@ -4315,6 +4315,47 @@ window.__siteCalendar = (function () {
       var schedDayListEl = document.getElementById('schedDayList');
       var schedENote = document.getElementById('schedENote');
       var schedNodeMin = document.getElementById('schedNodeMin');
+      // 数字胶囊拖动改值（ScrubField 2026-11-02）：桌面/触屏都能横拖，点一下仍可正常输入。
+      // 只增强这两个数值输入，不替换原生 input（保存链路仍走既有 change 监听）。
+      function hookScrubNumber(input, min, max, step) {
+        if (!input || input.dataset.scrubHooked) return;
+        input.dataset.scrubHooked = '1';
+        input.classList.add('scrub-num');
+        input.title = '拖动改值，点击输入';
+        var sx = 0, base = 0, moved = false, down = false, pid = null;
+        input.addEventListener('pointerdown', function (e) {
+          if (e.button !== 0) return;
+          down = true; moved = false; sx = e.clientX; pid = e.pointerId;
+          base = parseInt(input.value, 10);
+          if (!isFinite(base)) base = min;
+          input.classList.add('scrubbing');
+        });
+        input.addEventListener('pointermove', function (e) {
+          if (!down || e.pointerId !== pid) return;
+          var dx = e.clientX - sx;
+          if (Math.abs(dx) > 4) {
+            if (!moved) { moved = true; try { input.setPointerCapture(pid); } catch (err) {} }
+            e.preventDefault();
+            var v = base + Math.round(dx / 4) * step;
+            v = Math.max(min, Math.min(max, v));
+            input.value = String(v);
+          }
+        });
+        function end() {
+          if (!down) return;
+          down = false;
+          input.classList.remove('scrubbing');
+          if (moved) {
+            input.dispatchEvent(new Event('input', { bubbles: true }));
+            input.dispatchEvent(new Event('change', { bubbles: true }));
+            input.blur();
+          }
+        }
+        input.addEventListener('pointerup', end);
+        input.addEventListener('pointercancel', end);
+      }
+      hookScrubNumber(schedAhead, 5, 120, 1);
+      hookScrubNumber(schedNodeMin, 20, 120, 5);
       var schedData = null;   // 归一化课表（termStart/nodeTimes/courses/daily/remindAhead）
       var schedViewWeek = 0;  // 正在查看的教学周（0 = 跟随当前周）
       var schedEditIdx = -2; // 编辑中的课程下标（-1 = 新增，-2 = 未在编辑）
@@ -6432,6 +6473,16 @@ window.__siteCalendar = (function () {
     function startHomeLower() {
       var notesList = document.getElementById('homeNotesList');
       var statsEl = document.getElementById('homeStats');
+      // 快捷入口磁贴 · 指针光斑（SpotlightCard 2026-11-02）：只写 CSS 变量，不改布局。
+      Array.prototype.forEach.call(document.querySelectorAll('.home-entry'), function (card) {
+        card.addEventListener('pointermove', function (e) {
+          var r = card.getBoundingClientRect();
+          card.style.setProperty('--he-mx', (e.clientX - r.left) + 'px');
+          card.style.setProperty('--he-my', (e.clientY - r.top) + 'px');
+          card.classList.add('lit');
+        });
+        card.addEventListener('pointerleave', function () { card.classList.remove('lit'); });
+      });
       homeLowerAbort(); // 防重入：先摘上一轮（同 startHomeWeather 按当前 DOM 重查的约定）
       if (!notesList && !statsEl) return;
       var ctl = new AbortController();
@@ -7298,7 +7349,7 @@ window.__siteCalendar = (function () {
     var pbPlusOpen = false, pbDismissed = false;
     var pbGlyphT = 0, pbGlyphRaf = 0, pbGlyphDir = 1;
     var pbEffortIdx = 0;
-    var pbMicRec = null, pbMicOn = false;
+    var pbMicRec = null, pbMicOn = false, pbMicTimer = 0;
 
     // 行图标（内联 SVG；同原版 hugeicons 的 1.8 描边线性风格）
     var PB_ICONS = {
@@ -7779,7 +7830,15 @@ window.__siteCalendar = (function () {
       var was = pbMicOn;
       pbMicOn = false;
       if (rec) { try { if (manual) rec.stop(); } catch (e) {} }
-      if (btn) { btn.removeAttribute('data-on'); btn.setAttribute('aria-pressed', 'false'); }
+      clearInterval(pbMicTimer);
+      pbMicTimer = 0;
+      if (btn) {
+        btn.classList.remove('rec');
+        btn.removeAttribute('data-on');
+        btn.setAttribute('aria-pressed', 'false');
+        var tm = btn.querySelector('.pb-mic-time');
+        if (tm) tm.textContent = '00:00';
+      }
       if (pbInput) pbInput.placeholder = PB_PLACEHOLDER;
       if (was && pbInput && manual) pbInput.focus();
     }
@@ -7789,6 +7848,13 @@ window.__siteCalendar = (function () {
       var SR = window.SpeechRecognition || window.webkitSpeechRecognition;
       if (!SR) { btn.hidden = true; return; }
       btn.hidden = false;
+      if (!btn.querySelector('.pb-mic-time')) {
+        var mt = document.createElement('span');
+        mt.className = 'pb-mic-time';
+        mt.textContent = '00:00';
+        mt.setAttribute('aria-hidden', 'true');
+        btn.appendChild(mt);
+      }
       btn.addEventListener('click', function () {
         if (pbMicOn) { pbMicStop(true); return; }
         var rec;
@@ -7799,7 +7865,16 @@ window.__siteCalendar = (function () {
         pbMicRec = rec;
         pbMicOn = true;
         btn.setAttribute('data-on', '');
+        btn.classList.add('rec');
         btn.setAttribute('aria-pressed', 'true');
+        var mt0 = btn.querySelector('.pb-mic-time');
+        var t0 = Date.now();
+        if (mt0) mt0.textContent = '00:00';
+        clearInterval(pbMicTimer);
+        pbMicTimer = setInterval(function () {
+          var sec = Math.floor((Date.now() - t0) / 1000);
+          if (mt0) mt0.textContent = '00:' + String(sec).padStart(2, '0');
+        }, 500);
         if (pbInput) pbInput.placeholder = '听写中…';
         rec.onresult = function (ev) {
           var t = '';
@@ -8854,9 +8929,23 @@ window.__siteCalendar = (function () {
             if (aiInput) aiInput.value = '';
             if (typeof pbAutoGrow === 'function') pbAutoGrow();
             var pending = addAiMsg('bot', '', true);
-            // 等待指示：三点跳动（纯 CSS 动画）+ 耗时秒数；首 token 到达即被正文整体替换
-            pending.innerHTML = '<span class="ai-thinking" aria-hidden="true"><i></i><i></i><i></i></span>' +
-              '<span class="ai-thinking-txt">思考中</span><span class="ai-thinking-sec">0s</span>';
+            // 等待指示（2026-11-02 交互升级）：点阵波 + 思考轨迹三行 + 耗时秒数；
+            // 首 token 到达即被正文整体替换，因此这里是纯展示的“工作态”而不是真实推理链。
+            var lattice = '';
+            for (var li = 0; li < 9; li++) lattice += '<i style="--i:' + li + '"></i>';
+            pending.innerHTML =
+              '<div class="ai-work">' +
+                '<div class="ai-work-head">' +
+                  '<span class="ai-lattice" aria-hidden="true">' + lattice + '</span>' +
+                  '<span class="ai-thinking-txt">思考中</span>' +
+                  '<span class="ai-thinking-sec">0s</span>' +
+                '</div>' +
+                '<div class="ai-work-steps" aria-hidden="true">' +
+                  '<span><i></i>读取当前会话</span>' +
+                  '<span><i></i>检索站内内容</span>' +
+                  '<span><i></i>组织回答</span>' +
+                '</div>' +
+              '</div>';
             streamAiReply(aiHistory, pending);
             });
           });
@@ -8966,19 +9055,20 @@ window.__siteCalendar = (function () {
       stamp.className = 'board-stamp v' + ((it.id || 0) % 4 + 1);
       stamp.setAttribute('aria-hidden', 'true');
       head.appendChild(stamp);
+      function boardDelete(btn) {
+        if (!confirmBoardDelete(btn)) return;
+        fetch('/api/messages?id=' + it.id, { method: 'DELETE', credentials: 'same-origin' })
+          .then(function (r) { return r.json().catch(function () { return { ok: false }; }); })
+          .then(function (d) { if (d.ok) { boardOffset = 0; boardLoad(); } else alertLike(d.error || '删除失败'); })
+          .catch(function () { alertLike('网络错误'); });
+      }
       if (boardMe.admin) {
         var del = document.createElement('button');
         del.type = 'button';
         del.className = 'board-del';
         del.textContent = '删除';
         del.setAttribute('aria-label', '删除该留言');
-        del.addEventListener('click', function () {
-          if (!confirmBoardDelete(del)) return;
-          fetch('/api/messages?id=' + it.id, { method: 'DELETE', credentials: 'same-origin' })
-            .then(function (r) { return r.json().catch(function () { return { ok: false }; }); })
-            .then(function (d) { if (d.ok) { boardOffset = 0; boardLoad(); } else alertLike(d.error || '删除失败'); })
-            .catch(function () { alertLike('网络错误'); });
-        });
+        del.addEventListener('click', function () { boardDelete(del); });
         head.appendChild(del);
       }
       body.appendChild(head);
@@ -8987,8 +9077,60 @@ window.__siteCalendar = (function () {
       ct.textContent = it.content;
       body.appendChild(ct);
       item.appendChild(body);
+      // 管理员留言：移动端左滑露出删除（桌面保留头部删除钮；SwipeRow 2026-11-02）
+      if (boardMe.admin) {
+        item.classList.add('swipeable');
+        var actions = document.createElement('div');
+        actions.className = 'board-swipe-actions';
+        var sd = document.createElement('button');
+        sd.type = 'button';
+        sd.textContent = '删除';
+        sd.setAttribute('aria-label', '删除该留言');
+        sd.addEventListener('click', function () { boardDelete(sd); });
+        actions.appendChild(sd);
+        var swipe = document.createElement('div');
+        swipe.className = 'board-swipe';
+        swipe.appendChild(av);
+        swipe.appendChild(body);
+        item.appendChild(actions);
+        item.appendChild(swipe);
+        hookBoardSwipe(swipe);
+      }
       return item;
     }
+    function hookBoardSwipe(swipe) {
+      var sx = 0, dx = 0, base = 0, active = false, pid = null, moved = false, open = false;
+      function end() {
+        if (!active) return;
+        active = false;
+        swipe.style.transition = '';
+        if (moved && dx < -56) { open = true; swipe.style.transform = 'translateX(-84px)'; }
+        else { open = false; swipe.style.transform = ''; }
+        dx = 0;
+      }
+      swipe.addEventListener('pointerdown', function (e) {
+        if (e.pointerType === 'mouse') return; // 桌面保留删除钮，不抢鼠标拖拽
+        if (e.target.closest && e.target.closest('button')) return;
+        active = true; moved = false; sx = e.clientX; dx = 0; base = open ? -84 : 0; pid = e.pointerId;
+        swipe.style.transition = 'none';
+      });
+      swipe.addEventListener('pointermove', function (e) {
+        if (!active || e.pointerId !== pid) return;
+        dx = Math.max(-112, Math.min(0, base + e.clientX - sx));
+        if (Math.abs(dx - base) > 6) {
+          moved = true;
+          e.preventDefault();
+          try { swipe.setPointerCapture(pid); } catch (err) {}
+        }
+        swipe.style.transform = 'translateX(' + dx + 'px)';
+      });
+      swipe.addEventListener('pointerup', end);
+      swipe.addEventListener('pointercancel', end);
+      swipe.addEventListener('click', function () {
+        if (!moved && open) { open = false; swipe.style.transform = ''; }
+      });
+    }
+
     // 轻提示：留言板内不引 toast 组件，用临时按钮文字/提示行表达
     function alertLike(msg) { boardHint.textContent = msg; setTimeout(function () { boardRefreshIdentity(); }, 2500); }
     function confirmBoardDelete(btn) {

@@ -1,5 +1,9 @@
 # 更新日志
 
+## 2026-11-12
+
+* **ReactBits 交互整合第一批 + /lab/ 效果实验室（站长「能加的尽量都加上去」）**——把 ReactBits 五类 218 个组件筛完后，按站内零依赖方式做了 49 个效果的独立页 `/lab/`（不接八页外壳、不进导航、`noindex`，6 组：全局质感/AI/首页相册/列表导航/卡片文字/主题背景），并把其中 10 个低风险效果接进正式页面：AI 思考态点阵波 + 三行轨迹 + 秒表（替换三点跳动）、听写麦克风胶囊（EQ + 计时）、留言板管理员移动端左滑删除（桌面保留删除钮）、课表提前量/每节时长拖动改值（ScrubField）+ 开关按压形变、文档阅读层上下缘渐进模糊、后台存储/用量条液面波、首页快捷入口指针光斑、问候语高光扫过。需要改布局/重做相册视图/动桌面导航的效果（ScrollExpand、HalftoneReveal、ChromaGrid、Masonry、StickerPeel、GooeyNav/PillNav、LineSidebar/AnimatedList 等）仍只留在 lab。**测试坑**：本地 wrangler 指纹钉 git HEAD，改 assets 后同 URL 吃 immutable 缓存——本次用 `--binding CF_PAGES_COMMIT_SHA=20261102f` 重启换指纹后复验。check-code 五步过。
+
 ## 2026-11-02
 
 * **停用外部定时任务，取消自动备份（站长「我已经关闭了这个计划我不需要这个功能了」）**——站长关闭 cron-job.org 的定时任务，课表提醒不再自动发送；同日拍板「不要自动备份这个功能」，只保留后台手动备份。代码侧：`/api/schedule/tick` 撤掉每日备份搭车调用（`maybeRunDailyBackup` 一并移除），`functions/lib/backup.js` 仅保留 `runBackupNow` 供后台「立即备份」使用；`backup:lastdate` 由手动备份写入，`/api/health` 的 `backupLastDate` 照旧可看最近一次备份日期。界面文案：后台「邮件」页课表提醒段标注已停用、「状态」页备份卡改「手动备份」、状态页/关于页健康灯「每日备份」改名「数据备份」、公开工程亮点与路线图同步去掉「每日自动备份」表述。**接口与后台课表提醒 UI 保留但默认不再自动运行**，将来恢复按部署说明 §2 重配外部 cron。check-code 五步过。
